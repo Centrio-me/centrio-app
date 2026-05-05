@@ -151,11 +151,16 @@ function getInstalledList() {
     return installed.map(id => {
         const extDir = path.join(EXTENSIONS_DIR, id)
         const manifest = readManifest(extDir)
+        const rawOptions = manifest.options_page || manifest.options_ui?.page || null
+        const rawPopup   = manifest.action?.default_popup || manifest.browser_action?.default_popup || null
+        const base = `chrome-extension://${id}/`
         return {
             id,
-            name:    manifest.name    || id,
-            version: manifest.version || '?',
-            enabled: !disabled.includes(id)
+            name:        manifest.name    || id,
+            version:     manifest.version || '?',
+            enabled:     !disabled.includes(id),
+            optionsPage: rawOptions ? base + rawOptions.replace(/^\//, '') : null,
+            popupPage:   rawPopup   ? base + rawPopup.replace(/^\//, '')   : null,
         }
     })
 }

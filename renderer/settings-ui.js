@@ -57,7 +57,9 @@ function createSettingsUiApi({
 
         const tabsBarEl = document.getElementById('tabsBar')
         if (tabsBarEl) {
-            tabsBarEl.style.display = settings.showTabs !== false ? 'flex' : 'none'
+            const showTabs = settings.showTabs !== false
+            tabsBarEl.style.display = showTabs ? 'flex' : 'none'
+            document.querySelector('.titlebar')?.classList.toggle('tabs-hidden', !showTabs)
         }
 
         if (settings.accentColor) {
@@ -138,6 +140,13 @@ function createSettingsUiApi({
         document.querySelectorAll('.accent-item').forEach((item) => {
             item.classList.toggle('active', item.dataset.color === (settings.accentColor || '#7b68ee'))
         })
+        const customItem = document.getElementById('accentCustomItem')
+        const colorPicker = document.getElementById('accentColorPicker')
+        if (customItem && settings.accentColor && !document.querySelector('.accent-item.active')) {
+            customItem.classList.add('active')
+            customItem.dataset.color = settings.accentColor
+            if (colorPicker) colorPicker.value = settings.accentColor
+        }
 
         document.querySelectorAll('.density-item').forEach((item) => {
             item.classList.toggle('active', item.dataset.density === (settings.density || 'comfortable'))

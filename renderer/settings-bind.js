@@ -102,6 +102,11 @@ function bindSettingsUi({
 
     document.querySelectorAll('.accent-item').forEach((item) => {
         item.addEventListener('click', () => {
+            if (item.id === 'accentCustomItem') {
+                if (requirePro && !requirePro('accent')) return
+                document.getElementById('accentColorPicker')?.click()
+                return
+            }
             const color = item.dataset.color
             if (color !== '#7b68ee') {
                 if (requirePro && !requirePro('accent')) return
@@ -110,6 +115,19 @@ function bindSettingsUi({
             item.classList.add('active')
         })
     })
+
+    const accentColorPicker = document.getElementById('accentColorPicker')
+    if (accentColorPicker) {
+        accentColorPicker.addEventListener('input', (e) => {
+            const color = e.target.value
+            const customItem = document.getElementById('accentCustomItem')
+            document.querySelectorAll('.accent-item').forEach((i) => i.classList.remove('active'))
+            if (customItem) {
+                customItem.classList.add('active')
+                customItem.dataset.color = color
+            }
+        })
+    }
 
     document.querySelectorAll('.density-item').forEach((item) => {
         item.addEventListener('click', () => {

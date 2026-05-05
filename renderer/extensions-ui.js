@@ -62,19 +62,29 @@ const CATALOG = [
         category: 'Покупки',
         color: '#FFA500',
         icon: 'https://www.google.com/s2/favicons?domain=joinhoney.com&sz=64'
+    },
+    {
+        id: 'jddgbeighonaipjikdnfdpiefhoomlae',
+        name: 'Юбуст',
+        desc: 'SEO-анализ и продвижение: позиции, аудит, ключевые слова',
+        category: 'SEO & Аналитика',
+        color: '#FF6B35',
+        icon: 'https://www.google.com/s2/favicons?domain=uboost.ru&sz=64'
     }
 ]
 
 function createExtensionsUiApi({ invokeIpc, tGet, requirePro }) {
-    let installedIds = new Set()
-    let disabledIds  = new Set()
-    let busyIds      = new Set()
+    let installedIds   = new Set()
+    let disabledIds    = new Set()
+    let busyIds        = new Set()
+    let extMetaMap     = new Map()
 
     async function refreshInstalled() {
         const res = await invokeIpc('ext:list')
         if (!res?.success) return
         installedIds = new Set(res.data.map(e => e.id))
         disabledIds  = new Set(res.data.filter(e => !e.enabled).map(e => e.id))
+        extMetaMap   = new Map(res.data.map(e => [e.id, e]))
     }
 
     function renderCard(ext, container) {
@@ -138,6 +148,12 @@ function createExtensionsUiApi({ invokeIpc, tGet, requirePro }) {
                 busyIds.delete(ext.id)
                 renderAll(container)
             })
+
+            card.addEventListener('contextmenu', (e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                showExtContextMenu(e.clientX, e.clientY, ext.id)
+            })
         } else {
             const installBtn = card.querySelector('.ext-install-btn')
             installBtn?.addEventListener('click', async () => {
@@ -180,6 +196,54 @@ function createExtensionsUiApi({ invokeIpc, tGet, requirePro }) {
         await refreshInstalled()
         const container = document.getElementById('extensionsCatalog')
         renderAll(container)
+    }
+
+    function getOrCreateContextMenu() {
+        let menu = document.getElementById('extContextMenu')
+        if (!menu) {
+            menu = document.createElement('div')
+            menu.id = 'extContextMenu'
+            menu.className = 'ext-ctx-menu'
+            document.body.appendChild(menu)
+            document.addEventListener('click', () => menu.classList.remove('show'), true)
+        }
+        return menu
+    }
+
+    function showExtContextMenu(x, y, extId) {
+        const meta = extMetaMap.get(extId)
+        if (!meta) return
+        const menu = getOrCreateContextMenu()
+
+        const items = []
+        if (meta.popupPage) {
+            items.push({ label: tGet('extensions.openPopup') || 'Открыть попап', url: meta.popupPage })
+        }
+        if (meta.optionsPage) {
+            items.push({ label: tGet('extensions.openSettings') || 'Настройки расширения', url: meta.optionsPage })
+        }
+        if (!items.length) {
+            items.push({ label: tGet('extensions.noPages') || 'Нет страниц расширения', disabled: true })
+        }
+
+        menu.innerHTML = items.map(item =>
+            item.disabled
+                ? `<div class="ext-ctx-item ext-ctx-disabled">${item.label}</div>`
+                : `<div class="ext-ctx-item" data-url="${item.url}">${item.label}</div>`
+        ).join('')
+
+        menu.querySelectorAll('.ext-ctx-item[data-url]').forEach(el => {
+            el.addEventListener('click', () => {
+                invokeIpc('open-popup-window', el.dataset.url, { width: 420, height: 600 }).catch(() => {})
+                menu.classList.remove('show')
+            })
+        })
+
+        const vw = window.innerWidth, vh = window.innerHeight
+        const mw = 220, mh = items.length * 36 + 8
+        menu.style.left = (x + mw > vw ? x - mw : x) + 'px'
+        menu.style.top  = (y + mh > vh ? y - mh : y) + 'px'
+        menu.classList.add('show')
     }
 
     return { openExtensionsSection }

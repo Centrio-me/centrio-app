@@ -423,8 +423,11 @@ module.exports = {
     },
 
     extensions: {
-        uninstallTitle: 'Erweiterung entfernen?',
-        uninstallMsg:   'Die Erweiterung wird entfernt. Diese Aktion kann nicht rückgängig gemacht werden.',
-        uninstallBtn:   'Entfernen',
+        uninstallTitle:  'Erweiterung entfernen?',
+        uninstallMsg:    'Die Erweiterung wird entfernt. Diese Aktion kann nicht rückgängig gemacht werden.',
+        uninstallBtn:    'Entfernen',
+        openPopup:       'Popup öffnen',
+        openSettings:    'Erweiterungseinstellungen',
+        noPages:         'Keine Erweiterungsseiten',
     },
 }

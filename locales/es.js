@@ -423,8 +423,11 @@ module.exports = {
     },
 
     extensions: {
-        uninstallTitle: '¿Eliminar extensión?',
-        uninstallMsg:   'La extensión será eliminada. Esta acción no se puede deshacer.',
-        uninstallBtn:   'Eliminar',
+        uninstallTitle:  '¿Eliminar extensión?',
+        uninstallMsg:    'La extensión será eliminada. Esta acción no se puede deshacer.',
+        uninstallBtn:    'Eliminar',
+        openPopup:       'Abrir popup',
+        openSettings:    'Configuración de extensión',
+        noPages:         'Sin páginas de extensión',
     },
 }

@@ -258,7 +258,17 @@ function createMessengersApi({
 
         webview.addEventListener('new-window', (e) => {
             e.preventDefault()
-            if (e.url && e.url !== 'about:blank') ipcRenderer.send('open-url', e.url)
+            const url = e.url
+            if (!url || url === 'about:blank') return
+            if (url.startsWith('chrome-extension://')) {
+                invokeIpc('open-popup-window', url, {
+                    width: 400,
+                    height: 600,
+                    partition: `persist:${messenger.id}`
+                }).catch(() => {})
+            } else {
+                ipcRenderer.send('open-url', url)
+            }
         })
 
         webview.addEventListener('will-navigate', (e) => {
@@ -284,6 +294,7 @@ function createMessengersApi({
 
         tabsContent.appendChild(webview)
         tabsContent.style.pointerEvents = 'auto'
+        invokeIpc('ext:apply-to-session', `persist:${messenger.id}`).catch(() => {})
     }
 
     function addMessenger(messenger) {

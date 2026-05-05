@@ -1128,6 +1128,40 @@ body {
     transform: translateX(16px);
 }
 
+/* Extension context menu */
+.ext-ctx-menu {
+    position: fixed;
+    z-index: 99999;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 4px;
+    min-width: 200px;
+    box-shadow: var(--shadow-md);
+    display: none;
+}
+.ext-ctx-menu.show {
+    display: block;
+}
+.ext-ctx-item {
+    padding: 8px 12px;
+    font-size: 13px;
+    color: var(--text-primary);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: background .12s;
+}
+.ext-ctx-item:hover {
+    background: var(--bg-hover);
+}
+.ext-ctx-disabled {
+    color: var(--text-muted);
+    cursor: default;
+}
+.ext-ctx-disabled:hover {
+    background: transparent;
+}
+
 /* ===== DRAG AND DROP ===== */
 .messenger-item.dragging,
 .folder-item.dragging {
@@ -1964,6 +1998,13 @@ webview.active { display: flex; }
     border-color: white;
     transform: scale(1.15);
     box-shadow: 0 0 16px currentColor;
+}
+
+.accent-custom {
+    background: conic-gradient(#f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00) !important;
+}
+.accent-custom.active {
+    box-shadow: 0 0 16px rgba(255,255,255,0.5);
 }
 
 /* About */
@@ -6231,6 +6272,11 @@ button:active {
     min-width: 28px;
     height: 100%;
     -webkit-app-region: drag;
+}
+
+/* Когда вкладки скрыты — drag-зона занимает всё свободное место */
+.titlebar.tabs-hidden .titlebar-drag {
+    flex: 1 1 auto !important;
 }
 
 .titlebar-right {

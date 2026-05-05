@@ -423,8 +423,11 @@ module.exports = {
     },
 
     extensions: {
-        uninstallTitle: 'Supprimer l\'extension ?',
-        uninstallMsg:   'L\'extension sera supprimée. Cette action est irréversible.',
-        uninstallBtn:   'Supprimer',
+        uninstallTitle:  'Supprimer l\'extension ?',
+        uninstallMsg:    'L\'extension sera supprimée. Cette action est irréversible.',
+        uninstallBtn:    'Supprimer',
+        openPopup:       'Ouvrir le popup',
+        openSettings:    'Paramètres de l\'extension',
+        noPages:         'Aucune page d\'extension',
     },
 }

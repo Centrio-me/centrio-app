@@ -423,8 +423,11 @@ module.exports = {
     },
 
     extensions: {
-        uninstallTitle: 'Rimuovere l\'estensione?',
-        uninstallMsg:   'L\'estensione verrà rimossa. Questa azione è irreversibile.',
-        uninstallBtn:   'Rimuovi',
+        uninstallTitle:  'Rimuovere l\'estensione?',
+        uninstallMsg:    'L\'estensione verrà rimossa. Questa azione è irreversibile.',
+        uninstallBtn:    'Rimuovi',
+        openPopup:       'Apri popup',
+        openSettings:    'Impostazioni estensione',
+        noPages:         'Nessuna pagina estensione',
     },
 }
