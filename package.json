@@ -1,7 +1,7 @@
 {
   "name": "messengerapp",
   "productName": "Centrio",
-  "version": "1.6.5",
+  "version": "1.6.6",
   "description": "All messengers in one app",
   "author": {
     "name": "Centrio",
@@ -56,7 +56,6 @@
       "!.github/**/*",
       "!scripts/**/*",
       "!renderer/**/*.js",
-      "!locales/**/*",
       "!renderer.js",
       "!renderer.js.map",
       "!bundle.js.map"
