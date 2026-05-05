@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect } from 'react'
 import SiteFooter from '@/components/SiteFooter'
@@ -7,7 +7,7 @@ import SeoFooter from '@/components/SeoFooter'
 import type React from 'react'
 import Link from 'next/link'
 
-const VERSION = '1.5.18'
+const VERSION = '1.6.6'
 
 const URLS = {
   win:       `https://download.centrio.me/Centrio%20Setup%20${VERSION}.exe`,

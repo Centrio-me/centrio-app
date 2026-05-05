@@ -7,7 +7,7 @@ import { useLang } from '@/lib/i18n'
 import type React from 'react'
 import Link from 'next/link'
 
-const VERSION = '1.5.23'
+const VERSION = '1.6.6'
 
 const URLS = {
   win:       `https://download.centrio.me/Centrio%20Setup%20${VERSION}.exe`,

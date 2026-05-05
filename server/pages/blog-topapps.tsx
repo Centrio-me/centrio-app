@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+﻿import type { Metadata } from 'next';
 import SiteHeader from '@/components/SiteHeader';
 import SiteFooter from '@/components/SiteFooter';
 
@@ -133,7 +133,7 @@ export default function TopAppsPage() {
           <div style={{ textAlign: 'center' }}>
             <h2 style={{ fontSize: 22, fontWeight: 800, marginBottom: 10 }}>Добавьте все эти сервисы в Centrio</h2>
             <p style={{ color: 'rgba(255,255,255,0.4)', marginBottom: 24 }}>100+ сервисов в одном окне. Бесплатно для первых 5.</p>
-            <a href="https://download.centrio.me/Centrio%20Setup%201.5.20.exe"
+            <a href="https://download.centrio.me/Centrio%20Setup%201.6.6.exe"
               style={{ display: 'inline-block', background: 'linear-gradient(135deg,#6366f1,#8b5cf6)', color: '#fff', borderRadius: 12, padding: '13px 36px', textDecoration: 'none', fontWeight: 700, fontSize: 15, boxShadow: '0 4px 20px rgba(99,102,241,0.4)' }}>
               ⬇ Скачать Centrio бесплатно
             </a>

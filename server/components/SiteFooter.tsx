@@ -1,10 +1,10 @@
-'use client'
+﻿'use client'
 
 import Link from 'next/link'
 import { useState } from 'react'
 import { useLang } from '@/lib/i18n'
 
-const VERSION = '1.5.23'
+const VERSION = '1.6.6'
 
 export default function SiteFooter() {
   const { t } = useLang()

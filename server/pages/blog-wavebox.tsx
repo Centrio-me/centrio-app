@@ -1,9 +1,9 @@
-'use client'
+﻿'use client'
 import SiteHeader from '@/components/SiteHeader';
 import SiteFooter from '@/components/SiteFooter';
 import { useLang } from '@/lib/i18n';
 
-const WIN_DOWNLOAD = 'https://download.centrio.me/Centrio%20Setup%201.5.20.exe';
+const WIN_DOWNLOAD = 'https://download.centrio.me/Centrio%20Setup%201.6.6.exe';
 
 const tableData = [
   { feature: 'Бесплатный тариф', centrio: '✅ До 5 сервисов', wavebox: '❌ Только 14-дневный триал' },
@@ -168,7 +168,7 @@ export default function VsWaveboxPage() {
               style={{ display: 'inline-block', background: 'linear-gradient(135deg,#6366f1,#8b5cf6)', color: '#fff', borderRadius: 12, padding: '14px 36px', textDecoration: 'none', fontWeight: 700, fontSize: 16, boxShadow: '0 4px 20px rgba(99,102,241,0.4)' }}>
               {t.blog_cta_dl_win ?? '⬇ Скачать Centrio для Windows'}
             </a>
-            <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 13, marginTop: 12 }}>{t.blog_cta_platforms ?? 'Версия 1.5.20 · Бесплатно · Windows · macOS · Linux'}</p>
+            <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 13, marginTop: 12 }}>{t.blog_cta_platforms ?? 'Версия 1.6.6 · Бесплатно · Windows · macOS · Linux'}</p>
           </section>
         </div>
       </div>

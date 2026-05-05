@@ -1,11 +1,11 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect, useRef, type ReactElement } from 'react'
 import Link from 'next/link'
 import { useLang, LANGS, LANG_LABELS, type Lang } from '@/lib/i18n'
 import SiteFooter from '@/components/SiteFooter'
 
-const VERSION = '1.5.23'
+const VERSION = '1.6.6'
 const WIN_DOWNLOAD = `https://download.centrio.me/Centrio%20Setup%20${VERSION}.exe`
 
 const MessengerSvgs: Record<string, ReactElement> = {
