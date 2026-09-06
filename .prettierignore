@@ -1,0 +1,24 @@
+# This repo root is shared with a large amount of unrelated content (other
+# clients' scripts, a separate landing/dashboard web project, WordPress theme
+# assets, stray html/md/json/tsx files, etc) alongside the actual Centrio
+# Electron app. Prettier's default file coverage (html/css/md/json/yml/...)
+# is much broader than ESLint's, so instead of trying to enumerate every
+# unrelated path, ignore everything by default and re-include only the
+# Centrio app's own JS sources. This also keeps explicitly protected files
+# (index.html, styles.css, locales/**) untouched by `prettier --write`.
+*
+
+!/*.js
+!/eslint.config.js
+!/.prettierrc.json
+bundle.js
+bundle.js.map
+
+!/main/
+!/main/**
+
+!/renderer/
+!/renderer/**
+
+!/scripts/
+!/scripts/**
