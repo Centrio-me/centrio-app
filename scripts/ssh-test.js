@@ -1,3 +1,4 @@
+require('dotenv').config()
 const { Client } = require('ssh2');
 
 const conn = new Client();
@@ -24,5 +25,5 @@ conn.on('ready', () => {
   host: '31.128.44.165',
   port: 22,
   username: 'root',
-  password: 'j2KHHxjz5_A)',
+  password: process.env.UPLOAD_PASSWORD,
 });

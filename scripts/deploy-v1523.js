@@ -1,9 +1,10 @@
+require('dotenv').config()
 // Деплой v1.5.23 — настройки сети, иконки мессенджеров, фикс папок
 const SftpClient = require('ssh2-sftp-client');
 const path = require('path');
 const fs = require('fs');
 const sftp = new SftpClient();
-const config = { host: '31.128.44.165', port: 22, username: 'root', password: 'j2KHHxjz5_A)' };
+const config = { host: '31.128.44.165', port: 22, username: 'root', password: process.env.UPLOAD_PASSWORD };
 const WEB = '/var/www/centrio-web/src';
 const DL  = '/var/www/centrio-downloads';
 

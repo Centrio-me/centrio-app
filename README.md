@@ -1,139 +1,215 @@
 <div align="center">
-  <img src="assets/logo.png" width="88" height="88" alt="Centrio" />
+  <img src="assets/logo.png" width="96" height="96" alt="Centrio" />
 
-  # Centrio
+  <h1>Centrio</h1>
 
-  **All your messengers. One window.**
+  <p><strong>All your messengers. One window.</strong></p>
 
-  [![Version](https://img.shields.io/github/v/tag/ArtemkaFreedom/centrio-app?label=version&color=3b82f6&style=flat-square)](https://github.com/ArtemkaFreedom/centrio-app/releases)
-  [![Build](https://img.shields.io/github/actions/workflow/status/ArtemkaFreedom/centrio-app/build.yml?style=flat-square&label=build)](https://github.com/ArtemkaFreedom/centrio-app/actions)
-  [![Windows](https://img.shields.io/badge/Windows-0078D4?style=flat-square&logo=windows&logoColor=white)](https://centrio.me/download)
-  [![macOS](https://img.shields.io/badge/macOS-000000?style=flat-square&logo=apple&logoColor=white)](https://centrio.me/download)
-  [![Linux](https://img.shields.io/badge/Linux-f97316?style=flat-square&logo=linux&logoColor=white)](https://centrio.me/download)
+  <p>
+    <a href="https://github.com/ArtemkaFreedom/centrio-app/releases/latest">
+      <img src="https://img.shields.io/github/v/release/ArtemkaFreedom/centrio-app?label=latest&color=6d28d9&style=flat-square" alt="Latest Release" />
+    </a>
+    <a href="https://github.com/ArtemkaFreedom/centrio-app/releases">
+      <img src="https://img.shields.io/github/downloads/ArtemkaFreedom/centrio-app/total?color=3b82f6&style=flat-square&label=downloads" alt="Downloads" />
+    </a>
+    <img src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-8b5cf6?style=flat-square" alt="Platforms" />
+    <img src="https://img.shields.io/badge/license-MIT-22c55e?style=flat-square" alt="License" />
+  </p>
 
-  [🌐 Website](https://centrio.me) &nbsp;·&nbsp; [📥 Download](https://centrio.me/download) &nbsp;·&nbsp; [💬 Support](mailto:support@centrio.me)
+  <p>
+    <a href="https://centrio.me">🌐 Website</a>
+    &nbsp;·&nbsp;
+    <a href="https://centrio.me/download">📥 Download</a>
+    &nbsp;·&nbsp;
+    <a href="https://centrio.me/faq">❓ FAQ</a>
+    &nbsp;·&nbsp;
+    <a href="mailto:support@centrio.me">💬 Support</a>
+  </p>
+
+  <p>
+    <b>English</b> · <a href="README.ru.md">Русский</a> · <a href="README.zh.md">中文</a> · <a href="README.fr.md">Français</a> · <a href="README.it.md">Italiano</a>
+  </p>
+
+  <br />
+
+  | 🇷🇺 | 🇬🇧 | 🇨🇳 | 🇫🇷 | 🇮🇹 |
+  |:---:|:---:|:---:|:---:|:---:|
+  | Все мессенджеры в одном окне | All your messengers in one window | 所有软件一个窗口 | Tous vos messagers en une fenêtre | Tutti i messenger in una finestra |
+
+
 </div>
+
+<br />
 
 ---
 
-## What is Centrio?
+## Why Centrio?
 
-Centrio is a desktop application that brings **100+ messengers and web services into a single window**. Stop switching between browser tabs — Telegram, WhatsApp, Discord, VK, Slack, Notion, Gmail and any other web service live together in one organized workspace.
+You have Telegram open in one window, WhatsApp in another, Discord in a third. Gmail in a browser tab. Notion somewhere. Slack pinging in the background.
 
-Built on Electron, Centrio runs natively on **Windows, macOS and Linux** with the same experience across all platforms.
+**Centrio puts all of them in one place** — a single desktop app where every service lives in its own tab, notifications are unified, and you can finally close 14 browser tabs.
 
 ---
 
 ## Features
 
-### Core
-| | |
-|---|---|
-| 💬 **100+ services** | Telegram, WhatsApp, Discord, VK, Slack, Notion and any website by URL |
-| 🔔 **Smart notifications** | Native system notifications from every service with per-messenger settings |
-| 📁 **Folders & grouping** | Organize services into folders: Work, Personal, Projects *(Pro)* |
-| ☁️ **Cloud sync** | Settings and messengers sync between all your devices instantly *(Pro)* |
-| 🔒 **VPN & proxy** | Built-in SOCKS5/HTTP proxy + full VPN support (VLESS, VMess, Trojan, Shadowsocks, Hysteria2) |
-| 🌍 **5 languages** | Russian, English, 中文, Français, Italiano — switch instantly |
-| 🎨 **3 themes** | Dark, light and system — one click to switch |
-| 🔄 **Auto-update** | Background updates, always the latest version |
+### 100+ Services, One Sidebar
 
-### VPN
-- Import configs via `vmess://`, `vless://`, `trojan://`, `ss://`, `hy2://` links
-- Subscription URL support — import an entire config list at once
-- Per-server ping measurement with color indicators (green/yellow/red)
-- Country flags, connection timer, one-click connect/disconnect
-- Full traffic routing through proxy for all messenger sessions
+Telegram · WhatsApp · Discord · VK · Slack · Notion · Gmail · Signal · Zoom · WeChat · LINE · Figma · Jira · and any URL you add manually.
 
-### Productivity
-- Sidebar with drag-and-drop reordering
-- Per-messenger mute and Do Not Disturb mode
-- Sound control — different notification sounds per service
-- PIN lock with configurable auto-lock timeout
-- Custom icon per service
-- Search across all services
-- Keyboard shortcuts (Ctrl+, for settings, and more)
+### Built-in VPN
+
+No third-party app needed. Import a config link and connect with one click.
+
+| Protocol | Import format |
+|----------|--------------|
+| VLESS | `vless://...` |
+| VMess | `vmess://...` |
+| Trojan | `trojan://...` |
+| Shadowsocks | `ss://...` |
+| Hysteria2 | `hy2://...` |
+| Subscription | URL with config list |
+
+Ping indicator (green / yellow / red), country flag, connection timer, traffic routing for all sessions.
+
+### Chrome Extensions
+
+Install AdBlock, Grammarly, Translate and other extensions directly inside Centrio — no separate browser needed. *(Pro)*
+
+### Pro Features
+
+| Feature | Free | Pro |
+|---------|:----:|:---:|
+| Messengers & services | ✅ unlimited | ✅ unlimited |
+| Built-in VPN | ✅ | ✅ |
+| AdBlock | ✅ | ✅ |
+| Chrome Extensions | — | ✅ |
+| Folders & grouping | — | ✅ |
+| Cloud sync | — | ✅ |
+| Priority support | — | ✅ |
+
+### Everything Else
+
+- 🔔 **Smart notifications** — per-service mute, DND mode, custom sounds
+- 📌 **PIN lock** — auto-lock with configurable timeout
+- 🎨 **Themes** — Dark, Light, system-follow
+- 🌍 **5 languages** — Russian, English, 中文, Français, Italiano
+- ⌨️ **Keyboard shortcuts** — `Ctrl+,` settings, `Ctrl+K` quick search, and more
+- 🔄 **Auto-update** — silent background updates
 
 ---
 
 ## Download
 
-| Platform | Format | Requirements |
-|----------|--------|--------------|
-| **Windows** | NSIS Installer `.exe` | Windows 10/11 · x64 |
-| **macOS** | Disk Image `.dmg` | macOS 12 Monterey+ · x64 |
-| **Linux** | AppImage · `.deb` | Ubuntu 20.04+ / Debian / Arch |
+| Platform | File | Requirements |
+|----------|------|-------------|
+| **Windows** | `.exe` NSIS installer | Windows 10/11 · x64 |
+| **macOS** | `.dmg` disk image | macOS 12 Monterey+ · x64 |
+| **Linux** | `.AppImage` / `.deb` | Ubuntu 20.04+ / Debian / Arch |
 
-👉 **[centrio.me/download](https://centrio.me/download)**
+**👉 [centrio.me/download](https://centrio.me/download)**
+
+Or grab the latest build from [GitHub Releases](https://github.com/ArtemkaFreedom/centrio-app/releases/latest).
 
 ---
 
-## Building from source
+## What's New — v1.6.76
 
-### Prerequisites
-- Node.js 22+
-- npm 10+
+**Translate, Screenshot & Catalog overhaul** *(May 2026)*
 
-### Setup
+- **Translate selected text** — right-click any selected text → Translate. Instant overlay, no browser tab.
+- **Screenshot tool** — capture the current service window directly from the menu bar.
+- **Catalog overhaul** — rebuilt service catalog with categories, search and one-click add.
+
+<details>
+<summary>Previous releases</summary>
+
+### v1.6.75
+- Built-in **AdBlock** — blocks ads across all services without extensions
+- **Force Dark Mode** — inject dark theme into any website
+- **Slash commands** (`/add`, `/search`, `/settings`) via Ctrl+K palette
+- URL bar search with DuckDuckGo / Google fallback
+
+### v1.6.74
+- **Chrome Extension support** — install from a curated catalog (AdBlock, Grammarly, Google Translate)
+- **Quick Switcher** `Ctrl+K` — jump to any service instantly
+- DevTools menu per service, custom MIME type handling
+
+### v1.6.73
+- Rambox-style CORS/CSP bypass — fixes broken services (Notion, Figma, etc.)
+- `allowServiceWorkers` flag per session
+- Extension settings button in sidebar
+
+### v1.6.72
+- Robust extension messaging (`executeScript`, `sendMessage`, `centrio-ext://` fallback)
+- Extension live toggle without restart
+
+### v1.6.69
+- Extension popup bridge
+- `chrome.tabs` shim, `centrio-ext://` protocol
+
+### v1.5.18
+- macOS & Linux builds — full cross-platform CI/CD
+- Language switching without app relaunch
+- VPN panel redesign, sing-box disconnect fix
+
+### v1.5.10
+- VLESS + Reality + TCP / XHTTP support
+- Subscription URL import
+- 40+ messengers added
+
+</details>
+
+---
+
+## Building from Source
+
 ```bash
 git clone https://github.com/ArtemkaFreedom/centrio-app.git
 cd centrio-app
-
 npm install
-
-# Copy environment template
-cp .env.example .env
-# Fill in your OAuth credentials (see .env.example for details)
+cp .env.example .env   # fill in OAuth credentials
 ```
 
-### Run in development
 ```bash
-npm start
-# or
-npm run dev
+npm start              # development
+npm run build:win      # → dist/Centrio Setup x.x.x.exe
+npm run build:mac      # → dist/Centrio-x.x.x.dmg
+npm run build:linux    # → dist/Centrio-x.x.x.AppImage + .deb
 ```
 
-### Build for production
-```bash
-# Windows (produces dist/Centrio Setup x.x.x.exe)
-npm run build:win
-
-# macOS (produces dist/Centrio-x.x.x.dmg)
-npm run build:mac
-
-# Linux (produces dist/Centrio-x.x.x.AppImage + .deb)
-npm run build:linux
-```
+**Requirements:** Node.js 22+, npm 10+
 
 ---
 
-## CI/CD Pipeline
+## CI/CD
 
-Every version tag `v*` triggers an automated multi-platform build via GitHub Actions:
+Every `v*` tag triggers a multi-platform GitHub Actions build:
 
 ```
 git tag v1.x.x && git push origin v1.x.x
         │
-        ├─ build-win   (windows-latest) ──► Centrio Setup x.x.x.exe
-        ├─ build-mac   (macos-latest)   ──► Centrio-x.x.x.dmg
-        └─ build-linux (ubuntu-latest)  ──► Centrio-x.x.x.AppImage
-                                             messengerapp_x.x.x_amd64.deb
+        ├─ build-win   (windows-latest)  →  .exe
+        ├─ build-mac   (macos-latest)    →  .dmg
+        └─ build-linux (ubuntu-latest)   →  .AppImage + .deb
                 │
-                └─ deploy ──► upload to download.centrio.me via SCP
+                └─ deploy  →  upload to download.centrio.me
 ```
 
-Required GitHub Secrets:
+Required secrets: `SSH_HOST`, `SSH_USER`, `SSH_PASSWORD`, `GOOGLE_DESKTOP_CLIENT_ID`, `GOOGLE_DESKTOP_CLIENT_SECRET`, `YANDEX_CLIENT_ID`, `YANDEX_CLIENT_SECRET`
 
-| Secret | Description |
-|--------|-------------|
-| `SSH_HOST` | Download server IP |
-| `SSH_USER` | SSH username |
-| `SSH_PASSWORD` | SSH password |
-| `GOOGLE_DESKTOP_CLIENT_ID` | Google OAuth client ID |
-| `GOOGLE_DESKTOP_CLIENT_SECRET` | Google OAuth client secret |
-| `YANDEX_CLIENT_ID` | Yandex OAuth client ID |
-| `YANDEX_CLIENT_SECRET` | Yandex OAuth client secret |
-| `TELEGRAM_BOT_ID` | Telegram Bot ID for notifications |
+---
+
+## Tech Stack
+
+| Layer | Tech |
+|-------|------|
+| Framework | [Electron 36](https://electronjs.org) |
+| Bundler | [esbuild](https://esbuild.github.io) |
+| Packaging | [electron-builder 25](https://electron.build) |
+| VPN engine | [sing-box](https://sing-box.sagernet.org) |
+| Auth | Google OAuth 2.0 · Yandex OAuth |
+| Payments | YooKassa |
 
 ---
 
@@ -141,64 +217,21 @@ Required GitHub Secrets:
 
 ```
 centrio-app/
-├── main.js                  # Electron main process entry
+├── main.js                  # Electron main process
 ├── main/
-│   ├── bootstrap/           # App init, IPC registration, event handlers
-│   ├── factory/             # BrowserWindow & modal window factories
-│   ├── ipc/                 # IPC handlers: vpn, proxy, oauth, updater...
-│   └── services/            # Core services: store, tracker, updater...
-├── renderer/                # Frontend modules (vanilla JS + esbuild)
-│   ├── index.js             # Entry point, bootstraps all modules
-│   ├── vpn-bind.js          # VPN panel UI & IPC bindings
-│   ├── settings-bind.js     # Settings panel
-│   └── ...
-├── build-renderer.js        # esbuild bundler script
-├── preload.js               # Electron contextBridge preload
-├── vpn-manager.js           # sing-box VPN process manager
+│   ├── bootstrap/           # App init, IPC registration
+│   ├── factory/             # BrowserWindow factories
+│   ├── ipc/                 # VPN, proxy, OAuth, updater...
+│   └── services/            # Store, tracker, updater...
+├── renderer/                # Vanilla JS + esbuild
+│   ├── index.js             # Entry point
+│   ├── vpn-bind.js          # VPN panel
+│   └── settings-bind.js     # Settings panel
+├── preload.js               # contextBridge preload
+├── vpn-manager.js           # sing-box process manager
 └── .github/workflows/
     └── build.yml            # Multi-platform CI/CD
 ```
-
-**Main process** handles: window management, IPC, auto-updates, VPN subprocess (sing-box), OAuth flows, system tray, proxy settings, cloud sync.
-
-**Renderer** is vanilla JS bundled by esbuild — no framework overhead, fast startup.
-
----
-
-## Tech Stack
-
-| Layer | Technology |
-|-------|-----------|
-| Desktop framework | [Electron 36](https://electronjs.org) |
-| Bundler | [esbuild](https://esbuild.github.io) |
-| Packaging | [electron-builder 25](https://electron.build) |
-| State persistence | [electron-store 10](https://github.com/sindresorhus/electron-store) |
-| Auto-update | [electron-updater](https://www.electron.build/auto-update) |
-| VPN engine | [sing-box](https://sing-box.sagernet.org) |
-| Auth | Google OAuth 2.0 · Yandex OAuth |
-| Payments | YooKassa (Russian cards + international) |
-
----
-
-## Changelog
-
-See [Centrio — История версий](https://github.com/ArtemkaFreedom/centrio-app/blob/main/CHANGELOG.md) for full release history.
-
-### v1.5.18 — April 2026
-- **macOS & Linux builds** — full cross-platform CI/CD via GitHub Actions
-- **Language switching** — instant via `location.reload()`, no dependency on tracker/relaunch
-- **VPN panel** — import link moved to Settings → Network → VPN; panel shows only config list
-- **VPN disconnect** — added `taskkill /f /t` on Windows to kill sing-box and child processes
-- **VPN startup** — fixed 10s delay using `log.level:'info'` + port 7890 polling every 300ms
-
-### v1.5.10
-- VLESS+Reality+TCP and VLESS+Reality+XHTTP support
-- Subscription URL support (import entire config list at once)
-- 40 messengers (added WeChat, Zoom, Signal, LINE, Figma, Jira, and more)
-
-### v1.5.9
-- VPN: base support for VMess, VLESS, Trojan, Shadowsocks, Hysteria2
-- Auto-renewal via YooKassa
 
 ---
 

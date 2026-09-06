@@ -1,3 +1,4 @@
+require('dotenv').config()
 const { Client } = require('ssh2');
 const fs = require('fs');
 
@@ -5,7 +6,7 @@ const config = {
   host: '31.128.44.165',
   port: 22,
   username: 'root',
-  password: 'j2KHHxjz5_A)',
+  password: process.env.UPLOAD_PASSWORD,
 };
 
 const command = 'cd /var/www/centrio-web && npm run build 2>&1 | tail -30; pm2 restart centrio-web 2>&1; echo "=== BUILD COMPLETE ==="';

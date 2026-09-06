@@ -13,3 +13,5 @@ server-temp/
 structure.txt
 write_files.py
 generate-badges.js
+scripts/upload-v*.js
+dev/

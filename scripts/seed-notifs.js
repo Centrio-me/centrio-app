@@ -1,8 +1,9 @@
+require('dotenv').config()
 const SftpClient = require('ssh2-sftp-client');
 const fs = require('fs');
 const path = require('path');
 const sftp = new SftpClient();
-const config = { host: '31.128.44.165', port: 22, username: 'root', password: 'j2KHHxjz5_A)' };
+const config = { host: '31.128.44.165', port: 22, username: 'root', password: process.env.UPLOAD_PASSWORD };
 
 // Write the seed script to a temp file, upload, then execute
 const seedScript = `

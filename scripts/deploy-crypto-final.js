@@ -1,8 +1,9 @@
+require('dotenv').config()
 const SftpClient = require('ssh2-sftp-client');
 const path = require('path');
 const fs = require('fs');
 const sftp = new SftpClient();
-const config = { host: '31.128.44.165', port: 22, username: 'root', password: 'j2KHHxjz5_A)' };
+const config = { host: '31.128.44.165', port: 22, username: 'root', password: process.env.UPLOAD_PASSWORD };
 
 async function run(cmd) {
   return new Promise((resolve, reject) => {
@@ -19,12 +20,21 @@ async function run(cmd) {
 async function main() {
   await sftp.connect(config);
 
+  // SECURITY: previously hardcoded NOWPayments keys (including the IPN
+  // secret used to authenticate webhooks!) in plaintext here. Now read
+  // from env — set NOWPAYMENTS_API_KEY / NOWPAYMENTS_PUBLIC_KEY /
+  // NOWPAYMENTS_IPN_SECRET before running this script. The exposed keys
+  // should be rotated from the NOWPayments dashboard regardless.
+  if (!process.env.NOWPAYMENTS_API_KEY || !process.env.NOWPAYMENTS_PUBLIC_KEY || !process.env.NOWPAYMENTS_IPN_SECRET) {
+    console.error('Missing NOWPAYMENTS_API_KEY / NOWPAYMENTS_PUBLIC_KEY / NOWPAYMENTS_IPN_SECRET in environment — aborting');
+    process.exit(1);
+  }
   // ── 1. Add env vars to centrio-api ─────────────────────────────
   console.log('📝 Adding NOWPayments env to centrio-api...');
   await run(`grep -q "NOWPAYMENTS_API_KEY" /var/www/centrio-api/.env || echo '
-NOWPAYMENTS_API_KEY=17TY5YG-QX6MB01-N4MWJDJ-BN3AZAW
-NOWPAYMENTS_PUBLIC_KEY=8c450bfd-25c0-493f-816b-ca263b829e7f
-NOWPAYMENTS_IPN_SECRET=Lu+sGbPAxRVKxX7H24muWaJw4yq6Ok50' >> /var/www/centrio-api/.env`);
+NOWPAYMENTS_API_KEY=${process.env.NOWPAYMENTS_API_KEY}
+NOWPAYMENTS_PUBLIC_KEY=${process.env.NOWPAYMENTS_PUBLIC_KEY}
+NOWPAYMENTS_IPN_SECRET=${process.env.NOWPAYMENTS_IPN_SECRET}' >> /var/www/centrio-api/.env`);
   console.log('✓ Env updated');
 
   // ── 2. Upload new payments.js ────────────────────────────────────

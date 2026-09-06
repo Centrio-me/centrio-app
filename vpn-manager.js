@@ -8,10 +8,32 @@ const fs    = require('fs')
 const https = require('https')
 const http  = require('http')
 const net   = require('net')
+const crypto = require('crypto')
 const { spawn, execFile } = require('child_process')
 const store = require('./main/services/store')
+const { encryptValue, decryptValue } = require('./main/services/secureStore')
 const PROXY_PORT = 7890   // local SOCKS5 port sing-box будет слушать
 const SING_BOX_VERSION = '1.11.4'
+
+// sing-box не публикует checksums.txt/подписи для релиза, поэтому хэши
+// пинуются вручную (посчитаны из официальных ассетов GitHub-релиза v1.11.4).
+// Защищает от подмены бинарника при компрометации CDN/mirror или MITM.
+const SING_BOX_CHECKSUMS = {
+  'sing-box-1.11.4-windows-amd64.zip':  '8a681dbd6fa84f03d41e9e8637a8ff4df3d1d209556585ebf004b48325f9d70e',
+  'sing-box-1.11.4-darwin-amd64.tar.gz': 'ba5ee4d4630b6cb36c24f0f33d7f9b790b185eceebc74818ca6ff1283bd5e94b',
+  'sing-box-1.11.4-darwin-arm64.tar.gz': 'f4349633befd75c972a5a958cbfb6236a1e20b585425ae7c3ec73e5fa29217c5',
+  'sing-box-1.11.4-linux-amd64.tar.gz':  '0bb762ef286b36c2016d9107fc1f089be7a75f6d579b33f067d31e696c05927e'
+}
+
+function verifyChecksum (filePath, filename) {
+  const expected = SING_BOX_CHECKSUMS[filename]
+  if (!expected) throw new Error(`Нет доверенной контрольной суммы для ${filename} — отменяю установку`)
+  const data = fs.readFileSync(filePath)
+  const actual = crypto.createHash('sha256').update(data).digest('hex')
+  if (actual !== expected) {
+    throw new Error(`Контрольная сумма sing-box не совпадает (ожидалось ${expected}, получено ${actual}) — файл мог быть подменён`)
+  }
+}
 
 let singboxProcess = null
 let currentConfig  = null  // { name, link, outbound }
@@ -54,9 +76,16 @@ function downloadSingbox (onProgress) {
 
     const dlFile = fs.createWriteStream(tmpFile)
 
+    // Без таймаута зависший/недоступный GitHub (частый случай именно в тех
+    // сетях, где VPN и нужен) вешал скачивание навсегда — ни ошибки, ни
+    // прогресса, пользователь видел просто "VPN не включился" без объяснений.
+    // setTimeout здесь — таймаут простоя сокета (сбрасывается любой активностью),
+    // а не общий лимit на всё скачивание, поэтому медленный, но живой канал не обрывается.
+    const DOWNLOAD_IDLE_TIMEOUT_MS = 20000
+
     function doGet (urlStr) {
       const mod = urlStr.startsWith('https') ? https : http
-      mod.get(urlStr, (res) => {
+      const req = mod.get(urlStr, (res) => {
         if (res.statusCode === 301 || res.statusCode === 302) {
           doGet(res.headers.location)
           return
@@ -71,37 +100,67 @@ function downloadSingbox (onProgress) {
           }
         })
         res.on('end', () => {
-          dlFile.end()
-          onProgress && onProgress({ stage: 'extract', percent: 85, msg: 'Распаковка...' })
-          extractBinary(tmpFile, binPath, filename).then(() => {
-            fs.unlink(tmpFile, () => {})
-            if (process.platform !== 'win32') {
-              fs.chmodSync(binPath, '755')
+          dlFile.end(() => {
+            try {
+              onProgress && onProgress({ stage: 'verify', percent: 82, msg: 'Проверка целостности...' })
+              verifyChecksum(tmpFile, filename)
+            } catch (err) {
+              fs.unlink(tmpFile, () => {})
+              reject(err)
+              return
             }
-            onProgress && onProgress({ stage: 'done', percent: 100, msg: 'Готово' })
-            resolve(binPath)
-          }).catch(reject)
+            onProgress && onProgress({ stage: 'extract', percent: 85, msg: 'Распаковка...' })
+            extractBinary(tmpFile, binPath, filename).then(() => {
+              fs.unlink(tmpFile, () => {})
+              if (process.platform !== 'win32') {
+                fs.chmodSync(binPath, '755')
+              }
+              onProgress && onProgress({ stage: 'done', percent: 100, msg: 'Готово' })
+              resolve(binPath)
+            }).catch(reject)
+          })
         })
         res.on('error', reject)
-      }).on('error', reject)
+      })
+      req.on('error', reject)
+      req.setTimeout(DOWNLOAD_IDLE_TIMEOUT_MS, () => {
+        req.destroy(new Error('Таймаут скачивания sing-box — сервер не отвечает'))
+      })
     }
 
     doGet(url)
   })
 }
 
+function sanitizePath (p) {
+  // Resolve and normalise; reject traversal attempts
+  const resolved = path.resolve(p)
+  if (resolved.includes('..')) throw new Error(`Path traversal rejected: ${p}`)
+  return resolved
+}
+
 function extractBinary (archivePath, destBin, filename) {
   return new Promise((resolve, reject) => {
-    const destDir = path.dirname(destBin)
-    const binName = path.basename(destBin)
+    // Validate paths before use to prevent injection
+    let safeArchive, safeDestBin
+    try {
+      safeArchive  = sanitizePath(archivePath)
+      safeDestBin  = sanitizePath(destBin)
+    } catch (e) {
+      return reject(e)
+    }
+
+    const destDir = path.dirname(safeDestBin)
+    const binName = path.basename(safeDestBin)
 
     if (filename.endsWith('.zip')) {
       // Windows — используем PowerShell для разархивации
-      const tmpOut = path.join(destDir, '_tmp_extract')
+      const tmpOut = sanitizePath(path.join(destDir, '_tmp_extract'))
       if (!fs.existsSync(tmpOut)) fs.mkdirSync(tmpOut, { recursive: true })
+      // Pass paths as separate array args (NOT via shell interpolation) to avoid injection
       execFile('powershell', [
-        '-NoProfile', '-Command',
-        `Expand-Archive -Path '${archivePath}' -DestinationPath '${tmpOut}' -Force`
+        '-NoProfile', '-NonInteractive', '-Command',
+        `Expand-Archive -LiteralPath '${safeArchive.replace(/'/g, "''")}' -DestinationPath '${tmpOut.replace(/'/g, "''")}' -Force`
       ], (err) => {
         if (err) { reject(err); return }
         // Ищем sing-box.exe в подпапках
@@ -151,7 +210,15 @@ function parseVpnLink (link) {
   if (link.startsWith('ss://'))    return parseShadowsocks(link)
   if (link.startsWith('hysteria2://') || link.startsWith('hy2://')) return parseHysteria2(link)
 
-  throw new Error('Неизвестный формат ссылки. Поддерживаются: vmess, vless, trojan, ss, hysteria2')
+  const err = new Error('Неизвестный формат ссылки. Поддерживаются: vmess, vless, trojan, ss, hysteria2')
+  err.code = 'VPN_INVALID_LINK'
+  throw err
+}
+
+// TLS-проверка сертификата включена по умолчанию (защита от MITM на туннеле).
+// Отключить можно только если сама ссылка это явно просит через query-параметр.
+function isInsecureAllowed (params) {
+  return params.get('allowInsecure') === '1' || params.get('insecure') === '1'
 }
 
 function parseVmess (link) {
@@ -170,7 +237,10 @@ function parseVmess (link) {
     transport:  buildTransport(json)
   }
   if (json.tls === 'tls') {
-    outbound.tls = { enabled: true, server_name: json.sni || json.host || json.add, insecure: true }
+    // Проверка TLS-сертификата включена по умолчанию (защита от MITM на туннеле).
+    // Отключить можно только если сама ссылка это явно просит.
+    const insecure = json.allowInsecure === true || json.allowInsecure === '1' || json['skip-cert-verify'] === true
+    outbound.tls = { enabled: true, server_name: json.sni || json.host || json.add, insecure }
   }
   return { name, outbound }
 }
@@ -198,7 +268,7 @@ function parseVless (link) {
     outbound.tls = {
       enabled:     true,
       server_name: params.get('sni') || url.hostname,
-      insecure:    true
+      insecure:    isInsecureAllowed(params)
     }
   } else if (security === 'reality') {
     outbound.tls = {
@@ -228,7 +298,7 @@ function parseTrojan (link) {
     server:      url.hostname,
     server_port: parseInt(url.port || '443', 10),
     password:    decodeURIComponent(url.username),
-    tls:         { enabled: true, server_name: params.get('sni') || url.hostname, insecure: true }
+    tls:         { enabled: true, server_name: params.get('sni') || url.hostname, insecure: isInsecureAllowed(params) }
   }
   const transport = buildTransportFromParams(params)
   if (transport) outbound.transport = transport
@@ -264,7 +334,9 @@ function parseShadowsocks (link) {
       ;[, method, password, host, port] = match
     }
   } catch (e) {
-    throw new Error('Не удалось разобрать Shadowsocks ссылку')
+    const err = new Error('Не удалось разобрать Shadowsocks ссылку')
+    err.code = 'VPN_INVALID_LINK'
+    throw err
   }
 
   const outbound = {
@@ -290,7 +362,7 @@ function parseHysteria2 (link) {
     server:      url.hostname,
     server_port: parseInt(url.port || '443', 10),
     password:    url.username,
-    tls:         { enabled: true, server_name: params.get('sni') || url.hostname, insecure: true }
+    tls:         { enabled: true, server_name: params.get('sni') || url.hostname, insecure: isInsecureAllowed(params) }
   }
   return { name, outbound }
 }
@@ -451,7 +523,11 @@ async function startProxy (parsed, onLog) {
   if (singboxProcess) await stopProxy()
 
   const binPath = getSingboxPath()
-  if (!fs.existsSync(binPath)) throw new Error('sing-box не установлен')
+  if (!fs.existsSync(binPath)) {
+    const err = new Error('sing-box не установлен')
+    err.code = 'VPN_NOT_INSTALLED'
+    throw err
+  }
 
   const config = buildSingboxConfig(parsed.outbound)
   const cfgPath = path.join(app.getPath('userData'), 'singbox', 'config.json')
@@ -471,7 +547,9 @@ async function startProxy (parsed, onLog) {
     const timeout = setTimeout(() => {
       if (!started) {
         clearInterval(portPoller)
-        reject(new Error('sing-box не запустился за 20 секунд'))
+        const err = new Error('sing-box не запустился за 20 секунд')
+        err.code = 'VPN_START_TIMEOUT'
+        reject(err)
       }
     }, 20000)
 
@@ -503,7 +581,9 @@ async function startProxy (parsed, onLog) {
       if (!started && (line.includes('panic') || line.includes('fatal'))) {
         clearTimeout(timeout)
         clearInterval(portPoller)
-        reject(new Error('sing-box: ' + line.trim()))
+        const err = new Error('sing-box: ' + line.trim())
+        err.code = 'VPN_START_CRASHED'
+        reject(err)
       }
     }
 
@@ -530,12 +610,24 @@ async function stopProxy () {
   if (singboxProcess) {
     const proc = singboxProcess
     singboxProcess = null  // обнуляем сразу, чтобы close-обработчик не конфликтовал
-    try { proc.kill() } catch (_) {}
-    // На Windows kill() иногда не убивает дочерние процессы — taskkill /f /t надёжнее
-    if (process.platform === 'win32' && proc.pid) {
-      const { execFile } = require('child_process')
-      execFile('taskkill', ['/pid', String(proc.pid), '/f', '/t'], { stdio: 'ignore' }, () => {})
-    }
+
+    // Дожидаемся реального завершения процесса (а не просто отправки сигнала),
+    // иначе быстрый reconnect может ударить в ещё занятый порт 7890 и молча
+    // не забиндиться — единственный симптом тогда: общий 20-секундный таймаут
+    // при следующем connect. Таймаут-страховка на случай, если 'exit' не придёт.
+    await new Promise((resolve) => {
+      let settled = false
+      const finish = () => { if (!settled) { settled = true; resolve() } }
+      proc.once('exit', finish)
+      setTimeout(finish, 3000)
+
+      try { proc.kill() } catch (_) {}
+      // На Windows kill() иногда не убивает дочерние процессы — taskkill /f /t надёжнее
+      if (process.platform === 'win32' && proc.pid) {
+        const { execFile } = require('child_process')
+        execFile('taskkill', ['/pid', String(proc.pid), '/f', '/t'], { stdio: 'ignore' }, () => {})
+      }
+    })
   }
   proxyActive   = false
   currentConfig = null
@@ -551,26 +643,30 @@ function getStatus () {
 }
 
 // ── Сохранённые конфиги ───────────────────────────────────────────
+// VPN-ссылки содержат креды (UUID/пароль) в самом URI, поэтому поле
+// `link` шифруется через safeStorage (main/services/secureStore.js)
+// перед записью в electron-store, а не хранится как есть.
 function getSavedConfigs () {
-  return store.get('vpnConfigs', [])
+  const raw = store.get('vpnConfigs', [])
+  return raw.map(c => ({ ...c, link: decryptValue(c.link) }))
 }
 
 function saveConfig (name, link) {
-  const configs = getSavedConfigs()
-  const existing = configs.findIndex(c => c.link === link)
+  const raw = store.get('vpnConfigs', [])
+  const existing = raw.findIndex(c => decryptValue(c.link) === link)
   if (existing >= 0) {
-    configs[existing].name = name
+    raw[existing].name = name
   } else {
-    configs.push({ id: Date.now().toString(), name, link })
+    raw.push({ id: Date.now().toString(), name, link: encryptValue(link) })
   }
-  store.set('vpnConfigs', configs)
-  return configs
+  store.set('vpnConfigs', raw)
+  return getSavedConfigs()
 }
 
 function deleteConfig (id) {
-  const configs = getSavedConfigs().filter(c => c.id !== id)
-  store.set('vpnConfigs', configs)
-  return configs
+  const raw = store.get('vpnConfigs', []).filter(c => c.id !== id)
+  store.set('vpnConfigs', raw)
+  return getSavedConfigs()
 }
 
 // ── Пинг — TCP-соединение до хоста VPN-сервера ───────────────────

@@ -1,4 +1,5 @@
 require('dotenv').config()
+const os = require('os')
 const path = require('path')
 const fs = require('fs')
 const Client = require('ssh2-sftp-client')
@@ -6,11 +7,16 @@ const pkg = require('../package.json')
 
 const sftp = new Client()
 
+// Предпочитаем ключ (сегодня заведён centrio_deploy) вместо пароля —
+// пароль в .env оказался отозван/устарел (сервер отвечал USERAUTH_FAILURE).
+const defaultKeyPath = path.join(os.homedir(), '.ssh', 'centrio_deploy_tmp', 'centrio_deploy')
+const keyPath = process.env.UPLOAD_PRIVATE_KEY_PATH || (fs.existsSync(defaultKeyPath) ? defaultKeyPath : null)
+
 const config = {
     host: process.env.UPLOAD_HOST,
     port: Number(process.env.UPLOAD_PORT || 22),
     username: process.env.UPLOAD_USER,
-    password: process.env.UPLOAD_PASSWORD
+    ...(keyPath ? { privateKey: fs.readFileSync(keyPath) } : { password: process.env.UPLOAD_PASSWORD })
 }
 
 const distDir = path.resolve(__dirname, '..', pkg.build?.directories?.output || 'dist-v1510')
@@ -31,9 +37,10 @@ function ensureFileExists(filePath) {
 }
 
 async function main() {
-    if (!config.host || !config.username || !config.password || !remoteDir) {
-        throw new Error('Не заданы UPLOAD_HOST, UPLOAD_USER, UPLOAD_PASSWORD, UPLOAD_PATH')
+    if (!config.host || !config.username || !remoteDir || !(config.privateKey || config.password)) {
+        throw new Error('Не заданы UPLOAD_HOST, UPLOAD_USER, UPLOAD_PATH и один из UPLOAD_PRIVATE_KEY_PATH/UPLOAD_PASSWORD')
     }
+    console.log(config.privateKey ? `Аутентификация по ключу: ${keyPath}` : 'Аутентификация по паролю (fallback)')
 
     for (const fileName of filesToUpload) {
         ensureFileExists(path.join(distDir, fileName))

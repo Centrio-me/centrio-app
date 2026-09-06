@@ -1,6 +1,7 @@
+require('dotenv').config()
 const SftpClient = require('../node_modules/ssh2-sftp-client')
 const sftp = new SftpClient()
-const CONN = { host: '31.128.44.165', port: 22, username: 'root', password: 'j2KHHxjz5_A)' }
+const CONN = { host: '31.128.44.165', port: 22, username: 'root', password: process.env.UPLOAD_PASSWORD }
 
 const newTelegramPostRoute = `
 router.post('/telegram/electron', async (req, res) => {

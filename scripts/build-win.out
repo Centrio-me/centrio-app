@@ -1,0 +1,30 @@
+
+> messengerapp@1.7.1 build:win
+> rimraf dist && npm run build:renderer && electron-builder --win
+
+
+> messengerapp@1.7.1 build:renderer
+> node build-renderer.js
+
+
+  bundle.js  1.7mb
+
+Done in 27ms
+[build-renderer] built: C:\MessengerApps\bundle.js
+  • electron-builder  version=25.1.8 os=10.0.26200
+  • loaded configuration  file=package.json ("build" field)
+  • executing @electron/rebuild  electronVersion=36.9.5 arch=x64 buildFromSource=false appDir=./
+  • installing native dependencies  arch=x64
+  • completed installing native dependencies
+  • packaging       platform=win32 arch=x64 electron=36.9.5 appOutDir=dist\win-unpacked
+  • updating asar integrity executable resource  executablePath=dist\win-unpacked\Centrio.exe
+  • signing with signtool.exe  path=dist\win-unpacked\Centrio.exe
+  • no signing info identified, signing is skipped  signHook=false cscInfo=null
+  • building        target=nsis file=dist\Centrio Setup 1.7.1.exe archs=x64 oneClick=false perMachine=false
+  • signing with signtool.exe  path=dist\win-unpacked\resources\elevate.exe
+  • no signing info identified, signing is skipped  signHook=false cscInfo=null
+  • signing with signtool.exe  path=dist\__uninstaller-nsis-messengerapp.exe
+  • no signing info identified, signing is skipped  signHook=false cscInfo=null
+  • signing with signtool.exe  path=dist\Centrio Setup 1.7.1.exe
+  • no signing info identified, signing is skipped  signHook=false cscInfo=null
+  • building block map  blockMapFile=dist\Centrio Setup 1.7.1.exe.blockmap

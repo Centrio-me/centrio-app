@@ -71,7 +71,7 @@ jobs:
       - run: npm ci
 
       - name: Resize icon to 512x512 (macOS requirement)
-        run: sips -z 512 512 assets/logo.png --out assets/logo.png
+        run: sips -z 512 512 assets/icon.png --out assets/icon.png
 
       - name: Build macOS (unsigned)
         run: node build-renderer.js && npx electron-builder --mac --publish never
@@ -86,6 +86,7 @@ jobs:
           path: |
             dist/*.dmg
             dist/*.dmg.blockmap
+            dist/latest-mac.yml
           if-no-files-found: error
 
   # ─── Linux ─────────────────────────────────────────────────────────────────
@@ -120,7 +121,7 @@ jobs:
       - run: npm ci
 
       - name: Resize icon to 512x512 (Linux requirement)
-        run: convert assets/logo.png -resize 512x512 assets/logo.png
+        run: convert assets/icon.png -resize 512x512 assets/icon.png
 
       - name: Build Linux
         run: node build-renderer.js && npx electron-builder --linux AppImage deb --x64 --publish never
@@ -135,6 +136,7 @@ jobs:
           path: |
             dist/*.AppImage
             dist/*.deb
+            dist/latest-linux.yml
           if-no-files-found: error
 
   # ─── Deploy ────────────────────────────────────────────────────────────────
@@ -150,13 +152,16 @@ jobs:
       - name: Show artifact tree
         run: find artifacts -type f | sort
 
-      - name: Install sshpass
-        run: sudo apt-get install -y sshpass
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
 
       - name: Upload Windows
         run: |
-          sshpass -p "${{ secrets.SSH_PASSWORD }}" scp \
-            -o StrictHostKeyChecking=no \
+          scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
             artifacts/win-artifacts/*.exe \
             artifacts/win-artifacts/*.exe.blockmap \
             artifacts/win-artifacts/latest.yml \
@@ -164,17 +169,17 @@ jobs:
 
       - name: Upload macOS
         run: |
-          sshpass -p "${{ secrets.SSH_PASSWORD }}" scp \
-            -o StrictHostKeyChecking=no \
+          scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
             artifacts/mac-artifacts/*.dmg \
+            artifacts/mac-artifacts/latest-mac.yml \
             ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/var/www/centrio-downloads/mac/
 
       - name: Upload Linux
         run: |
-          sshpass -p "${{ secrets.SSH_PASSWORD }}" scp \
-            -o StrictHostKeyChecking=no \
+          scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
             artifacts/linux-artifacts/*.AppImage \
             artifacts/linux-artifacts/*.deb \
+            artifacts/linux-artifacts/latest-linux.yml \
             ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/var/www/centrio-downloads/linux/
 
       - run: echo "✅ All builds deployed"

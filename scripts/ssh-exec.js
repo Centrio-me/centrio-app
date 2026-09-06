@@ -1,3 +1,4 @@
+require('dotenv').config()
 const SftpClient = require('ssh2-sftp-client');
 
 const sftp = new SftpClient();
@@ -6,7 +7,7 @@ const config = {
   host: '31.128.44.165',
   port: 22,
   username: 'root',
-  password: 'j2KHHxjz5_A)',
+  password: process.env.UPLOAD_PASSWORD,
 };
 
 async function runCommand(cmd) {
