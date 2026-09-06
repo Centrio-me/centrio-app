@@ -6,11 +6,11 @@
   <p><strong>Toutes vos messageries. Une fenêtre. Zéro désordre.</strong></p>
 
   <p>
-    <a href="https://github.com/ArtemkaFreedom/centrio-app/releases/latest">
-      <img src="https://img.shields.io/github/v/release/ArtemkaFreedom/centrio-app?label=derni%C3%A8re%20version&color=6d28d9&style=flat-square" alt="Dernière version" />
+    <a href="https://github.com/Centrio-me/centrio-app/releases/latest">
+      <img src="https://img.shields.io/github/v/release/Centrio-me/centrio-app?label=derni%C3%A8re%20version&color=6d28d9&style=flat-square" alt="Dernière version" />
     </a>
-    <a href="https://github.com/ArtemkaFreedom/centrio-app/releases">
-      <img src="https://img.shields.io/github/downloads/ArtemkaFreedom/centrio-app/total?color=3b82f6&style=flat-square&label=t%C3%A9l%C3%A9chargements" alt="Téléchargements" />
+    <a href="https://github.com/Centrio-me/centrio-app/releases">
+      <img src="https://img.shields.io/github/downloads/Centrio-me/centrio-app/total?color=3b82f6&style=flat-square&label=t%C3%A9l%C3%A9chargements" alt="Téléchargements" />
     </a>
     <img src="https://img.shields.io/badge/plateformes-Windows%20%7C%20macOS%20%7C%20Linux-8b5cf6?style=flat-square" alt="Plateformes" />
     <img src="https://img.shields.io/badge/Electron-39-47848F?style=flat-square&logo=electron&logoColor=white" alt="Electron" />
@@ -151,7 +151,7 @@ Un gestionnaire de tâches léger avec ses propres catégories (listes) — ajou
 
 **👉 [centrio.me/download](https://centrio.me/download)**
 
-Ou récupérez la dernière build sur [GitHub Releases](https://github.com/ArtemkaFreedom/centrio-app/releases/latest).
+Ou récupérez la dernière build sur [GitHub Releases](https://github.com/Centrio-me/centrio-app/releases/latest).
 
 ---
 
@@ -213,7 +213,7 @@ Ou récupérez la dernière build sur [GitHub Releases](https://github.com/Artem
 ## Compiler depuis les sources
 
 ```bash
-git clone https://github.com/ArtemkaFreedom/centrio-app.git
+git clone https://github.com/Centrio-me/centrio-app.git
 cd centrio-app
 npm install
 cp .env.example .env   # renseignez les identifiants OAuth

@@ -6,11 +6,11 @@
   <p><strong>Tutti i tuoi messenger. Una finestra. Zero caos.</strong></p>
 
   <p>
-    <a href="https://github.com/ArtemkaFreedom/centrio-app/releases/latest">
-      <img src="https://img.shields.io/github/v/release/ArtemkaFreedom/centrio-app?label=ultima%20versione&color=6d28d9&style=flat-square" alt="Ultima versione" />
+    <a href="https://github.com/Centrio-me/centrio-app/releases/latest">
+      <img src="https://img.shields.io/github/v/release/Centrio-me/centrio-app?label=ultima%20versione&color=6d28d9&style=flat-square" alt="Ultima versione" />
     </a>
-    <a href="https://github.com/ArtemkaFreedom/centrio-app/releases">
-      <img src="https://img.shields.io/github/downloads/ArtemkaFreedom/centrio-app/total?color=3b82f6&style=flat-square&label=download" alt="Download" />
+    <a href="https://github.com/Centrio-me/centrio-app/releases">
+      <img src="https://img.shields.io/github/downloads/Centrio-me/centrio-app/total?color=3b82f6&style=flat-square&label=download" alt="Download" />
     </a>
     <img src="https://img.shields.io/badge/piattaforme-Windows%20%7C%20macOS%20%7C%20Linux-8b5cf6?style=flat-square" alt="Piattaforme" />
     <img src="https://img.shields.io/badge/Electron-39-47848F?style=flat-square&logo=electron&logoColor=white" alt="Electron" />
@@ -151,7 +151,7 @@ Un pianificatore di attività leggero con categorie (liste) proprie — aggiungi
 
 **👉 [centrio.me/download](https://centrio.me/download)**
 
-Oppure prendi l'ultima build da [GitHub Releases](https://github.com/ArtemkaFreedom/centrio-app/releases/latest).
+Oppure prendi l'ultima build da [GitHub Releases](https://github.com/Centrio-me/centrio-app/releases/latest).
 
 ---
 
@@ -213,7 +213,7 @@ Oppure prendi l'ultima build da [GitHub Releases](https://github.com/ArtemkaFree
 ## Compilare dai sorgenti
 
 ```bash
-git clone https://github.com/ArtemkaFreedom/centrio-app.git
+git clone https://github.com/Centrio-me/centrio-app.git
 cd centrio-app
 npm install
 cp .env.example .env   # inserisci le credenziali OAuth

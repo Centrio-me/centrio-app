@@ -6,11 +6,11 @@
   <p><strong>Все мессенджеры. Одно окно. Ноль бардака.</strong></p>
 
   <p>
-    <a href="https://github.com/ArtemkaFreedom/centrio-app/releases/latest">
-      <img src="https://img.shields.io/github/v/release/ArtemkaFreedom/centrio-app?label=%D0%B2%D0%B5%D1%80%D1%81%D0%B8%D1%8F&color=6d28d9&style=flat-square" alt="Последний релиз" />
+    <a href="https://github.com/Centrio-me/centrio-app/releases/latest">
+      <img src="https://img.shields.io/github/v/release/Centrio-me/centrio-app?label=%D0%B2%D0%B5%D1%80%D1%81%D0%B8%D1%8F&color=6d28d9&style=flat-square" alt="Последний релиз" />
     </a>
-    <a href="https://github.com/ArtemkaFreedom/centrio-app/releases">
-      <img src="https://img.shields.io/github/downloads/ArtemkaFreedom/centrio-app/total?color=3b82f6&style=flat-square&label=%D1%81%D0%BA%D0%B0%D1%87%D0%B8%D0%B2%D0%B0%D0%BD%D0%B8%D0%B9" alt="Скачивания" />
+    <a href="https://github.com/Centrio-me/centrio-app/releases">
+      <img src="https://img.shields.io/github/downloads/Centrio-me/centrio-app/total?color=3b82f6&style=flat-square&label=%D1%81%D0%BA%D0%B0%D1%87%D0%B8%D0%B2%D0%B0%D0%BD%D0%B8%D0%B9" alt="Скачивания" />
     </a>
     <img src="https://img.shields.io/badge/платформы-Windows%20%7C%20macOS%20%7C%20Linux-8b5cf6?style=flat-square" alt="Платформы" />
     <img src="https://img.shields.io/badge/Electron-39-47848F?style=flat-square&logo=electron&logoColor=white" alt="Electron" />
@@ -151,7 +151,7 @@ Telegram · WhatsApp · Discord · VK · Slack · Notion · Gmail · Signal · Z
 
 **👉 [centrio.me/download](https://centrio.me/download)**
 
-Или возьми последнюю сборку в [GitHub Releases](https://github.com/ArtemkaFreedom/centrio-app/releases/latest).
+Или возьми последнюю сборку в [GitHub Releases](https://github.com/Centrio-me/centrio-app/releases/latest).
 
 ---
 
@@ -242,7 +242,7 @@ Telegram · WhatsApp · Discord · VK · Slack · Notion · Gmail · Signal · Z
 ## Сборка из исходников
 
 ```bash
-git clone https://github.com/ArtemkaFreedom/centrio-app.git
+git clone https://github.com/Centrio-me/centrio-app.git
 cd centrio-app
 npm install
 cp .env.example .env   # заполни OAuth-креды

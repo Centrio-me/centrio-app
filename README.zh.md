@@ -6,11 +6,11 @@
   <p><strong>所有通讯软件，一个窗口，零杂乱。</strong></p>
 
   <p>
-    <a href="https://github.com/ArtemkaFreedom/centrio-app/releases/latest">
-      <img src="https://img.shields.io/github/v/release/ArtemkaFreedom/centrio-app?label=%E6%9C%80%E6%96%B0%E7%89%88%E6%9C%AC&color=6d28d9&style=flat-square" alt="最新版本" />
+    <a href="https://github.com/Centrio-me/centrio-app/releases/latest">
+      <img src="https://img.shields.io/github/v/release/Centrio-me/centrio-app?label=%E6%9C%80%E6%96%B0%E7%89%88%E6%9C%AC&color=6d28d9&style=flat-square" alt="最新版本" />
     </a>
-    <a href="https://github.com/ArtemkaFreedom/centrio-app/releases">
-      <img src="https://img.shields.io/github/downloads/ArtemkaFreedom/centrio-app/total?color=3b82f6&style=flat-square&label=%E4%B8%8B%E8%BD%BD%E6%AC%A1%E6%95%B0" alt="下载次数" />
+    <a href="https://github.com/Centrio-me/centrio-app/releases">
+      <img src="https://img.shields.io/github/downloads/Centrio-me/centrio-app/total?color=3b82f6&style=flat-square&label=%E4%B8%8B%E8%BD%BD%E6%AC%A1%E6%95%B0" alt="下载次数" />
     </a>
     <img src="https://img.shields.io/badge/平台-Windows%20%7C%20macOS%20%7C%20Linux-8b5cf6?style=flat-square" alt="平台" />
     <img src="https://img.shields.io/badge/Electron-39-47848F?style=flat-square&logo=electron&logoColor=white" alt="Electron" />
@@ -151,7 +151,7 @@ Telegram · WhatsApp · Discord · VK · Slack · Notion · Gmail · Signal · Z
 
 **👉 [centrio.me/download](https://centrio.me/download)**
 
-或从 [GitHub Releases](https://github.com/ArtemkaFreedom/centrio-app/releases/latest) 获取最新构建版本。
+或从 [GitHub Releases](https://github.com/Centrio-me/centrio-app/releases/latest) 获取最新构建版本。
 
 ---
 
@@ -213,7 +213,7 @@ Telegram · WhatsApp · Discord · VK · Slack · Notion · Gmail · Signal · Z
 ## 从源码构建
 
 ```bash
-git clone https://github.com/ArtemkaFreedom/centrio-app.git
+git clone https://github.com/Centrio-me/centrio-app.git
 cd centrio-app
 npm install
 cp .env.example .env   # 填写 OAuth 凭据

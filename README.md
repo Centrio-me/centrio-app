@@ -6,11 +6,11 @@
   <p><strong>Every messenger. One window. Zero clutter.</strong></p>
 
   <p>
-    <a href="https://github.com/ArtemkaFreedom/centrio-app/releases/latest">
-      <img src="https://img.shields.io/github/v/release/ArtemkaFreedom/centrio-app?label=latest&color=6d28d9&style=flat-square" alt="Latest Release" />
+    <a href="https://github.com/Centrio-me/centrio-app/releases/latest">
+      <img src="https://img.shields.io/github/v/release/Centrio-me/centrio-app?label=latest&color=6d28d9&style=flat-square" alt="Latest Release" />
     </a>
-    <a href="https://github.com/ArtemkaFreedom/centrio-app/releases">
-      <img src="https://img.shields.io/github/downloads/ArtemkaFreedom/centrio-app/total?color=3b82f6&style=flat-square&label=downloads" alt="Downloads" />
+    <a href="https://github.com/Centrio-me/centrio-app/releases">
+      <img src="https://img.shields.io/github/downloads/Centrio-me/centrio-app/total?color=3b82f6&style=flat-square&label=downloads" alt="Downloads" />
     </a>
     <img src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-8b5cf6?style=flat-square" alt="Platforms" />
     <img src="https://img.shields.io/badge/Electron-39-47848F?style=flat-square&logo=electron&logoColor=white" alt="Electron" />
@@ -151,7 +151,7 @@ A lightweight task planner with its own categories (lists) — add, star, comple
 
 **👉 [centrio.me/download](https://centrio.me/download)**
 
-Or grab the latest build from [GitHub Releases](https://github.com/ArtemkaFreedom/centrio-app/releases/latest).
+Or grab the latest build from [GitHub Releases](https://github.com/Centrio-me/centrio-app/releases/latest).
 
 ---
 
@@ -245,7 +245,7 @@ Or grab the latest build from [GitHub Releases](https://github.com/ArtemkaFreedo
 ## Building from Source
 
 ```bash
-git clone https://github.com/ArtemkaFreedom/centrio-app.git
+git clone https://github.com/Centrio-me/centrio-app.git
 cd centrio-app
 npm install
 cp .env.example .env   # fill in OAuth credentials
