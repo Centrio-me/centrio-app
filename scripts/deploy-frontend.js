@@ -69,6 +69,7 @@ const UPLOADS = [
     // Added for the v1.9.0 version-string sweep — confirmed live on the
     // server (`test -f`) before being added here, same as the entries above.
     { local: path.join(__dirname, '..', 'landing', 'layout.tsx'),         remote: `${REMOTE_BASE}/src/app/layout.tsx` },
+    { local: path.join(__dirname, '..', 'landing', 'next.config.ts'),     remote: `${REMOTE_BASE}/next.config.ts` },
     { local: path.join(__dirname, '..', 'landing', 'blog-vs-ferdium.tsx'),               remote: `${REMOTE_BASE}/src/app/blog/vs-ferdium/page.tsx` },
     { local: path.join(__dirname, '..', 'landing', 'blog-who-needs-it.tsx'),             remote: `${REMOTE_BASE}/src/app/blog/who-needs-it/page.tsx` },
     { local: path.join(__dirname, '..', 'landing', 'blog-is-it-safe.tsx'),               remote: `${REMOTE_BASE}/src/app/blog/is-it-safe/page.tsx` },
