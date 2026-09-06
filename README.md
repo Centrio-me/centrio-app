@@ -13,13 +13,17 @@
       <img src="https://img.shields.io/github/downloads/ArtemkaFreedom/centrio-app/total?color=3b82f6&style=flat-square&label=downloads" alt="Downloads" />
     </a>
     <img src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-8b5cf6?style=flat-square" alt="Platforms" />
-    <img src="https://img.shields.io/badge/license-MIT-22c55e?style=flat-square" alt="License" />
+    <img src="https://img.shields.io/badge/license-proprietary-64748b?style=flat-square" alt="License" />
   </p>
 
   <p>
     <a href="https://centrio.me">🌐 Website</a>
     &nbsp;·&nbsp;
     <a href="https://centrio.me/download">📥 Download</a>
+    &nbsp;·&nbsp;
+    <a href="https://centrio.me/features">✨ Features</a>
+    &nbsp;·&nbsp;
+    <a href="https://centrio.me/pricing">💳 Pricing</a>
     &nbsp;·&nbsp;
     <a href="https://centrio.me/faq">❓ FAQ</a>
     &nbsp;·&nbsp;
@@ -35,7 +39,6 @@
   | 🇷🇺 | 🇬🇧 | 🇨🇳 | 🇫🇷 | 🇮🇹 |
   |:---:|:---:|:---:|:---:|:---:|
   | Все мессенджеры в одном окне | All your messengers in one window | 所有软件一个窗口 | Tous vos messagers en une fenêtre | Tutti i messenger in una finestra |
-
 
 </div>
 
@@ -55,7 +58,15 @@ You have Telegram open in one window, WhatsApp in another, Discord in a third. G
 
 ### 100+ Services, One Sidebar
 
-Telegram · WhatsApp · Discord · VK · Slack · Notion · Gmail · Signal · Zoom · WeChat · LINE · Figma · Jira · and any URL you add manually.
+Telegram · WhatsApp · Discord · VK · Slack · Notion · Gmail · Signal · Zoom · WeChat · LINE · Figma · Jira · MAX · and any URL you add manually.
+
+### AI Assistant
+
+Ask it in plain language. It switches tabs, checks unread counts, reads your notification bell, controls the built-in VPN, drives the mini media player, and manages your Notes — creating, pinning, and deleting entries on request. *(Pro/Team)*
+
+### Notes
+
+A real notes plugin, not an afterthought: plain notes and shopping lists, synced across every device. Search, color labels, archive, drag-and-drop reordering, pinning, duplication, and a last-edited timestamp on every card. *(Pro/Team)*
 
 ### Built-in VPN
 
@@ -70,29 +81,40 @@ No third-party app needed. Import a config link and connect with one click.
 | Hysteria2 | `hy2://...` |
 | Subscription | URL with config list |
 
-Ping indicator (green / yellow / red), country flag, connection timer, traffic routing for all sessions.
+Ping indicator (green / yellow / red), country flag, connection timer, automatic failover, traffic routing for all sessions.
+
+### Mini Media Player
+
+A sidebar icon appears the moment audio or video starts playing in any open tab — pause, skip forward and back without switching to that tab.
 
 ### Chrome Extensions
 
-Install AdBlock, Grammarly, Translate and other extensions directly inside Centrio — no separate browser needed. *(Pro)*
+Install AdBlock, Grammarly, Translate and other extensions directly inside Centrio — no separate browser needed. *(Pro/Team)*
 
-### Pro Features
+### Todos
 
-| Feature | Free | Pro |
-|---------|:----:|:---:|
-| Messengers & services | ✅ unlimited | ✅ unlimited |
-| Built-in VPN | ✅ | ✅ |
-| AdBlock | ✅ | ✅ |
-| Chrome Extensions | — | ✅ |
-| Folders & grouping | — | ✅ |
-| Cloud sync | — | ✅ |
-| Priority support | — | ✅ |
+A lightweight task planner with its own categories (lists) — add, star, complete, and delete both individual tasks and entire lists.
+
+### Pro / Team Features
+
+| Feature | Free | Pro | Team |
+|---------|:----:|:---:|:----:|
+| Messengers & services | ✅ unlimited | ✅ unlimited | ✅ unlimited |
+| Built-in VPN | ✅ | ✅ | ✅ |
+| AdBlock | ✅ | ✅ | ✅ |
+| AI Assistant | — | ✅ | ✅ |
+| Notes | — | ✅ | ✅ |
+| Chrome Extensions | — | ✅ | ✅ |
+| Folders & grouping | — | ✅ | ✅ |
+| Cloud sync | — | ✅ | ✅ |
+| Seats / team invites | — | — | ✅ |
+| Priority support | — | ✅ | ✅ |
 
 ### Everything Else
 
 - 🔔 **Smart notifications** — per-service mute, DND mode, custom sounds
-- 📌 **PIN lock** — auto-lock with configurable timeout
-- 🎨 **Themes** — Dark, Light, system-follow
+- 📌 **PIN lock** — auto-lock on startup, on hide, or after idle timeout, with brute-force lockout
+- 🎨 **Premium Settings** — freshly redesigned settings window
 - 🌍 **5 languages** — Russian, English, 中文, Français, Italiano
 - ⌨️ **Keyboard shortcuts** — `Ctrl+,` settings, `Ctrl+K` quick search, and more
 - 🔄 **Auto-update** — silent background updates
@@ -104,7 +126,7 @@ Install AdBlock, Grammarly, Translate and other extensions directly inside Centr
 | Platform | File | Requirements |
 |----------|------|-------------|
 | **Windows** | `.exe` NSIS installer | Windows 10/11 · x64 |
-| **macOS** | `.dmg` disk image | macOS 12 Monterey+ · x64 |
+| **macOS** | `.dmg` disk image | macOS 12 Monterey+ · Intel & Apple Silicon |
 | **Linux** | `.AppImage` / `.deb` | Ubuntu 20.04+ / Debian / Arch |
 
 **👉 [centrio.me/download](https://centrio.me/download)**
@@ -113,45 +135,57 @@ Or grab the latest build from [GitHub Releases](https://github.com/ArtemkaFreedo
 
 ---
 
-## What's New — v1.6.76
+## What's New — v2.6.0
 
-**Translate, Screenshot & Catalog overhaul** *(May 2026)*
+**Notes plugin, premium Settings redesign, security & stability** *(September 2026)*
 
-- **Translate selected text** — right-click any selected text → Translate. Instant overlay, no browser tab.
-- **Screenshot tool** — capture the current service window directly from the menu bar.
-- **Catalog overhaul** — rebuilt service catalog with categories, search and one-click add.
+- **Notes** *(Pro/Team)* — notes and shopping lists synced across devices, with search, color labels, archive, drag-and-drop reordering, pinning, duplication and a last-edited date
+- **AI Assistant** now controls the mini media player and works with Notes — create, pin, delete, read your shopping list
+- **Settings redesign** — a more premium look for the entire settings window
+- **Todos** — delete whole categories (lists), not just individual tasks
+- Stability & security hardening: fixed the assistant getting stuck without a reply, strengthened lock-screen and token/key storage protection, closed rare race conditions in assistant quota accounting and payment refunds
 
 <details>
 <summary>Previous releases</summary>
+
+### v2.5.3
+- Fixed Cmd+C/Cmd+V and other system shortcuts on macOS
+- Fixed Yandex Mail attachments opening only a preview instead of downloading
+- Fixed the mini-player button not appearing while VK Music played
+- New: Video Calls category — Yandex Telemost, Zoom, Google Meet, Microsoft Teams, Webex
+- New: AmoCRM, Мегаплан, RetailCRM added to Productivity
+
+### v2.5.2
+- New: Alice PRO (alicepro.yandex.ru) added to the AI category
+
+### v2.5.1
+- Fixed the mini-player, which stopped appearing after the v2.5.0 update
+- Restored the SYNTAX promo tile in the AI category
+- General security hardening
+
+### v2.5.0
+- New: Centrio TEAM subscription — seats, invite links, a Team section in the dashboard
+- New: mini media player in the right sidebar
+- New: Element, Threema, Wire, Zalo, GroupMe, Threads, Snapchat, Google Meet, Webex, Chatwork, SYNTAX added
+- New: Media category — YouTube, Spotify, Yandex Music, VK Video, Shazam, Ivi, Kinopoisk and more
+
+### v2.4.0
+- Google/Yandex/Grok login no longer hangs the app or leaves a black screen after closing the auth popup
+- New: MAX and Telegram invite links open in the matching already-open tab instead of an external browser
+
+### v1.6.76
+- **Translate selected text** — right-click any selected text → Translate. Instant overlay, no browser tab.
+- **Screenshot tool** — capture the current service window directly from the menu bar.
+- **Catalog overhaul** — rebuilt service catalog with categories, search and one-click add.
 
 ### v1.6.75
 - Built-in **AdBlock** — blocks ads across all services without extensions
 - **Force Dark Mode** — inject dark theme into any website
 - **Slash commands** (`/add`, `/search`, `/settings`) via Ctrl+K palette
-- URL bar search with DuckDuckGo / Google fallback
-
-### v1.6.74
-- **Chrome Extension support** — install from a curated catalog (AdBlock, Grammarly, Google Translate)
-- **Quick Switcher** `Ctrl+K` — jump to any service instantly
-- DevTools menu per service, custom MIME type handling
-
-### v1.6.73
-- Rambox-style CORS/CSP bypass — fixes broken services (Notion, Figma, etc.)
-- `allowServiceWorkers` flag per session
-- Extension settings button in sidebar
-
-### v1.6.72
-- Robust extension messaging (`executeScript`, `sendMessage`, `centrio-ext://` fallback)
-- Extension live toggle without restart
-
-### v1.6.69
-- Extension popup bridge
-- `chrome.tabs` shim, `centrio-ext://` protocol
 
 ### v1.5.18
 - macOS & Linux builds — full cross-platform CI/CD
 - Language switching without app relaunch
-- VPN panel redesign, sing-box disconnect fix
 
 ### v1.5.10
 - VLESS + Reality + TCP / XHTTP support
@@ -187,7 +221,7 @@ npm run build:linux    # → dist/Centrio-x.x.x.AppImage + .deb
 Every `v*` tag triggers a multi-platform GitHub Actions build:
 
 ```
-git tag v1.x.x && git push origin v1.x.x
+git tag v2.x.x && git push origin v2.x.x
         │
         ├─ build-win   (windows-latest)  →  .exe
         ├─ build-mac   (macos-latest)    →  .dmg
@@ -196,7 +230,7 @@ git tag v1.x.x && git push origin v1.x.x
                 └─ deploy  →  upload to download.centrio.me
 ```
 
-Required secrets: `SSH_HOST`, `SSH_USER`, `SSH_PASSWORD`, `GOOGLE_DESKTOP_CLIENT_ID`, `GOOGLE_DESKTOP_CLIENT_SECRET`, `YANDEX_CLIENT_ID`, `YANDEX_CLIENT_SECRET`
+Required secrets: `SSH_HOST`, `SSH_USER`, `SSH_PASSWORD`, `GOOGLE_DESKTOP_CLIENT_ID`, `GOOGLE_DESKTOP_CLIENT_SECRET`, `YANDEX_CLIENT_ID`, `YANDEX_CLIENT_SECRET`, `TELEGRAM_BOT_ID`
 
 ---
 
@@ -204,12 +238,13 @@ Required secrets: `SSH_HOST`, `SSH_USER`, `SSH_PASSWORD`, `GOOGLE_DESKTOP_CLIENT
 
 | Layer | Tech |
 |-------|------|
-| Framework | [Electron 36](https://electronjs.org) |
+| Framework | [Electron 39](https://electronjs.org) |
 | Bundler | [esbuild](https://esbuild.github.io) |
-| Packaging | [electron-builder 25](https://electron.build) |
+| Packaging | [electron-builder](https://electron.build) |
 | VPN engine | [sing-box](https://sing-box.sagernet.org) |
 | Auth | Google OAuth 2.0 · Yandex OAuth |
-| Payments | YooKassa |
+| Payments | YooKassa · crypto (NOWPayments) |
+| Backend | Express · Prisma · PostgreSQL |
 
 ---
 
@@ -217,24 +252,31 @@ Required secrets: `SSH_HOST`, `SSH_USER`, `SSH_PASSWORD`, `GOOGLE_DESKTOP_CLIENT
 
 ```
 centrio-app/
-├── main.js                  # Electron main process
+├── main.js                  # Electron main process entry
+├── preload.js                # contextBridge preload (main window)
+├── webview-preload.js        # preload injected into each messenger <webview>
+├── vpn-manager.js             # sing-box process manager
 ├── main/
-│   ├── bootstrap/           # App init, IPC registration
-│   ├── factory/             # BrowserWindow factories
-│   ├── ipc/                 # VPN, proxy, OAuth, updater...
-│   └── services/            # Store, tracker, updater...
-├── renderer/                # Vanilla JS + esbuild
-│   ├── index.js             # Entry point
-│   ├── vpn-bind.js          # VPN panel
-│   └── settings-bind.js     # Settings panel
-├── preload.js               # contextBridge preload
-├── vpn-manager.js           # sing-box process manager
+│   ├── bootstrap/            # App init, window creation, IPC registration
+│   ├── factory/               # BrowserWindow / modal window factories
+│   ├── ipc/                   # VPN, proxy, OAuth, assistant, notes, updater...
+│   └── services/              # Store, secure storage, entitlement, aiProviders...
+├── renderer.js                # Renderer entry — wires up all renderer/*.js modules
+├── renderer/                  # Vanilla JS + esbuild, one module per feature
+│   ├── assistant-bind.js      # AI assistant chat UI
+│   ├── notes-bind.js          # Notes plugin
+│   ├── media-player-ui.js     # Mini media player
+│   ├── vpn-bind.js            # VPN panel
+│   └── settings-bind.js       # Settings panel
+├── landing/                   # Marketing site source (Next.js, deployed separately)
 └── .github/workflows/
-    └── build.yml            # Multi-platform CI/CD
+    └── build.yml               # Multi-platform CI/CD
 ```
 
 ---
 
 ## License
 
-MIT © 2026 [Centrio](https://centrio.me)
+Proprietary — All rights reserved © 2026 [Centrio](https://centrio.me)
+
+This source is published for transparency. It is not licensed for reuse, redistribution, or commercial derivative works without written permission.

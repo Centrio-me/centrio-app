@@ -13,7 +13,7 @@
       <img src="https://img.shields.io/github/downloads/ArtemkaFreedom/centrio-app/total?color=3b82f6&style=flat-square&label=download" alt="Download" />
     </a>
     <img src="https://img.shields.io/badge/piattaforme-Windows%20%7C%20macOS%20%7C%20Linux-8b5cf6?style=flat-square" alt="Piattaforme" />
-    <img src="https://img.shields.io/badge/licenza-MIT-22c55e?style=flat-square" alt="Licenza" />
+    <img src="https://img.shields.io/badge/licenza-proprietary-64748b?style=flat-square" alt="Licenza" />
   </p>
 
   <p>
@@ -157,4 +157,6 @@ npm run build:linux    # → dist/Centrio-x.x.x.AppImage + .deb
 
 ## Licenza
 
-MIT © 2026 [Centrio](https://centrio.me)
+Proprietaria — Tutti i diritti riservati © 2026 [Centrio](https://centrio.me)
+
+Questo codice sorgente è pubblicato per trasparenza. Non è concesso in licenza per riutilizzo, ridistribuzione o opere derivate commerciali senza autorizzazione scritta.

@@ -13,7 +13,7 @@
       <img src="https://img.shields.io/github/downloads/ArtemkaFreedom/centrio-app/total?color=3b82f6&style=flat-square&label=下载量" alt="下载量" />
     </a>
     <img src="https://img.shields.io/badge/平台-Windows%20%7C%20macOS%20%7C%20Linux-8b5cf6?style=flat-square" alt="平台" />
-    <img src="https://img.shields.io/badge/许可证-MIT-22c55e?style=flat-square" alt="许可证" />
+    <img src="https://img.shields.io/badge/许可证-proprietary-64748b?style=flat-square" alt="许可证" />
   </p>
 
   <p>
@@ -157,4 +157,6 @@ npm run build:linux    # → dist/Centrio-x.x.x.AppImage + .deb
 
 ## 许可证
 
-MIT © 2026 [Centrio](https://centrio.me)
+专有 — 保留所有权利 © 2026 [Centrio](https://centrio.me)
+
+本源代码的发布仅为提高透明度，未经书面许可不得用于重用、再分发或商业衍生作品。
