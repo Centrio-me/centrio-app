@@ -6,7 +6,7 @@ import { useRouter, usePathname } from 'next/navigation'
 import { useLang, LANGS, LANG_LABELS, type Lang } from '@/lib/i18n'
 import { MAIN_NAV, LOCALIZED_ROUTES, canonicalPath, localizedHref } from '@/lib/site-nav'
 
-const WIN_DOWNLOAD = 'https://download.centrio.me/Centrio%20Setup%202.5.2.exe'
+const WIN_DOWNLOAD = 'https://download.centrio.me/Centrio%20Setup%202.6.0.exe'
 
 const IcoGlobe = () => (
   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

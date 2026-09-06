@@ -112,7 +112,7 @@ const JSONLD_APP = {
     'Centrio — десктопное приложение, объединяющее Telegram, WhatsApp, Discord, VK, Slack, Notion и 100+ сервисов в одном окне. Встроенный VPN, облачная синхронизация, папки.',
   url: SITE_URL,
   downloadUrl: `${SITE_URL}/download`,
-  softwareVersion: '2.5.2',
+  softwareVersion: '2.6.0',
   offers: [
     { '@type': 'Offer', price: '0', priceCurrency: 'RUB', name: 'Free' },
     { '@type': 'Offer', price: '199', priceCurrency: 'RUB', name: 'Pro (ежемесячно)' },

@@ -4,7 +4,7 @@ import SiteHeader from '@/components/SiteHeader';
 import SiteFooter from '@/components/SiteFooter';
 import { DEFAULT_OG_IMAGE } from '@/lib/seo';
 
-const WIN_DOWNLOAD = 'https://download.centrio.me/Centrio%20Setup%202.5.2.exe';
+const WIN_DOWNLOAD = 'https://download.centrio.me/Centrio%20Setup%202.6.0.exe';
 
 export const metadata: Metadata = {
   title: 'Кому нужна программа для мессенджеров в одном окне: 7 сценариев',
@@ -159,7 +159,7 @@ export default function WhoNeedsItPage() {
               ⬇ Скачать Centrio для Windows
             </a>
             <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 13, marginTop: 12 }}>
-              Версия 2.5.2 · Бесплатно · <Link href="/download/macos" style={{ color: 'inherit' }}>macOS</Link> · <Link href="/download/linux" style={{ color: 'inherit' }}>Linux</Link> · <Link href="/pricing" style={{ color: 'inherit' }}>Тарифы Pro</Link>
+              Версия 2.6.0 · Бесплатно · <Link href="/download/macos" style={{ color: 'inherit' }}>macOS</Link> · <Link href="/download/linux" style={{ color: 'inherit' }}>Linux</Link> · <Link href="/pricing" style={{ color: 'inherit' }}>Тарифы Pro</Link>
             </p>
           </section>
         </div>
