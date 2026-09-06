@@ -1,252 +1,401 @@
-const CATALOG = [
-    {
-        id: 'cjpalhdlnbpafiamejdnhcphjbkeiagm',
-        name: 'uBlock Origin',
-        desc: 'Лучший блокировщик рекламы и трекеров',
-        category: 'Безопасность',
-        color: '#800000',
-        icon: 'https://www.google.com/s2/favicons?domain=ublockorigin.com&sz=64'
-    },
-    {
-        id: 'hdokiejnpimakedhajhdlcegeplioahd',
-        name: 'LastPass',
-        desc: 'Менеджер паролей — автозаполнение форм',
-        category: 'Безопасность',
-        color: '#CC0000',
-        icon: 'https://www.google.com/s2/favicons?domain=lastpass.com&sz=64'
-    },
-    {
-        id: 'nngceckbapebfimnlniiiahkandclblb',
-        name: 'Bitwarden',
-        desc: 'Бесплатный менеджер паролей с открытым кодом',
-        category: 'Безопасность',
-        color: '#175DDC',
-        icon: 'https://www.google.com/s2/favicons?domain=bitwarden.com&sz=64'
-    },
-    {
-        id: 'eimadpbcbfnmbkopoojfekhnkhdbieeh',
-        name: 'Dark Reader',
-        desc: 'Тёмная тема для любого сайта',
-        category: 'Внешний вид',
-        color: '#1A1A2E',
-        icon: 'https://www.google.com/s2/favicons?domain=darkreader.org&sz=64'
-    },
-    {
-        id: 'kbfnbcaeplbcioakkpcpgfkobkghlhen',
-        name: 'Grammarly',
-        desc: 'Проверка орфографии и грамматики',
-        category: 'Инструменты',
-        color: '#15C39A',
-        icon: 'https://www.google.com/s2/favicons?domain=grammarly.com&sz=64'
-    },
-    {
-        id: 'aapbdbdomjkkjkaonfhkkikfgjllcleb',
-        name: 'Google Переводчик',
-        desc: 'Перевод страниц одним кликом',
-        category: 'Инструменты',
-        color: '#4285F4',
-        icon: 'https://www.google.com/s2/favicons?domain=translate.google.com&sz=64'
-    },
-    {
-        id: 'gighmmpiobklfepjocnamgkkbiglidom',
-        name: 'AdBlock',
-        desc: 'Блокировщик рекламы и всплывающих окон',
-        category: 'Безопасность',
-        color: '#F8321E',
-        icon: 'https://www.google.com/s2/favicons?domain=getadblock.com&sz=64'
-    },
-    {
-        id: 'bmnlcjabgnpnenekpadlanbbkooimhnj',
-        name: 'Honey',
-        desc: 'Автоматический поиск купонов при покупках',
-        category: 'Покупки',
-        color: '#FFA500',
-        icon: 'https://www.google.com/s2/favicons?domain=joinhoney.com&sz=64'
-    },
-    {
-        id: 'jddgbeighonaipjikdnfdpiefhoomlae',
-        name: 'Юбуст',
-        desc: 'SEO-анализ и продвижение: позиции, аудит, ключевые слова',
-        category: 'SEO & Аналитика',
-        color: '#FF6B35',
-        icon: 'https://www.google.com/s2/favicons?domain=uboost.ru&sz=64'
+'use strict'
+
+function createExtensionsUiApi({
+    store,
+    tGet,
+    requirePro,
+    onExtensionToggle
+}) {
+    const NATIVE_EXTENSIONS = [
+        {
+            id: 'adblock',
+            icon: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                <line x1="9" y1="9" x2="15" y2="15"/><line x1="15" y1="9" x2="9" y2="15"/>
+            </svg>`,
+            color: '#ef4444',
+            bg: 'rgba(239,68,68,.13)',
+            border: 'rgba(239,68,68,.28)',
+            titleKey: 'extensions.adblock.title',
+            descKey: 'extensions.adblock.desc'
+        },
+        {
+            id: 'screenshot',
+            icon: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                <circle cx="12" cy="13" r="4"/>
+            </svg>`,
+            color: '#f59e0b',
+            bg: 'rgba(245,158,11,.13)',
+            border: 'rgba(245,158,11,.28)',
+            titleKey: 'extensions.screenshot.title',
+            descKey: 'extensions.screenshot.desc'
+        },
+        {
+            id: 'darkmode',
+            icon: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+            </svg>`,
+            color: '#8b5cf6',
+            bg: 'rgba(139,92,246,.13)',
+            border: 'rgba(139,92,246,.28)',
+            titleKey: 'extensions.darkmode.title',
+            descKey: 'extensions.darkmode.desc'
+        },
+        {
+            id: 'split',
+            icon: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2" y="3" width="20" height="18" rx="2"/>
+                <line x1="12" y1="3" x2="12" y2="21"/>
+            </svg>`,
+            color: '#818cf8',
+            bg: 'rgba(129,140,248,.13)',
+            border: 'rgba(129,140,248,.28)',
+            titleKey: 'extensions.split.title',
+            descKey: 'extensions.split.desc'
+        },
+        {
+            id: 'notes',
+            icon: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M9 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/>
+                <path d="M15 3v6h6"/>
+                <line x1="8" y1="13" x2="16" y2="13"/>
+                <line x1="8" y1="17" x2="13" y2="17"/>
+            </svg>`,
+            color: '#fbbf24',
+            bg: 'rgba(251,191,36,.13)',
+            border: 'rgba(251,191,36,.28)',
+            titleKey: 'extensions.notes.title',
+            descKey: 'extensions.notes.desc'
+        }
+    ]
+
+    // Реальные расширения из Chrome Web Store — жёстко заданный список
+    // (main/services/extensions.js:CATALOG). В отличие от NATIVE_EXTENSIONS это не
+    // просто built-in фича с тумблером, а внешний бинарник: install -> toggle -> uninstall.
+    //
+    // Пароль-менеджеры (LastPass, Bitwarden, RoboForm) сюда сознательно не включены —
+    // их background service worker падает на chrome.windows/chrome.webNavigation,
+    // которые Electron не реализует полностью (см. main/services/extensions.js).
+    const REAL_EXTENSIONS = [
+        {
+            key: 'translate-ext',
+            icon: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M2 12h20"/>
+                <path d="M12 2a15.3 15.3 0 0 1 0 20"/>
+                <path d="M12 2a15.3 15.3 0 0 0 0 20"/>
+            </svg>`,
+            color: '#0f9d58',
+            bg: 'rgba(15,157,88,.13)',
+            border: 'rgba(15,157,88,.28)',
+            titleKey: 'extensions.translateExt.title',
+            descKey: 'extensions.translateExt.desc'
+        },
+        {
+            key: 'languagetool-ext',
+            icon: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <path d="M14 2v6h6"/>
+                <path d="M9 16.5l2.2-6.5 2.2 6.5"/>
+                <path d="M9.7 14.5h3"/>
+            </svg>`,
+            color: '#1a73e8',
+            bg: 'rgba(26,115,232,.13)',
+            border: 'rgba(26,115,232,.28)',
+            titleKey: 'extensions.languageToolExt.title',
+            descKey: 'extensions.languageToolExt.desc'
+        }
+    ]
+
+    // key -> true, пока install/uninstall в процессе (защита от двойного клика)
+    const realExtBusy = {}
+    // key -> текст последней ошибки install/toggle, показывается инлайн в карточке
+    const realExtErrors = {}
+
+    function escapeHtml(str) {
+        return String(str ?? '').replace(/[&<>"']/g, (ch) => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+        }[ch]))
     }
-]
 
-function createExtensionsUiApi({ invokeIpc, tGet, requirePro }) {
-    let installedIds   = new Set()
-    let disabledIds    = new Set()
-    let busyIds        = new Set()
-    let extMetaMap     = new Map()
-
-    async function refreshInstalled() {
-        const res = await invokeIpc('ext:list')
-        if (!res?.success) return
-        installedIds = new Set(res.data.map(e => e.id))
-        disabledIds  = new Set(res.data.filter(e => !e.enabled).map(e => e.id))
-        extMetaMap   = new Map(res.data.map(e => [e.id, e]))
+    function isPro() {
+        // requirePro returns true if PRO, false if not
+        // We need to check without showing modal — check via cloudStore
+        // requirePro is a function that shows modal if not PRO
+        // We'll use a try-call approach: check plan from DOM or pass isPro separately
+        // For now, we pass it through requirePro by checking return without triggering
+        return false // will be overridden by proCheck below
     }
 
-    function renderCard(ext, container) {
-        const installed = installedIds.has(ext.id)
-        const enabled   = installed && !disabledIds.has(ext.id)
-        const busy      = busyIds.has(ext.id)
+    function getExtensionState() {
+        return store.get('extensionsState', {}) || {}
+    }
 
-        const card = document.createElement('div')
-        card.className = 'ext-card' + (installed ? ' ext-installed' : '')
-        card.dataset.id = ext.id
-        card.innerHTML = `
-            <div class="ext-card-icon" style="background:${ext.color}20; border-color:${ext.color}40">
-                <img src="${ext.icon}" width="32" height="32" onerror="this.style.display='none'">
-            </div>
-            <div class="ext-card-info">
-                <div class="ext-card-name">${ext.name}</div>
-                <div class="ext-card-desc">${ext.desc}</div>
-                <div class="ext-card-cat">${ext.category}</div>
-            </div>
-            <div class="ext-card-actions">
-                ${installed ? `
+    function getUserIsPro() {
+        // Check plan stored in cloud state without triggering modal. Mirrors
+        // hasEffectivePro() in renderer.js — account plan OR a still-active
+        // local 14-day trial — so trial users see extensions unlocked in the
+        // UI consistently with what main/ipc/extensions.js's isProUser()
+        // (main/services/entitlement.js) actually allows them to install.
+        try {
+            const cloudUser = store.get('cloud.user', null)
+            const plan = (cloudUser?.plan || 'FREE').toUpperCase()
+            if (plan !== 'FREE') return true
+
+            const trialExpiresAt = store.get('localProTrialExpiresAt', null)
+            if (trialExpiresAt && new Date(trialExpiresAt) > new Date()) return true
+
+            return false
+        } catch {
+            return false
+        }
+    }
+
+    function renderExtensionsCatalog() {
+        const container = document.getElementById('extensionsCatalog')
+        if (!container) return
+
+        container.innerHTML = ''
+        const state = getExtensionState()
+        const userIsPro = getUserIsPro()
+
+        NATIVE_EXTENSIONS.forEach(ext => {
+            const card = document.createElement('div')
+            card.className = 'ext-card'
+
+            // OFF by default — only on if explicitly enabled
+            const isEnabled = state[ext.id] === true
+
+            const lockBadge = !userIsPro
+                ? `<div class="ext-pro-lock" title="Pro">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                    </svg>
+                    Pro
+                </div>`
+                : ''
+
+            card.innerHTML = `
+                <div class="ext-card-icon" style="background:${ext.bg};border-color:${ext.border};color:${ext.color}">
+                    ${ext.icon}
+                </div>
+                <div class="ext-card-info">
+                    <div class="ext-card-name">${tGet(ext.titleKey)}</div>
+                    <div class="ext-card-desc">${tGet(ext.descKey)}</div>
+                </div>
+                <div class="ext-card-actions">
+                    ${lockBadge}
+                    <label class="toggle">
+                        <input type="checkbox" id="ext-toggle-${ext.id}" ${isEnabled && userIsPro ? 'checked' : ''}>
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+            `
+
+            const toggle = card.querySelector('input')
+            toggle.addEventListener('change', (e) => {
+                if (!userIsPro) {
+                    e.target.checked = false
+                    if (requirePro) requirePro('extensions')
+                    return
+                }
+
+                const newState = getExtensionState()
+                newState[ext.id] = e.target.checked
+                store.set('extensionsState', newState)
+
+                if (typeof onExtensionToggle === 'function') {
+                    onExtensionToggle(ext.id, e.target.checked)
+                }
+            })
+
+            container.appendChild(card)
+        })
+    }
+
+    // Реальные Chrome-расширения (сейчас: Google Переводчик) — install/toggle/uninstall,
+    // в отличие от NATIVE_EXTENSIONS не просто built-in фича с тумблером.
+    async function renderRealExtensionsCatalog() {
+        const container = document.getElementById('extensionsRealCatalog')
+        if (!container) return
+
+        let catalog
+        try {
+            const res = await window.electronAPI?.extList?.()
+            catalog = (res && res.success && Array.isArray(res.catalog)) ? res.catalog : []
+        } catch {
+            catalog = []
+        }
+
+        const byKey = {}
+        catalog.forEach((c) => { if (c && c.key) byKey[c.key] = c })
+
+        container.innerHTML = ''
+        const state = getExtensionState()
+        const userIsPro = getUserIsPro()
+
+        REAL_EXTENSIONS.forEach(ext => {
+            const info = byKey[ext.key] || { installed: false }
+            const isInstalled = !!info.installed
+            const isEnabled = isInstalled && state[ext.key] === true
+            const isBusy = !!realExtBusy[ext.key]
+            const errorText = realExtErrors[ext.key]
+
+            const card = document.createElement('div')
+            card.className = `ext-card${isInstalled ? ' ext-installed' : ''}`
+
+            const lockBadge = !userIsPro
+                ? `<div class="ext-pro-lock" title="Pro">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                    </svg>
+                    Pro
+                </div>`
+                : ''
+
+            const actionsHtml = isInstalled
+                ? `
+                    ${lockBadge}
+                    <button class="ext-uninstall-btn" data-action="uninstall" title="${escapeHtml(tGet('extensions.uninstallBtn'))}" ${isBusy ? 'disabled' : ''}>✕</button>
                     <label class="ext-toggle">
-                        <input type="checkbox" class="ext-toggle-check" ${enabled ? 'checked' : ''}>
+                        <input type="checkbox" class="ext-toggle-check" data-action="toggle" ${isEnabled && userIsPro ? 'checked' : ''} ${isBusy ? 'disabled' : ''}>
                         <span class="ext-toggle-slider"></span>
                     </label>
-                    <button class="ext-uninstall-btn" title="Удалить">✕</button>
-                ` : `
-                    <button class="ext-install-btn ${busy ? 'loading' : ''}" ${busy ? 'disabled' : ''}>
-                        ${busy ? '⏳' : '+ Установить'}
+                `
+                : `
+                    ${lockBadge}
+                    <button class="ext-install-btn${isBusy ? ' loading' : ''}" data-action="install" ${isBusy ? 'disabled' : ''}>
+                        ${escapeHtml(isBusy ? tGet('extensions.installing') : tGet('extensions.install'))}
                     </button>
-                `}
-            </div>
-        `
+                `
 
-        if (installed) {
-            const toggle = card.querySelector('.ext-toggle-check')
-            toggle?.addEventListener('change', async (e) => {
-                await invokeIpc('ext:toggle', ext.id, e.target.checked)
-                if (e.target.checked) disabledIds.delete(ext.id)
-                else disabledIds.add(ext.id)
-            })
+            card.innerHTML = `
+                <div class="ext-card-icon" style="background:${ext.bg};border-color:${ext.border};color:${ext.color}">
+                    ${ext.icon}
+                </div>
+                <div class="ext-card-info">
+                    <div class="ext-card-name">${escapeHtml(tGet(ext.titleKey))}</div>
+                    <div class="ext-card-desc">${escapeHtml(tGet(ext.descKey))}</div>
+                    <span class="ext-card-cat">${escapeHtml(tGet('extensions.realBadge'))}</span>
+                    ${errorText ? `<div class="ext-card-desc" style="color:#f44;margin-top:4px;">${escapeHtml(errorText)}</div>` : ''}
+                </div>
+                <div class="ext-card-actions">
+                    ${actionsHtml}
+                </div>
+            `
 
-            const uninstallBtn = card.querySelector('.ext-uninstall-btn')
-            uninstallBtn?.addEventListener('click', async () => {
-                let confirmed = false
-                if (typeof window.showConfirmModal === 'function') {
-                    confirmed = await window.showConfirmModal({
-                        title: tGet('extensions.uninstallTitle') || `Удалить ${ext.name}?`,
-                        message: tGet('extensions.uninstallMsg') || 'Расширение будет удалено. Это действие необратимо.',
-                        confirmText: tGet('extensions.uninstallBtn') || 'Удалить',
-                        cancelText: tGet('dialogs.cancel') || 'Отмена',
-                        danger: true
-                    })
-                } else {
-                    confirmed = confirm(`Удалить ${ext.name}?`)
-                }
-                if (!confirmed) return
-                busyIds.add(ext.id)
-                await invokeIpc('ext:uninstall', ext.id)
-                installedIds.delete(ext.id)
-                busyIds.delete(ext.id)
-                renderAll(container)
-            })
+            const installBtn = card.querySelector('[data-action="install"]')
+            if (installBtn) {
+                installBtn.addEventListener('click', async () => {
+                    if (!userIsPro) {
+                        if (requirePro) requirePro('extensions')
+                        return
+                    }
+                    if (realExtBusy[ext.key]) return
+                    realExtBusy[ext.key] = true
+                    delete realExtErrors[ext.key]
+                    renderRealExtensionsCatalog()
 
-            card.addEventListener('contextmenu', (e) => {
-                e.preventDefault()
-                e.stopPropagation()
-                showExtContextMenu(e.clientX, e.clientY, ext.id)
-            })
-        } else {
-            const installBtn = card.querySelector('.ext-install-btn')
-            installBtn?.addEventListener('click', async () => {
-                if (!requirePro('extensions')) return
-                busyIds.add(ext.id)
-                renderAll(container)
-                const res = await invokeIpc('ext:install', ext.id)
-                busyIds.delete(ext.id)
-                if (res?.success) {
-                    installedIds.add(ext.id)
-                } else {
-                    alert(`Ошибка установки: ${res?.error || 'неизвестно'}`)
-                }
-                renderAll(container)
-            })
-        }
+                    try {
+                        const result = await window.electronAPI.extInstall(ext.key)
+                        if (!result || !result.success) {
+                            realExtErrors[ext.key] = `${tGet('extensions.installFailed')}: ${result?.error || '?'}`
+                        }
+                    } catch (err) {
+                        realExtErrors[ext.key] = `${tGet('extensions.installFailed')}: ${err?.message || err}`
+                    } finally {
+                        realExtBusy[ext.key] = false
+                        renderRealExtensionsCatalog()
+                    }
+                })
+            }
 
-        return card
-    }
+            const uninstallBtn = card.querySelector('[data-action="uninstall"]')
+            if (uninstallBtn) {
+                uninstallBtn.addEventListener('click', async () => {
+                    if (realExtBusy[ext.key]) return
+                    realExtBusy[ext.key] = true
+                    delete realExtErrors[ext.key]
+                    renderRealExtensionsCatalog()
 
-    function renderAll(container) {
-        if (!container) return
-        container.innerHTML = ''
+                    try {
+                        // Выключаем везде ДО физического удаления файлов, чтобы ни одна
+                        // сессия не осталась ссылаться на путь, который вот-вот исчезнет.
+                        const newState = getExtensionState()
+                        if (newState[ext.key]) {
+                            newState[ext.key] = false
+                            store.set('extensionsState', newState)
+                            await window.electronAPI.extToggle(ext.key, false)
+                        }
+                        await window.electronAPI.extUninstall(ext.key)
+                    } catch (err) {
+                        realExtErrors[ext.key] = `${err?.message || err}`
+                    } finally {
+                        realExtBusy[ext.key] = false
+                        renderRealExtensionsCatalog()
+                    }
+                })
+            }
 
-        const categories = [...new Set(CATALOG.map(e => e.category))]
-        for (const cat of categories) {
-            const items = CATALOG.filter(e => e.category === cat)
-            const section = document.createElement('div')
-            section.className = 'ext-category'
-            section.innerHTML = `<div class="ext-category-title">${cat}</div>`
-            const grid = document.createElement('div')
-            grid.className = 'ext-grid'
-            items.forEach(ext => grid.appendChild(renderCard(ext, container)))
-            section.appendChild(grid)
-            container.appendChild(section)
-        }
-    }
+            const toggleInput = card.querySelector('[data-action="toggle"]')
+            if (toggleInput) {
+                toggleInput.addEventListener('change', async (e) => {
+                    const checked = e.target.checked
+                    if (checked && !userIsPro) {
+                        e.target.checked = false
+                        if (requirePro) requirePro('extensions')
+                        return
+                    }
+                    e.target.disabled = true
 
-    async function openExtensionsSection() {
-        await refreshInstalled()
-        const container = document.getElementById('extensionsCatalog')
-        renderAll(container)
-    }
+                    const newState = getExtensionState()
+                    newState[ext.key] = checked
+                    store.set('extensionsState', newState)
 
-    function getOrCreateContextMenu() {
-        let menu = document.getElementById('extContextMenu')
-        if (!menu) {
-            menu = document.createElement('div')
-            menu.id = 'extContextMenu'
-            menu.className = 'ext-ctx-menu'
-            document.body.appendChild(menu)
-            document.addEventListener('click', () => menu.classList.remove('show'), true)
-        }
-        return menu
-    }
+                    try {
+                        const result = await window.electronAPI.extToggle(ext.key, checked)
+                        if (!result || !result.success) {
+                            // Откатываем UI, если main реально не смог включить/выключить —
+                            // иначе тумблер будет врать о фактическом состоянии сессий.
+                            e.target.checked = !checked
+                            newState[ext.key] = !checked
+                            store.set('extensionsState', newState)
+                            realExtErrors[ext.key] = result?.error || ''
+                            renderRealExtensionsCatalog()
+                            return
+                        }
+                    } catch (err) {
+                        e.target.checked = !checked
+                        newState[ext.key] = !checked
+                        store.set('extensionsState', newState)
+                        realExtErrors[ext.key] = err?.message || String(err)
+                        renderRealExtensionsCatalog()
+                        return
+                    } finally {
+                        e.target.disabled = false
+                    }
+                })
+            }
 
-    function showExtContextMenu(x, y, extId) {
-        const meta = extMetaMap.get(extId)
-        if (!meta) return
-        const menu = getOrCreateContextMenu()
-
-        const items = []
-        if (meta.popupPage) {
-            items.push({ label: tGet('extensions.openPopup') || 'Открыть попап', url: meta.popupPage })
-        }
-        if (meta.optionsPage) {
-            items.push({ label: tGet('extensions.openSettings') || 'Настройки расширения', url: meta.optionsPage })
-        }
-        if (!items.length) {
-            items.push({ label: tGet('extensions.noPages') || 'Нет страниц расширения', disabled: true })
-        }
-
-        menu.innerHTML = items.map(item =>
-            item.disabled
-                ? `<div class="ext-ctx-item ext-ctx-disabled">${item.label}</div>`
-                : `<div class="ext-ctx-item" data-url="${item.url}">${item.label}</div>`
-        ).join('')
-
-        menu.querySelectorAll('.ext-ctx-item[data-url]').forEach(el => {
-            el.addEventListener('click', () => {
-                invokeIpc('open-popup-window', el.dataset.url, { width: 420, height: 600 }).catch(() => {})
-                menu.classList.remove('show')
-            })
+            container.appendChild(card)
         })
-
-        const vw = window.innerWidth, vh = window.innerHeight
-        const mw = 220, mh = items.length * 36 + 8
-        menu.style.left = (x + mw > vw ? x - mw : x) + 'px'
-        menu.style.top  = (y + mh > vh ? y - mh : y) + 'px'
-        menu.classList.add('show')
     }
 
-    return { openExtensionsSection }
+    function openExtensionsSection() {
+        renderExtensionsCatalog()
+        renderRealExtensionsCatalog()
+    }
+
+    return {
+        renderExtensionsCatalog,
+        renderRealExtensionsCatalog,
+        openExtensionsSection
+    }
 }
 
-module.exports = { createExtensionsUiApi, EXTENSION_CATALOG: CATALOG }
+module.exports = {
+    createExtensionsUiApi
+}

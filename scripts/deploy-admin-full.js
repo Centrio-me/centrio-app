@@ -9,7 +9,7 @@ const SSH = {
   host: '31.128.44.165',
   port: 22,
   username: 'root',
-  password: 'j2KHHxjz5_A)',
+  password: process.env.UPLOAD_PASSWORD,
   readyTimeout: 30000
 }
 

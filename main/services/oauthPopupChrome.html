@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Centrio OAuth chrome</title>
+<style>
+    * { box-sizing: border-box; }
+    html, body {
+        margin: 0; padding: 0;
+        width: 100%; height: 100%;
+        background: #0a0a0a;
+        color: #f5f1e8;
+        font-family: 'Geist', 'Segoe UI', -apple-system, sans-serif;
+        overflow: hidden;
+        user-select: none;
+        -webkit-user-select: none;
+    }
+    .drag { -webkit-app-region: drag; }
+    .no-drag { -webkit-app-region: no-drag; }
+
+    .titlebar {
+        display: flex;
+        align-items: center;
+        height: 40px;
+        padding: 0 8px 0 14px;
+        background: #0a0a0a;
+        border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .titlebar-left {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-width: 0;
+        flex: 1;
+    }
+    .app-logo {
+        width: 18px; height: 18px;
+        flex-shrink: 0;
+        filter: brightness(0) invert(1);
+        opacity: 0.95;
+    }
+    .app-title {
+        font-size: 13px;
+        font-weight: 700;
+        letter-spacing: 0.2px;
+        color: #ffffff;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .titlebar-right {
+        display: flex;
+        align-items: center;
+        height: 100%;
+    }
+    :root {
+        --accent: #7b68ee;
+        --accent-hover: #8f7ef2;
+    }
+
+    .window-btn {
+        width: 42px; height: 32px;
+        display: flex; align-items: center; justify-content: center;
+        background: transparent; border: none;
+        color: #999590;
+        cursor: pointer;
+        border-radius: 9px;
+        transition: background 0.15s ease, color 0.15s ease;
+    }
+    .window-btn:hover { background: rgba(255,255,255,0.08); color: #ffffff; }
+    .window-btn.close-btn:hover { background: #ef4444; color: #ffffff; }
+
+    .toolbar {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        height: 44px;
+        padding: 0 10px;
+        background: #111110;
+    }
+    .icon-btn {
+        width: 30px; height: 30px;
+        flex-shrink: 0;
+        display: flex; align-items: center; justify-content: center;
+        background: transparent; border: none;
+        color: #999590;
+        cursor: pointer;
+        border-radius: 10px;
+        transition: background 0.15s ease, color 0.15s ease;
+    }
+    .icon-btn:hover { background: rgba(255,255,255,0.08); color: #f5f1e8; }
+    .icon-btn.copied {
+        color: #22c55e !important;
+        background: rgba(34,197,94,0.16) !important;
+    }
+
+    .address-bar {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        height: 32px;
+        padding: 0 12px;
+        background: #1a1a18;
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 12px;
+    }
+    .shield-icon { flex-shrink: 0; color: var(--accent); }
+    .address-url {
+        flex: 1;
+        min-width: 0;
+        font-size: 12.5px;
+        color: #b8b3aa;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        direction: ltr;
+    }
+    .address-bar .icon-btn { width: 26px; height: 26px; border-radius: 8px; }
+
+    .toolbar-actions {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        flex-shrink: 0;
+    }
+    .chip-btn {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        height: 32px;
+        padding: 0 14px;
+        border-radius: 11px;
+        border: 1px solid rgba(255,255,255,0.1);
+        background: #1a1a18;
+        color: #f5f1e8;
+        font-size: 12.5px;
+        font-weight: 500;
+        white-space: nowrap;
+        cursor: pointer;
+        transition: background 0.15s ease, border-color 0.15s ease;
+    }
+    .chip-btn:hover { background: #232320; border-color: rgba(255,255,255,0.16); }
+    .chip-btn.primary {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #ffffff;
+    }
+    .chip-btn.primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+    .pro-badge {
+        font-size: 9.5px;
+        font-weight: 700;
+        letter-spacing: 0.4px;
+        padding: 1px 5px;
+        border-radius: 5px;
+        background: rgba(255,255,255,0.18);
+        color: #ffffff;
+    }
+    .new-window-icon { flex-shrink: 0; opacity: 0.85; }
+</style>
+</head>
+<body>
+    <div class="titlebar drag">
+        <div class="titlebar-left">
+            <img class="app-logo" src="../../assets/logo.png" alt="">
+            <span class="app-title" id="popupTitle">Авторизация</span>
+        </div>
+        <div class="titlebar-right no-drag">
+            <button id="minimizeBtn" class="window-btn" title="Свернуть">
+                <svg width="12" height="12" viewBox="0 0 12 12">
+                    <rect x="0" y="5.5" width="12" height="1" fill="currentColor"/>
+                </svg>
+            </button>
+            <button id="maximizeBtn" class="window-btn" title="Развернуть">
+                <svg width="12" height="12" viewBox="0 0 12 12">
+                    <rect x="0.5" y="0.5" width="11" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.2"/>
+                </svg>
+            </button>
+            <button id="closeBtn" class="window-btn close-btn" title="Закрыть">
+                <svg width="12" height="12" viewBox="0 0 12 12">
+                    <path d="M1 1l10 10M11 1L1 11" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                </svg>
+            </button>
+        </div>
+    </div>
+    <div class="toolbar no-drag">
+        <button id="refreshBtn" class="icon-btn" title="Обновить">
+            <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+                <path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9M13.5 2v3.6H9.9" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </button>
+        <div class="address-bar">
+            <svg class="shield-icon" width="13" height="13" viewBox="0 0 16 16" fill="none">
+                <path d="M8 1.5l5.5 2v4c0 4-2.3 6.4-5.5 7.5-3.2-1.1-5.5-3.5-5.5-7.5v-4l5.5-2z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>
+            </svg>
+            <span class="address-url" id="addressUrl"></span>
+            <button id="copyBtn" class="icon-btn" title="Скопировать ссылку">
+                <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+                    <rect x="5.5" y="5.5" width="8" height="8" rx="1.3" stroke="currentColor" stroke-width="1.2"/>
+                    <path d="M3 10.5V3.3A1.3 1.3 0 0 1 4.3 2h7.2" stroke="currentColor" stroke-width="1.2"/>
+                </svg>
+            </button>
+        </div>
+        <div class="toolbar-actions">
+            <button id="addServiceBtn" class="chip-btn" title="Добавить этот сайт как сервис в Centrio">
+                <span>+ Добавить как сервис</span>
+                <span class="pro-badge">PRO</span>
+            </button>
+            <button id="openExternalBtn" class="chip-btn primary" title="Открыть в системном браузере">
+                <span>Открыть в браузере</span>
+                <svg class="new-window-icon" width="13" height="13" viewBox="0 0 16 16" fill="none">
+                    <path d="M6.5 2.5H3.3A1.3 1.3 0 0 0 2 3.8v9A1.3 1.3 0 0 0 3.3 14h9a1.3 1.3 0 0 0 1.3-1.3V9.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M9.5 2h4.5v4.5M13.7 2.3 8 8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </button>
+        </div>
+    </div>
+    <script>
+        const api = window.centrioOauthChrome
+        const addressUrlEl = document.getElementById('addressUrl')
+        const popupTitleEl = document.getElementById('popupTitle')
+        const maximizeBtn = document.getElementById('maximizeBtn')
+
+        const copyBtn = document.getElementById('copyBtn')
+        let copiedResetTimer = null
+
+        document.getElementById('minimizeBtn').addEventListener('click', () => api.minimize())
+        maximizeBtn.addEventListener('click', () => api.maximize())
+        document.getElementById('closeBtn').addEventListener('click', () => api.close())
+        document.getElementById('refreshBtn').addEventListener('click', () => api.refresh())
+        copyBtn.addEventListener('click', () => {
+            api.copyUrl()
+            // clipboard.writeText() in the main process is synchronous and
+            // essentially never fails for a plain string URL, so flashing
+            // green immediately (rather than round-tripping a success ack
+            // over IPC just for this) is an honest signal, not an
+            // optimistic guess.
+            copyBtn.classList.add('copied')
+            clearTimeout(copiedResetTimer)
+            copiedResetTimer = setTimeout(() => copyBtn.classList.remove('copied'), 1000)
+        })
+        document.getElementById('addServiceBtn').addEventListener('click', () => api.addAsService())
+        document.getElementById('openExternalBtn').addEventListener('click', () => api.openExternal())
+
+        api.onState((state) => {
+            if (typeof state.url === 'string') addressUrlEl.textContent = state.url
+            if (typeof state.title === 'string' && state.title) popupTitleEl.textContent = state.title
+            if (typeof state.isMaximized === 'boolean') {
+                maximizeBtn.title = state.isMaximized ? 'Восстановить' : 'Развернуть'
+            }
+            if (typeof state.accentColor === 'string' && state.accentColor) {
+                document.documentElement.style.setProperty('--accent', state.accentColor)
+                // Same approximation renderer/settings-ui.js uses for
+                // --accent-hover — appending alpha 'dd' to a 6-digit hex
+                // gives a slightly dimmed hover tone without needing an
+                // actual color-math library for this one CSS var.
+                document.documentElement.style.setProperty('--accent-hover', `${state.accentColor}dd`)
+            }
+        })
+    </script>
+</body>
+</html>

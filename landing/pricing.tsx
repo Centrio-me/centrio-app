@@ -2,18 +2,30 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { SiteNav, SiteFooter } from '@/components/ui/site-shell'
+import { CHANGELOG } from './changelog-data'
+
+const BREADCRUMB_JSONLD = {
+  '@context': 'https://schema.org',
+  '@type': 'BreadcrumbList',
+  itemListElement: [
+    { '@type': 'ListItem', position: 1, name: 'Главная', item: 'https://centrio.me/' },
+    { '@type': 'ListItem', position: 2, name: 'Тарифы', item: 'https://centrio.me/pricing' },
+  ],
+}
 
 export default function PricingPage() {
   const [annual, setAnnual] = useState(true)
 
   return (
     <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(BREADCRUMB_JSONLD) }} />
       <style>{`
         :root { color-scheme: dark; }
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { background: #080810; color: #e2e2e2; font-family: 'Inter', -apple-system, sans-serif; overflow-x: hidden; }
+        body { background: #06060f; color: #e2e2e2; font-family: 'Inter', -apple-system, sans-serif; overflow-x: hidden; }
         .container { max-width: 1100px; margin: 0 auto; padding: 0 28px; }
-        .gradient-text { background: linear-gradient(135deg, #a78bfa 0%, #6366f1 50%, #38bdf8 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .gradient-text { background: linear-gradient(135deg, #f0abfc 0%, #a855f7 40%, #38bdf8 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
         @keyframes pulse-glow { 0%,100% { opacity:.3; } 50% { opacity:.65; } }
         .hero-glow { position:absolute; border-radius:50%; filter:blur(130px); animation:pulse-glow 5s ease-in-out infinite; pointer-events:none; }
 
@@ -24,13 +36,13 @@ export default function PricingPage() {
           transition: all .3s; flex: 1; position: relative;
         }
         .plan-card.featured {
-          background: rgba(99,102,241,0.08);
-          border-color: rgba(99,102,241,0.4);
-          box-shadow: 0 0 60px rgba(99,102,241,0.12);
+          background: rgba(168,85,247,0.08);
+          border-color: rgba(168,85,247,0.4);
+          box-shadow: 0 0 60px rgba(168,85,247,0.12);
         }
         .plan-card.featured:hover {
-          box-shadow: 0 0 80px rgba(99,102,241,0.2);
-          border-color: rgba(99,102,241,0.6);
+          box-shadow: 0 0 80px rgba(168,85,247,0.2);
+          border-color: rgba(168,85,247,0.6);
         }
 
         .check-row { display:flex; align-items:flex-start; gap:12px; }
@@ -43,50 +55,51 @@ export default function PricingPage() {
           padding:14px; border-radius:12px; cursor:pointer; text-decoration:none;
           transition:all .22s; border:none;
         }
-        .btn-buy.primary { background:linear-gradient(135deg,#6366f1,#8b5cf6); color:#fff; box-shadow:0 4px 28px rgba(99,102,241,.4); }
-        .btn-buy.primary:hover { transform:translateY(-2px); box-shadow:0 8px 40px rgba(99,102,241,.6); }
+        .btn-buy.primary { background:linear-gradient(135deg,#8b5cf6,#a855f7); color:#fff; box-shadow:0 4px 28px rgba(168,85,247,.4); }
+        .btn-buy.primary:hover { transform:translateY(-2px); box-shadow:0 8px 40px rgba(168,85,247,.6); }
         .btn-buy.ghost { background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.14); color:#e2e2e2; }
         .btn-buy.ghost:hover { background:rgba(255,255,255,0.1); transform:translateY(-2px); }
 
         .toggle-wrap { display:inline-flex; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); border-radius:50px; padding:4px; gap:4px; }
         .toggle-btn { padding:8px 22px; border-radius:50px; font-size:14px; font-weight:500; cursor:pointer; transition:all .2s; border:none; }
-        .toggle-btn.active { background:rgba(99,102,241,0.25); color:#a78bfa; border:1px solid rgba(99,102,241,0.4); }
+        .toggle-btn.active { background:rgba(168,85,247,0.25); color:#c084fc; border:1px solid rgba(168,85,247,0.4); }
         .toggle-btn.inactive { background:transparent; color:rgba(255,255,255,0.4); }
 
         .faq-item { border-bottom:1px solid rgba(255,255,255,0.07); padding:20px 0; }
         .faq-q { font-size:16px; font-weight:600; color:#fff; cursor:pointer; display:flex; justify-content:space-between; align-items:center; gap:12px; }
         .faq-a { font-size:14px; color:rgba(255,255,255,0.5); line-height:1.75; margin-top:12px; }
 
+        .changelog-wrap { max-height:520px; overflow-y:auto; border:1px solid rgba(255,255,255,0.08); border-radius:16px; background:rgba(255,255,255,0.02); padding:8px 24px; }
+        .changelog-entry { padding:18px 0; border-bottom:1px solid rgba(255,255,255,0.06); }
+        .changelog-entry:last-child { border-bottom:none; }
+        .changelog-version { font-size:14px; font-weight:700; color:#a855f7; margin-bottom:8px; }
+        .changelog-note { font-size:13.5px; color:rgba(255,255,255,0.55); line-height:1.65; margin:6px 0 0; padding-left:16px; position:relative; }
+        .changelog-note::before { content:'—'; position:absolute; left:0; color:rgba(255,255,255,0.25); }
+
         .compare-row { display:grid; grid-template-columns: 1fr 1fr 1fr; gap:0; border-bottom:1px solid rgba(255,255,255,0.06); }
         .compare-cell { padding:14px 16px; font-size:14px; }
         .compare-row:nth-child(odd) .compare-cell { background:rgba(255,255,255,0.02); }
 
-        .nav-back { position:fixed; top:0; left:0; right:0; z-index:100; background:rgba(8,8,16,0.88); backdrop-filter:blur(20px); border-bottom:1px solid rgba(255,255,255,0.07); }
+        @media (max-width: 768px) {
+          .container { padding: 0 18px; }
+          .plan-card { padding: 28px 22px; }
+          .compare-cell { padding: 12px 8px; font-size: 12.5px; }
+          .changelog-wrap { padding: 8px 16px; max-height: 420px; }
+        }
+        @media (max-width: 480px) {
+          .compare-cell { padding: 10px 6px; font-size: 11.5px; }
+          .toggle-btn { padding: 8px 14px; font-size: 13px; }
+        }
       `}</style>
 
-      {/* NAV */}
-      <nav className="nav-back">
-        <div className="container" style={{display:'flex',alignItems:'center',justifyContent:'space-between',height:64}}>
-          <Link href="/" style={{display:'flex',alignItems:'center',gap:9,textDecoration:'none'}}>
-            <img src="/logo.png" alt="Centrio" style={{width:28,height:28,objectFit:'contain'}} />
-            <span style={{fontWeight:700,fontSize:18,color:'#fff',letterSpacing:'-.02em'}}>Centrio</span>
-          </Link>
-          <Link href="/" style={{fontSize:14,color:'rgba(255,255,255,0.45)',textDecoration:'none',display:'flex',alignItems:'center',gap:6,transition:'color .2s'}}
-            onMouseEnter={e => (e.currentTarget.style.color='rgba(255,255,255,0.85)')}
-            onMouseLeave={e => (e.currentTarget.style.color='rgba(255,255,255,0.45)')}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg>
-            На главную
-          </Link>
-        </div>
-      </nav>
+      <SiteNav active="/pricing" />
 
       {/* HERO */}
-      <section style={{position:'relative',padding:'140px 0 80px',textAlign:'center',overflow:'hidden'}}>
-        <div className="hero-glow" style={{width:600,height:600,background:'#6366f1',opacity:.09,top:-100,left:'50%',transform:'translateX(-50%)'}} />
-        <div style={{position:'absolute',inset:0,backgroundImage:'radial-gradient(rgba(99,102,241,0.06) 1px, transparent 1px)',backgroundSize:'44px 44px',opacity:.7,pointerEvents:'none'}} />
+      <section style={{position:'relative',padding:'140px 0 80px',textAlign:'center',overflow:'hidden',paddingTop:66+74}}>
+        <div className="hero-glow" style={{width:600,height:600,background:'#8b5cf6',opacity:.09,top:-100,left:'50%',transform:'translateX(-50%)'}} />
+        <div style={{position:'absolute',inset:0,backgroundImage:'radial-gradient(rgba(168,85,247,0.06) 1px, transparent 1px)',backgroundSize:'44px 44px',opacity:.7,pointerEvents:'none'}} />
         <div className="container" style={{position:'relative',zIndex:2}}>
-          <div style={{display:'inline-flex',alignItems:'center',gap:8,background:'rgba(99,102,241,0.1)',border:'1px solid rgba(99,102,241,0.25)',borderRadius:50,padding:'7px 18px',fontSize:13,fontWeight:500,color:'#a78bfa',marginBottom:24}}>
+          <div style={{display:'inline-flex',alignItems:'center',gap:8,background:'rgba(168,85,247,0.1)',border:'1px solid rgba(168,85,247,0.25)',borderRadius:50,padding:'7px 18px',fontSize:13,fontWeight:500,color:'#c084fc',marginBottom:24}}>
             ✨ Centrio Pro — расширенные возможности
           </div>
           <h1 style={{fontSize:'clamp(38px,5vw,62px)',fontWeight:900,color:'#fff',letterSpacing:'-.03em',lineHeight:1.1,marginBottom:16}}>
@@ -121,7 +134,7 @@ export default function PricingPage() {
                 </div>
                 <div style={{fontSize:14,color:'rgba(255,255,255,0.35)'}}>Навсегда бесплатно</div>
               </div>
-              <a href="/#download" className="btn-buy ghost" style={{marginBottom:28}}>Скачать бесплатно</a>
+              <Link href="/download" className="btn-buy ghost" style={{marginBottom:28}}>Скачать бесплатно</Link>
               <div style={{display:'flex',flexDirection:'column',gap:12}}>
                 {[
                   [true, 'До 5 мессенджеров'],
@@ -150,11 +163,11 @@ export default function PricingPage() {
             {/* PRO */}
             <div className="plan-card featured">
               {/* Badge */}
-              <div style={{position:'absolute',top:-1,left:'50%',transform:'translateX(-50%)',background:'linear-gradient(135deg,#6366f1,#8b5cf6)',color:'#fff',fontSize:11,fontWeight:700,letterSpacing:'.08em',textTransform:'uppercase',padding:'5px 18px',borderRadius:'0 0 12px 12px',whiteSpace:'nowrap'}}>
+              <div style={{position:'absolute',top:-1,left:'50%',transform:'translateX(-50%)',background:'linear-gradient(135deg,#8b5cf6,#a855f7)',color:'#fff',fontSize:11,fontWeight:700,letterSpacing:'.08em',textTransform:'uppercase',padding:'5px 18px',borderRadius:'0 0 12px 12px',whiteSpace:'nowrap'}}>
                 ⚡ Рекомендуем
               </div>
               <div style={{marginBottom:24,marginTop:12}}>
-                <div style={{fontSize:13,fontWeight:600,letterSpacing:'.1em',textTransform:'uppercase',color:'#a78bfa',marginBottom:10}}>Pro</div>
+                <div style={{fontSize:13,fontWeight:600,letterSpacing:'.1em',textTransform:'uppercase',color:'#c084fc',marginBottom:10}}>Pro</div>
                 <div style={{display:'flex',alignItems:'baseline',gap:6,marginBottom:6}}>
                   <span style={{fontSize:48,fontWeight:900,color:'#fff',letterSpacing:'-.03em'}}>
                     {annual ? '133' : '199'} ₽
@@ -168,9 +181,9 @@ export default function PricingPage() {
                   }
                 </div>
               </div>
-              <a href="#buy" className="btn-buy primary" style={{marginBottom:28}}>
+              <Link href="/dashboard" className="btn-buy primary" style={{marginBottom:28}}>
                 {annual ? 'Купить на год — 1 590 ₽' : 'Купить на месяц — 199 ₽'}
-              </a>
+              </Link>
               <div style={{display:'flex',flexDirection:'column',gap:12}}>
                 {[
                   [true, 'Неограниченные мессенджеры', false],
@@ -197,19 +210,19 @@ export default function PricingPage() {
 
           {/* Payment note */}
           <div style={{textAlign:'center',marginTop:40,fontSize:13,color:'rgba(255,255,255,0.25)',display:'flex',alignItems:'center',justifyContent:'center',gap:20,flexWrap:'wrap'}}>
-            <span>🔒 Безопасная оплата</span>
+            <span>Безопасная оплата</span>
             <span>·</span>
-            <span>💳 Карты РФ, иностранные карты</span>
+            <span>Карты РФ, иностранные карты</span>
             <span>·</span>
-            <span>⚡ Мгновенная активация</span>
+            <span>Мгновенная активация</span>
             <span>·</span>
-            <span>❌ Отмена в любое время</span>
+            <span>Отмена в любое время</span>
           </div>
         </div>
       </section>
 
       {/* COMPARE TABLE */}
-      <section style={{padding:'0 0 96px',background:'rgba(99,102,241,0.02)'}}>
+      <section style={{padding:'0 0 96px',background:'rgba(168,85,247,0.02)'}}>
         <div className="container">
           <h2 style={{fontSize:'clamp(26px,3vw,38px)',fontWeight:800,color:'#fff',textAlign:'center',marginBottom:48,letterSpacing:'-.02em'}}>
             Сравнение планов
@@ -219,7 +232,7 @@ export default function PricingPage() {
             <div className="compare-row" style={{background:'rgba(255,255,255,0.04)'}}>
               <div className="compare-cell" style={{fontWeight:600,color:'rgba(255,255,255,0.5)',fontSize:13}}>Функция</div>
               <div className="compare-cell" style={{fontWeight:700,color:'rgba(255,255,255,0.5)',textAlign:'center'}}>Базовый</div>
-              <div className="compare-cell" style={{fontWeight:700,color:'#a78bfa',textAlign:'center'}}>Pro ⚡</div>
+              <div className="compare-cell" style={{fontWeight:700,color:'#c084fc',textAlign:'center'}}>Pro ⚡</div>
             </div>
             {[
               ['Мессенджеры', 'До 5', 'Без ограничений'],
@@ -235,7 +248,29 @@ export default function PricingPage() {
               <div key={i} className="compare-row">
                 <div className="compare-cell" style={{color:'rgba(255,255,255,0.6)'}}>{feature}</div>
                 <div className="compare-cell" style={{textAlign:'center',color:free === '—' ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.5)'}}>{free}</div>
-                <div className="compare-cell" style={{textAlign:'center',color:pro === '✓' ? '#4ade80' : '#a78bfa',fontWeight:600}}>{pro}</div>
+                <div className="compare-cell" style={{textAlign:'center',color:pro === '✓' ? '#4ade80' : '#c084fc',fontWeight:600}}>{pro}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Changelog */}
+      <section style={{padding:'0 0 96px'}}>
+        <div className="container" style={{maxWidth:720}}>
+          <h2 style={{fontSize:'clamp(26px,3vw,38px)',fontWeight:800,color:'#fff',textAlign:'center',marginBottom:16,letterSpacing:'-.02em'}}>
+            История изменений
+          </h2>
+          <p style={{fontSize:14,color:'rgba(255,255,255,0.4)',textAlign:'center',marginBottom:32}}>
+            Полный список изменений по версиям — то же самое, что видно в приложении
+          </p>
+          <div className="changelog-wrap">
+            {CHANGELOG.map((entry) => (
+              <div className="changelog-entry" key={entry.version}>
+                <div className="changelog-version">v{entry.version}</div>
+                {entry.notes.map((note, i) => (
+                  <p className="changelog-note" key={i}>{note}</p>
+                ))}
               </div>
             ))}
           </div>
@@ -260,21 +295,7 @@ export default function PricingPage() {
         </div>
       </section>
 
-      {/* FOOTER */}
-      <footer style={{borderTop:'1px solid rgba(255,255,255,0.07)',padding:'36px 0'}}>
-        <div className="container" style={{display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:16}}>
-          <Link href="/" style={{display:'flex',alignItems:'center',gap:9,textDecoration:'none'}}>
-            <img src="/logo.png" alt="Centrio" style={{width:22,height:22,objectFit:'contain'}} />
-            <span style={{fontWeight:700,color:'rgba(255,255,255,0.4)',fontSize:15}}>Centrio</span>
-          </Link>
-          <span style={{fontSize:13,color:'rgba(255,255,255,0.2)'}}>© 2025 Centrio. Все права защищены.</span>
-          <div style={{display:'flex',gap:24}}>
-            {['Конфиденциальность','Поддержка'].map(l => (
-              <a key={l} href="#" style={{fontSize:13,color:'rgba(255,255,255,0.3)',textDecoration:'none'}}>{l}</a>
-            ))}
-          </div>
-        </div>
-      </footer>
+      <SiteFooter />
     </>
   )
 }

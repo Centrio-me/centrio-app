@@ -1,11 +1,20 @@
 function createTooltipsApi({ state, tooltip }) {
+    function escHtml(str) {
+        return String(str || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;')
+    }
+
     function showTooltip(el, name, badgeCount) {
         if (el.closest('#folderPanel')) return
 
         clearTimeout(state.tooltipTimeout)
         state.tooltipTimeout = setTimeout(() => {
             const rect = el.getBoundingClientRect()
-            let html = name
+            let html = escHtml(name)
 
             if (badgeCount && badgeCount > 0) {
                 html += `<span class="tooltip-badge">${badgeCount > 99 ? '99+' : badgeCount}</span>`

@@ -21,7 +21,7 @@ function bindAppEvents({
             return
         }
 
-        if (e.ctrlKey && e.code === 'KeyP') {
+        if (e.ctrlKey && (e.code === 'KeyP' || e.code === 'KeyK')) {
             e.preventDefault()
             quickSearch.classList.contains('show') ? closeQuickSearch() : openQuickSearch()
             return

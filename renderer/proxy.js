@@ -4,14 +4,16 @@ function createProxyApi({
     tGet,
     openSettings
 }) {
-    function initProxySection() {
+    async function initProxySection() {
         const stored = store.get('globalProxy', {})
         document.getElementById('proxyEnabled').checked = stored.enabled !== false
         document.getElementById('proxyType').value = stored.type || 'system'
         document.getElementById('proxyHost').value = stored.host || ''
         document.getElementById('proxyPort').value = stored.port || ''
         document.getElementById('proxyLogin').value = stored.login || ''
-        document.getElementById('proxyPassword').value = stored.password || ''
+        // Password is stored encrypted — never pre-fill (security best practice).
+        // Field starts empty; user types it only when changing proxy settings.
+        document.getElementById('proxyPassword').value = ''
         updateProxyFields()
         clearProxyStatus()
     }
@@ -124,7 +126,14 @@ function createProxyApi({
             }
 
             setProxyStatus(tGet('network.proxyStatusApplying'), 'loading')
-            store.set('globalProxy', data)
+            // Store proxy settings: password separately via encrypted channel
+            const { password, ...proxyWithoutPassword } = data
+            store.set('globalProxy', proxyWithoutPassword)
+            if (password) {
+                store.secureSet('globalProxy.password', password)
+            } else {
+                store.secureDelete('globalProxy.password')
+            }
 
             const result = await invokeIpc('apply-global-proxy', data)
             if (result.success) {

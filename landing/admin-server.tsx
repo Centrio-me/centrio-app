@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 
 const API         = process.env.NEXT_PUBLIC_API_URL || 'https://api.centrio.me'
 const SESSION_KEY = 'centrio_admin_token'
@@ -24,6 +24,19 @@ interface Visitor {
   id: string; visitorId: string; platform: string | null; appVersion: string | null
   firstSeenAt: string; lastSeenAt: string; sessions: number; messengersCount: number
   online: boolean
+}
+interface PromoCode {
+  id: string; code: string; months: number | null; days: number | null; maxUses: number | null; usesCount: number
+  isActive: boolean; expiresAt: string | null; createdAt: string
+  _count?: { redemptions: number }
+}
+interface TicketMessage { id: string; isAdmin: boolean; body: string; createdAt: string }
+interface Ticket {
+  id: string; subject: string; status: 'OPEN' | 'ANSWERED' | 'CLOSED'
+  createdAt: string; updatedAt: string
+  user: { id: string; email: string; name: string | null }
+  _count?: { messages: number }
+  messages?: TicketMessage[]
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -111,6 +124,9 @@ function UsersTab({ token }: { token: string }) {
   const [stats, setStats]           = useState<Stats | null>(null)
   const [loading, setLoading]       = useState(false)
   const [search, setSearch]         = useState('')
+  const [planFilter, setPlanFilter] = useState('')
+  const [minMsg, setMinMsg]         = useState('')
+  const [maxMsg, setMaxMsg]         = useState('')
   const [page, setPage]             = useState(1)
   const [pages, setPages]           = useState(1)
   const [total, setTotal]           = useState(0)
@@ -122,10 +138,16 @@ function UsersTab({ token }: { token: string }) {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
   const [userDetails, setUserDetails] = useState<Record<string, any>>({})
 
-  const load = useCallback(async (pg = 1, q = '') => {
+  const load = useCallback(async (pg = 1, q = '', plan = '', minM = '', maxM = '') => {
     setLoading(true)
     try {
-      const params  = new URLSearchParams({ page: String(pg), limit: '50', ...(q ? { search: q } : {}) })
+      const params = new URLSearchParams({
+        page: String(pg), limit: '50',
+        ...(q ? { search: q } : {}),
+        ...(plan ? { plan } : {}),
+        ...(minM !== '' ? { minMessengers: minM } : {}),
+        ...(maxM !== '' ? { maxMessengers: maxM } : {})
+      })
       const headers = { 'x-admin-token': token }
       const [ur, sr] = await Promise.all([
         fetch(`${API}/api/admin/users?${params}`, { headers }),
@@ -137,7 +159,9 @@ function UsersTab({ token }: { token: string }) {
     } finally { setLoading(false) }
   }, [token])
 
-  useEffect(() => { load(1, '') }, [load])
+  const applyFilters = useCallback(() => { setPage(1); load(1, search, planFilter, minMsg, maxMsg) }, [load, search, planFilter, minMsg, maxMsg])
+
+  useEffect(() => { load(1, '', '', '', '') }, [load])
 
   async function savePlan() {
     if (!editUser) return
@@ -159,7 +183,9 @@ function UsersTab({ token }: { token: string }) {
 
   async function deleteUser(u: AdminUser) {
     if (!window.confirm(`Удалить ${u.email}? Все данные будут стёрты.`)) return
-    await fetch(`${API}/api/admin/users/${u.id}`, { method: 'DELETE', headers: { 'x-admin-token': token } })
+    const res = await fetch(`${API}/api/admin/users/${u.id}`, { method: 'DELETE', headers: { 'x-admin-token': token } })
+    const d = await res.json().catch(() => ({}))
+    if (!res.ok) { setMsg('❌ ' + (d.error || 'Ошибка удаления')); return }
     setUsers(prev => prev.filter(x => x.id !== u.id)); setTotal(t => t - 1)
   }
 
@@ -191,10 +217,21 @@ function UsersTab({ token }: { token: string }) {
         </div>
       )}
 
-      {/* Search */}
-      <div style={{ display: 'flex', gap: 8 }}>
-        <input value={search} onChange={e => setSearch(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { setPage(1); load(1, search) } }} placeholder="Поиск по email или имени…" style={{ ...S.input, flex: 1 }} />
-        <button onClick={() => { setPage(1); load(1, search) }} style={S.btnPrimary}>Найти</button>
+      {/* Search + filters */}
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+        <input value={search} onChange={e => setSearch(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') applyFilters() }} placeholder="Поиск по email или имени…" style={{ ...S.input, flex: 1, minWidth: 200 }} />
+        <select value={planFilter} onChange={e => { setPlanFilter(e.target.value); setPage(1); load(1, search, e.target.value, minMsg, maxMsg) }} style={{ ...S.input, width: 130 }}>
+          <option value="">Все планы</option>
+          <option value="FREE">Только FREE</option>
+          <option value="PRO">Только PRO</option>
+          <option value="TEAM">Только TEAM</option>
+        </select>
+        <input type="number" min={0} value={minMsg} onChange={e => setMinMsg(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') applyFilters() }} placeholder="Мессенджеров от" style={{ ...S.input, width: 130 }} />
+        <input type="number" min={0} value={maxMsg} onChange={e => setMaxMsg(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') applyFilters() }} placeholder="Мессенджеров до" style={{ ...S.input, width: 130 }} />
+        <button onClick={applyFilters} style={S.btnPrimary}>Найти</button>
+        {(search || planFilter || minMsg !== '' || maxMsg !== '') && (
+          <button onClick={() => { setSearch(''); setPlanFilter(''); setMinMsg(''); setMaxMsg(''); setPage(1); load(1, '', '', '', '') }} style={S.btnGhost}>Сбросить</button>
+        )}
       </div>
 
       {/* Table */}
@@ -294,7 +331,7 @@ function UsersTab({ token }: { token: string }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'center' }}>
           <span style={{ color: '#2a2a3a', fontSize: 12 }}>Итого: {total}</span>
           {Array.from({ length: pages }, (_, i) => i + 1).map(p => (
-            <button key={p} onClick={() => { setPage(p); load(p, search) }} style={{ background: p === page ? '#6366f1' : '#0c0c14', border: `1px solid ${p === page ? '#6366f1' : '#141420'}`, borderRadius: 6, padding: '4px 12px', color: p === page ? '#fff' : '#555', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>{p}</button>
+            <button key={p} onClick={() => { setPage(p); load(p, search, planFilter, minMsg, maxMsg) }} style={{ background: p === page ? '#6366f1' : '#0c0c14', border: `1px solid ${p === page ? '#6366f1' : '#141420'}`, borderRadius: 6, padding: '4px 12px', color: p === page ? '#fff' : '#555', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>{p}</button>
           ))}
         </div>
       )}
@@ -539,6 +576,653 @@ function NotificationsTab({ token }: { token: string }) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// TAB: PROMO CODES
+// ═══════════════════════════════════════════════════════════════════════════════
+function PromoCodesTab({ token }: { token: string }) {
+  const [codes, setCodes]       = useState<PromoCode[]>([])
+  const [loading, setLoading]   = useState(false)
+  const [showForm, setShowForm] = useState(false)
+
+  // Form state
+  const [code, setCode]         = useState('')
+  const [grantMode, setGrantMode] = useState<'months' | 'days'>('months')
+  const [months, setMonths]     = useState('1')
+  const [days, setDays]         = useState('14')
+  const [maxUses, setMaxUses]   = useState('')
+  const [expiresAt, setExpiresAt] = useState('')
+  const [saving, setSaving]     = useState(false)
+  const [saveMsg, setSaveMsg]   = useState('')
+
+  const headers = { 'x-admin-token': token, 'Content-Type': 'application/json' }
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    try {
+      const r = await fetch(`${API}/api/admin/promo-codes`, { headers: { 'x-admin-token': token } })
+      const d = await r.json()
+      setCodes(Array.isArray(d.codes) ? d.codes : [])
+    } catch { setCodes([]) } finally { setLoading(false) }
+  }, [token])
+
+  useEffect(() => { load() }, [load])
+
+  async function createCode(e: React.FormEvent) {
+    e.preventDefault()
+    if (!code.trim() || (grantMode === 'months' ? !months : !days)) return
+    setSaving(true); setSaveMsg('')
+    try {
+      const res = await fetch(`${API}/api/admin/promo-codes`, {
+        method: 'POST', headers,
+        body: JSON.stringify({
+          code: code.trim(),
+          months: grantMode === 'months' ? Number(months) : undefined,
+          days: grantMode === 'days' ? Number(days) : undefined,
+          maxUses: maxUses.trim() || undefined,
+          expiresAt: expiresAt || undefined
+        })
+      })
+      if (res.ok) {
+        setSaveMsg('✓ Промокод создан')
+        setCode(''); setMonths('1'); setDays('14'); setMaxUses(''); setExpiresAt('')
+        load()
+        setTimeout(() => { setSaveMsg(''); setShowForm(false) }, 2000)
+      } else { const d = await res.json(); setSaveMsg('❌ ' + (d.error || 'Ошибка')) }
+    } finally { setSaving(false) }
+  }
+
+  async function toggleActive(c: PromoCode) {
+    const res = await fetch(`${API}/api/admin/promo-codes/${c.id}/active`, {
+      method: 'PATCH', headers, body: JSON.stringify({ isActive: !c.isActive })
+    })
+    if (res.ok) setCodes(prev => prev.map(x => x.id === c.id ? { ...x, isActive: !x.isActive } : x))
+  }
+
+  async function deleteCode(c: PromoCode) {
+    if (!window.confirm(`Удалить промокод "${c.code}"?`)) return
+    const res = await fetch(`${API}/api/admin/promo-codes/${c.id}`, { method: 'DELETE', headers: { 'x-admin-token': token } })
+    if (res.ok) setCodes(prev => prev.filter(x => x.id !== c.id))
+    else { const d = await res.json(); window.alert(d.error || 'Ошибка удаления') }
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+      {/* Top bar */}
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+        <button onClick={() => setShowForm(v => !v)}
+          style={{ ...S.btnPrimary, background: showForm ? '#4f46e5' : '#6366f1', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 5v14M5 12h14"/></svg>
+          Новый промокод
+        </button>
+        <div style={{ flex: 1 }} />
+        {codes.length > 0 && <button onClick={load} style={S.btnGhost}>↺</button>}
+      </div>
+
+      {/* Create form */}
+      {showForm && (
+        <div style={{ background: '#0c0c14', border: '1px solid #1e1e2a', borderRadius: 16, padding: 24 }}>
+          <h3 style={{ margin: '0 0 16px', fontSize: 15, color: '#fff', fontWeight: 700 }}>Новый промокод</h3>
+          <form onSubmit={createCode} style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 420 }}>
+            <input value={code} onChange={e => setCode(e.target.value.toUpperCase())} placeholder="Код, напр. CENTRIO2026" required style={S.input} />
+            <div style={{ display: 'flex', gap: 6 }}>
+              <button type="button" onClick={() => setGrantMode('months')}
+                style={{ ...S.btnGhost, flex: 1, ...(grantMode === 'months' ? { background: '#6366f1', color: '#fff', border: '1px solid #6366f1' } : {}) }}>Месяцы</button>
+              <button type="button" onClick={() => setGrantMode('days')}
+                style={{ ...S.btnGhost, flex: 1, ...(grantMode === 'days' ? { background: '#6366f1', color: '#fff', border: '1px solid #6366f1' } : {}) }}>Дни</button>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+              {grantMode === 'months'
+                ? <input type="number" min={1} max={24} value={months} onChange={e => setMonths(e.target.value)} placeholder="Месяцев Pro *" required style={S.input} />
+                : <input type="number" min={1} max={366} value={days} onChange={e => setDays(e.target.value)} placeholder="Дней Pro *" required style={S.input} />}
+              <input type="number" min={1} value={maxUses} onChange={e => setMaxUses(e.target.value)} placeholder="Лимит активаций (пусто = безлимит)" style={S.input} />
+            </div>
+            <div>
+              <label style={{ fontSize: 11, color: '#555', display: 'block', marginBottom: 4 }}>Действует до (необязательно)</label>
+              <input type="date" value={expiresAt} onChange={e => setExpiresAt(e.target.value)} style={S.input} />
+            </div>
+            {saveMsg && <div style={{ fontSize: 13, color: saveMsg.startsWith('✓') ? '#22c55e' : '#ef4444' }}>{saveMsg}</div>}
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button type="button" onClick={() => setShowForm(false)} style={S.btnGhost}>Отмена</button>
+              <button type="submit" disabled={saving || !code.trim()} style={{ ...S.btnPrimary, opacity: saving ? 0.6 : 1 }}>{saving ? 'Создание…' : 'Создать'}</button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* List */}
+      {loading ? (
+        <div style={{ padding: 32, textAlign: 'center', color: '#333' }}>Загрузка…</div>
+      ) : codes.length === 0 ? (
+        <div style={{ padding: 48, textAlign: 'center', color: '#2a2a3a', fontSize: 14 }}>Промокодов нет</div>
+      ) : (
+        <div style={S.card}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid #141420', color: '#555', textAlign: 'left' }}>
+                <th style={{ padding: '10px 16px' }}>Код</th>
+                <th style={{ padding: '10px 16px' }}>Срок</th>
+                <th style={{ padding: '10px 16px' }}>Активаций</th>
+                <th style={{ padding: '10px 16px' }}>Истекает</th>
+                <th style={{ padding: '10px 16px' }}>Статус</th>
+                <th style={{ padding: '10px 16px' }}></th>
+              </tr>
+            </thead>
+            <tbody>
+              {codes.map(c => (
+                <tr key={c.id} style={{ borderBottom: '1px solid #101018' }}>
+                  <td style={{ padding: '10px 16px', color: '#ddd', fontWeight: 700, fontFamily: 'monospace' }}>{c.code}</td>
+                  <td style={{ padding: '10px 16px', color: '#888' }}>{c.days != null ? `${c.days} дн.` : `${c.months} мес.`}</td>
+                  <td style={{ padding: '10px 16px', color: '#888' }}>{c.usesCount}{c.maxUses != null ? ` / ${c.maxUses}` : ''}</td>
+                  <td style={{ padding: '10px 16px', color: '#888' }}>{c.expiresAt ? fmtDate(c.expiresAt) : '—'}</td>
+                  <td style={{ padding: '10px 16px' }}>
+                    <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: 0.5, textTransform: 'uppercase', padding: '2px 8px', borderRadius: 20, ...(c.isActive ? { background: 'rgba(34,197,94,0.15)', color: '#22c55e', border: '1px solid rgba(34,197,94,0.35)' } : { background: '#1e1e1e', color: '#555', border: '1px solid #2a2a2a' }) }}>
+                      {c.isActive ? 'Активен' : 'Выключен'}
+                    </span>
+                  </td>
+                  <td style={{ padding: '10px 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                    <button onClick={() => toggleActive(c)} style={{ ...S.btnGhost, marginRight: 8 }}>{c.isActive ? 'Выключить' : 'Включить'}</button>
+                    <button onClick={() => deleteCode(c)} style={S.btnDanger}>Удалить</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// TAB: РАССЫЛКИ (email broadcasts)
+// ═══════════════════════════════════════════════════════════════════════════════
+interface Broadcast {
+  id: string; subject: string; bodyText: string; audience: string; status: string
+  totalCount: number; sentCount: number; failedCount: number
+  createdAt: string; finishedAt: string | null
+}
+const BROADCAST_STATUS_LABEL: Record<string, string> = { SENDING: 'Отправляется', SENT: 'Отправлено', FAILED: 'Ошибка' }
+const BROADCAST_STATUS_STYLE: Record<string, React.CSSProperties> = {
+  SENDING: { background: 'rgba(245,158,11,0.15)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.35)' },
+  SENT:    { background: 'rgba(34,197,94,0.15)',  color: '#22c55e', border: '1px solid rgba(34,197,94,0.35)' },
+  FAILED:  { background: 'rgba(239,68,68,0.15)',  color: '#ef4444', border: '1px solid rgba(239,68,68,0.35)' },
+}
+const BROADCAST_AUDIENCE_LABEL: Record<string, string> = { ALL: 'Все пользователи', FREE: 'Только Free', PRO: 'Только Pro/Team' }
+
+function BroadcastsTab({ token }: { token: string }) {
+  const [list, setList]       = useState<Broadcast[]>([])
+  const [loading, setLoading] = useState(false)
+  const [subject, setSubject] = useState('')
+  const [bodyText, setBodyText] = useState('')
+  const [audience, setAudience] = useState<'ALL' | 'FREE' | 'PRO'>('ALL')
+  const [sending, setSending] = useState(false)
+  const [msg, setMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
+  const [confirmOpen, setConfirmOpen] = useState(false)
+
+  const headers = { 'x-admin-token': token, 'Content-Type': 'application/json' }
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    try {
+      const r = await fetch(`${API}/api/admin/broadcasts`, { headers: { 'x-admin-token': token } })
+      const d = await r.json()
+      setList(Array.isArray(d.broadcasts) ? d.broadcasts : [])
+    } catch { setList([]) } finally { setLoading(false) }
+  }, [token])
+
+  useEffect(() => { load() }, [load])
+
+  // Пока хотя бы одна рассылка ещё в статусе "Отправляется" — обновляем
+  // список каждые несколько секунд, чтобы видеть живой прогресс отправки.
+  useEffect(() => {
+    if (!list.some(b => b.status === 'SENDING')) return
+    const t = setInterval(load, 4000)
+    return () => clearInterval(t)
+  }, [list, load])
+
+  async function send() {
+    setSending(true); setMsg(null)
+    try {
+      const res = await fetch(`${API}/api/admin/broadcasts`, {
+        method: 'POST', headers, body: JSON.stringify({ subject: subject.trim(), bodyText: bodyText.trim(), audience })
+      })
+      const d = await res.json()
+      if (!res.ok) { setMsg({ type: 'err', text: d.error || 'Ошибка отправки' }); return }
+      setMsg({ type: 'ok', text: `Рассылка запущена: ${d.broadcast.totalCount} получателей` })
+      setSubject(''); setBodyText('')
+      setConfirmOpen(false)
+      load()
+    } catch {
+      setMsg({ type: 'err', text: 'Ошибка сети' })
+    } finally { setSending(false) }
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <div style={S.card}>
+        <div style={{ padding: 20, borderBottom: '1px solid #141420', fontWeight: 700, color: '#fff', fontSize: 14 }}>Новая рассылка</div>
+        <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div>
+            <label style={{ fontSize: 11, color: '#555', display: 'block', marginBottom: 6 }}>Тема письма</label>
+            <input style={S.input} value={subject} onChange={e => setSubject(e.target.value)} placeholder="Например, Новое в Centrio: рассылки и статистика" />
+          </div>
+          <div>
+            <label style={{ fontSize: 11, color: '#555', display: 'block', marginBottom: 6 }}>Текст письма</label>
+            <textarea style={S.textarea} rows={6} value={bodyText} onChange={e => setBodyText(e.target.value)} placeholder="Текст письма. Пустая строка — новый абзац." />
+          </div>
+          <div>
+            <label style={{ fontSize: 11, color: '#555', display: 'block', marginBottom: 6 }}>Кому отправить</label>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {(['ALL', 'FREE', 'PRO'] as const).map(a => (
+                <button key={a} onClick={() => setAudience(a)}
+                  style={{ ...S.btnGhost, ...(audience === a ? { background: '#6366f1', color: '#fff', border: '1px solid #6366f1' } : {}) }}>
+                  {BROADCAST_AUDIENCE_LABEL[a]}
+                </button>
+              ))}
+            </div>
+          </div>
+          {msg && <span className="form-msg" style={{ fontSize: 12.5, color: msg.type === 'ok' ? '#22c55e' : '#ef4444' }}>{msg.text}</span>}
+          <div>
+            <button onClick={() => setConfirmOpen(true)} disabled={sending || !subject.trim() || !bodyText.trim()}
+              style={{ ...S.btnPrimary, opacity: sending || !subject.trim() || !bodyText.trim() ? 0.5 : 1 }}>
+              {sending ? 'Отправка…' : 'Отправить рассылку'}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Подтверждение перед реальной отправкой — необратимое, массовое
+          действие (письмо уходит всем адресатам выбранной аудитории),
+          поэтому лишний клик-подтверждение оправдан. */}
+      {confirmOpen && (
+        <div onClick={() => !sending && setConfirmOpen(false)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(6,8,15,0.72)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 20 }}>
+          <div onClick={e => e.stopPropagation()} style={{ ...S.card, width: '100%', maxWidth: 420, padding: 24 }}>
+            <div style={{ fontSize: 16, fontWeight: 800, color: '#fff', marginBottom: 8 }}>Отправить рассылку?</div>
+            <div style={{ fontSize: 12.5, color: '#666', lineHeight: 1.6, marginBottom: 18 }}>
+              Письмо «{subject}» уйдёт аудитории: <strong style={{ color: '#aaa' }}>{BROADCAST_AUDIENCE_LABEL[audience]}</strong>. Отменить отправку после запуска нельзя.
+            </div>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button onClick={() => setConfirmOpen(false)} disabled={sending} style={S.btnGhost}>Отмена</button>
+              <button onClick={send} disabled={sending} style={{ ...S.btnPrimary, opacity: sending ? 0.6 : 1 }}>{sending ? 'Отправка…' : 'Да, отправить'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div style={S.card}>
+        <div style={{ padding: 20, borderBottom: '1px solid #141420', fontWeight: 700, color: '#fff', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          История рассылок
+          {list.length > 0 && <button onClick={load} style={S.btnGhost}>↺</button>}
+        </div>
+        {loading && list.length === 0 ? (
+          <div style={{ padding: 32, textAlign: 'center', color: '#333' }}>Загрузка…</div>
+        ) : list.length === 0 ? (
+          <div style={{ padding: 32, textAlign: 'center', color: '#333' }}>Рассылок пока не было</div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            {list.map(b => (
+              <div key={b.id} style={{ padding: '14px 20px', borderBottom: '1px solid #141420', display: 'flex', alignItems: 'center', gap: 14 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13.5, fontWeight: 700, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.subject}</div>
+                  <div style={{ fontSize: 11.5, color: '#555', marginTop: 3 }}>
+                    {BROADCAST_AUDIENCE_LABEL[b.audience] || b.audience} · {fmtDate(b.createdAt)} · {b.sentCount}/{b.totalCount} отправлено{b.failedCount > 0 ? `, ${b.failedCount} ошибок` : ''}
+                  </div>
+                </div>
+                <span className="badge" style={{ fontSize: 10, fontWeight: 800, letterSpacing: 0.5, textTransform: 'uppercase', padding: '2px 8px', borderRadius: 20, ...BROADCAST_STATUS_STYLE[b.status] }}>
+                  {BROADCAST_STATUS_LABEL[b.status] || b.status}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// TAB: НОВОСТНОЙ КАНАЛ (@centrioapp, публичный Telegram-канал)
+// ═══════════════════════════════════════════════════════════════════════════════
+interface NewsCandidate { slug: string; title: string; url: string; suggestedText: string }
+interface NewsPost {
+  id: string; slug: string | null; title: string
+  telegramMessageId: number | null; createdAt: string
+}
+
+function NewsTab({ token }: { token: string }) {
+  const [candidates, setCandidates]   = useState<NewsCandidate[]>([])
+  const [candLoading, setCandLoading] = useState(false)
+  const [posts, setPosts]             = useState<NewsPost[]>([])
+  const [postsLoading, setPostsLoading] = useState(false)
+  const [text, setText]               = useState('')
+  const [slug, setSlug]               = useState<string | null>(null)
+  const [disablePreview, setDisablePreview] = useState(false)
+  const [posting, setPosting]         = useState(false)
+  const [msg, setMsg]                 = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
+  const [confirmOpen, setConfirmOpen] = useState(false)
+
+  const headers = { 'x-admin-token': token, 'Content-Type': 'application/json' }
+
+  const loadCandidates = useCallback(async () => {
+    setCandLoading(true)
+    try {
+      const r = await fetch(`${API}/api/admin/news/candidates`, { headers: { 'x-admin-token': token } })
+      const d = await r.json()
+      setCandidates(Array.isArray(d.candidates) ? d.candidates : [])
+    } catch { setCandidates([]) } finally { setCandLoading(false) }
+  }, [token])
+
+  const loadPosts = useCallback(async () => {
+    setPostsLoading(true)
+    try {
+      const r = await fetch(`${API}/api/admin/news`, { headers: { 'x-admin-token': token } })
+      const d = await r.json()
+      setPosts(Array.isArray(d.posts) ? d.posts : [])
+    } catch { setPosts([]) } finally { setPostsLoading(false) }
+  }, [token])
+
+  useEffect(() => { loadCandidates(); loadPosts() }, [loadCandidates, loadPosts])
+
+  function pickCandidate(c: NewsCandidate) {
+    setText(c.suggestedText); setSlug(c.slug); setMsg(null)
+  }
+  function clearCompose() {
+    setText(''); setSlug(null); setMsg(null)
+  }
+
+  async function publish() {
+    setPosting(true); setMsg(null)
+    try {
+      const res = await fetch(`${API}/api/admin/news`, {
+        method: 'POST', headers, body: JSON.stringify({ text: text.trim(), slug, disablePreview })
+      })
+      const d = await res.json()
+      if (!res.ok) { setMsg({ type: 'err', text: d.error || 'Ошибка публикации' }); if (res.status === 409) loadCandidates(); return }
+      setMsg({ type: 'ok', text: 'Опубликовано в @centrioapp' })
+      clearCompose()
+      setConfirmOpen(false)
+      loadPosts(); loadCandidates()
+    } catch {
+      setMsg({ type: 'err', text: 'Ошибка сети' })
+    } finally { setPosting(false) }
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <div style={S.card}>
+        <div style={{ padding: 20, borderBottom: '1px solid #141420', fontWeight: 700, color: '#fff', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          Неопубликованные статьи блога
+          {candidates.length > 0 && <button onClick={loadCandidates} style={S.btnGhost}>↺</button>}
+        </div>
+        {candLoading && candidates.length === 0 ? (
+          <div style={{ padding: 32, textAlign: 'center', color: '#333' }}>Загрузка…</div>
+        ) : candidates.length === 0 ? (
+          <div style={{ padding: 32, textAlign: 'center', color: '#333' }}>Все статьи блога уже опубликованы в канале</div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            {candidates.map(c => (
+              <div key={c.slug} style={{ padding: '14px 20px', borderBottom: '1px solid #141420', display: 'flex', alignItems: 'center', gap: 14 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13.5, fontWeight: 700, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.title}</div>
+                  <div style={{ fontSize: 11.5, color: '#555', marginTop: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.url}</div>
+                </div>
+                <button onClick={() => pickCandidate(c)} style={{ ...S.btnGhost, ...(slug === c.slug ? { background: '#6366f1', color: '#fff', border: '1px solid #6366f1' } : {}) }}>
+                  {slug === c.slug ? 'Выбрано' : 'Взять в пост'}
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div style={S.card}>
+        <div style={{ padding: 20, borderBottom: '1px solid #141420', fontWeight: 700, color: '#fff', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          Новый пост в @centrioapp
+          {(text || slug) && <button onClick={clearCompose} style={S.btnGhost}>Очистить</button>}
+        </div>
+        <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div>
+            <label style={{ fontSize: 11, color: '#555', display: 'block', marginBottom: 6 }}>
+              Текст поста {slug && <span style={{ color: '#6366f1' }}>· из статьи «{candidates.find(c => c.slug === slug)?.title || slug}»</span>}
+            </label>
+            <textarea style={S.textarea} rows={8} value={text} onChange={e => setText(e.target.value)} placeholder="Текст поста. Поддерживается HTML-разметка Telegram (<b>, <i>, <a href>...)." />
+          </div>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, color: '#666', cursor: 'pointer' }}>
+            <input type="checkbox" checked={disablePreview} onChange={e => setDisablePreview(e.target.checked)} />
+            Без превью ссылки
+          </label>
+          {msg && <span className="form-msg" style={{ fontSize: 12.5, color: msg.type === 'ok' ? '#22c55e' : '#ef4444' }}>{msg.text}</span>}
+          <div>
+            <button onClick={() => setConfirmOpen(true)} disabled={posting || !text.trim()}
+              style={{ ...S.btnPrimary, opacity: posting || !text.trim() ? 0.5 : 1 }}>
+              {posting ? 'Публикация…' : 'Опубликовать в канал'}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Подтверждение перед реальной публикацией — необратимое действие в
+          публичном канале с реальными подписчиками, поэтому лишний
+          клик-подтверждение оправдан ещё сильнее, чем у email-рассылок. */}
+      {confirmOpen && (
+        <div onClick={() => !posting && setConfirmOpen(false)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(6,8,15,0.72)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 20 }}>
+          <div onClick={e => e.stopPropagation()} style={{ ...S.card, width: '100%', maxWidth: 460, padding: 24 }}>
+            <div style={{ fontSize: 16, fontWeight: 800, color: '#fff', marginBottom: 8 }}>Опубликовать в @centrioapp?</div>
+            <div style={{ fontSize: 12.5, color: '#666', lineHeight: 1.6, marginBottom: 14 }}>
+              Пост увидят все подписчики публичного канала. Отменить публикацию после отправки нельзя (можно только удалить сообщение вручную в Telegram).
+            </div>
+            <div style={{ background: '#080810', border: '1px solid #141420', borderRadius: 8, padding: 12, fontSize: 12, color: '#aaa', maxHeight: 160, overflow: 'auto', whiteSpace: 'pre-wrap', marginBottom: 18 }}>
+              {text}
+            </div>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button onClick={() => setConfirmOpen(false)} disabled={posting} style={S.btnGhost}>Отмена</button>
+              <button onClick={publish} disabled={posting} style={{ ...S.btnPrimary, opacity: posting ? 0.6 : 1 }}>{posting ? 'Публикация…' : 'Да, опубликовать'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div style={S.card}>
+        <div style={{ padding: 20, borderBottom: '1px solid #141420', fontWeight: 700, color: '#fff', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          История публикаций
+          {posts.length > 0 && <button onClick={loadPosts} style={S.btnGhost}>↺</button>}
+        </div>
+        {postsLoading && posts.length === 0 ? (
+          <div style={{ padding: 32, textAlign: 'center', color: '#333' }}>Загрузка…</div>
+        ) : posts.length === 0 ? (
+          <div style={{ padding: 32, textAlign: 'center', color: '#333' }}>Публикаций пока не было</div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            {posts.map(p => (
+              <div key={p.id} style={{ padding: '14px 20px', borderBottom: '1px solid #141420', display: 'flex', alignItems: 'center', gap: 14 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13.5, fontWeight: 700, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.title}</div>
+                  <div style={{ fontSize: 11.5, color: '#555', marginTop: 3 }}>
+                    {p.slug ? 'Репост статьи' : 'Ручной пост'} · {fmtDate(p.createdAt)}
+                  </div>
+                </div>
+                <span className="badge" style={{ fontSize: 10, fontWeight: 800, letterSpacing: 0.5, textTransform: 'uppercase', padding: '2px 8px', borderRadius: 20, background: 'rgba(34,197,94,0.15)', color: '#22c55e', border: '1px solid rgba(34,197,94,0.35)' }}>
+                  Опубликовано
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// TAB: SUPPORT TICKETS
+// ═══════════════════════════════════════════════════════════════════════════════
+const TICKET_STATUS_LABEL: Record<string, string> = { OPEN: 'Открыто', ANSWERED: 'Отвечено', CLOSED: 'Закрыто' }
+const TICKET_STATUS_STYLE: Record<string, React.CSSProperties> = {
+  OPEN:     { background: 'rgba(245,158,11,0.15)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.35)' },
+  ANSWERED: { background: 'rgba(34,197,94,0.15)',  color: '#22c55e', border: '1px solid rgba(34,197,94,0.35)' },
+  CLOSED:   { background: '#1e1e1e', color: '#555', border: '1px solid #2a2a2a' },
+}
+
+function TicketsTab({ token }: { token: string }) {
+  const [tickets, setTickets]   = useState<Ticket[]>([])
+  const [loading, setLoading]   = useState(false)
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'OPEN' | 'ANSWERED' | 'CLOSED'>('ALL')
+  const [activeId, setActiveId] = useState<string | null>(null)
+  const [active, setActive]     = useState<Ticket | null>(null)
+  const [loadingThread, setLoadingThread] = useState(false)
+  const [reply, setReply]       = useState('')
+  const [sending, setSending]   = useState(false)
+
+  const headers = { 'x-admin-token': token, 'Content-Type': 'application/json' }
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    try {
+      const qs = statusFilter !== 'ALL' ? `?status=${statusFilter}` : ''
+      const r = await fetch(`${API}/api/admin/tickets${qs}`, { headers: { 'x-admin-token': token } })
+      const d = await r.json()
+      setTickets(Array.isArray(d.tickets) ? d.tickets : [])
+    } catch { setTickets([]) } finally { setLoading(false) }
+  }, [token, statusFilter])
+
+  useEffect(() => { load() }, [load])
+
+  const openThread = useCallback(async (id: string) => {
+    setActiveId(id); setLoadingThread(true); setActive(null)
+    try {
+      const r = await fetch(`${API}/api/admin/tickets/${id}`, { headers: { 'x-admin-token': token } })
+      if (r.ok) setActive(await r.json())
+    } finally { setLoadingThread(false) }
+  }, [token])
+
+  async function sendReply(e: React.FormEvent) {
+    e.preventDefault()
+    if (!reply.trim() || !activeId) return
+    setSending(true)
+    try {
+      const res = await fetch(`${API}/api/admin/tickets/${activeId}/messages`, {
+        method: 'POST', headers, body: JSON.stringify({ body: reply.trim() })
+      })
+      if (res.ok) { setReply(''); openThread(activeId); load() }
+    } finally { setSending(false) }
+  }
+
+  async function setStatus(status: 'OPEN' | 'ANSWERED' | 'CLOSED') {
+    if (!activeId) return
+    const res = await fetch(`${API}/api/admin/tickets/${activeId}/status`, {
+      method: 'PATCH', headers, body: JSON.stringify({ status })
+    })
+    if (res.ok) { openThread(activeId); load() }
+  }
+
+  if (activeId) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <button onClick={() => { setActiveId(null); setActive(null) }} style={S.btnGhost}>← К списку обращений</button>
+
+        {loadingThread || !active ? (
+          <div style={{ padding: 32, textAlign: 'center', color: '#333' }}>Загрузка…</div>
+        ) : (
+          <div style={{ background: '#0c0c14', border: '1px solid #141420', borderRadius: 12, padding: 24 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 4, flexWrap: 'wrap' }}>
+              <h3 style={{ margin: 0, fontSize: 16, color: '#fff', fontWeight: 700 }}>{active.subject}</h3>
+              <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: 0.5, textTransform: 'uppercase', padding: '2px 8px', borderRadius: 20, ...TICKET_STATUS_STYLE[active.status] }}>
+                {TICKET_STATUS_LABEL[active.status] || active.status}
+              </span>
+            </div>
+            <div style={{ fontSize: 12, color: '#555', marginBottom: 18 }}>
+              {active.user.email}{active.user.name ? ` · ${active.user.name}` : ''}
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
+              {(active.messages || []).map(m => (
+                <div key={m.id} style={{
+                  alignSelf: m.isAdmin ? 'flex-end' : 'flex-start',
+                  maxWidth: '75%',
+                  background: m.isAdmin ? 'rgba(99,102,241,0.12)' : '#111119',
+                  border: `1px solid ${m.isAdmin ? 'rgba(99,102,241,0.3)' : '#1e1e2a'}`,
+                  borderRadius: 12, padding: '10px 14px'
+                }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: m.isAdmin ? '#818cf8' : '#555', marginBottom: 4 }}>
+                    {m.isAdmin ? 'Админ' : active.user.email}
+                  </div>
+                  <div style={{ fontSize: 13, color: '#ddd', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{m.body}</div>
+                  <div style={{ fontSize: 10, color: '#444', marginTop: 5 }}>{fmtDate(m.createdAt)}</div>
+                </div>
+              ))}
+            </div>
+
+            <form onSubmit={sendReply} style={{ display: 'flex', gap: 10, borderTop: '1px solid #141420', paddingTop: 16, marginBottom: 14 }}>
+              <textarea value={reply} onChange={e => setReply(e.target.value)} placeholder="Ответить пользователю..." rows={2} style={{ ...S.textarea, flex: 1 }} />
+              <button type="submit" disabled={sending || !reply.trim()} style={{ ...S.btnPrimary, opacity: sending ? 0.6 : 1, alignSelf: 'flex-end' }}>
+                {sending ? 'Отправка…' : 'Ответить'}
+              </button>
+            </form>
+
+            <div style={{ display: 'flex', gap: 8 }}>
+              {active.status !== 'CLOSED' && <button onClick={() => setStatus('CLOSED')} style={S.btnGhost}>Закрыть обращение</button>}
+              {active.status === 'CLOSED' && <button onClick={() => setStatus('OPEN')} style={S.btnGhost}>Открыть заново</button>}
+            </div>
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        {(['ALL', 'OPEN', 'ANSWERED', 'CLOSED'] as const).map(s => (
+          <button key={s} onClick={() => setStatusFilter(s)}
+            style={{ ...S.btnGhost, ...(statusFilter === s ? { background: '#6366f1', color: '#fff', border: '1px solid #6366f1' } : {}) }}>
+            {s === 'ALL' ? 'Все' : TICKET_STATUS_LABEL[s]}
+          </button>
+        ))}
+        <div style={{ flex: 1 }} />
+        {tickets.length > 0 && <button onClick={load} style={S.btnGhost}>↺</button>}
+      </div>
+
+      {loading ? (
+        <div style={{ padding: 32, textAlign: 'center', color: '#333' }}>Загрузка…</div>
+      ) : tickets.length === 0 ? (
+        <div style={{ padding: 48, textAlign: 'center', color: '#2a2a3a', fontSize: 14 }}>Обращений нет</div>
+      ) : (
+        <div style={S.card}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid #141420', color: '#555', textAlign: 'left' }}>
+                <th style={{ padding: '10px 16px' }}>Тема</th>
+                <th style={{ padding: '10px 16px' }}>Пользователь</th>
+                <th style={{ padding: '10px 16px' }}>Сообщений</th>
+                <th style={{ padding: '10px 16px' }}>Обновлено</th>
+                <th style={{ padding: '10px 16px' }}>Статус</th>
+              </tr>
+            </thead>
+            <tbody>
+              {tickets.map(t => (
+                <tr key={t.id} onClick={() => openThread(t.id)} style={{ borderBottom: '1px solid #101018', cursor: 'pointer' }}>
+                  <td style={{ padding: '10px 16px', color: '#ddd', fontWeight: 600 }}>{t.subject}</td>
+                  <td style={{ padding: '10px 16px', color: '#888' }}>{t.user?.email}</td>
+                  <td style={{ padding: '10px 16px', color: '#888' }}>{t._count?.messages ?? 0}</td>
+                  <td style={{ padding: '10px 16px', color: '#888' }}>{fmtDate(t.updatedAt)}</td>
+                  <td style={{ padding: '10px 16px' }}>
+                    <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: 0.5, textTransform: 'uppercase', padding: '2px 8px', borderRadius: 20, ...TICKET_STATUS_STYLE[t.status] }}>
+                      {TICKET_STATUS_LABEL[t.status] || t.status}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // TAB: VISITORS
 // ═══════════════════════════════════════════════════════════════════════════════
 function VisitorsTab({ token }: { token: string }) {
@@ -674,9 +1358,79 @@ function VisitorsTab({ token }: { token: string }) {
 // ═══════════════════════════════════════════════════════════════════════════════
 // MAIN PAGE
 // ═══════════════════════════════════════════════════════════════════════════════
+// Как часто опрашивать новые обращения в поддержку для браузерных
+// уведомлений — работает, только пока вкладка админки открыта (обычный
+// Notification API, не push), но этого достаточно: админ и так держит
+// эту вкладку открытой в фоне.
+const TICKET_POLL_MS = 30000
+
+function useNewTicketNotifications(token: string | null) {
+  const [permission, setPermission] = useState<NotificationPermission | 'unsupported'>('unsupported')
+  const knownIds  = useRef<Set<string> | null>(null)
+  const firstLoad = useRef(true)
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('Notification' in window)) return
+    setPermission(Notification.permission)
+  }, [])
+
+  const requestPermission = useCallback(() => {
+    if (typeof window === 'undefined' || !('Notification' in window)) return
+    Notification.requestPermission().then(setPermission)
+  }, [])
+
+  useEffect(() => {
+    if (!token) return
+    if (typeof window === 'undefined' || !('Notification' in window)) return
+
+    let cancelled = false
+    knownIds.current = null
+    firstLoad.current = true
+
+    async function poll() {
+      try {
+        const r = await fetch(`${API}/api/admin/tickets?status=OPEN`, { headers: { 'x-admin-token': token! } })
+        if (!r.ok) return
+        const d = await r.json()
+        const list: Ticket[] = Array.isArray(d.tickets) ? d.tickets : []
+        if (cancelled) return
+
+        if (firstLoad.current) {
+          // Первый опрос после открытия админки — просто запоминаем текущие
+          // открытые обращения, БЕЗ уведомлений (иначе при каждом заходе в
+          // админку прилетал бы шквал уведомлений по всей текущей очереди).
+          knownIds.current = new Set(list.map(t => t.id))
+          firstLoad.current = false
+          return
+        }
+
+        const known = knownIds.current || new Set<string>()
+        const fresh = list.filter(t => !known.has(t.id))
+        if (fresh.length > 0 && Notification.permission === 'granted') {
+          for (const t of fresh.slice(0, 5)) {
+            const n = new Notification('Новое обращение в поддержку', {
+              body: `${t.user.email}: ${t.subject}`,
+              tag: `ticket-${t.id}`,
+            })
+            n.onclick = () => { window.focus(); n.close() }
+          }
+        }
+        knownIds.current = new Set(list.map(t => t.id))
+      } catch { /* сеть недоступна — просто пропускаем этот цикл опроса */ }
+    }
+
+    poll()
+    const interval = setInterval(poll, TICKET_POLL_MS)
+    return () => { cancelled = true; clearInterval(interval) }
+  }, [token])
+
+  return { permission, requestPermission }
+}
+
 export default function AdminPage() {
   const [token, setToken] = useState<string | null>(null)
-  const [tab, setTab]     = useState<'users' | 'notifications' | 'visitors'>('users')
+  const [tab, setTab]     = useState<'users' | 'notifications' | 'visitors' | 'promo-codes' | 'tickets' | 'broadcasts' | 'news'>('users')
+  const { permission: notifPermission, requestPermission: requestNotifPermission } = useNewTicketNotifications(token)
 
   useEffect(() => { const t = sessionStorage.getItem(SESSION_KEY); if (t) setToken(t) }, [])
 
@@ -688,6 +1442,10 @@ export default function AdminPage() {
     { key: 'users',         label: 'Пользователи', icon: '👥' },
     { key: 'notifications', label: 'Уведомления',  icon: '🔔' },
     { key: 'visitors',      label: 'Посетители',   icon: '👁' },
+    { key: 'promo-codes',   label: 'Промокоды',    icon: '🎟' },
+    { key: 'tickets',       label: 'Обращения',    icon: '🎫' },
+    { key: 'broadcasts',    label: 'Рассылки',     icon: '📣' },
+    { key: 'news',          label: 'Новости',      icon: '📰' },
   ]
 
   return (
@@ -708,6 +1466,12 @@ export default function AdminPage() {
         </div>
 
         <div style={{ flex: 1 }} />
+        {notifPermission === 'default' && (
+          <button onClick={requestNotifPermission} title="Уведомлять о новых обращениях в поддержку, пока эта вкладка открыта"
+            style={{ background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.3)', borderRadius: 8, padding: '6px 14px', color: '#818cf8', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit', marginRight: 10 }}>
+            🔔 Включить уведомления
+          </button>
+        )}
         <button onClick={logout} style={{ background: 'transparent', border: '1px solid rgba(239,68,68,0.25)', borderRadius: 8, padding: '6px 14px', color: '#ef4444', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>Выйти</button>
       </div>
 
@@ -716,6 +1480,10 @@ export default function AdminPage() {
         {tab === 'users'         && <UsersTab         token={token} />}
         {tab === 'notifications' && <NotificationsTab token={token} />}
         {tab === 'visitors'      && <VisitorsTab      token={token} />}
+        {tab === 'promo-codes'   && <PromoCodesTab token={token} />}
+        {tab === 'tickets'       && <TicketsTab token={token} />}
+        {tab === 'broadcasts'    && <BroadcastsTab token={token} />}
+        {tab === 'news'          && <NewsTab token={token} />}
       </div>
     </div>
   )

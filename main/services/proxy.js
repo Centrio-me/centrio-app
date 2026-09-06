@@ -21,19 +21,39 @@ function buildProxyRules (proxySettings) {
     }
 }
 
+// WebRTC-утечка реального IP мимо прокси/VPN: Chromium по умолчанию
+// (policy 'default') собирает ICE-кандидаты со всех сетевых интерфейсов,
+// включая прямой выход в интернет — session.setProxy() на это НЕ влияет,
+// потому что WebRTC UDP-трафик исторически не завязан на HTTP(S)/SOCKS5
+// прокси-настройки сессии. Итог: пользователь думает, что мессенджер идёт
+// через VPN (иконка "включено", HTTP-трафик реально проксируется), но
+// голосовой/видеозвонок в том же webview (Telegram/Discord/WhatsApp) может
+// раскрыть настоящий IP через STUN. 'disable_non_proxied_udp' — штатная
+// политика Electron/Chromium именно для этого случая: запрещает прямой
+// (непроксированный) UDP для WebRTC, оставляя только TURN-релеи/относящиеся
+// к прокси пути. Возвращаем 'default' при выключении VPN, чтобы не портить
+// WebRTC для пользователей, которые VPN вообще не используют.
+function applyWebRtcLeakProtection (targetSession, enabled) {
+    try {
+        targetSession.setWebRTCIPHandlingPolicy(enabled ? 'disable_non_proxied_udp' : 'default')
+    } catch (e) {
+        console.warn('[proxy] setWebRTCIPHandlingPolicy failed:', e.message)
+    }
+}
+
 async function applyProxyToSession (targetSession, proxySettings) {
     if (!proxySettings || !proxySettings.enabled) {
         await targetSession.setProxy({ mode: 'system' })
-        // Принудительно закрываем существующие соединения, чтобы они переустановились без прокси
-        try { targetSession.closeAllConnections() } catch {}
+        applyWebRtcLeakProtection(targetSession, false)
+        // closeAllConnections() убрано — крашит Chromium нативно при наличии extension service workers
         return
     }
 
     const rules = buildProxyRules(proxySettings)
     await targetSession.setProxy(rules)
-    // Принудительно закрываем существующие соединения — они переустановятся через новый прокси.
-    // Без этого уже открытые TCP-соединения продолжают идти напрямую до своего закрытия.
-    try { targetSession.closeAllConnections() } catch {}
+    applyWebRtcLeakProtection(targetSession, true)
+    // closeAllConnections() убрано — крашит Chromium нативно при наличии extension service workers
+    // Соединения переустановятся через новый прокси при следующем запросе
 
     targetSession.removeAllListeners('login')
 

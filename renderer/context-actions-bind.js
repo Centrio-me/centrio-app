@@ -8,11 +8,14 @@ function bindContextActionsUi({
     removeMessenger,
     moveMessengerToFolder,
     removeFolder,
+    addDivider,
+    removeDivider,
     updateMuteIcon,
     getMessengerById,
     getFolderById,
     requirePro,
-    tGet
+    tGet,
+    ipcRenderer
 }) {
     document.getElementById('ctxSidebarNewFolder')?.addEventListener('click', () => {
         if (requirePro && !requirePro('folders')) return
@@ -43,6 +46,17 @@ function bindContextActionsUi({
         state.activeMessengers.forEach(m => {
             document.getElementById(`webview-${m.id}`)?.reload()
         })
+    })
+
+    document.getElementById('ctxSidebarAddDivider')?.addEventListener('click', () => {
+        hideAllMenus()
+        if (typeof addDivider === 'function') addDivider()
+    })
+
+    document.getElementById('ctxDividerRemove')?.addEventListener('click', () => {
+        const dividerId = state.contextTargetDividerId
+        hideAllMenus()
+        if (dividerId && typeof removeDivider === 'function') removeDivider(dividerId)
     })
 
     document.getElementById('ctxReload')?.addEventListener('click', () => {
@@ -218,12 +232,52 @@ function bindContextActionsUi({
         if (folderId) removeFolder(folderId)
     })
 
-    document.getElementById('ctxVpn')?.addEventListener('click', () => {
+    document.getElementById('ctxVpn')?.addEventListener('click', (e) => {
         const m = getMessengerById(state.contextTargetId)
-        hideAllMenus()
-        if (!m || !toggleMessengerVpn) return
+        if (!m || !toggleMessengerVpn) { hideAllMenus(); return }
+        // Не закрываем меню — даём увидеть переключение ползунка
+        e.stopPropagation()
+        const toggle = document.getElementById('ctxVpnToggle')
+        if (toggle) toggle.classList.toggle('on')
         toggleMessengerVpn(m.id)
     })
+
+    document.getElementById('ctxDarkMode')?.addEventListener('click', () => {
+        // SECURITY: forced dark mode is the same Pro-gated 'darkmode' native
+        // extension the Extensions panel toggles (extensions-ui.js's
+        // getUserIsPro() check) — this context-menu shortcut had no
+        // equivalent check at all, so any free-plan user could force dark
+        // mode on any messenger regardless of plan, no exploit needed.
+        if (requirePro && !requirePro('extensions')) { hideAllMenus(); return }
+        const m = getMessengerById(state.contextTargetId)
+        hideAllMenus()
+        if (!m) return
+
+        const wv = document.getElementById(`webview-${m.id}`)
+        if (!wv) return
+
+        const current = m.forceDarkMode || false
+        m.forceDarkMode = !current
+        saveData()
+
+        const css = `
+            html { filter: invert(1) hue-rotate(180deg) !important; }
+            img, video, canvas, [style*="background-image"] { filter: invert(1) hue-rotate(180deg) !important; }
+        `
+        if (m.forceDarkMode) {
+            wv.insertCSS(css).then(id => { wv._darkModeCssId = id })
+        } else {
+            wv.reload() // Easiest way to remove injected CSS without tracking ID perfectly
+        }
+    })
+
+    document.getElementById('ctxDevTools')?.addEventListener('click', () => {
+        const m = getMessengerById(state.contextTargetId)
+        hideAllMenus()
+        if (!m) return
+        document.getElementById(`webview-${m.id}`)?.openDevTools()
+    })
+
 }
 
 module.exports = {

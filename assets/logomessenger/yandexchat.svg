@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 384">
+    <defs>
+        <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#7EEAD8"/>
+            <stop offset="100%" stop-color="#0EA8A3"/>
+        </linearGradient>
+    </defs>
+    <rect width="384" height="384" rx="64" fill="url(#bg)"/>
+    <g>
+        <!-- бумажный самолётик (иконка "отправить"), несколько полупрозрачных
+             граней создают эффект сложенной бумаги -->
+        <polygon points="88,118 300,192 150,168" fill="#ffffff" opacity="0.98"/>
+        <polygon points="88,118 150,168 122,246" fill="#eafffb" opacity="0.92"/>
+        <polygon points="150,168 300,192 122,246" fill="#d3fbf3" opacity="0.85"/>
+        <polygon points="88,118 122,246 96,268" fill="#c3f3ea" opacity="0.8"/>
+    </g>
+</svg>

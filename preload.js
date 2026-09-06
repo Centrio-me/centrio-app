@@ -2,6 +2,7 @@ const { contextBridge, ipcRenderer } = require('electron')
 
 const validReceiveChannels = new Set([
     'app-hidden',
+    'app-quitting',
     'update-available',
     'update-downloaded',
     'update-error',
@@ -12,7 +13,30 @@ const validReceiveChannels = new Set([
     'reload-active',
     'open-settings',
     'notification-clicked-id',
-    'update-status'
+    'update-status',
+    // BUGFIX (2026-09-06, live report "Центрио думает" — ассистент никогда
+    // не получал ответ): этот allowlist не обновлялся по мере добавления
+    // новых фич, из-за чего ipcRenderer.on(...) на эти каналы молча
+    // блокировался в preload (см. warning "[preload] Blocked subscription
+    // to channel: ..." в chrome_debug.log) — main-процесс честно слал
+    // события, renderer их просто никогда не получал. Затронуты были не
+    // только ассистент, но и медиаплеер/OAuth/загрузки/диплинки/экран
+    // блокировки — добавлены все каналы, которые реально шлются главным
+    // процессом и на которые подписывается renderer (см. main/ipc/*.js
+    // webContents.send(...) и renderer/*.js ipcRenderer.on(...)).
+    'assistant:stream-chunk',
+    'assistant:tool-call',
+    'assistant:done',
+    'assistant:error',
+    'media-state',
+    'downloads:item-update',
+    'deep-link-route',
+    'show-lock-screen',
+    'oauth-add-as-service',
+    'oauth-popup-started',
+    'oauth-popup-done',
+    'oauth-popup-closed',
+    'auto-launch-result'
 ])
 
 const invokeChannelMap = {
@@ -20,6 +44,106 @@ const invokeChannelMap = {
     'dialog:selectDirectory': 'dialog:selectDirectory',
     'install-update': 'install-update'
 }
+
+// SECURITY (2026-09-06, аудит): раньше electronAPI.invoke(channel, ...)
+// пробрасывал ЛЮБОЕ имя канала в ipcRenderer.invoke без проверки —
+// invokeChannelMap был просто таблицей алиасов (3 записи), а не гейтом.
+// Любой JS в контексте главного окна (например будущий supply-chain-баг в
+// одной из renderer-зависимостей) мог напрямую дёрнуть store:secure-get,
+// security:verify-pin или любой другой ipcMain.handle-канал в обход
+// специально отобранной поверхности electronAPI. Список ниже — точное
+// зеркало ВСЕХ каналов, реально зарегистрированных через
+// ipcMain.handle/safeHandle в main.js и main/**/*.js (сверено программно
+// с каждым вызовом invokeIpc/authorizedInvoke/electronAPI.invoke в
+// renderer/*.js — ни один легитимный вызов не пропущен). webview'ы сюда
+// не попадают вообще (у них свой отдельный preload, см.
+// webview-preload.js) — это только про код самого главного окна.
+const validInvokeChannels = new Set([
+    'api-assistant-usage',
+    'api-device-trial-redeem',
+    'api-get-notifications',
+    'api-get-stats',
+    'api-login',
+    'api-logout',
+    'api-me',
+    'api-notes-create',
+    'api-notes-delete',
+    'api-notes-list',
+    'api-notes-reorder',
+    'api-notes-update',
+    'api-read-all-notifications',
+    'api-redeem-promo',
+    'api-refresh',
+    'api-register',
+    'api-sync-pull',
+    'api-sync-push',
+    'api-update-profile',
+    'api-vk-desktop',
+    'api-yandex-desktop',
+    'app-notifs:get-history',
+    'app:checkForUpdates',
+    'app:getVersion',
+    'apply-global-proxy',
+    'apply-messenger-proxy',
+    'assistant:chat',
+    'assistant:get-status',
+    'assistant:ollama-test',
+    'assistant:tool-result',
+    'check-for-updates',
+    'choose-download-dir',
+    'copy-image-to-clipboard',
+    'copy-text-to-clipboard',
+    'dialog:selectDirectory',
+    'downloads:get-history',
+    'downloads:open-file',
+    'downloads:read-file-bytes',
+    'ext:apply-to-session',
+    'ext:install',
+    'ext:list',
+    'ext:toggle',
+    'ext:uninstall',
+    'get-auto-launch',
+    'get-save-image-path',
+    'get-webview-preload-path',
+    'get-window-visibility-state',
+    'install-update',
+    'lock-bg:choose-custom',
+    'lock-bg:clear',
+    'lock-bg:get',
+    'lock-bg:set-preset',
+    'oauth-google',
+    'oauth-yandex',
+    'open-popup-window',
+    'screenshot:capture',
+    'security:hash-pin',
+    'security:verify-pin',
+    'settings:export',
+    'settings:import',
+    'store:clear-all',
+    'store:delete',
+    'store:get',
+    'store:secure-delete',
+    'store:secure-get',
+    'store:secure-set',
+    'store:set',
+    'test-proxy',
+    'tracker:msg-received',
+    'tracker:msg-sent',
+    'tracker:notif',
+    'tracker:service-time',
+    'vpn-connect',
+    'vpn-connect-saved',
+    'vpn-delete-config',
+    'vpn-disconnect',
+    'vpn-download-and-connect',
+    'vpn-get-app-modes',
+    'vpn-get-subscription',
+    'vpn-ping',
+    'vpn-refresh-subscription',
+    'vpn-set-app-vpn',
+    'vpn-status',
+    'weather:get'
+])
 
 const sendChannelMap = {
     'set-app-zoom': 'set-app-zoom',
@@ -54,10 +178,29 @@ const electronAPI = {
     storeSet: (key, value) => ipcRenderer.invoke('store:set', key, value),
     storeDelete: (key) => ipcRenderer.invoke('store:delete', key),
 
+    // SECURITY (2026-09-06, аудит): эти три канала никогда не были
+    // проброшены сюда, хотя main.js (store:secure-set/get/delete) реализует
+    // их правильно (main/services/secureStore.js — OS safeStorage:
+    // DPAPI/Keychain/libsecret). Из-за отсутствия моста renderer.js
+    // (store.secureSet/secureGetAsync/secureDelete) молча проваливался в
+    // plaintext-фолбэк (window.electronAPI.storeSet/...) на КАЖДЫЙ вызов —
+    // токены входа (cloud.accessToken/refreshToken), пароль прокси
+    // (globalProxy.password) и собственные API-ключи пользователя для
+    // ИИ-провайдеров (assistant.byok.*.keyEnc) годами писались на диск в
+    // открытом виде вместо зашифрованного. Добавлено без изменений в
+    // main.js/renderer.js — там код уже был правильным.
+    storeSecureSet: (key, value) => ipcRenderer.invoke('store:secure-set', key, value),
+    storeSecureGet: (key, def) => ipcRenderer.invoke('store:secure-get', key, def),
+    storeSecureDelete: (key) => ipcRenderer.invoke('store:secure-delete', key),
+
     getWebviewPreloadPath: () => ipcRenderer.invoke('get-webview-preload-path'),
 
     invoke: (channel, ...args) => {
         const mapped = mapInvokeChannel(channel)
+        if (!validInvokeChannels.has(mapped)) {
+            console.warn(`[preload] Blocked invoke to channel: ${mapped}`)
+            return Promise.resolve({ success: false, error: 'blocked_channel' })
+        }
         return ipcRenderer.invoke(mapped, ...args)
     },
 

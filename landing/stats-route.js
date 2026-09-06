@@ -56,7 +56,7 @@ router.get('/summary', authMiddleware, async (req, res) => {
     const weekStart  = new Date(now); weekStart.setDate(now.getDate() - 6); weekStart.setHours(0, 0, 0, 0)
     const monthStart = new Date(now); monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0)
 
-    const [todayStats, weekStats, allStats, serviceStats, weekDays] = await Promise.all([
+    const [todayStats, weekStats, allStats, serviceStats, weekDays, appNotifReceived] = await Promise.all([
       // Today
       prisma.usageStat.aggregate({
         where: { userId: req.user.id, date: { gte: todayStart } },
@@ -72,11 +72,11 @@ router.get('/summary', authMiddleware, async (req, res) => {
         where: { userId: req.user.id },
         _sum: { appTime: true, notifCount: true, msgSent: true, msgReceived: true }
       }),
-      // Per-service breakdown (last 30 days)
+      // Per-service breakdown (all time, by appTime when serviceTime is 0)
       prisma.usageStat.groupBy({
         by: ['service'],
-        where: { userId: req.user.id, service: { not: null }, date: { gte: monthStart } },
-        _sum: { serviceTime: true, notifCount: true },
+        where: { userId: req.user.id, service: { not: null } },
+        _sum: { serviceTime: true, appTime: true, notifCount: true },
         orderBy: { _sum: { serviceTime: 'desc' } },
         take: 10
       }),
@@ -86,7 +86,9 @@ router.get('/summary', authMiddleware, async (req, res) => {
         where: { userId: req.user.id, date: { gte: weekStart } },
         _sum: { appTime: true },
         orderBy: { date: 'asc' }
-      })
+      }),
+      // Count system notifications received by user
+      prisma.appNotificationRead.count({ where: { userId: req.user.id } })
     ])
 
     // Build last 7 days chart data
@@ -143,10 +145,12 @@ router.get('/summary', authMiddleware, async (req, res) => {
       streak,
       services: serviceStats.map(s => ({
         name: s.service,
-        minutes: Math.round((s._sum.serviceTime || 0) / 60),
+        // Use serviceTime if tracked, fallback to appTime (older clients send appTime per service)
+        minutes: Math.round(((s._sum.serviceTime || 0) > 0 ? (s._sum.serviceTime || 0) : (s._sum.appTime || 0)) / 60),
         notifCount: s._sum.notifCount || 0
       })),
-      chart: chartData
+      chart: chartData,
+      appNotifReceived: appNotifReceived || 0
     })
   } catch (err) {
     console.error('Stats summary error:', err)

@@ -20,7 +20,8 @@ module.exports = {
         zoomIn: 'Увеличить',
         zoomOut: 'Уменьшить',
         zoomReset: 'По умолчанию',
-        print: 'Печать'
+        print: 'Печать',
+        translate: 'Перевести выделенное'
     },
 
     folders: {
@@ -31,9 +32,26 @@ module.exports = {
         changeIcon: 'Сменить иконку'
     },
 
+    divider: {
+        add: 'Добавить разделитель',
+        remove: 'Удалить разделитель'
+    },
+
     modal: {
         addTitle: 'Добавить мессенджер',
         popular: 'Популярные',
+        categories: {
+            messengers: 'Мессенджеры',
+            mail: 'Почта',
+            productivity: 'Продуктивность',
+            ai: 'Нейросети',
+            media: 'Медиа',
+            calls: 'Видеозвонки'
+        },
+        syntaxPromo: {
+            title: 'Одна подписка.',
+            subtitle: 'Лучшие нейросети для идей без границ'
+        },
         custom: 'Добавить свой',
         namePlaceholder: 'Название',
         urlPlaceholder: 'URL (https://...)',
@@ -63,13 +81,27 @@ module.exports = {
             appearance: 'Внешний вид',
             notifications: 'Уведомления',
             shortcuts: 'Горячие клавиши',
-            extensions: 'Расширения',
             system: 'Система',
             security: 'Безопасность',
-            network: 'Сеть'
+            network: 'Сеть',
+            extensions: 'Расширения',
+            assistant: 'AI-ассистент'
         },
-        extensionsTitle: 'Каталог расширений',
-        extensionsHint: 'Расширения Chrome работают прямо внутри мессенджеров. Функция PRO.',
+        extensionsTitle: 'Встроенные инструменты',
+        extensionsHint: 'Нативные инструменты, встроенные в Centrio. Работают без установки.',
+        extensionsRealTitle: 'Расширения Chrome Web Store',
+        extensionsRealHint: 'Официальные расширения. При первом включении скачиваются напрямую из Chrome Web Store и работают только в сессии выбранного мессенджера.',
+        extAdblockName: 'AdBlock',
+        extAdblockDesc: 'Блокирует рекламу и трекеры во всех сервисах',
+        extTranslateName: 'Переводчик',
+        extTranslateDesc: 'Выделите текст → правый клик → Перевести',
+        extDarkModeName: 'Тёмная тема',
+        extDarkModeDesc: 'Правый клик → включить тёмную тему для любого сервиса',
+        extScreenshotName: 'Скриншот',
+        extScreenshotDesc: 'Правый клик → сделать снимок текущей страницы',
+        extBuiltIn: 'Встроено',
+        extEnabled: 'Включён',
+        extDisabled: 'Выключен',
         language: 'Язык интерфейса',
         langHint: 'Применяется мгновенно',
         closeLabel: 'При нажатии кнопки закрытия',
@@ -85,6 +117,9 @@ module.exports = {
         themeLight: 'Светлая',
         themeMidnight: 'Полночь',
         themeGlass: 'Стекло',
+        themeAdaptive: 'Адаптивная',
+        themeEmbedded: 'Встроенная',
+        themeDock: 'Dock',
         accentColor: 'Акцентный цвет',
         fontSize: 'Размер текста',
         fontSmall: 'Маленький',
@@ -93,6 +128,8 @@ module.exports = {
         showTabs: 'Показывать вкладки',
         notifShow: 'Показывать уведомления',
         notifSound: 'Звук уведомлений',
+        notifSoundChoose: 'Выбор звука',
+        notifSoundUpload: 'Загрузить свой звук',
         trayBadge: 'Счётчик в трее',
         apply: 'Применить',
         applied: '✓ Настройки применены',
@@ -105,6 +142,11 @@ module.exports = {
         checkUpdatesBtn: 'Проверить обновления',
         checkUpdatesChecking: 'Проверяем...',
         autoUpdateNote: 'Обновления скачиваются автоматически',
+        statusReady:    'Готово к работе',
+        statusChecking: 'Проверка...',
+        statusDone:     'Проверка выполнена',
+        statusUpToDate: 'Актуальная версия',
+        statusError:    'Ошибка проверки',
         passwordEnable: 'Защита PIN-кодом',
         passwordEnableHint: 'Требовать PIN при запуске',
         passwordSet: 'Установить PIN',
@@ -117,6 +159,13 @@ module.exports = {
         passwordMismatch: 'PIN-коды не совпадают',
         lockOnHide: 'Блокировать при сворачивании',
         lockOnHideHint: 'Запрашивать PIN при открытии из трея',
+        lockOnIdle: 'Автоблокировка при бездействии',
+        lockOnIdleHint: 'Запрашивать PIN, если приложение простаивает',
+        lockOnIdleOff: 'Выключено',
+        lockOnIdleMin1: 'Через 1 минуту',
+        lockOnIdleMin5: 'Через 5 минут',
+        lockOnIdleMin15: 'Через 15 минут',
+        lockOnIdleMin30: 'Через 30 минут',
         showNames: 'Показывать названия',
         showNamesHint: 'Подписи под иконками',
         density: 'Плотность интерфейса',
@@ -135,6 +184,13 @@ module.exports = {
         downloadDirEmpty: 'Не задана — спрашивать каждый раз',
         downloadAsk: 'Спрашивать при каждой загрузке',
         downloadAskHint: 'Если выключено — сохраняет сразу в папку',
+        dataPortability: 'Экспорт и импорт настроек',
+        exportSettings: 'Экспортировать настройки',
+        exportSettingsHint: 'Сохранить настройки, папки и список мессенджеров в файл',
+        exportSettingsBtn: 'Экспортировать',
+        importSettings: 'Импортировать настройки',
+        importSettingsHint: 'Загрузить настройки из файла (пароли и VPN-конфиги не переносятся)',
+        importSettingsBtn: 'Импортировать',
         folders: 'Папки',
         foldersEnable: 'Включить папки',
         foldersEnableHint: 'Выкл — все мессенджеры показываются без папок',
@@ -190,6 +246,12 @@ module.exports = {
         vpnPreparing:     'Подготовка...',
         vpnError:         'Ошибка',
         vpnDownloadError: 'Ошибка загрузки',
+        vpnErrTimeout:       'Не удалось подключиться к серверу за отведённое время. Проверьте интернет-соединение или попробуйте другой сервер',
+        vpnErrCrashed:       'Не удалось запустить VPN-подключение. Попробуйте ещё раз или выберите другой сервер',
+        vpnErrNotInstalled:  'Компоненты VPN ещё не готовы. Подождите, пока они загрузятся, и попробуйте снова',
+        vpnErrInvalidLink:   'Ссылка повреждена или не поддерживается. Проверьте её и попробуйте снова',
+        vpnErrSubHttpOnly:   'Ссылка на подписку должна начинаться с https://',
+        vpnErrSubEmpty:      'В этой подписке не найдено ни одного сервера',
         vpnDeleteBtn:     'Удалить',
         vpnNoConfigs:     'Нет сохранённых конфигов',
         vpnSelectHint:    'Выберите конфиг для подключения',
@@ -201,7 +263,11 @@ module.exports = {
         vpnAppsHint:      'Выберите, какие мессенджеры работают через VPN',
         vpnAppsEmpty:     'Нет активных мессенджеров',
         vpnCtx:           'Использовать VPN',
-        vpnCtxDisable:    'Не использовать VPN'
+        vpnCtxDisable:    'Не использовать VPN',
+        vpnSubscription:  'Подписка',
+        vpnRefresh:       'Обновить',
+        vpnRefreshing:    'Обновление списка...',
+        vpnRefreshed:     'Список обновлён ({n})'
     },
 
     status: {
@@ -212,7 +278,9 @@ module.exports = {
         noUnread: 'Нет уведомлений',
         unread: ' {n} непрочитанных',
         online: 'Онлайн',
-        offline: 'Не активно'
+        offline: 'Не активно',
+        noInternet: 'Не в сети',
+        offlineBannerText: 'Нет подключения к интернету — некоторые мессенджеры могут не обновляться'
     },
 
     search: {
@@ -221,13 +289,37 @@ module.exports = {
         empty: 'Ничего не найдено',
         findPlaceholder: 'Поиск на странице...',
         findInPage: 'Поиск на странице',
-        notFound: 'Не найдено'
+        notFound: 'Не найдено',
+        findAllTitle: 'Искать по всем открытым вкладкам',
+        findAllSearching: 'Поиск по всем вкладкам...',
+        findAllEmpty: 'Совпадений в других вкладках нет',
+        commandsTitle:   'Команды',
+        commandReload:   'Перезагрузить все вкладки',
+        commandSettings: 'Открыть настройки',
+        commandMute:     'Выключить звук везде',
+        commandUnmute:   'Включить звук везде'
+    },
+
+    mediaPlayer: {
+        pause: 'Пауза',
+        previous: 'Предыдущий трек',
+        next: 'Следующий трек',
+        switch: 'Другие источники'
     },
 
     welcome: {
-        title: 'Добро пожаловать',
-        sub: 'Все мессенджеры в одном окне',
+        title: 'Добро пожаловать в',
+        sub: 'Все ваши мессенджеры в одном месте. Быстро, удобно, красиво.',
         addBtn: 'Добавить мессенджер',
+        loginBtn: 'Войти в аккаунт',
+        f1title: 'Все мессенджеры',
+        f1desc: 'Telegram, WhatsApp, VK и другие — в одном окне',
+        f2title: 'Папки и порядок',
+        f2desc: 'Группируй мессенджеры по категориям',
+        f3title: 'Темы оформления',
+        f3desc: 'Dark, Glass, Midnight — выбери свой стиль',
+        f4title: 'Защита PIN-кодом',
+        f4desc: 'Личные данные под надёжной защитой',
         hints: {
             rcm: 'ПКМ на иконке — меню управления',
             quickSearch: 'Ctrl+P — быстрый поиск',
@@ -237,6 +329,7 @@ module.exports = {
     },
 
     shortcuts: {
+        btnTitle: 'Горячие клавиши',
         navigationTitle: 'Навигация',
         next: 'Следующий мессенджер',
         prev: 'Предыдущий мессенджер',
@@ -244,9 +337,36 @@ module.exports = {
         searchTitle: 'Поиск',
         quickSearch: 'Быстрый поиск мессенджера',
         findInPage: 'Поиск по странице',
+        escClose: 'Закрыть поиск',
         windowTitle: 'Окно',
         hideShow: 'Скрыть / показать окно',
-        reload: 'Перезагрузить мессенджер'
+        reload: 'Перезагрузить мессенджер',
+        zoomTitle: 'Масштаб',
+        appZoomIn: 'Увеличить масштаб (приложение)',
+        appZoomOut: 'Уменьшить масштаб (приложение)',
+        appZoomReset: 'Сбросить масштаб приложения',
+        contentZoomIn: 'Увеличить масштаб (чат)',
+        contentZoomOut: 'Уменьшить масштаб (чат)'
+    },
+
+    onboarding: {
+        step1Title: 'Добавить мессенджер',
+        step1Desc: 'Нажмите здесь, чтобы добавить новый мессенджер в приложение',
+        step2Title: 'Горячие клавиши',
+        step2Desc: 'Открыть полный список горячих клавиш в любой момент',
+        step3Title: 'Настройки',
+        step3Desc: 'Здесь настраивается внешний вид, безопасность и другие параметры',
+        step4Title: 'VPN',
+        step4Desc: 'Включите VPN, если мессенджер заблокирован в вашем регионе',
+        step5Title: 'Версия',
+        step5Desc: 'Здесь можно посмотреть версию приложения и историю изменений',
+        skip: 'Пропустить',
+        next: 'Далее',
+        done: 'Готово',
+        settingsTitle: 'Ознакомительный тур',
+        replayLabel: 'Показать тур снова',
+        replayHint: 'Повторно запустить ознакомительный тур по ключевым кнопкам тулбара',
+        replayBtn: 'Показать тур'
     },
 
     errors: {
@@ -266,9 +386,26 @@ module.exports = {
         statusOnline: 'В сети',
         statusBusy: 'Занят',
         appNotif: 'Уведомления',
-        appNotifTitle: 'Уведомления',
+        appNotifTitle: 'Центр уведомлений',
         markAllRead: 'Прочитать все',
-        noNotifs: 'Нет новых уведомлений'
+        noNotifs: 'Новых уведомлений нет',
+        dismiss:       'Скрыть навсегда',
+        justNow:       'только что',
+        minAgo:        '{n} мин назад',
+        hAgo:          '{n} ч назад'
+    },
+
+    downloads: {
+        title: 'Загрузки',
+        empty: 'Загрузок пока нет',
+        clearAll: 'Очистить всё',
+        openFile: 'Открыть файл',
+        showInFolder: 'Показать в папке',
+        removeFromList: 'Удалить из списка',
+        inProgress: 'Загрузка…',
+        completed: 'Завершено',
+        cancelled: 'Отменено',
+        failed: 'Ошибка'
     },
 
     system: {
@@ -309,13 +446,23 @@ module.exports = {
     },
 
     updater: {
+        title:          'Обновление',
+        close:          'Закрыть',
+        newAvailable:   '🔔 Новая версия доступна',
+        newDesc:        'Доступна новая версия {v}. Обновление скачивается автоматически.',
         checking: 'Проверка обновлений',
         available: 'Доступно обновление',
         notAvailable: 'Обновлений нет',
         downloading: 'Загрузка обновления',
+        downloadingTitle: '⬇ Скачивание обновления',
+        downloadingProgress: 'Скачивание: {n}%',
         downloaded: 'Обновление загружено',
+        downloadedTitle: '✓ Обновление готово',
+        downloadedDesc: 'Версия {v} скачана и готова к установке.',
         installRestart: 'Установить и перезапустить',
-        error: 'Ошибка обновления'
+        error: 'Ошибка обновления',
+        errorTitle:     '⚠ Ошибка обновления',
+        errorDesc:      'Не удалось скачать обновление.'
     },
 
     protocol: {
@@ -325,7 +472,7 @@ module.exports = {
     window: {
         minimize: 'Свернуть',
         maximize: 'Развернуть',
-        close: 'Закрыть'
+        close:    'Закрыть'
     },
 
     lock: {
@@ -350,11 +497,32 @@ module.exports = {
         resetTitle: 'Сброс приложения',
         resetDesc: 'Все данные будут удалены: мессенджеры, папки, настройки и PIN. Это действие необратимо.',
         resetConfirmBtn: 'Удалить всё и сбросить',
-        resetCancelBtn: 'Отмена — вернуться к вводу PIN'
+        resetCancelBtn: 'Отмена — вернуться к вводу PIN',
+        widgetActivity: 'Недавняя активность',
+        justNow: 'только что',
+        minShort: 'мин',
+        hourShort: 'ч',
+        bgPickerBtnTitle: 'Фон экрана блокировки',
+        bgPickerTitle: 'Фон экрана блокировки',
+        bgPickerUpload: 'Загрузить свою',
+        bgPickerReset: 'Без фона',
+        weather: {
+            clear: 'Ясно',
+            partlyCloudy: 'Малооблачно',
+            cloudy: 'Облачно',
+            fog: 'Туман',
+            drizzle: 'Морось',
+            rain: 'Дождь',
+            snow: 'Снег',
+            thunder: 'Гроза',
+            unknown: 'Погода'
+        }
     },
 
     autoLaunch: {
-        unavailable: 'Автозапуск недоступен'
+        unavailable: 'Автозапуск недоступен',
+        error: 'Не удалось изменить настройку автозапуска',
+        disabledByOS: 'Windows отключила автозапуск для Centrio. Откройте Диспетчер задач → вкладка «Автозагрузка» и включите Centrio вручную'
     },
 
     cloud: {
@@ -362,6 +530,7 @@ module.exports = {
         login: 'Войти',
         register: 'Создать аккаунт',
         logout: 'Выйти из аккаунта',
+        support: 'Поддержка',
         sync: 'Синхронизировать',
         syncing: 'Синхронизация...',
         saveName: '✓',
@@ -381,11 +550,16 @@ module.exports = {
         loginYandex: 'Войти через Яндекс',
         syncJustNow:    '< 1 мин назад',
         syncMinAgo:     '{n} мин назад',
-        // Статистика (локальная)
         statMessengers: 'Мессенджеров',
         statFolders:    'Папок',
         statLastSync:   'Синхронизировано',
-        // Тарифы
+        usageSection:   'Активность',
+        usageToday:     'Сегодня',
+        usageWeek:      'За неделю',
+        usageStreak:    'Дней подряд',
+        usageMessages:  'Сообщений',
+        chartSection:   'За 7 дней',
+        servicesSection:'По мессенджерам',
         plansSection:        'Тарифы',
         planFree:            'Базовый',
         planFreePrice:       '0 ₽',
@@ -405,7 +579,163 @@ module.exports = {
         planProF2:           'До 5 устройств',
         planProF3:           'Статистика и аналитика',
         planProF4:           'Приоритетная поддержка',
-        planYearF1:          'Ранний доступ к функциям'
+        planYearF1:          'Ранний доступ к функциям',
+        subActiveUntil:      'Активна до',
+        extend:              'Продлить',
+        subNoExpiry:         'Бессрочно',
+        promoSection:        'Промокод',
+        promoPh:             'Введите промокод',
+        promoApply:          'Активировать',
+        promoSuccess:        'Промокод активирован — Pro доступен',
+        promoError:          'Не удалось активировать промокод'
+    },
+
+    onb: {
+        headline1: 'Все мессенджеры.',
+        headline2: 'Одно окно.',
+        f1t: 'Все сервисы рядом',
+        f1d: 'Telegram, WhatsApp, Discord, VK и 100+ других — без вкладок браузера.',
+        f2t: 'Ничего не пропустишь',
+        f2d: 'Нативные уведомления от каждого сервиса отдельно.',
+        f3t: 'Настройки везде с тобой',
+        f3d: 'Аккаунт синхронизирует сервисы и настройки между устройствами.',
+        cardTitle: 'Начать бесплатно',
+        cardSub: 'Аккаунт хранит сервисы и настройки на всех устройствах.',
+        skip: 'Пропустить и пользоваться без аккаунта — без облачной синхронизации →',
+        continue: 'Продолжить',
+        svcTitle: 'Подключи свои сервисы',
+        svcSub: 'Выбери сервисы для единого окна. Можно добавить ещё позже.',
+        svcShowAll: 'Показать все сервисы →',
+        svcSkip: 'Пропустить',
+        trialTitle1: 'Всё разблокировано.',
+        trialTitle2: 'На 14 дней.',
+        trialSub: 'Мы включили Pro на этом аккаунте — вот что это значит.',
+        trialBadge: 'PRO · ВКЛЮЧЕНО НА 14 ДНЕЙ',
+        trialF1: 'Неограниченное количество сервисов',
+        trialF2: 'Встроенный VPN на каждый мессенджер',
+        trialF3: 'Сплит-экран и расширения',
+        trialF4: 'Карта не нужна — просто пользуйся',
+        readyTitle: 'Centrio готов к работе',
+        readySub: 'Всё настроено — можно начинать.',
+        launch: 'Запустить Centrio'
+    },
+
+    sidebar: {
+        collapse: 'Свернуть панель',
+        expand: 'Развернуть панель',
+        trialDaysLeft: 'Пробный период',
+        proDaysLeft: 'Pro-подписка',
+        daysShort: 'дн.'
+    },
+
+    rightbar: {
+        assistant: 'Centrio Ассистент',
+        assistantSoon: 'Скоро',
+        todos: 'Задачи',
+        notes: 'Заметки',
+        mediaPlayer: 'Медиаплеер'
+    },
+
+    assistant: {
+        openSettings: 'Настройки ассистента',
+        clearHistory: 'Очистить историю',
+        clearHistoryConfirm: 'Удалить всю историю переписки с ассистентом?',
+        inputPlaceholder: 'Спросите ассистента…',
+        send: 'Отправить',
+        emptyState: 'Спросите что угодно о ваших мессенджерах и задачах',
+        greetingMorning: 'Доброе утро',
+        greetingDay: 'Добрый день',
+        greetingEvening: 'Добрый вечер',
+        greetingNight: 'Доброй ночи',
+        systemPrompt: 'Ты — AI-ассистент, встроенный в приложение Centrio (агрегатор мессенджеров). Помогай пользователю: переключайся между вкладками мессенджеров, управляй задачами (добавляй, отмечай выполненными), открывай разделы настроек, показывай сводку непрочитанных сообщений. Ты НЕ можешь читать переписки внутри мессенджеров, но можешь читать уведомления из колокольчика приложения (get_recent_notifications) — используй это, когда пользователь просит прочитать или проверить уведомления. Ты также можешь управлять встроенным VPN: проверять статус (get_vpn_status), подключаться к самому быстрому серверу (connect_fastest_vpn) и отключаться (disconnect_vpn). Ты умеешь читать (get_app_settings) и напрямую изменять (set_app_setting) настройки приложения: тему, язык, плотность интерфейса, цвет акцента, поведение при закрытии, уведомления, звук, значок в трее, папки и другие переключатели — делай это сразу, а не только открывай раздел настроек. Ты умеешь управлять мини-плеером медиа: get_media_player_status покажет, где сейчас играет аудио/видео (Яндекс Музыка, Instagram и т.п.), а media_player_command поставит на паузу/возобновит/переключит трек. Ты умеешь работать с плагином "Заметки" (Pro/Team, включается в Настройки → Расширения): list_notes читает заметки и списки покупок пользователя, create_note создаёт новую заметку или список покупок, add_checklist_item добавляет пункт в список, toggle_note_pin закрепляет/открепляет, delete_note удаляет. Если инструмент вернул notes_disabled — значит плагин выключен, вежливо предложи включить его в настройках. Используй инструменты, когда это решает задачу пользователя. Отвечай кратко, по делу, на языке собеседника.',
+        toolListMessengers: 'Смотрю список мессенджеров…',
+        toolSwitch: 'Переключаю вкладку…',
+        toolListTodos: 'Смотрю задачи…',
+        toolAddTodo: 'Добавляю задачу…',
+        toolToggleTodo: 'Отмечаю задачу…',
+        toolOpenSettings: 'Открываю настройки…',
+        toolUnread: 'Считаю непрочитанные…',
+        toolNotifications: 'Читаю уведомления…',
+        toolVpnStatus: 'Проверяю статус VPN…',
+        toolVpnConnect: 'Подключаю самый быстрый VPN…',
+        toolVpnDisconnect: 'Отключаю VPN…',
+        toolGetSettings: 'Смотрю настройки…',
+        toolSetSetting: 'Меняю настройку…',
+        toolMediaStatus: 'Смотрю, что играет…',
+        toolMediaCommand: 'Управляю плеером…',
+        toolListNotes: 'Читаю заметки…',
+        toolCreateNote: 'Создаю заметку…',
+        toolAddChecklistItem: 'Добавляю пункт в список…',
+        toolToggleNotePin: 'Закрепляю заметку…',
+        toolDeleteNote: 'Удаляю заметку…',
+        thinking: 'Centrio думает…',
+        example1: 'Переключи меня на Telegram',
+        example2: 'Сколько у меня непрочитанных сообщений?',
+        example3: 'Прочитай последние уведомления',
+        example4: 'Включи самый быстрый VPN',
+        example5: 'Поставь тёмную тему и увеличь шрифт',
+        example6: 'Добавь заметку "Позвонить клиенту"',
+        errMissingKey: 'Не указан API-ключ. Добавьте его в Настройки → AI-ассистент.',
+        errNoOllamaModel: 'Не выбрана локальная модель. Укажите её в Настройки → AI-ассистент.',
+        errNotAuthenticated: 'Нужен вход в аккаунт Centrio для режима «Наша нейросеть».',
+        errUnknown: 'Неизвестный провайдер модели.',
+        errTooManyRounds: 'Слишком много шагов подряд — прервано для безопасности.',
+        errCancelled: 'Запрос отменён.',
+        errGeneric: 'Что-то пошло не так. Попробуйте ещё раз.',
+        errProRequired: 'Режим «Наша нейросеть» доступен только на плане Pro.',
+        errQuotaExceeded: 'Лимит сообщений на этот месяц исчерпан. Он обновится в начале следующего месяца.',
+        settings: {
+            modeTitle: 'Режим работы',
+            modeHint: 'Выберите, какая модель отвечает на ваши запросы',
+            modeByok: 'Свой ключ',
+            modeByokDesc: 'Подключите OpenAI, Anthropic, Gemini или DeepSeek своим API-ключом',
+            modeLocal: 'Локально',
+            modeLocalDesc: 'Модель работает на вашем компьютере через Ollama — бесплатно и приватно',
+            modePro: 'Наша нейросеть',
+            modeProDesc: 'Готовая модель Centrio без настройки — доступно на плане Pro',
+            byokTitle: 'API-ключи',
+            byokHint: 'Ключ хранится только на этом устройстве в зашифрованном виде и никогда не передаётся нам',
+            byokProvider: 'Провайдер по умолчанию',
+            byokModel: 'Модель',
+            byokConfigured: 'Ключ подключён',
+            byokNotConfigured: 'Ключ не задан',
+            byokKeyPlaceholder: 'Вставьте API-ключ',
+            byokSave: 'Сохранить',
+            byokClear: 'Удалить',
+            localTitle: 'Локальная модель (Ollama)',
+            localHint: 'Установите Ollama на своём компьютере и укажите адрес сервера',
+            localUrl: 'Адрес сервера',
+            localModel: 'Модель',
+            localModelEmpty: 'Модель не выбрана',
+            localTest: 'Проверить подключение',
+            localTesting: 'Проверяем подключение…',
+            localTestOk: 'Подключено — найдено моделей: {count}',
+            localTestFail: 'Не удалось подключиться. Проверьте, что Ollama запущена',
+            proTitle: 'Наша нейросеть',
+            proHint: 'Готовая модель Centrio без ключей и установки — входит в план Pro',
+            proActive: 'Pro активен — можно пользоваться',
+            proInactive: 'Нужен план Pro',
+            proUpgrade: 'Перейти на Pro',
+            quotaUsed: 'Использовано {used} из {limit} сообщений в этом месяце',
+            quotaLoading: 'Загружаем данные о лимите…',
+            quotaError: 'Не удалось загрузить данные о лимите'
+        }
+    },
+
+    todos: {
+        title: 'Задачи',
+        all: 'Все',
+        starred: 'Важное',
+        addPlaceholder: 'Добавить задачу…',
+        listNamePlaceholder: 'Название списка…',
+        addList: 'Новый список',
+        empty: 'Нет задач',
+        star: 'Закрепить',
+        delete: 'Удалить',
+        deleteList: 'Удалить список',
+        deleteListConfirmTitle: 'Удалить список?',
+        deleteListConfirmText: 'Список "{name}" и все задачи в нём будут удалены безвозвратно.',
+        cancel: 'Отмена'
     },
 
     pro: {
@@ -422,7 +752,80 @@ module.exports = {
         customMessengerTitle: 'Свой мессенджер — только в Pro',
         customMessengerDesc: 'Добавление любого сайта как мессенджера доступно на плане Pro. Обновитесь для неограниченных возможностей.',
         upgradeBtn: 'Перейти на Pro',
-        laterBtn: 'Позже'
+        laterBtn: 'Позже',
+        extensionsTitle: 'Расширения — только Pro',
+        extensionsDesc: 'Встроенные инструменты доступны на плане Pro.',
+        notesTitle: 'Заметки — только в Pro',
+        notesDesc: 'Заметки и списки покупок с синхронизацией между устройствами доступны на плане Pro или Team.',
+        assistantProTitle: 'AI-ассистент — только в Pro',
+        assistantProDesc: 'Готовая нейросеть Centrio без своих ключей и установки доступна на плане Pro.',
+        featuresLabel: 'Pro открывает:',
+        benefit1: 'Неограниченное количество мессенджеров — вместо 3 на бесплатном',
+        benefit2: 'Встроенный VPN на каждый сервис',
+        benefit3: 'Облачная синхронизация между устройствами',
+        benefit4: 'Папки и группировка сервисов',
+        benefit5: 'Все темы и цвета акцента',
+        benefit6: 'Расширения: AdBlock, переводчик и другие',
+        benefit7: 'Индивидуальные звуки уведомлений',
+        benefit8: 'Приоритетная поддержка',
+        benefit9: 'До 5 устройств одновременно',
+        benefit10: 'Сплит-экран — несколько мессенджеров одновременно'
+    },
+
+    extensions: {
+        adblock:    { title: 'AdBlock',      desc: 'Блокирует рекламу и трекеры во всех сервисах' },
+        translate:  { title: 'Переводчик',   desc: 'Выделите текст и нажмите правую кнопку мыши' },
+        grammarly:  { title: 'Grammarly',    desc: 'Проверка грамматики и стиля текста' },
+        screenshot: { title: 'Скриншот',     desc: 'Правый клик — снимок текущей страницы' },
+        darkmode:   { title: 'Тёмная тема',  desc: 'Правый клик — тёмная тема для любого сервиса' },
+        split:      { title: 'Сплит-экран',  desc: 'Открывайте два сервиса рядом в одном окне' },
+        notes:      { title: 'Заметки',       desc: 'Заметки и списки покупок, синхронизируются между устройствами' },
+        translateExt: { title: 'Google Переводчик', desc: 'Официальное расширение Google для перевода страниц и текста' },
+        languageToolExt: { title: 'LanguageTool', desc: 'Проверка грамматики и орфографии прямо в мессенджерах' },
+        install: 'Установить',
+        installing: 'Устанавливается…',
+        installFailed: 'Не удалось установить',
+        uninstallBtn: 'Удалить расширение',
+        realBadge: 'Из Chrome Web Store'
+    },
+
+    notes: {
+        panelTitle: 'Заметки',
+        newNote: 'Заметка',
+        newChecklist: 'Список покупок',
+        emptyTitle: 'Заметок пока нет',
+        emptyHint: 'Нажмите «+», чтобы создать первую заметку или список покупок',
+        titlePlaceholder: 'Заголовок',
+        bodyPlaceholder: 'Текст заметки…',
+        addItemPlaceholder: 'Добавить пункт…',
+        pin: 'Закрепить',
+        unpin: 'Открепить',
+        delete: 'Удалить',
+        deleteConfirmTitle: 'Удалить заметку?',
+        deleteConfirmText: 'Действие нельзя отменить.',
+        cancelBtn: 'Отмена',
+        deleteBtn: 'Удалить',
+        backBtn: 'Назад',
+        syncError: 'Не удалось синхронизировать заметки',
+        proRequiredTitle: 'Заметки — функция Pro',
+        proRequiredText: 'Оформите Pro или Team, чтобы вести заметки и списки покупок с синхронизацией между устройствами.',
+        savedIndicator: 'Сохранено',
+        savingIndicator: 'Сохранение…',
+        searchPlaceholder: 'Поиск по заметкам…',
+        searchEmpty: 'Ничего не найдено',
+        duplicate: 'Дублировать',
+        colorDefault: 'Без цвета',
+        colorYellow: 'Жёлтый',
+        colorGreen: 'Зелёный',
+        colorBlue: 'Синий',
+        colorPink: 'Розовый',
+        colorPurple: 'Фиолетовый',
+        editedLabel: 'Изменено',
+        charsShort: 'симв.',
+        copySuffix: 'копия',
+        viewArchive: 'Архив',
+        archive: 'В архив',
+        archiveEmpty: 'В архиве пока пусто'
     },
 
     webview: {
@@ -430,15 +833,32 @@ module.exports = {
         removeTitle: 'Удаление мессенджера',
         removeBtn: 'Удалить',
         cancelBtn: 'Отмена',
-        removeTabLabel: 'Удалить {name}'
+        removeTabLabel: 'Удалить {name}',
+        oauthOverlayTitle: 'Вход в «{name}» открыт в отдельном окне',
+        oauthOverlayHint: 'Введите данные там — эта вкладка обновится сама, как только вход завершится.'
     },
 
-    extensions: {
-        uninstallTitle:  'Удалить расширение?',
-        uninstallMsg:    'Расширение будет удалено. Это действие необратимо.',
-        uninstallBtn:    'Удалить',
-        openPopup:       'Открыть попап',
-        openSettings:    'Настройки расширения',
-        noPages:         'Нет страниц расширения',
+    startup: {
+        subtitle: 'Единое пространство для ваших мессенджеров',
+        boot:     { label: 'Инициализация',               hint: 'Запускаем основные сервисы...' },
+        store:    { label: 'Загрузка данных',              hint: 'Читаем настройки и локальное состояние...' },
+        i18n:     { label: 'Локализация',                  hint: 'Применяем язык интерфейса...' },
+        ui:       { label: 'Подготовка UI',                hint: 'Собираем интерфейс и компоненты...' },
+        bindings: { label: 'Подключение модулей',          hint: 'Связываем обработчики и системные функции...' },
+        data:     { label: 'Загрузка рабочего пространства', hint: 'Подключаем мессенджеры, вкладки и папки...' },
+        security: { label: 'Проверка защиты',              hint: 'Проверяем параметры безопасности...' },
+        done:     { label: 'Готово',                       hint: 'Рабочее пространство готово к использованию.' },
+    },
+
+    menu: {
+        file: 'Файл', edit: 'Правка', view: 'Вид', window: 'Окно', help: 'Справка',
+        settings: 'Настройки', quit: 'Выход',
+        undo: 'Отменить', redo: 'Повторить', cut: 'Вырезать', copy: 'Копировать',
+        paste: 'Вставить', delete: 'Удалить', selectAll: 'Выделить всё',
+        appZoom: 'Масштаб приложения', zoomReset: 'Реальный размер',
+        zoomIn: 'Увеличить', zoomOut: 'Уменьшить',
+        tabZoomIn: 'Увеличить вкладку', tabZoomOut: 'Уменьшить вкладку',
+        fullscreen: 'Во весь экран', hide: 'Скрыть', close: 'Закрыть',
+        support: 'Поддержка', about: 'О приложении',
     },
 }

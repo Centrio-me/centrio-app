@@ -22,6 +22,13 @@ function createTray() {
         trayIcon = nativeImage.createEmpty()
     }
 
+    // macOS: иконка должна быть 16×16 и помечена как template —
+    // система сама адаптирует цвет под dark/light menu bar
+    if (process.platform === 'darwin' && !trayIcon.isEmpty()) {
+        trayIcon = trayIcon.resize({ width: 16, height: 16 })
+        trayIcon.setTemplateImage(true)
+    }
+
     tray = new Tray(trayIcon)
     tray.setToolTip(APP_NAME)
     updateTrayMenu(0)

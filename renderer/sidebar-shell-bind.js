@@ -11,7 +11,7 @@ function bindSidebarShellUi({
     tGet
 }) {
     function showSidebarContextMenuAt(x, y) {
-        hideAllMenus()
+        document.dispatchEvent(new CustomEvent('close-all-popups'))
 
         sidebarContextMenu.style.left = `${x}px`
         sidebarContextMenu.style.top = `${y}px`
@@ -24,6 +24,7 @@ function bindSidebarShellUi({
         if (rect.bottom > window.innerHeight) {
             sidebarContextMenu.style.top = `${y - rect.height}px`
         }
+        document.dispatchEvent(new CustomEvent('popup-opened'))
     }
 
     document.addEventListener('click', () => hideAllMenus())
@@ -33,7 +34,7 @@ function bindSidebarShellUi({
     })
 
     document.getElementById('messengerList')?.addEventListener('contextmenu', (e) => {
-        if (e.target.closest('.messenger-item') || e.target.closest('.folder-item')) return
+        if (e.target.closest('.messenger-item') || e.target.closest('.folder-item') || e.target.closest('.sidebar-divider')) return
 
         e.preventDefault()
         e.stopPropagation()
@@ -44,6 +45,7 @@ function bindSidebarShellUi({
         if (
             e.target.closest('.messenger-item') ||
             e.target.closest('.folder-item') ||
+            e.target.closest('.sidebar-divider') ||
             e.target.closest('.activity-btn')
         ) return
 

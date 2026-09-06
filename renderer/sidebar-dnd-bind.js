@@ -2,28 +2,52 @@ function createSidebarDndApi({
     state,
     store,
     messengerList,
-    moveMessengerToFolder
+    moveMessengerToFolder,
+    // BUGFIX ("сайдбар не сохраняется" / порядок откатывается после
+    // перезапуска): saveOrder() used to only write the local store. On every
+    // startup where the user is logged into cloud sync, loadData()'s
+    // cloudSyncPull() unconditionally overwrites local sidebarOrder with the
+    // server's (stale) copy — see renderer.js loadData(). Since nothing here
+    // ever pushed a fresh reorder back up, the very next restart always
+    // reverted to whatever order was last in the cloud. Optional so this file
+    // still works (cloud sync just skipped) if the caller doesn't wire it in.
+    cloudSyncPush,
+    isCloudLoggedIn
 }) {
+    // ── Идентификаторы DOM-элементов по типу сущности ──────────────────────
+    function elIdFor(type, id) {
+        if (type === 'folder') return `folder-${id}`
+        if (type === 'divider') return `divider-${id}`
+        return `sidebar-${id}`
+    }
+
     // ── Порядок ──────────────────────────────────────────────────────────
     function saveOrder() {
         const order = []
-        messengerList.querySelectorAll(':scope > [id^="sidebar-"], :scope > [id^="folder-"]').forEach(el => {
+        messengerList.querySelectorAll(':scope > [id^="sidebar-"], :scope > [id^="folder-"], :scope > [id^="divider-"]').forEach(el => {
             if (el.id.startsWith('sidebar-')) {
                 order.push({ type: 'messenger', id: el.id.replace('sidebar-', '') })
             } else if (el.id.startsWith('folder-')) {
                 order.push({ type: 'folder', id: el.id.replace('folder-', '') })
+            } else if (el.id.startsWith('divider-')) {
+                order.push({ type: 'divider', id: el.id.replace('divider-', '') })
             }
         })
         store.set('sidebarOrder', order)
+
+        // Push immediately so the cloud copy never stays stale — otherwise
+        // the next app start's cloudSyncPull() overwrites this change right
+        // back to whatever order was last synced (see BUGFIX comment above).
+        if (typeof isCloudLoggedIn === 'function' && isCloudLoggedIn() && typeof cloudSyncPush === 'function') {
+            cloudSyncPush()
+        }
     }
 
     function loadOrder() {
         const order = store.get('sidebarOrder', [])
         if (!order.length) return
         order.forEach(({ type, id }) => {
-            const el = type === 'folder'
-                ? document.getElementById(`folder-${id}`)
-                : document.getElementById(`sidebar-${id}`)
+            const el = document.getElementById(elIdFor(type, id))
             if (el && el.parentElement === messengerList) messengerList.appendChild(el)
         })
     }
@@ -35,9 +59,12 @@ function createSidebarDndApi({
     }
 
     // ── Логика drop ───────────────────────────────────────────────────────
+    // Поддерживает любые комбинации типов сущностей верхнего уровня
+    // (мессенджер / папка / разделитель), т.к. разделитель должен быть
+    // перетаскиваем между любыми элементами сайдбара.
     function handleDrop(sourceId, sourceType, targetId, targetType, insertBefore, dropIntoFolder) {
-        const sourceEl = document.getElementById(sourceType === 'folder' ? `folder-${sourceId}` : `sidebar-${sourceId}`)
-        const targetEl = document.getElementById(targetType === 'folder' ? `folder-${targetId}` : `sidebar-${targetId}`)
+        const sourceEl = document.getElementById(elIdFor(sourceType, sourceId))
+        const targetEl = document.getElementById(elIdFor(targetType, targetId))
         if (!sourceEl || !targetEl || sourceId === targetId) return
 
         // Мессенджер → папка (переместить внутрь)
@@ -49,18 +76,9 @@ function createSidebarDndApi({
             return
         }
 
-        // Мессенджер → мессенджер или папка → папка (переупорядочить)
-        if (sourceType === targetType) {
-            if (targetEl.parentElement !== messengerList) return
-            if (insertBefore) messengerList.insertBefore(sourceEl, targetEl)
-            else messengerList.insertBefore(sourceEl, targetEl.nextSibling)
-            saveOrder()
-            return
-        }
-
-        // Мессенджер (в папке) → мессенджер (корень) → извлечь из папки
-        if (sourceType === 'messenger' && targetType === 'messenger') {
-            if (targetEl.parentElement !== messengerList) return
+        // Мессенджер, лежащий внутри папки, бросили на элемент корня
+        // (мессенджер/папку/разделитель) → сначала извлекаем его из папки
+        if (sourceType === 'messenger' && targetEl.parentElement === messengerList) {
             const messenger = state.activeMessengers.find(m => m.id === sourceId)
             if (messenger && messenger.folderId) {
                 moveMessengerToFolder(sourceId, null)
@@ -73,12 +91,16 @@ function createSidebarDndApi({
                         saveOrder()
                     }
                 })
-            } else {
-                if (insertBefore) messengerList.insertBefore(sourceEl, targetEl)
-                else messengerList.insertBefore(sourceEl, targetEl.nextSibling)
-                saveOrder()
+                return
             }
         }
+
+        // Переупорядочение на корневом уровне (мессенджер/папка/разделитель
+        // в любой комбинации типов)
+        if (targetEl.parentElement !== messengerList) return
+        if (insertBefore) messengerList.insertBefore(sourceEl, targetEl)
+        else messengerList.insertBefore(sourceEl, targetEl.nextSibling)
+        saveOrder()
     }
 
     // ── Инициализация перетаскивания элемента ─────────────────────────────
@@ -163,13 +185,20 @@ function createSidebarDndApi({
         zone.addEventListener('drop', (e) => {
             e.preventDefault()
             zone.classList.remove('active')
-            if (!state.dragSrcId || state.dragSrcType !== 'messenger') return
-            const messenger = state.activeMessengers.find(m => m.id === state.dragSrcId)
-            if (messenger && messenger.folderId) {
-                moveMessengerToFolder(state.dragSrcId, null)
-            } else {
-                const sourceEl = document.getElementById(`sidebar-${state.dragSrcId}`)
-                if (sourceEl) messengerList.insertBefore(sourceEl, zone)
+            if (!state.dragSrcId) return
+
+            if (state.dragSrcType === 'messenger') {
+                const messenger = state.activeMessengers.find(m => m.id === state.dragSrcId)
+                if (messenger && messenger.folderId) {
+                    moveMessengerToFolder(state.dragSrcId, null)
+                    return
+                }
+            }
+
+            // Мессенджер/папка/разделитель уровня корня → переносим в самый конец списка
+            const sourceEl = document.getElementById(elIdFor(state.dragSrcType, state.dragSrcId))
+            if (sourceEl && sourceEl.parentElement === messengerList) {
+                messengerList.insertBefore(sourceEl, zone)
                 saveOrder()
             }
         })

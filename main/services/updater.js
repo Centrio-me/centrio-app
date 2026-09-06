@@ -2,6 +2,7 @@ const { app } = require('electron')
 const { safeSendToWindow } = require('../utils/window')
 const { IPC_CHANNELS } = require('../config/constants')
 const { t } = require('./i18n')
+const store = require('./store')
 
 let autoUpdater = null
 let log = null
@@ -65,7 +66,7 @@ function initUpdater(getMainWindow) {
         sendUpdateStatus(getMainWindow, {
             status: 'checking',
             label: t('updater.checking'),
-            message: 'Проверяем обновления...'
+            message: 'Checking for updates...'
         })
     })
 
@@ -84,7 +85,7 @@ function initUpdater(getMainWindow) {
         sendUpdateStatus(getMainWindow, {
             status: 'not-available',
             label: t('updater.notAvailable'),
-            message: 'Обновлений нет.'
+            message: 'No updates found.'
         })
     })
 
@@ -109,6 +110,24 @@ function initUpdater(getMainWindow) {
     autoUpdater.on('update-downloaded', async (info) => {
         writeLog('Event: update-downloaded', JSON.stringify(info))
 
+        // electron-updater already verifies the downloaded package's checksum
+        // against the published latest.yml before firing this event (it emits
+        // 'error' instead on a hash mismatch) — that part of "integrity check"
+        // is handled upstream. What wasn't covered at all: whether the app
+        // actually ends up running the new version after quitAndInstall
+        // relaunches it. Recording the intended target version here lets
+        // checkPendingUpdateOutcome() (called on next startup, see initApp.js)
+        // detect a relaunch that silently stayed on the old version — e.g. the
+        // installer failing partway, or the new binary crashing on launch
+        // before Electron's app.getVersion() would even be observable.
+        try {
+            store.set('pendingUpdate', {
+                fromVersion: app.getVersion(),
+                toVersion: info.version,
+                at: Date.now()
+            })
+        } catch {}
+
         sendUpdateStatus(getMainWindow, {
             status: 'downloaded',
             version: info.version,
@@ -124,7 +143,7 @@ function initUpdater(getMainWindow) {
             status: 'error',
             error: err?.message || String(err),
             label: t('updater.error'),
-            message: 'Не удалось проверить или скачать обновление.'
+            message: 'Failed to check or download update.'
         })
     })
 }
@@ -171,8 +190,50 @@ function installUpdate() {
     autoUpdater.quitAndInstall()
 }
 
+// Called once at startup (see initApp.js). Detects an auto-update that was
+// attempted (quitAndInstall was called after a verified download) but that
+// the app apparently didn't end up running after relaunch — the strongest
+// available signal, from inside this process, that an update silently
+// failed to apply. This is detection only, not a true rollback: Electron
+// gives no supported way to revert an in-place NSIS/Squirrel install from
+// JS post-relaunch, and attempting one blind (e.g. hunting for a previous
+// installer executable) would risk making a bad situation worse. Surfacing
+// it to crash.log + the server crash-report endpoint at least makes a
+// silently-stuck-on-old-version fleet visible instead of invisible.
+function checkPendingUpdateOutcome({ appendCrashLog, reportCrashToServer } = {}) {
+    try {
+        const pending = store.get('pendingUpdate', null)
+        if (!pending) return
+
+        const currentVersion = app.getVersion()
+
+        // Give the install+relaunch cycle a grace window — comparing
+        // immediately at startup would also fire this for a normal, still
+        // in-flight update that just hasn't reached quitAndInstall yet.
+        const GRACE_MS = 2 * 60 * 1000
+        if (Date.now() - pending.at < GRACE_MS) return
+
+        if (currentVersion === pending.toVersion) {
+            writeLog('update applied successfully:', pending.fromVersion, '->', currentVersion)
+        } else {
+            writeError(
+                'update did not apply as expected — still on', currentVersion,
+                'expected', pending.toVersion, '(from', pending.fromVersion + ')'
+            )
+            const detail = { fromVersion: pending.fromVersion, toVersion: pending.toVersion, actualVersion: currentVersion }
+            appendCrashLog && appendCrashLog('update-failed-to-apply', detail)
+            reportCrashToServer && reportCrashToServer('update-failed-to-apply', detail)
+        }
+
+        store.delete('pendingUpdate')
+    } catch (err) {
+        writeError('checkPendingUpdateOutcome failed:', err?.message || err)
+    }
+}
+
 module.exports = {
     initUpdater,
     checkForUpdates,
-    installUpdate
+    installUpdate,
+    checkPendingUpdateOutcome
 }

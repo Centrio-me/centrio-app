@@ -173,9 +173,33 @@ function createFoldersUiApi({
         } else {
             document.querySelectorAll('.folder-item').forEach(f => { f.style.display = 'none' })
             closeFolderPanel()
+            // BUGFIX ("не сохраняет порядок сайдбара" / divider jumps to top):
+            // this used to unconditionally remove+re-append EVERY messenger's
+            // sidebar element, in raw state.activeMessengers array order (the
+            // original messengers[] insertion order from config.json, NOT the
+            // user's saved sidebarOrder). Since this runs via a 100ms
+            // setTimeout scheduled in renderer.js loadData() *before*
+            // loadOrder() but resolving *after* it, it silently clobbered the
+            // correct DOM order loadOrder() had just built, on every single
+            // startup where foldersEnabled === false. Divider elements were
+            // never touched by this loop, so after every messenger got
+            // stripped and pushed to the end, the divider (left in its
+            // original loadOrder()-assigned position) ended up as the very
+            // first child of messengerList — exactly the "огромный отступ,
+            // там разделитель" symptom.
+            // Fix: only extract messengers that are ACTUALLY still nested
+            // inside a .folder-item container (i.e. genuinely need pulling
+            // out to root level). Messengers already at root level got their
+            // position from loadOrder() (or drag-and-drop) and must be left
+            // untouched.
+            let extractedCount = 0
             state.activeMessengers.forEach(m => {
-                document.getElementById(`sidebar-${m.id}`)?.remove()
-                messengerList.appendChild(renderMessengerItem(m))
+                const el = document.getElementById(`sidebar-${m.id}`)
+                if (el && el.closest('.folder-item')) {
+                    el.remove()
+                    messengerList.appendChild(renderMessengerItem(m))
+                    extractedCount++
+                }
             })
         }
         store.set('foldersEnabled', enabled)

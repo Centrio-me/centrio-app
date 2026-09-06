@@ -79,7 +79,7 @@ function bindCloudUi({
     })
 
     document.getElementById('oauthYandexBtn').addEventListener('click', () => {
-        handleSystemOAuth(() => cloudApi.oauthYandex(), 'Яндекс')
+        handleSystemOAuth(() => cloudApi.oauthYandex(), 'Yandex')
     })
 
     document.getElementById('cloudLoginBtn').addEventListener('click', async () => {
@@ -194,6 +194,39 @@ function bindCloudUi({
         if (e.key === 'Escape') document.getElementById('cloudCancelNameBtn').click()
     })
 
+    function showPromoMsg(text, ok) {
+        const msgEl = document.getElementById('cloudPromoMsg')
+        if (!msgEl) return
+        msgEl.textContent = text
+        msgEl.className = 'cp-promo-msg ' + (ok ? 'is-ok' : 'is-err')
+        msgEl.style.display = 'block'
+    }
+
+    async function submitPromoCode() {
+        const input = document.getElementById('cloudPromoInput')
+        const btn   = document.getElementById('cloudPromoBtn')
+        const code  = input.value.trim()
+        if (!code) return
+
+        btn.disabled = true
+        const result = await cloudApi.redeemPromo(code)
+        btn.disabled = false
+
+        if (!result.success) {
+            showPromoMsg(result.error || tGet('cloud.promoError'), false)
+            return
+        }
+
+        input.value = ''
+        showPromoMsg(tGet('cloud.promoSuccess'), true)
+        openCloudProfile()
+    }
+
+    document.getElementById('cloudPromoBtn').addEventListener('click', submitPromoCode)
+    document.getElementById('cloudPromoInput').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') submitPromoCode()
+    })
+
     document.getElementById('cloudSyncNowBtn').addEventListener('click', async () => {
         const btn = document.getElementById('cloudSyncNowBtn')
         const spanEl = btn.querySelector('span')
@@ -227,7 +260,15 @@ function bindCloudUi({
         _doOpenUrl(DASHBOARD_URL)
     })
 
+    document.getElementById('cloudSupportBtn')?.addEventListener('click', () => {
+        _doOpenUrl(`${DASHBOARD_URL}?tab=support`)
+    })
+
     document.getElementById('planBuyProYearBtn')?.addEventListener('click', () => {
+        _doOpenUrl(DASHBOARD_URL)
+    })
+
+    document.getElementById('proExtendBtn')?.addEventListener('click', () => {
         _doOpenUrl(DASHBOARD_URL)
     })
 

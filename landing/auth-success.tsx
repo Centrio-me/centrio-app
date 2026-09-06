@@ -23,8 +23,8 @@ function SuccessContent() {
 
     const fetchUser = async () => {
       try {
-        // Store token so api interceptor can use it
-        localStorage.setItem('accessToken', accessToken)
+        // Token is passed explicitly in the header below — no need to
+        // pre-write it to localStorage before the store is populated.
         const { data } = await api.get('/api/auth/me', {
           headers: { Authorization: `Bearer ${accessToken}` }
         })

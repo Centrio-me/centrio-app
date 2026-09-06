@@ -9,9 +9,23 @@ try {
     sound = null
 }
 
+// BUGFIX ("свои звуки уведомлений не воспроизводятся, вообще без ошибки"):
+// every early-exit below used to be a bare `return` — playSound() looked
+// like it succeeded from the caller's perspective (main/ipc/sound.js awaits
+// it inside a try/catch that only logs actual thrown errors), so a bad path
+// coming from the renderer (e.g. the old file.path-is-undefined bug in
+// renderer/sounds.js) failed completely silently with zero trace anywhere.
+// Log a warning for every no-op path so future breakage is diagnosable from
+// the main-process console instead of just "sound doesn't play, no idea why".
 async function playSound(soundPath) {
-    if (!sound) return
-    if (!soundPath) return
+    if (!sound) {
+        console.warn('[sound] play-sound requested but the sound-play module is unavailable')
+        return
+    }
+    if (!soundPath) {
+        console.warn('[sound] play-sound requested with an empty path')
+        return
+    }
 
     let absolutePath
     if (path.isAbsolute(soundPath)) {
@@ -32,7 +46,10 @@ async function playSound(soundPath) {
         }
     }
 
-    if (!fs.existsSync(absolutePath)) return
+    if (!fs.existsSync(absolutePath)) {
+        console.warn(`[sound] play-sound: resolved path does not exist, skipping: ${absolutePath}`)
+        return
+    }
 
     await sound.play(absolutePath)
 }

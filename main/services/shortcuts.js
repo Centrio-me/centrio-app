@@ -1,34 +1,11 @@
 const { globalShortcut } = require('electron')
-const { IPC_CHANNELS } = require('../config/constants')
-const { safeSendToWindow, focusWindow, withWindow } = require('../utils/window')
+const { focusWindow, withWindow } = require('../utils/window')
 
 function registerShortcuts({ getMainWindow, showMainWindow }) {
-    for (let i = 1; i <= 9; i++) {
-        globalShortcut.register(`CmdOrCtrl+${i}`, () => {
-            showMainWindow()
-            safeSendToWindow(getMainWindow, IPC_CHANNELS.SWITCH_MESSENGER_INDEX, i - 1)
-        })
-    }
-
-    globalShortcut.register('CmdOrCtrl+R', () => {
-        safeSendToWindow(getMainWindow, IPC_CHANNELS.RELOAD_ACTIVE)
-    })
-
-    globalShortcut.register('CmdOrCtrl+Tab', () => {
-        showMainWindow()
-        safeSendToWindow(getMainWindow, IPC_CHANNELS.SWITCH_MESSENGER_NEXT)
-    })
-
-    globalShortcut.register('CmdOrCtrl+Shift+Tab', () => {
-        showMainWindow()
-        safeSendToWindow(getMainWindow, IPC_CHANNELS.SWITCH_MESSENGER_PREV)
-    })
-
-    globalShortcut.register('CmdOrCtrl+,', () => {
-        showMainWindow()
-        safeSendToWindow(getMainWindow, IPC_CHANNELS.OPEN_SETTINGS)
-    })
-
+    // Ctrl+M — toggle window visibility (only global shortcut needed)
+    // Navigation shortcuts (Ctrl+Tab, Ctrl+1-9, etc.) are handled inside
+    // the renderer via document keydown + webview preload forwarding to
+    // avoid double-firing when both globalShortcut and webview preload fire.
     globalShortcut.register('CmdOrCtrl+M', () => {
         const focused = withWindow(getMainWindow, (win) => {
             if (win.isVisible() && win.isFocused()) {
@@ -41,6 +18,14 @@ function registerShortcuts({ getMainWindow, showMainWindow }) {
         if (!focused) {
             focusWindow(getMainWindow) || showMainWindow()
         }
+    })
+
+    // F12 — toggle DevTools for the main window itself (renderer.js/split.js/
+    // unread.js etc). Complements webview.openDevTools() (see ctxDevTools in
+    // context-actions-bind.js, opens DevTools scoped to one messenger's own
+    // page) — this one is for host-side code that isn't inside any webview.
+    globalShortcut.register('F12', () => {
+        withWindow(getMainWindow, (win) => win.webContents.toggleDevTools())
     })
 }
 

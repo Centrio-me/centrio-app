@@ -6,30 +6,35 @@ function bindAddModalUi({
     closeModal,
     openModal,
     fillMessengerGrid,
+    updateScrollProgress,
     addMessenger,
     requirePro,
-    tGet
+    tGet,
+    freeMessengerLimit
 }) {
-    document.getElementById('addMessengerBtn')?.addEventListener('click', () => openModal())
+    // Превентивная блокировка: раньше лимит проверялся только внутри
+    // addMessenger() — пользователь открывал модалку выбора сервиса, выбирал
+    // что-то, и только тогда узнавал что уперся в лимит. Теперь плюсик сам
+    // не открывает модалку при достижении лимита, показывает апгрейд сразу.
+    document.getElementById('addMessengerBtn')?.addEventListener('click', () => {
+        if (state.activeMessengers.length >= freeMessengerLimit && !requirePro('messengerLimit')) return
+        openModal()
+    })
     document.getElementById('welcomeAddBtn')?.addEventListener('click', () => openModal())
     document.getElementById('closeModalBtn')?.addEventListener('click', () => closeModal())
 
-    document.getElementById('messengerGrid')?.addEventListener('wheel', (e) => {
-        e.preventDefault()
-        const totalPages = Math.ceil(state.modalFiltered.length / PAGE_SIZE)
-
-        if (e.deltaY > 0 && state.modalPage < totalPages - 1) {
-            state.modalPage++
-            fillMessengerGrid()
-        } else if (e.deltaY < 0 && state.modalPage > 0) {
-            state.modalPage--
-            fillMessengerGrid()
-        }
-    }, { passive: false })
+    // REDESIGN (2026-08-24) — раньше здесь колесо мыши перехватывалось
+    // (e.preventDefault()) и листало плитки целыми страницами, что и вызвало
+    // жалобу пользователя на "другую прокрутку". Теперь #modalGridWrap — это
+    // обычный overflow-y:auto контейнер с нативной прокруткой (см. CSS и
+    // разметку в index.html), а тут только обновляем тонкую шкалу прогресса
+    // над сеткой в такт скроллу.
+    document.getElementById('modalGridWrap')?.addEventListener('scroll', () => {
+        updateScrollProgress?.()
+    }, { passive: true })
 
     document.getElementById('modalSearchInput')?.addEventListener('input', (e) => {
         const q = e.target.value.toLowerCase().trim()
-        state.modalPage = 0
         state.modalFiltered = q
             ? popularMessengers.filter(m => m.name.toLowerCase().includes(q))
             : [...popularMessengers]

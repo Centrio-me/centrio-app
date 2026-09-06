@@ -1,58 +1,27 @@
 import axios from 'axios'
+import { useAuthStore } from './authStore'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 
 // ── Token helpers ──────────────────────────────────────────────────────────
-// Zustand persist сохраняет под ключом 'centrio-auth' как {"state":{...},"version":0}
-// Interceptor должен читать именно оттуда, а НЕ из прямых ключей localStorage
+// SECURITY: single source of truth is the Zustand store (useAuthStore.getState()),
+// not manual localStorage parsing. refreshToken is intentionally in-memory only
+// (see authStore.ts partialize) — never duplicated into a plain localStorage key.
 
-function getFromStore(key: 'accessToken' | 'refreshToken'): string | null {
-  if (typeof window === 'undefined') return null
-  try {
-    // Читаем из Zustand persist (centrio-auth) — основной источник
-    const raw = localStorage.getItem('centrio-auth')
-    if (raw) {
-      const parsed = JSON.parse(raw)
-      const val = parsed?.state?.[key]
-      if (val) return val
-    }
-  } catch {}
-  // Fallback: прямые ключи (OAuth success page ставит их временно)
-  return localStorage.getItem(key)
+function getAccessToken(): string | null {
+  return useAuthStore.getState().accessToken
+}
+
+function getRefreshToken(): string | null {
+  return useAuthStore.getState().refreshToken
 }
 
 function clearStore() {
-  if (typeof window === 'undefined') return
-  // Прямые ключи (OAuth fallback)
-  localStorage.removeItem('accessToken')
-  localStorage.removeItem('refreshToken')
-  // Zustand persist
-  try {
-    const raw = localStorage.getItem('centrio-auth')
-    if (!raw) return
-    const parsed = JSON.parse(raw)
-    if (parsed?.state) {
-      parsed.state.accessToken = null
-      parsed.state.refreshToken = null
-      parsed.state.user = null
-      localStorage.setItem('centrio-auth', JSON.stringify(parsed))
-    }
-  } catch {}
+  useAuthStore.setState({ user: null, accessToken: null, refreshToken: null })
 }
 
 function updateStoreToken(newAccessToken: string) {
-  if (typeof window === 'undefined') return
-  // Обновляем оба места
-  localStorage.setItem('accessToken', newAccessToken)
-  try {
-    const raw = localStorage.getItem('centrio-auth')
-    if (!raw) return
-    const parsed = JSON.parse(raw)
-    if (parsed?.state) {
-      parsed.state.accessToken = newAccessToken
-      localStorage.setItem('centrio-auth', JSON.stringify(parsed))
-    }
-  } catch {}
+  useAuthStore.setState({ accessToken: newAccessToken })
 }
 
 // ── Axios instance ─────────────────────────────────────────────────────────
@@ -63,7 +32,7 @@ export const api = axios.create({
 
 // Добавляем токен к каждому запросу
 api.interceptors.request.use((config) => {
-  const token = getFromStore('accessToken')
+  const token = getAccessToken()
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
@@ -111,7 +80,7 @@ api.interceptors.response.use(
     isRefreshing = true
 
     try {
-      const refreshToken = getFromStore('refreshToken')
+      const refreshToken = getRefreshToken()
       if (!refreshToken) throw new Error('no_refresh_token')
 
       const { data } = await axios.post(`${API_URL}/api/auth/refresh`, { refreshToken })

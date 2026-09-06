@@ -1,10 +1,28 @@
 // VPN Panel — полный рефактор UI
 // UX: список конфигов с выбором → одна кнопка Connect/Disconnect сверху
 // Пинг: TCP-замер запускается фоном при открытии панели
-// Флаги: Twemoji-картинки через jsDelivr CDN
+// Флаги: локальные SVG из assets/flags (без внешнего CDN)
 // Таймер: отображает сколько подключены
 
-function bindVpnUi ({ invokeIpc, tGet }) {
+// ── Понятные сообщения об ошибках (общие для bindVpnUi и bindVpnSettings) ──
+// main-процесс присылает стабильный errorCode (см. errResult в main/ipc/vpn.js)
+// вместо технического e.message ("sing-box не запустился за 20 секунд" и т.п.),
+// чтобы пользователь видел понятный текст, а не внутреннее имя процесса/детали реализации.
+const VPN_ERROR_KEYS = {
+  VPN_START_TIMEOUT:          'network.vpnErrTimeout',
+  VPN_START_CRASHED:          'network.vpnErrCrashed',
+  VPN_NOT_INSTALLED:          'network.vpnErrNotInstalled',
+  VPN_INVALID_LINK:           'network.vpnErrInvalidLink',
+  VPN_SUBSCRIPTION_HTTP_ONLY: 'network.vpnErrSubHttpOnly',
+  VPN_SUBSCRIPTION_EMPTY:     'network.vpnErrSubEmpty'
+}
+function friendlyVpnError (tGet, result, fallbackKey) {
+  const mappedKey = result?.errorCode && VPN_ERROR_KEYS[result.errorCode]
+  if (mappedKey) return tGet(mappedKey)
+  return result?.error || tGet(fallbackKey || 'network.vpnError')
+}
+
+function bindVpnUi ({ invokeIpc, tGet, ipcRenderer, onVpnStatusChange }) {
   const btn   = document.getElementById('vpnBtn')
   const panel = document.getElementById('vpnPanel')
   if (!btn || !panel) return
@@ -15,11 +33,13 @@ function bindVpnUi ({ invokeIpc, tGet }) {
   let pings        = {}     // { [id]: ms | null | 'pending' }
   let connectedAt  = null   // Date.now() при подключении
   let timerIv      = null   // setInterval для таймера
+  let subUrl       = null   // сохранённый URL подписки (для обновления списка серверов)
 
   // ── Экранирование ─────────────────────────────────────────────────
   function esc (s) {
     return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
   }
+
 
   // ── Парсинг флага из имени ────────────────────────────────────────
   // Emoji-флаги = два Regional Indicator Symbol (0x1F1E6–0x1F1FF).
@@ -39,13 +59,13 @@ function bindVpnUi ({ invokeIpc, tGet }) {
     return { emoji: '', label: raw }
   }
 
-  // ── Twemoji URL для emoji-флага ───────────────────────────────────
-  // jsDelivr: https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1e9-1f1ea.png
+  // ── Локальный путь к SVG-флагу ────────────────────────────────────
+  // Regional Indicator Symbol (0x1F1E6 = 'A') → ISO 3166-1 alpha-2 код,
+  // картинки лежат в assets/flags/{code}.svg (пакет flag-icons, офлайн).
   function flagImgUrl (emoji) {
     const chars = [...emoji]
-    const h1 = chars[0].codePointAt(0).toString(16)
-    const h2 = chars[1].codePointAt(0).toString(16)
-    return `https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/${h1}-${h2}.png`
+    const code = chars.map(c => String.fromCharCode(c.codePointAt(0) - 0x1F1E6 + 65).toLowerCase()).join('')
+    return `assets/flags/${code}.svg`
   }
 
   // ── HTML имени конфига (флаг-картинка + текст) ───────────────────
@@ -94,10 +114,33 @@ function bindVpnUi ({ invokeIpc, tGet }) {
     return ''
   }
 
+  // ── Пересортировка строк по пингу ────────────────────────────────
+  // Серверы с быстрым пингом — вверх, без отклика (null) — вниз,
+  // ещё пингуются/неизвестно — посередине. Сортировка стабильна.
+  function pingSortKey (id) {
+    const p = pings[id]
+    if (typeof p === 'number') return p          // числовой пинг — по возрастанию
+    if (p === null)            return 1e9        // нет отклика → в самый низ
+    return 5e8                                   // pending / неизвестно → середина
+  }
+
+  function reorderConfigRows () {
+    const list = panel.querySelector('.vpn-configs-list')
+    if (!list) return
+    const rows = Array.from(list.querySelectorAll('.vpn-config-item'))
+    if (rows.length < 2) return
+    rows.sort((a, b) => pingSortKey(a.dataset.id) - pingSortKey(b.dataset.id))
+    rows.forEach(r => list.appendChild(r))
+  }
+
   // ── Обновить CSS-класс кнопки VPN в сайдбаре ─────────────────────
   function updateBtn () {
     btn.classList.toggle('vpn-active', !!status.active)
     btn.title = status.active ? `VPN: ${status.name || 'ON'}` : 'VPN'
+    // Уведомляем renderer.js о фактическом статусе подключения, чтобы щиты
+    // мессенджеров в сайдбаре гасли/загорались синхронно с реальным состоянием VPN,
+    // а не только с пользовательским предпочтением "использовать VPN".
+    if (typeof onVpnStatusChange === 'function') onVpnStatusChange(!!status.active)
   }
 
   // ── Найти конфиг по id ────────────────────────────────────────────
@@ -124,7 +167,7 @@ function bindVpnUi ({ invokeIpc, tGet }) {
       } else {
         status.active = false
         updateBtn()
-        setStatus(result.error || tGet('network.vpnError'), true)
+        setStatus(friendlyVpnError(tGet, result, 'network.vpnError'), true)
         render()
       }
     } catch (e) {
@@ -137,7 +180,7 @@ function bindVpnUi ({ invokeIpc, tGet }) {
     const conf = (status.configs || []).find(c => c.id === id)
     if (!conf) return
     pings[id] = 'pending'
-    // Обновить бейдж сразу (показать "пингуем")
+    // Обновить бейдж сразу (показать "pinging")
     const row = panel.querySelector(`.vpn-config-item[data-id="${id}"]`)
     if (row) {
       const existing = row.querySelector('[class^="vpn-ping"]')
@@ -154,7 +197,8 @@ function bindVpnUi ({ invokeIpc, tGet }) {
         const b = r2.querySelector('[class^="vpn-ping"]')
         if (b) b.outerHTML = pingBadge(id)
       }
-    }).catch(() => { pings[id] = null })
+      reorderConfigRows()
+    }).catch(() => { pings[id] = null; reorderConfigRows() })
   }
 
   // ── Рендер панели ─────────────────────────────────────────────────
@@ -233,7 +277,7 @@ function bindVpnUi ({ invokeIpc, tGet }) {
                 </div>
                 <div class="vpn-config-right">
                   ${pingBadge(c.id)}
-                  <button class="vpn-cfg-repingbtn" data-id="${esc(c.id)}" title="Проверить пинг" style="background:none;border:none;color:rgba(255,255,255,0.25);cursor:pointer;padding:2px 5px;font-size:13px;line-height:1;border-radius:4px;transition:color .15s" onmouseover="this.style.color='rgba(255,255,255,0.65)'" onmouseout="this.style.color='rgba(255,255,255,0.25)'">↻</button>
+                  <button class="vpn-cfg-repingbtn" data-id="${esc(c.id)}" title="${tGet('network.vpnTest') || 'Test'}" style="background:none;border:none;color:rgba(255,255,255,0.25);cursor:pointer;padding:2px 5px;font-size:13px;line-height:1;border-radius:4px;transition:color .15s" onmouseover="this.style.color='rgba(255,255,255,0.65)'" onmouseout="this.style.color='rgba(255,255,255,0.25)'">↻</button>
                   <button class="vpn-cfg-delete" data-id="${esc(c.id)}" title="${esc(tGet('network.vpnDeleteBtn'))}">
                     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                       <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
@@ -242,6 +286,27 @@ function bindVpnUi ({ invokeIpc, tGet }) {
                 </div>
               </div>`
           }).join('')}
+        </div>`
+    }
+
+    // ─── Подписка: показываем источник + кнопка «Обновить список» ──
+    let subHtml = ''
+    if (subUrl) {
+      subHtml = `
+        <div class="vpn-sub-row">
+          <div class="vpn-sub-info" title="${esc(subUrl)}">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+            </svg>
+            <span class="vpn-sub-url">${esc(prettySubUrl(subUrl))}</span>
+          </div>
+          <button class="vpn-sub-refresh" id="vpnSubRefreshBtn" title="${esc(tGet('network.vpnRefresh'))}">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+            </svg>
+            <span>${esc(tGet('network.vpnRefresh'))}</span>
+          </button>
         </div>`
     }
 
@@ -261,6 +326,7 @@ function bindVpnUi ({ invokeIpc, tGet }) {
         ${topHtml}
       </div>
       ${listHtml}
+      ${subHtml}
       ${addBtnHtml}
       <div class="vpn-status-bar" id="vpnStatusBar" style="display:none"></div>
       <div class="vpn-download-area" id="vpnDownloadArea" style="display:none">
@@ -308,6 +374,15 @@ function bindVpnUi ({ invokeIpc, tGet }) {
       })
     })
 
+    // Кнопка «Обновить список» из подписки
+    document.getElementById('vpnSubRefreshBtn')?.addEventListener('click', (e) => {
+      e.stopPropagation()
+      refreshSubscription()
+    })
+
+    // Восстановить порядок по пингу после полного ре-рендера
+    reorderConfigRows()
+
     // Кнопка «Добавить» → открывает настройки > Сеть > VPN
     document.getElementById('vpnAddSettingsBtn')?.addEventListener('click', (e) => {
       e.stopPropagation()
@@ -321,6 +396,36 @@ function bindVpnUi ({ invokeIpc, tGet }) {
         document.getElementById('settingsVpnInput')?.focus()
       }, 80)
     })
+  }
+
+  // ── Подписка: красивое имя из URL + обновление списка серверов ──
+  function prettySubUrl (u) {
+    try { return new URL(u).host || u } catch { return String(u || '') }
+  }
+
+  async function refreshSubscription () {
+    const b = document.getElementById('vpnSubRefreshBtn')
+    if (b) { b.disabled = true; b.classList.add('vpn-sub-refreshing') }
+    setStatus(tGet('network.vpnRefreshing'), false)
+    try {
+      const result = await invokeIpc('vpn-refresh-subscription')
+      if (result.success) {
+        status = result.status
+        // Сбросить пинги для исчезнувших конфигов; существующие сохраняют id → пинг
+        const ids = new Set((status.configs || []).map(c => c.id))
+        for (const id in pings) { if (!ids.has(id)) delete pings[id] }
+        setStatus(tGet('network.vpnRefreshed', { n: result.imported }), false)
+        updateBtn()
+        render()
+        startPings(status.configs)
+      } else {
+        setStatus(friendlyVpnError(tGet, result, 'network.vpnError'), true)
+        if (b) { b.disabled = false; b.classList.remove('vpn-sub-refreshing') }
+      }
+    } catch (e) {
+      setStatus(e.message || tGet('network.vpnError'), true)
+      if (b) { b.disabled = false; b.classList.remove('vpn-sub-refreshing') }
+    }
   }
 
   // ── Статусная строка ──────────────────────────────────────────────
@@ -345,7 +450,7 @@ function bindVpnUi ({ invokeIpc, tGet }) {
   function startPings (configs) {
     if (!configs || !configs.length) return
     for (const c of configs) {
-      if (pings[c.id] !== undefined) continue   // уже пингуем/пинговали
+      if (pings[c.id] !== undefined) continue   // уже pinging/пинговали
       pings[c.id] = 'pending'
       invokeIpc('vpn-ping', c.link).then(res => {
         pings[c.id] = (res && res.ms !== undefined) ? res.ms : null
@@ -359,7 +464,8 @@ function bindVpnUi ({ invokeIpc, tGet }) {
             if (right) right.insertAdjacentHTML('afterbegin', pingBadge(c.id))
           }
         }
-      }).catch(() => { pings[c.id] = null })
+        reorderConfigRows()
+      }).catch(() => { pings[c.id] = null; reorderConfigRows() })
     }
   }
 
@@ -377,6 +483,7 @@ function bindVpnUi ({ invokeIpc, tGet }) {
       const result = await invokeIpc('vpn-connect', link)
       if (result.success) {
         status = result.status
+        if (/^https?:\/\//.test(link)) subUrl = link
         startTimer()
         if (input) input.value = ''
         // Сбросить пинги для новых конфигов
@@ -387,6 +494,7 @@ function bindVpnUi ({ invokeIpc, tGet }) {
           ? tGet('network.vpnImported', { n: result.imported, name: status.name || '' })
           : tGet('network.vpnConnected', { name: status.name || '' })
         setStatus(msg, false)
+        if (btn) btn.disabled = false
         updateBtn()
         render()
         startPings(status.configs)
@@ -395,7 +503,7 @@ function bindVpnUi ({ invokeIpc, tGet }) {
         showProgress(0, tGet('network.vpnPreparing'))
         await downloadAndConnect(link)
       } else {
-        setStatus(result.error || tGet('network.vpnError'), true)
+        setStatus(friendlyVpnError(tGet, result, 'network.vpnError'), true)
         if (btn) btn.disabled = false
       }
     } catch (e) {
@@ -415,11 +523,13 @@ function bindVpnUi ({ invokeIpc, tGet }) {
         status = result.status
         startTimer()
         setStatus(tGet('network.vpnConnected', { name: status.name || '' }), false)
+        const btn = document.getElementById('vpnImportBtn')
+        if (btn) btn.disabled = false
         updateBtn()
         render()
         startPings(status.configs)
       } else {
-        setStatus(result.error || tGet('network.vpnDownloadError'), true)
+        setStatus(friendlyVpnError(tGet, result, 'network.vpnDownloadError'), true)
         const btn = document.getElementById('vpnImportBtn')
         if (btn) btn.disabled = false
       }
@@ -427,6 +537,8 @@ function bindVpnUi ({ invokeIpc, tGet }) {
       showProgress(-1, '')
       window.electronAPI?.offVpnProgress?.()
       setStatus(e.message || tGet('network.vpnError'), true)
+      const btn = document.getElementById('vpnImportBtn')
+      if (btn) btn.disabled = false
     }
   }
 
@@ -446,7 +558,7 @@ function bindVpnUi ({ invokeIpc, tGet }) {
         showProgress(0, tGet('network.vpnPreparing'))
         await downloadAndConnect(link)
       } else {
-        setStatus(result.error || tGet('network.vpnError'), true)
+        setStatus(friendlyVpnError(tGet, result, 'network.vpnError'), true)
       }
     } catch (e) {
       setStatus(e.message || tGet('network.vpnError'), true)
@@ -485,6 +597,8 @@ function bindVpnUi ({ invokeIpc, tGet }) {
 
   // ── Открыть/закрыть панель ────────────────────────────────────────
   async function openPanel () {
+    document.dispatchEvent(new CustomEvent('close-all-popups'))
+
     try {
       // vpn-status тихо восстанавливает соединение если было активно
       const s = await invokeIpc('vpn-status')
@@ -492,22 +606,26 @@ function bindVpnUi ({ invokeIpc, tGet }) {
       updateBtn()
       // Если VPN уже активен — запустить таймер (если ещё не тикает)
       if (status.active && !timerIv) startTimer()
+      // Подтягиваем сохранённый URL подписки (для кнопки «Обновить»)
+      try { const sub = await invokeIpc('vpn-get-subscription'); subUrl = sub?.url || null } catch {}
     } catch {}
 
     render()
 
     const rect = btn.getBoundingClientRect()
     panel.style.display = 'flex'
-    panel.style.left    = `${rect.right + 8}px`
+    panel.style.left    = `${rect.right + 14}px`
     panel.style.top     = '0px'
 
     requestAnimationFrame(() => {
       const pRect = panel.getBoundingClientRect()
       let top = rect.bottom - pRect.height
-      if (top < 8) top = 8
-      if (top + pRect.height > window.innerHeight - 8) top = window.innerHeight - pRect.height - 8
-      panel.style.top = `${Math.max(8, top)}px`
+      if (top < 12) top = 12
+      if (top + pRect.height > window.innerHeight - 12) top = window.innerHeight - pRect.height - 12
+      panel.style.top = `${Math.max(12, top)}px`
     })
+
+    document.dispatchEvent(new CustomEvent('popup-opened'))
 
     // Запускаем пинг фоном (только новые конфиги)
     startPings(status.configs)
@@ -516,6 +634,8 @@ function bindVpnUi ({ invokeIpc, tGet }) {
   function closePanel () {
     panel.style.display = 'none'
   }
+
+  document.addEventListener('close-all-popups', closePanel)
 
   btn.addEventListener('click', (e) => {
     e.stopPropagation()
@@ -533,11 +653,21 @@ function bindVpnUi ({ invokeIpc, tGet }) {
 
   // Инициализация статуса при запуске (тихое восстановление)
   invokeIpc('vpn-status').then(s => { status = s; updateBtn() }).catch(() => {})
+
+  // BUGFIX ("VPN-щиты/кнопка не обновляются после авто-восстановления"):
+  // main/window.js подключает VPN асинхронно, спустя ~3 сек после загрузки
+  // окна (_tryRestoreVpn), и шлёт 'vpn-restored' по завершении — но здесь
+  // этот канал никогда не слушался. Единственный статус, который видел
+  // рендерер, — это самый первый vpn-status выше, снятый ДО того, как
+  // авто-восстановление вообще началось (VPN тогда ещё не активен), так что
+  // кнопка/щиты в сайдбаре навсегда застревали в состоянии "выключено", пока
+  // пользователь вручную не открывал панель VPN.
+  ipcRenderer?.on('vpn-restored', (s) => { status = s || status; updateBtn() })
 }
 
 // ── Инициализация VPN-секции в настройках ────────────────────────────────
 // Рендерит список конфигов, обрабатывает textarea импорта
-function bindVpnSettings ({ invokeIpc, tGet, getActiveMessengers }) {
+function bindVpnSettings ({ invokeIpc, tGet, applyI18n, getActiveMessengers, onAppVpnModeChange }) {
   const listEl   = document.getElementById('settingsVpnList')
   const input    = document.getElementById('settingsVpnInput')
   const importBtn= document.getElementById('settingsVpnImportBtn')
@@ -569,7 +699,8 @@ function bindVpnSettings ({ invokeIpc, tGet, getActiveMessengers }) {
 
   function flagImgUrl (emoji) {
     const c = [...emoji]
-    return `https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/${c[0].codePointAt(0).toString(16)}-${c[1].codePointAt(0).toString(16)}.png`
+    const code = c.map(ch => String.fromCharCode(ch.codePointAt(0) - 0x1F1E6 + 65).toLowerCase()).join('')
+    return `assets/flags/${code}.svg`
   }
 
   function renderList (configs) {
@@ -629,7 +760,11 @@ function bindVpnSettings ({ invokeIpc, tGet, getActiveMessengers }) {
 
     appsListEl.querySelectorAll('.vpn-app-toggle').forEach(cb => {
       cb.addEventListener('change', async () => {
-        await invokeIpc('vpn-set-app-vpn', cb.dataset.id, cb.checked).catch(() => null)
+        const result = await invokeIpc('vpn-set-app-vpn', cb.dataset.id, cb.checked).catch(() => null)
+        // Синхронизируем щит в сайдбаре сразу, не дожидаясь следующего открытия настроек/панели VPN.
+        if (result?.success !== false && typeof onAppVpnModeChange === 'function') {
+          onAppVpnModeChange(cb.dataset.id, cb.checked)
+        }
       })
     })
   }
@@ -667,7 +802,7 @@ function bindVpnSettings ({ invokeIpc, tGet, getActiveMessengers }) {
         const vpnBtn = document.getElementById('vpnBtn')
         if (vpnBtn && result.status?.active) vpnBtn.classList.add('vpn-active')
       } else {
-        setStatus(result.error || tGet('network.vpnError'), true)
+        setStatus(friendlyVpnError(tGet, result, 'network.vpnError'), true)
       }
     } catch (e) {
       setStatus(e.message || tGet('network.vpnError'), true)
