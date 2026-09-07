@@ -1,4 +1,4 @@
-import LandingPage from './page'
+import LandingPage from '../page'
 import { LangProvider } from '@/lib/i18n'
 
 // Locale-pinned wrapper around the shared homepage component — see

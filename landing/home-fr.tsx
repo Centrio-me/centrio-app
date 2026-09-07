@@ -1,4 +1,4 @@
-import LandingPage from './page'
+import LandingPage from '../page'
 import { LangProvider } from '@/lib/i18n'
 
 export default function FrHomePage() {
