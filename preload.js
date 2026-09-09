@@ -36,7 +36,40 @@ const validReceiveChannels = new Set([
     'oauth-popup-started',
     'oauth-popup-done',
     'oauth-popup-closed',
-    'auto-launch-result'
+    'auto-launch-result',
+    // BUGFIX (2026-09-09, "VPN постоянно отваливается") — see main/ipc/vpn.js
+    // setUnexpectedExitHandler; without this in the allowlist the event
+    // above would be silently swallowed here, same class of bug this
+    // allowlist's own 2026-09-06 comment already documents.
+    'vpn-unexpected-disconnect',
+    // BUGFIX (2026-09-09, "уведомления перестали приходить в последней
+    // версии" — live user report, THE actual root cause, not the macOS
+    // code-signing red herring): main/services/swNotifPatcher.js and
+    // main/bootstrap/registerAppEvents.js both webContents.send this channel
+    // for every push notification a messenger's own Service Worker shows
+    // (WhatsApp/Telegram/MAX/etc — see swNotifPatcher.js's long comment on
+    // why SW-realm notifications need this separate CDP-based pipeline at
+    // all). renderer/webview-notify.js subscribes via ipcRenderer.on(...) —
+    // exactly the pattern this allowlist's own 2026-09-06 comment warns
+    // about — and this channel had simply never been added, so EVERY
+    // background-tab push notification from EVERY messenger was silently
+    // dropped in preload with a console warning nobody was watching for.
+    // This affects all platforms, not just unsigned macOS builds.
+    'messenger-site-notification',
+    // Same audit, same file (renderer/webview-notify.js) — the unread-badge
+    // counterpart of the notification pipeline above, also never added.
+    'messenger-unread-count',
+    // Same audit — main/ipc/appNotifications.js sends this for live updates
+    // to the in-app "Уведомления" (admin/changelog) history; renderer/
+    // app-notif-bind.js subscribes but this was missing too, so that panel
+    // never live-updated without a manual reopen.
+    'app-notifs:item-update',
+    // main/window.js sends this after restoring a saved VPN connection on
+    // startup (_tryRestoreVpn); renderer/vpn-bind.js subscribes to update the
+    // toggle once restore finishes, but it was missing here too — the VPN
+    // button could sit on a stale "connecting..." state after launch even
+    // though the connection actually came up.
+    'vpn-restored'
 ])
 
 const invokeChannelMap = {

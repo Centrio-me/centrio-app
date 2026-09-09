@@ -88,6 +88,24 @@ async function applyVpnToEnabledSessions (proxySettings) {
 
 function registerVpnIpc ({ getMainWindow }) {
 
+    // BUGFIX (2026-09-09, live user reports, "VPN постоянно отваливается...
+    // не пропускает трафик"): see the matching BUGFIX comment in
+    // vpn-manager.js above setUnexpectedExitHandler for the full root cause
+    // — an unexpected sing-box exit used to leave every messenger session
+    // permanently pointed at the now-dead SOCKS5 port, with the renderer
+    // never told anything happened (vpn-status is pull-only, see
+    // renderer/vpn-bind.js). Wire the same reset an explicit disconnect
+    // already does, and push 'vpn-unexpected-disconnect' so the VPN panel
+    // (if open) refreshes instead of silently showing a stale "connected"
+    // state while every tab is actually broken.
+    getVpn().setUnexpectedExitHandler(() => {
+        applyAllSessionsProxy(vpnProxyOff()).catch((e) => {
+            console.error('[VPN] failed to reset sessions after unexpected exit:', e.message)
+        })
+        const win = getMainWindow()
+        if (win) win.webContents.send('vpn-unexpected-disconnect')
+    })
+
     // ── Получить текущий статус (БЕЗ авто-восстановления — оно теперь в window.js after did-finish-load) ──
     ipcMain.handle('vpn-status', async () => {
         try {

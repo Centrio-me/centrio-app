@@ -592,8 +592,8 @@
                     <div class="app-notif-header-actions">
                         <button type="button" id="notesAddNoteBtn" class="app-notif-mute-btn" data-i18n-title="notes.newNote">
                             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M9 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/>
-                                <path d="M15 3v6h6"/>
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                <path d="M14 2v6h6"/>
                                 <line x1="12" y1="12" x2="12" y2="17"/>
                                 <line x1="9.5" y1="14.5" x2="14.5" y2="14.5"/>
                             </svg>
@@ -669,7 +669,10 @@
                 </div>
                 <div class="notes-edit-footer">
                     <span id="notesCharCount" class="notes-char-count"></span>
-                    <span id="notesSaveIndicator" class="notes-save-indicator"></span>
+                    <div class="notes-edit-footer-right">
+                        <span id="notesSaveIndicator" class="notes-save-indicator"></span>
+                        <button type="button" id="notesSaveBtn" class="notes-save-btn" data-i18n="notes.saveBtn"></button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -695,10 +698,28 @@
                  по умолчанию (display:none инлайн) — renderer/notes-bind.js
                  показывает её только если плагин включён и план это позволяет,
                  тем же паттерном, что и mediaPlayerBtn ниже. -->
-            <button id="notesBtn" class="activity-btn" data-i18n-title="rightbar.notes" style="display:none;">
+            <!-- BUGFIX (2026-09-09, "иконка медиа прыгает с места на место
+                 (видимо из-за заметок)" — live user report): notesBtn and
+                 mediaPlayerBtn sit in the same flex column (.activity-top).
+                 Toggling this button with display:none/'' removes/re-adds
+                 its box from layout flow entirely, which shifts every
+                 sibling below it (mediaPlayerBtn) up or down each time Notes
+                 gets enabled/disabled or the Pro check re-evaluates (see
+                 renderer.js refreshUserAndReapply). visibility:hidden keeps
+                 the slot reserved in the flex column so siblings never
+                 move — see matching change in renderer/notes-bind.js
+                 updateButtonVisibility(). -->
+            <button id="notesBtn" class="activity-btn" data-i18n-title="rightbar.notes" style="visibility:hidden;">
+                <!-- BUGFIX (2026-09-09, "Иконка заметок кривая у тебя" — live
+                     user report): the old path closed from (20,9) straight
+                     back to (9,3) — a stray diagonal — while the "fold"
+                     stroke started at a mismatched (15,3), not lining up
+                     with the main outline at all. Replaced with the
+                     standard, correctly-closing file/note icon (main path
+                     and fold both start at the same point, 14,2). -->
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M9 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/>
-                    <path d="M15 3v6h6"/>
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <path d="M14 2v6h6"/>
                     <line x1="8" y1="13" x2="16" y2="13"/>
                     <line x1="8" y1="17" x2="13" y2="17"/>
                 </svg>
@@ -708,15 +729,18 @@
                  правом сайдбаре. При нажатии - всплывает окно с управлением.
                  Под задачами" — live user correction, replacing an earlier
                  always-floating "pill" design that the user reported never
-                 showing up). Скрыта по умолчанию (display:none инлайн) —
-                 renderer/media-player-ui.js показывает её, только пока где-то
-                 реально играет медиа, и прячет обратно, как только играющих
-                 источников не осталось.
+                 showing up).
                  UPDATE (2026-08-28, "Нужно убрать этот эквалайзер" — live user
                  request): мигающий "эквалайзер"-бейджик в углу иконки убран —
                  сама иконка уже появляется/пропадает по факту воспроизведения,
-                 отдельный анимированный индикатор поверх неё был лишним. -->
-            <button id="mediaPlayerBtn" class="activity-btn" data-i18n-title="rightbar.mediaPlayer" style="display:none;">
+                 отдельный анимированный индикатор поверх неё был лишним.
+                 UPDATE 2 (2026-09-09, "Пусть иконка медиа показывается
+                 всегда, просто если ничего не играет — она говорит, что
+                 сейчас ничего не включено" — live user request): больше не
+                 прячется вообще — постоянная кнопка, как assistantBtn/
+                 todosBtn/notesBtn; renderer/media-player-ui.js показывает
+                 пустое состояние в попапе, когда играющих источников нет. -->
+            <button id="mediaPlayerBtn" class="activity-btn" data-i18n-title="rightbar.mediaPlayer">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M9 18V5l12-2v13"/>
                     <circle cx="6" cy="18" r="3"/>
@@ -942,6 +966,17 @@
         <button class="changelog-popup-close" id="changelogPopupClose">✕</button>
     </div>
     <div class="changelog-popup-body">
+        <div class="changelog-entry">
+            <div class="changelog-version">v2.6.2</div>
+            <ul class="changelog-list">
+                <li>Улучшена надёжность VPN — более стабильное подключение и переподключение</li>
+                <li>Исправлено: уведомления от мессенджеров могли не показываться</li>
+                <li>Обновлено: иконка мини-плеера теперь всегда на месте в сайдбаре и подсказывает, когда ничего не воспроизводится</li>
+                <li>Исправлена иконка Заметок</li>
+                <li>Обновлена светлая тема — более чистый, современный белый дизайн</li>
+                <li>Улучшена синхронизация статуса подписки Pro</li>
+            </ul>
+        </div>
         <div class="changelog-entry">
             <div class="changelog-version">v2.6.0</div>
             <ul class="changelog-list">
@@ -1222,6 +1257,71 @@
             <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6M10 11v6M14 11v6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
         <span data-i18n="divider.remove"></span>
+    </div>
+</div>
+
+<!-- Контекстное меню карточки заметки -->
+<div id="notesContextMenu" class="context-menu">
+    <div class="context-item" id="ctxNoteOpen">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M14 2v6h6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span data-i18n="notes.ctxOpen"></span>
+    </div>
+    <div class="context-item" id="ctxNotePin">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+            <path d="M12 2l1.5 5.5L19 9l-5 3.5.5 5.5-2.5-3-2.5 3 .5-5.5L5 9l5.5-1.5z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span id="ctxNotePinLabel" data-i18n="notes.pin"></span>
+    </div>
+    <div class="context-item" id="ctxNoteDuplicate">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+            <rect x="9" y="9" width="13" height="13" rx="2" stroke="currentColor" stroke-width="2"/>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" stroke="currentColor" stroke-width="2"/>
+        </svg>
+        <span data-i18n="notes.duplicate"></span>
+    </div>
+    <div class="context-item" id="ctxNoteArchive">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+            <rect x="2" y="4" width="20" height="5" rx="1" stroke="currentColor" stroke-width="2"/>
+            <path d="M4 9v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9" stroke="currentColor" stroke-width="2"/>
+            <line x1="10" y1="13" x2="14" y2="13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        <span id="ctxNoteArchiveLabel" data-i18n="notes.archive"></span>
+    </div>
+    <div class="context-divider"></div>
+    <div class="context-item context-danger" id="ctxNoteDelete">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+            <polyline points="3 6 5 6 21 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6M10 11v6M14 11v6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span data-i18n="notes.delete"></span>
+    </div>
+</div>
+
+<!-- Контекстное меню задачи -->
+<div id="todosContextMenu" class="context-menu">
+    <div class="context-item" id="ctxTodoEdit">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span data-i18n="todos.ctxEdit"></span>
+    </div>
+    <div class="context-item" id="ctxTodoStar">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span id="ctxTodoStarLabel" data-i18n="todos.star"></span>
+    </div>
+    <div class="context-divider"></div>
+    <div class="context-item context-danger" id="ctxTodoDelete">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+            <polyline points="3 6 5 6 21 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6M10 11v6M14 11v6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span data-i18n="todos.delete"></span>
     </div>
 </div>
 

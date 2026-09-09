@@ -304,7 +304,8 @@ module.exports = {
         pause: 'Пауза',
         previous: 'Предыдущий трек',
         next: 'Следующий трек',
-        switch: 'Другие источники'
+        switch: 'Другие источники',
+        nothingPlaying: 'Сейчас ничего не воспроизводится'
     },
 
     welcome: {
@@ -731,11 +732,15 @@ module.exports = {
         addList: 'Новый список',
         empty: 'Нет задач',
         star: 'Закрепить',
+        unstar: 'Открепить',
         delete: 'Удалить',
         deleteList: 'Удалить список',
         deleteListConfirmTitle: 'Удалить список?',
         deleteListConfirmText: 'Список "{name}" и все задачи в нём будут удалены безвозвратно.',
-        cancel: 'Отмена'
+        deleteConfirmTitle: 'Удалить задачу?',
+        deleteConfirmText: 'Действие нельзя отменить.',
+        cancel: 'Отмена',
+        ctxEdit: 'Изменить'
     },
 
     pro: {
@@ -825,7 +830,10 @@ module.exports = {
         copySuffix: 'копия',
         viewArchive: 'Архив',
         archive: 'В архив',
-        archiveEmpty: 'В архиве пока пусто'
+        unarchive: 'Из архива',
+        archiveEmpty: 'В архиве пока пусто',
+        ctxOpen: 'Открыть',
+        saveBtn: 'Сохранить'
     },
 
     webview: {

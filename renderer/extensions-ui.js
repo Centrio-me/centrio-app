@@ -4,7 +4,8 @@ function createExtensionsUiApi({
     store,
     tGet,
     requirePro,
-    onExtensionToggle
+    onExtensionToggle,
+    refreshUser
 }) {
     const NATIVE_EXTENSIONS = [
         {
@@ -56,9 +57,11 @@ function createExtensionsUiApi({
         },
         {
             id: 'notes',
+            // BUGFIX (2026-09-09, "Иконка заметок кривая" — live user
+            // report): see matching fix + explanation in index.html notesBtn.
             icon: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M9 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/>
-                <path d="M15 3v6h6"/>
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <path d="M14 2v6h6"/>
                 <line x1="8" y1="13" x2="16" y2="13"/>
                 <line x1="8" y1="17" x2="13" y2="17"/>
             </svg>`,
@@ -387,6 +390,24 @@ function createExtensionsUiApi({
     function openExtensionsSection() {
         renderExtensionsCatalog()
         renderRealExtensionsCatalog()
+
+        // BUGFIX (2026-09-09, "PRO поставил ручками, а плагины/заметки всё
+        // равно не выдвигаются" — live user report): getUserIsPro() above
+        // reads the LOCAL cache (store 'cloud.user'), which only gets
+        // refreshed on app startup, window focus, or the 30-min interval
+        // (see renderer.js). A plan granted manually on the server while the
+        // app was already open and sitting on this exact tab could stay
+        // stale for a long time. The moment the user opens the Extensions
+        // tab is exactly when they're most likely to just have been
+        // upgraded — force a revalidation and re-render so the catalog
+        // (and by extension notesUiApiRef.updateButtonVisibility(), wired
+        // through onExtensionToggle) reflects the real plan immediately.
+        if (typeof refreshUser === 'function') {
+            refreshUser().then(() => {
+                renderExtensionsCatalog()
+                renderRealExtensionsCatalog()
+            }).catch(() => {})
+        }
     }
 
     return {

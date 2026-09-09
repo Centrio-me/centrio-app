@@ -154,10 +154,27 @@ function navigateTelegramWebview(webview, target) {
 
     const clientMatch = currentUrl.match(/^https:\/\/web\.telegram\.org\/(k|a|z)\//i)
     if (clientMatch) {
+        // BUGFIX ("вкладка переключается, но чат не открывается" — live user
+        // report): `webview.executeJavaScript('location.hash = ...')` только
+        // МЕНЯЕТ hash — оно не заставляет уже запущенный SPA-клиент заново
+        // его РАЗОБРАТЬ. Клиент Telegram Web K парсит `#@username`/
+        // `#?tgaddr=...` в свой роут только на СВОЁМ собственном bootstrap/
+        // навигационном пути (внутренние вызовы роутера, переход по ссылке
+        // внутри страницы) — сырое присвоение `location.hash` извне хоть и
+        // штатно генерирует нативное событие 'hashchange', но клиент на него
+        // в общем случае не подписан как на источник навигации, так что
+        // визуально ничего не происходит (ровно репортнутый симптом).
+        // Полная same-origin навигация (loadURL на тот же https://web.
+        // telegram.org/<client>/#...) заставляет клиент загрузиться заново и
+        // разобрать hash при СТАРТЕ — том самом пути, который точно
+        // поддерживается (так же работает переход из t.me во внешнем
+        // браузере). Origin не меняется, поэтому сессия/логин (в
+        // localStorage/IndexedDB, которые скопированы per-origin, а не
+        // привязаны к конкретной навигации) не теряются — это тот же самый
+        // эффект, что при обычном F5 на уже залогиненной странице.
+        const clientPath = `https://web.telegram.org/${clientMatch[1]}/`
         if (target.type === 'username') {
-            // Same-origin SPA-навигация: меняем только hash, страница не
-            // перезагружается, сессия/логин не трогаются.
-            webview.executeJavaScript(`location.hash = '#@${target.value}'`).catch(() => {})
+            try { webview.loadURL(`${clientPath}#@${target.value}`) } catch {}
             return
         }
 
@@ -166,10 +183,9 @@ function navigateTelegramWebview(webview, target) {
         // tg://-URI, переданный через хэш `#?tgaddr=<encoded-uri>` (этим же
         // приёмом t.me сам редиректит на web.telegram.org при переходе из
         // обычного браузера — см. core.telegram.org/api/links про формат
-        // tg://join?invite=<hash>). Тот же same-origin эффект, что и у
-        // #@username: без ухода с текущего origin/сессии.
+        // tg://join?invite=<hash>).
         const uri = `tg://join?invite=${target.value}`
-        webview.executeJavaScript(`location.hash = '#?tgaddr=${encodeURIComponent(uri)}'`).catch(() => {})
+        try { webview.loadURL(`${clientPath}#?tgaddr=${encodeURIComponent(uri)}`) } catch {}
         return
     }
 

@@ -39,6 +39,32 @@ let singboxProcess = null
 let currentConfig  = null  // { name, link, outbound }
 let proxyActive    = false
 
+// BUGFIX (2026-09-09, live user reports — "VPN постоянно отваливается...
+// через себя не проводит никакой трафик", "вкладки не открываются"): the
+// 'close' handler below always reset proxyActive/currentConfig, but NEVER
+// told main/ipc/vpn.js to also reset the actual session proxy on
+// defaultSession + every messenger partition. Those sessions are configured
+// with session.setProxy({ proxyRules: 'socks5://127.0.0.1:7890' }) while VPN
+// is on (see main/services/proxy.js) — that setting lives entirely in
+// Chromium's network stack and has NOTHING to do with whether our own
+// sing-box child process is still alive. So the moment sing-box exits
+// unexpectedly (crash, killed by AV, laptop sleep/wake, network change —
+// anything other than the user pressing "Disconnect", which already calls
+// applyAllSessionsProxy(vpnProxyOff()) itself in vpn-disconnect), every
+// webview session was left permanently pointed at a now-dead SOCKS5 port:
+// every request in every messenger tab hangs/fails, while the VPN button
+// still *looked* off/idle with no obvious error — exactly the reported
+// "не пропускает трафик" / "вкладки не открываются", persisting until the
+// user thought to manually reconnect. Fixed via a registrable callback
+// (setUnexpectedExitHandler) that main/ipc/vpn.js wires to the same
+// vpnProxyOff() reset used for an explicit disconnect, invoked only when
+// the process died WITHOUT stopProxy() already having done that reset
+// (tracked by expectingExit below, set right before we deliberately kill
+// the process).
+let expectingExit = false
+let onUnexpectedExit = null
+function setUnexpectedExitHandler (fn) { onUnexpectedExit = fn }
+
 // ── Путь к бинарнику ──────────────────────────────────────────────
 function getSingboxPath () {
   const userData = app.getPath('userData')
@@ -488,6 +514,25 @@ function buildSingboxConfig (outbound) {
 
   return {
     log: { level: 'info', timestamp: false },
+    // BUGFIX (2026-09-09, live user report — "это очень актуально для
+    // России"): no `dns` block existed at all before this, so sing-box fell
+    // back to whatever DNS the OS/network hands it to resolve the VPN
+    // server's own hostname (when a config uses a domain rather than a bare
+    // IP) — in networks with DNS-level interception/poisoning (common
+    // exactly where a VPN is most needed), that resolution can silently
+    // return a wrong/blocked address before the tunnel is even up, with no
+    // error surfaced anywhere in this app — it would just look like "не
+    // подключается" for every server. Routes DNS queries through an
+    // encrypted DoH resolver over the DIRECT path (not the not-yet-
+    // established proxy — this only resolves the proxy server itself),
+    // sidestepping a tampered local resolver.
+    dns: {
+      servers: [
+        { type: 'https', tag: 'remote', server: '1.1.1.1', detour: 'direct' }
+      ],
+      final: 'remote',
+      strategy: 'prefer_ipv4'
+    },
     inbounds: [{
       type: 'mixed',
       tag:  'mixed-in',
@@ -518,9 +563,60 @@ function checkPortListening (port) {
   })
 }
 
+// BUGFIX (2026-09-09, live user reports — "даже когда я вручную переключаю
+// — они всё равно не подключаются... после перезапуска программы начинает
+// работать"): `singboxProcess` (the in-memory child-process handle) is our
+// ONLY source of truth for "is something already on port 7890" — the
+// 'if (singboxProcess) await stopProxy()' guard below does nothing if that
+// variable is already null, which is exactly what happens after the crash
+// this file's other 2026-09-09 fix targets, OR if `proc.kill()` in
+// stopProxy() didn't actually terminate the OS process (e.g. it was already
+// wedged/hung — a hung process is unkillable by a plain SIGTERM/kill() on
+// some hangs, taskkill /f /t is the reliable fallback and is ALREADY used
+// there, but only for a process stopProxy() knows about). A previous
+// sing-box that our own tracking lost (crash race, or literally any prior
+// run this process didn't clean up) can be left listening-but-broken on
+// 7890 — checkPortListening() below then reports "started" for the NEW
+// connect attempt because *something* accepts the TCP connection, even
+// though it's the old dead tunnel, not the new one. Only a full app restart
+// (which tears down every child process Windows attached to this process)
+// cleared it — reconnecting inside the running app never did. Fix:
+// unconditionally check the port BEFORE trusting our own bookkeeping, and
+// force-kill whatever OS process actually owns it if it's not the process
+// we're about to spawn.
+async function killStrayProcessOnPort (port) {
+  const listening = await checkPortListening(port)
+  if (!listening) return
+  try {
+    if (process.platform === 'win32') {
+      const { execSync } = require('child_process')
+      const out = execSync(`netstat -ano -p tcp | findstr :${port}`, { encoding: 'utf8' }).toString()
+      const pids = new Set()
+      for (const line of out.split(/\r?\n/)) {
+        const m = line.trim().match(/LISTENING\s+(\d+)\s*$/)
+        if (m) pids.add(m[1])
+      }
+      for (const pid of pids) {
+        try { execFile('taskkill', ['/pid', pid, '/f', '/t'], () => {}) } catch (_) {}
+      }
+    } else {
+      const { execSync } = require('child_process')
+      const out = execSync(`lsof -ti tcp:${port}`, { encoding: 'utf8' }).toString()
+      for (const pid of out.split(/\s+/).filter(Boolean)) {
+        try { process.kill(Number(pid), 'SIGKILL') } catch (_) {}
+      }
+    }
+  } catch (_) {
+    // No matching process found (findstr/lsof exit non-zero on no match) — fine, nothing to clean up.
+  }
+  // Give the OS a moment to actually release the socket before we try to bind it ourselves.
+  await new Promise((r) => setTimeout(r, 400))
+}
+
 // ── Запуск / остановка прокси ─────────────────────────────────────
 async function startProxy (parsed, onLog) {
   if (singboxProcess) await stopProxy()
+  await killStrayProcessOnPort(PROXY_PORT)
 
   const binPath = getSingboxPath()
   if (!fs.existsSync(binPath)) {
@@ -598,10 +694,18 @@ async function startProxy (parsed, onLog) {
 
     singboxProcess.on('close', (code) => {
       clearInterval(portPoller)
+      const wasActive     = proxyActive
+      const wasExpected   = expectingExit
       singboxProcess = null
       proxyActive    = false
       currentConfig  = null
+      expectingExit  = false
       onLog && onLog(`[VPN] sing-box exited with code ${code}`)
+      // See BUGFIX above setUnexpectedExitHandler — only fires for a real
+      // crash/kill, not for our own stopProxy()-initiated shutdown.
+      if (wasActive && !wasExpected && onUnexpectedExit) {
+        try { onUnexpectedExit(code) } catch (_) {}
+      }
     })
   })
 }
@@ -609,6 +713,7 @@ async function startProxy (parsed, onLog) {
 async function stopProxy () {
   if (singboxProcess) {
     const proc = singboxProcess
+    expectingExit  = true  // this kill is deliberate — don't treat the resulting 'close' as a crash
     singboxProcess = null  // обнуляем сразу, чтобы close-обработчик не конфликтовал
 
     // Дожидаемся реального завершения процесса (а не просто отправки сигнала),

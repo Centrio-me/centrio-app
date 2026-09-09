@@ -347,38 +347,51 @@
     --glass-border:    rgba(255,255,255,0.04);
 }
 
-/* ===== ТЕМА: LIGHT (светлая) ===== */
+/* ===== ТЕМА: LIGHT (светлая) =====
+   REDESIGN (2026-09-09, "тему светлую сделай с такими-же углами, как
+   встроенная. То есть возьми встроенную тему, переделай её в белый цвет и
+   замени в программе" — live user request): --radius-sm/md/lg are only
+   declared once, in the ":root, [data-theme='dark']" block above — every
+   other theme (this one included) already inherits those exact same corner
+   values via normal CSS cascade, nothing to change there. What changed here
+   is the palette itself: re-derived directly from the "встроенная" dark
+   theme's own structure (same relative role of each token — bg-secondary/
+   tertiary/active step AWAY from bg-primary in the same direction dark does,
+   just mirrored toward white instead of black) rather than the previous
+   ad-hoc light-grey palette, and pushed to a crisper, truer white
+   (bg-primary #ffffff, not an off-white grey) per "переделай её в белый
+   цвет". */
 [data-theme="light"] {
-    --bg-primary:      #f4f4f6;
-    --bg-secondary:    #ffffff;
-    --bg-tertiary:     #e9e9ed;
-    --bg-active:       #dcdce8;
-    --bg-hover:        #eeeef2;
-    --border:          #e0e0e6;
-    --border-light:    #eaeaef;
+    --bg-primary:      #ffffff;
+    --bg-secondary:    #f6f6f8;
+    --bg-tertiary:     #eeeef1;
+    --bg-active:       #e2e2ec;
+    --bg-hover:        #f0f0f4;
+    --border:          #e4e4ea;
+    --border-light:    #ececf1;
     --accent:          #6366f1;
     --accent-hover:    #818cf8;
     --accent-dim:      rgba(99,102,241,0.12);
     --accent-glow:     rgba(99,102,241,0.2);
-    --text-primary:    #1c1c1e;
-    --text-secondary:  #636366;
-    --text-muted:      #aeaeb2;
+    --text-primary:    #18181b;
+    --text-secondary:  #6b6b70;
+    --text-muted:      #a4a4ab;
     --text-bright:     #000000;
     --danger:          #ef4444;
     --danger-dim:      rgba(239,68,68,0.1);
     --success:         #22c55e;
     --warning:         #f59e0b;
-    --statusbar-bg:    #e8e8ed;
-    --titlebar-bg:     #ececf0;
-    --sidebar-bg:      #e6e6eb;
+    --statusbar-bg:    #ffffff;
+    --titlebar-bg:     #fafafc;
+    --sidebar-bg:      #fbfbfd;
     --tab-active:      #ffffff;
-    --tab-inactive:    #e9e9ed;
-    --shadow-sm:       0 1px 3px rgba(0,0,0,0.06);
-    --shadow-md:       0 4px 16px rgba(0,0,0,0.08);
-    --shadow-lg:       0 8px 32px rgba(0,0,0,0.12);
+    --tab-inactive:    #f4f4f7;
+    --shadow-sm:       0 1px 3px rgba(20,20,30,0.05);
+    --shadow-md:       0 4px 16px rgba(20,20,30,0.08);
+    --shadow-lg:       0 8px 32px rgba(20,20,30,0.12);
     --shadow-glow:     0 0 16px rgba(99,102,241,0.14);
     --glass-bg:        rgba(255,255,255,0.85);
-    --glass-border:    rgba(0,0,0,0.07);
+    --glass-border:    rgba(0,0,0,0.06);
 }
 
 [data-theme="light"] body {
@@ -396,6 +409,64 @@
     background: var(--sidebar-bg);
     border-right: 1px solid var(--border);
     box-shadow: none;
+}
+
+/* REDESIGN (2026-09-09, "тему светлую сделай с такими-же углами, как
+   встроенная. То есть возьми встроенную тему, переделай её в белый цвет и
+   замени в программе" — live user request): "light" used to be structured
+   like "dock" (visible dividers between titlebar/sidebar/status bar) with
+   light colors, so it never had "embedded"'s signature look — one seamless
+   surface with no internal borders, and the active messenger floating as a
+   rounded 20px card. These overrides re-apply exactly the same structural
+   rules [data-theme="embedded"] uses below (see that block, ~L3212-3260,
+   and .content-area webview ~L1955-1972) to [data-theme="light"] too, just
+   riding on this theme's own (white) --bg-primary/--sidebar-bg tokens —
+   same shape, different palette, per the request. Placed after the plain
+   titlebar/activity-bar rules above so these win the cascade. */
+[data-theme="light"] .titlebar {
+    background: var(--bg-primary);
+    border-bottom: none;
+    box-shadow: none;
+}
+
+[data-theme="light"] .activity-bar {
+    background: var(--bg-primary);
+    border-right: none;
+    box-shadow: none;
+}
+
+[data-theme="light"] .main-container {
+    background: var(--bg-primary);
+}
+
+[data-theme="light"] .activity-divider {
+    display: none;
+}
+
+[data-theme="light"] .statusbar {
+    background: var(--bg-primary);
+    border-top: none;
+}
+
+[data-theme="light"] .right-activity-bar {
+    background: var(--bg-primary);
+}
+
+[data-theme="light"] .right-panel {
+    background: var(--bg-primary);
+}
+
+[data-theme="light"] .content-area {
+    margin-top: 8px;
+    margin-bottom: 8px;
+}
+
+[data-theme="light"] .content-area webview {
+    border-radius: 20px;
+    overflow: hidden;
+    clip-path: inset(0 round 20px);
+    -webkit-clip-path: inset(0 round 20px);
+    transform: translateZ(0);
 }
 
 [data-theme="light"] .window-btn {
@@ -3996,9 +4067,17 @@ body:has(.modal.show) .split-handle { display: none !important; }
 .midnight-preview .tp-sidebar { background: #080810; }
 .midnight-preview .tp-content { background: #050508; }
 
-.light-preview { background: #f5f5f7; }
-.light-preview .tp-sidebar { background: #e8e8ea; }
-.light-preview .tp-content { background: #f5f5f7; }
+/* REDESIGN (2026-09-09) — matches the new [data-theme="light"] palette and
+   structure above: crisper true white (not the previous light-grey swatch),
+   plus the same floating-rounded-card .tp-content treatment as
+   .embedded-preview below, since "light" now shares embedded's structure. */
+.light-preview { background: #ffffff; }
+.light-preview .tp-sidebar { background: #ffffff; box-shadow: none; }
+.light-preview .tp-content {
+    background: #f6f6f8;
+    margin: 4px 4px 4px 2px;
+    border-radius: 6px;
+}
 
 /* Adaptive preview — dark bg with muted multi-hue sidebar */
 .adaptive-preview { background: #0f1117; }
@@ -4555,6 +4634,16 @@ body:has(.modal.show) .split-handle { display: none !important; }
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.03em;
+    color: var(--text-muted);
+}
+
+/* FEATURE (2026-09-09, "если ничего не играет — она говорит, что сейчас
+   ничего не включено" — live user request): shown by renderer/media-player-ui.js
+   renderPopup() instead of the item list when playingIds() is empty. */
+.media-player-popup-empty {
+    padding: 14px 8px 16px;
+    text-align: center;
+    font-size: 12.5px;
     color: var(--text-muted);
 }
 
@@ -12307,6 +12396,18 @@ body.startup-locked #contentArea {
     color: var(--danger, #e74c3c);
 }
 
+.todo-item-edit-input {
+    flex: 1;
+    font-size: 13px;
+    font-family: inherit;
+    color: var(--text-primary);
+    background: var(--bg-tertiary);
+    border: 1px solid var(--accent);
+    border-radius: 6px;
+    padding: 3px 7px;
+    outline: none;
+}
+
 /* ===== ЗАМЕТКИ (плагин "Заметки" — Pro/Team) ===== */
 .notes-list-view,
 .notes-edit-view {
@@ -12406,11 +12507,17 @@ body.startup-locked #contentArea {
 .note-card[data-color]:not([data-color=""]) {
     border-left: 3px solid transparent;
 }
-.note-card[data-color="yellow"] { border-left-color: #f5c542; background: rgba(245,197,66,0.06); }
-.note-card[data-color="green"]  { border-left-color: #4caf7d; background: rgba(76,175,125,0.06); }
-.note-card[data-color="blue"]   { border-left-color: #5aa9ff; background: rgba(90,169,255,0.06); }
-.note-card[data-color="pink"]   { border-left-color: #f47eb0; background: rgba(244,126,176,0.06); }
-.note-card[data-color="purple"] { border-left-color: #a97ef4; background: rgba(169,126,244,0.06); }
+.note-card[data-color="yellow"] { border-left-color: #f5c542; background: rgba(245,197,66,0.16); }
+.note-card[data-color="green"]  { border-left-color: #4caf7d; background: rgba(76,175,125,0.16); }
+.note-card[data-color="blue"]   { border-left-color: #5aa9ff; background: rgba(90,169,255,0.16); }
+.note-card[data-color="pink"]   { border-left-color: #f47eb0; background: rgba(244,126,176,0.16); }
+.note-card[data-color="purple"] { border-left-color: #a97ef4; background: rgba(169,126,244,0.16); }
+
+.note-card[data-color="yellow"]:hover { background: rgba(245,197,66,0.24); }
+.note-card[data-color="green"]:hover  { background: rgba(76,175,125,0.24); }
+.note-card[data-color="blue"]:hover   { background: rgba(90,169,255,0.24); }
+.note-card[data-color="pink"]:hover   { background: rgba(244,126,176,0.24); }
+.note-card[data-color="purple"]:hover { background: rgba(169,126,244,0.24); }
 
 .notes-search-wrap {
     position: relative;
@@ -12667,11 +12774,37 @@ body.startup-locked #contentArea {
     color: var(--text-muted);
 }
 
+.notes-edit-footer-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
+}
+
 .notes-save-indicator {
     font-size: 11px;
     color: var(--text-muted);
     text-align: right;
-    margin-left: auto;
+}
+
+.notes-save-btn {
+    font-size: 12px;
+    font-weight: 600;
+    color: #fff;
+    background: var(--accent);
+    border: none;
+    border-radius: 6px;
+    padding: 5px 12px;
+    cursor: pointer;
+    transition: opacity 0.12s, transform 0.08s;
+}
+
+.notes-save-btn:hover {
+    opacity: 0.88;
+}
+
+.notes-save-btn:active {
+    transform: scale(0.96);
 }
 
 .app-notif-avatar-wrap {

@@ -663,6 +663,19 @@ function bindVpnUi ({ invokeIpc, tGet, ipcRenderer, onVpnStatusChange }) {
   // кнопка/щиты в сайдбаре навсегда застревали в состоянии "выключено", пока
   // пользователь вручную не открывал панель VPN.
   ipcRenderer?.on('vpn-restored', (s) => { status = s || status; updateBtn() })
+
+  // BUGFIX (2026-09-09, live user reports — "VPN постоянно отваливается...
+  // не пропускает трафик", "после перезапуска программы начинает работать"):
+  // see main/ipc/vpn.js setUnexpectedExitHandler / vpn-manager.js
+  // setUnexpectedExitHandler for the root cause — an unexpected sing-box
+  // exit is now caught in the main process and the sessions reset, but the
+  // panel here previously had no way to learn that happened (vpn-status is
+  // pull-only) and would keep showing a stale "connected" state. Re-fetch
+  // status so the button/panel immediately reflect the real (disconnected)
+  // state instead of only updating the next time the user reopens the panel.
+  ipcRenderer?.on('vpn-unexpected-disconnect', () => {
+    invokeIpc('vpn-status').then(s => { status = s; updateBtn(); if (panel.style.display !== 'none') render() }).catch(() => {})
+  })
 }
 
 // ── Инициализация VPN-секции в настройках ────────────────────────────────

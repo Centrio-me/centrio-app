@@ -292,7 +292,8 @@ module.exports = {
         pause: 'Pause',
         previous: 'Vorheriger Titel',
         next: 'Nächster Titel',
-        switch: 'Andere Quellen'
+        switch: 'Andere Quellen',
+        nothingPlaying: 'Gerade wird nichts abgespielt'
     },
 
     welcome: {
@@ -705,11 +706,15 @@ module.exports = {
         addList: 'Neue Liste',
         empty: 'Keine Aufgaben',
         star: 'Markieren',
+        unstar: 'Markierung entfernen',
         delete: 'Löschen',
         deleteList: 'Liste löschen',
         deleteListConfirmTitle: 'Liste löschen?',
         deleteListConfirmText: 'Die Liste "{name}" und alle ihre Aufgaben werden dauerhaft gelöscht.',
-        cancel: 'Abbrechen'
+        deleteConfirmTitle: 'Aufgabe löschen?',
+        deleteConfirmText: 'Diese Aktion kann nicht rückgängig gemacht werden.',
+        cancel: 'Abbrechen',
+        ctxEdit: 'Bearbeiten'
     },
 
     pro: {
@@ -799,7 +804,10 @@ module.exports = {
         copySuffix: 'Kopie',
         viewArchive: 'Archiv',
         archive: 'Archivieren',
-        archiveEmpty: 'Das Archiv ist noch leer'
+        unarchive: 'Aus Archiv entfernen',
+        archiveEmpty: 'Das Archiv ist noch leer',
+        ctxOpen: 'Öffnen',
+        saveBtn: 'Speichern'
     },
 
     webview: {

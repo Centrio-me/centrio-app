@@ -2267,11 +2267,36 @@ function applyTabZoom(level) {
         // Force refresh context menus if needed
     }
 
+    // BUGFIX (2026-09-09, "PRO поставил ручками, а плагины/нейросеть/заметки
+    // не открываются" — live user report): same revalidation the
+    // startup/focus/30-min handlers below already do (updateCloudBtn +
+    // updateAddButtonState + reapply*Locks + notesUiApiRef), triggered
+    // specifically when the Extensions tab opens — see
+    // extensions-ui.js openExtensionsSection for why that's the right
+    // moment. notesUiApiRef is assigned later in this file but this
+    // function isn't invoked until the user actually opens the tab, so the
+    // closure sees the real value by then.
+    function refreshUserAndReapply() {
+        return cloudApi.refreshUser().then(() => {
+            if (typeof updateCloudBtn === 'function') updateCloudBtn()
+            updateAddButtonState()
+            updateTrialStatusBar()
+            reapplyMessengerLocks()
+            reapplyExtensionLocks()
+            reapplySettingsLocks()
+            reapplyFolderLocks()
+            reapplySoundLocks()
+            notesUiApiRef?.invalidate()
+            notesUiApiRef?.updateButtonVisibility()
+        })
+    }
+
     const extensionsUiApi = createExtensionsUiApi({
         store,
         tGet,
         requirePro,
-        onExtensionToggle
+        onExtensionToggle,
+        refreshUser: refreshUserAndReapply
     })
 
     const { openExtensionsSection } = extensionsUiApi
@@ -2556,7 +2581,8 @@ function applyTabZoom(level) {
         invokeIpc,
         tGet,
         requirePro,
-        hasEffectivePro
+        hasEffectivePro,
+        refreshUser: refreshUserAndReapply
     })
 
     bindSettingsUi({

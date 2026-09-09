@@ -303,7 +303,8 @@ module.exports = {
         pause: 'Pause',
         previous: 'Previous track',
         next: 'Next track',
-        switch: 'Other sources'
+        switch: 'Other sources',
+        nothingPlaying: 'Nothing is playing right now'
     },
 
     welcome: {
@@ -730,11 +731,15 @@ module.exports = {
         addList: 'New list',
         empty: 'No todos',
         star: 'Star',
+        unstar: 'Unstar',
         delete: 'Delete',
         deleteList: 'Delete list',
         deleteListConfirmTitle: 'Delete list?',
         deleteListConfirmText: 'The list "{name}" and all its tasks will be permanently deleted.',
-        cancel: 'Cancel'
+        deleteConfirmTitle: 'Delete todo?',
+        deleteConfirmText: 'This action cannot be undone.',
+        cancel: 'Cancel',
+        ctxEdit: 'Edit'
     },
 
     pro: {
@@ -829,7 +834,10 @@ module.exports = {
         copySuffix: 'copy',
         viewArchive: 'Archive',
         archive: 'Archive',
-        archiveEmpty: 'Archive is empty'
+        unarchive: 'Unarchive',
+        archiveEmpty: 'Archive is empty',
+        ctxOpen: 'Open',
+        saveBtn: 'Save'
     },
 
     webview: {

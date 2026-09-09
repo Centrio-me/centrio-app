@@ -187,6 +187,9 @@ const UPLOADS = [
     // comparison coverage for the remaining aggregator from best-messenger-aggregators.tsx).
     { local: path.join(__dirname, '..', 'landing', 'blog-vs-station.tsx'), remote: `${REMOTE_BASE}/src/app/blog/vs-station/page.tsx` },
     { local: path.join(__dirname, '..', 'landing', 'blog-vs-shift.tsx'),   remote: `${REMOTE_BASE}/src/app/blog/vs-shift/page.tsx` },
+    { local: path.join(__dirname, '..', 'landing', 'blog-ai-assistant-guide.tsx'), remote: `${REMOTE_BASE}/src/app/blog/ai-assistant-guide/page.tsx` },
+    { local: path.join(__dirname, '..', 'landing', 'blog-notes-plugin-guide.tsx'), remote: `${REMOTE_BASE}/src/app/blog/notes-plugin-guide/page.tsx` },
+    { local: path.join(__dirname, '..', 'landing', 'blog-pin-lock-guide.tsx'),     remote: `${REMOTE_BASE}/src/app/blog/pin-lock-guide/page.tsx` },
     // 2026-08-17: restoring crypto (NOWPayments) checkout — these two API
     // routes and their shared rate-limit helper were written earlier but
     // never made it into this script's UPLOADS, so they never actually
@@ -251,7 +254,10 @@ conn.on('ready', async () => {
         // team/ and team/invite/ are new routes too (Корпоративная версия
         // Phase 1) — neither directory exists live yet, same situation as
         // the other new-route dirs below.
-        await exec(conn, `mkdir -p ${REMOTE_BASE}/src/app/api/og ${REMOTE_BASE}/src/app/d551cf74fb5d05ca3e40986dd9a78353.txt ${REMOTE_BASE}/src/app/blog/max-transition ${REMOTE_BASE}/src/app/blog/whatsapp-telegram-ban-risk ${REMOTE_BASE}/src/app/blog/vs-station ${REMOTE_BASE}/src/app/blog/vs-shift ${REMOTE_BASE}/src/app/api/create-crypto-payment ${REMOTE_BASE}/src/app/api/crypto-webhook ${REMOTE_BASE}/src/app/en ${REMOTE_BASE}/src/app/zh ${REMOTE_BASE}/src/app/fr ${REMOTE_BASE}/src/app/it ${REMOTE_BASE}/src/app/team/invite`)
+        // blog/ai-assistant-guide/, blog/notes-plugin-guide/ and
+        // blog/pin-lock-guide/ (2026-09-08) are the same situation — brand
+        // new blog post routes that never existed on the server before.
+        await exec(conn, `mkdir -p ${REMOTE_BASE}/src/app/api/og ${REMOTE_BASE}/src/app/d551cf74fb5d05ca3e40986dd9a78353.txt ${REMOTE_BASE}/src/app/blog/max-transition ${REMOTE_BASE}/src/app/blog/whatsapp-telegram-ban-risk ${REMOTE_BASE}/src/app/blog/vs-station ${REMOTE_BASE}/src/app/blog/vs-shift ${REMOTE_BASE}/src/app/blog/ai-assistant-guide ${REMOTE_BASE}/src/app/blog/notes-plugin-guide ${REMOTE_BASE}/src/app/blog/pin-lock-guide ${REMOTE_BASE}/src/app/api/create-crypto-payment ${REMOTE_BASE}/src/app/api/crypto-webhook ${REMOTE_BASE}/src/app/en ${REMOTE_BASE}/src/app/zh ${REMOTE_BASE}/src/app/fr ${REMOTE_BASE}/src/app/it ${REMOTE_BASE}/src/app/team/invite`)
 
         const sftp = await new Promise((resolve, reject) => {
             conn.sftp((err, sftp) => err ? reject(err) : resolve(sftp))

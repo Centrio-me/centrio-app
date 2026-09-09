@@ -292,7 +292,8 @@ module.exports = {
         pause: 'Pausa',
         previous: 'Brano precedente',
         next: 'Brano successivo',
-        switch: 'Altre fonti'
+        switch: 'Altre fonti',
+        nothingPlaying: 'Al momento non è in riproduzione nulla'
     },
 
     welcome: {
@@ -705,11 +706,15 @@ module.exports = {
         addList: 'Nuovo elenco',
         empty: 'Nessuna attività',
         star: 'Aggiungi ai preferiti',
+        unstar: 'Rimuovi dai preferiti',
         delete: 'Elimina',
         deleteList: 'Elimina elenco',
         deleteListConfirmTitle: 'Eliminare elenco?',
         deleteListConfirmText: 'Elenco "{name}" e tutte le sue attivita saranno eliminati definitivamente.',
-        cancel: 'Annulla'
+        deleteConfirmTitle: 'Eliminare l\'attivita?',
+        deleteConfirmText: 'Questa azione non puo essere annullata.',
+        cancel: 'Annulla',
+        ctxEdit: 'Modifica'
     },
 
     pro: {
@@ -799,7 +804,10 @@ module.exports = {
         copySuffix: 'copia',
         viewArchive: 'Archivio',
         archive: 'Archivia',
-        archiveEmpty: 'L\'archivio e vuoto'
+        unarchive: 'Rimuovi dall\'archivio',
+        archiveEmpty: 'L\'archivio e vuoto',
+        ctxOpen: 'Apri',
+        saveBtn: 'Salva'
     },
 
     webview: {

@@ -170,7 +170,15 @@ function createMediaPlayerUiApi({ state, tGet, switchTab, mediaPlayerBtn }) {
         header.textContent = tGet ? tGet('rightbar.mediaPlayer') : 'Медиаплеер'
         el.appendChild(header)
 
-        playingIds().forEach((id) => {
+        const ids = playingIds()
+        if (!ids.length) {
+            const empty = document.createElement('div')
+            empty.className = 'media-player-popup-empty'
+            empty.textContent = tGet ? tGet('mediaPlayer.nothingPlaying') : 'Сейчас ничего не воспроизводится'
+            el.appendChild(empty)
+        }
+
+        ids.forEach((id) => {
             const messenger = getMessenger(id)
             if (!messenger) return
             const info = mediaState.get(id) || {}
@@ -224,22 +232,21 @@ function createMediaPlayerUiApi({ state, tGet, switchTab, mediaPlayerBtn }) {
             closePopup()
             return
         }
-        if (!playingIds().length) return
         renderPopup()
         positionPopup()
         popupOpen = true
         ensurePopup().classList.add('show')
     }
 
+    // BUGFIX (2026-09-09, "Пусть иконка медиа показывается всегда, просто
+    // если ничего не играет — она говорит, что сейчас ничего не включено" —
+    // live user request, replacing the earlier "hide when nothing plays"
+    // design from the same day): mediaPlayerBtn.style.visibility no longer
+    // toggles at all — the button is a permanent fixture under notesBtn now,
+    // same as assistantBtn/todosBtn. renderPopup() shows an empty-state
+    // message (see above) when nothing is playing instead of the button
+    // disappearing.
     function render() {
-        const ids = playingIds()
-
-        if (mediaPlayerBtn) mediaPlayerBtn.style.display = ids.length ? '' : 'none'
-        if (!ids.length) {
-            closePopup()
-            return
-        }
-
         if (popupOpen) renderPopup()
     }
 

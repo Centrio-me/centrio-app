@@ -1,7 +1,7 @@
 {
 	"name": "messengerapp",
 	"productName": "Centrio",
-	"version": "2.6.0",
+	"version": "2.6.2",
 	"description": "All messengers in one app",
 	"author": {
 		"name": "Centrio",
@@ -26,7 +26,7 @@
 	"devDependencies": {
 		"@eslint/js": "^10.0.1",
 		"@fontsource/inter": "^5.3.0",
-		"electron": "^39.8.10",
+		"electron": "^44.2.0",
 		"electron-builder": "^26.15.3",
 		"esbuild": "^0.25.12",
 		"eslint": "^10.8.0",

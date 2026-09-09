@@ -36,6 +36,15 @@ function bindNotesUi({ store, tGet, authorizedInvoke, openRightPanel, closeRight
     const charCountEl = document.getElementById('notesCharCount')
     const archiveToggleBtn = document.getElementById('notesArchiveToggleBtn')
     const archiveBtn = document.getElementById('notesArchiveBtn')
+    const saveBtn = document.getElementById('notesSaveBtn')
+    const ctxMenu = document.getElementById('notesContextMenu')
+    const ctxOpen = document.getElementById('ctxNoteOpen')
+    const ctxPin = document.getElementById('ctxNotePin')
+    const ctxPinLabel = document.getElementById('ctxNotePinLabel')
+    const ctxDuplicate = document.getElementById('ctxNoteDuplicate')
+    const ctxArchive = document.getElementById('ctxNoteArchive')
+    const ctxArchiveLabel = document.getElementById('ctxNoteArchiveLabel')
+    const ctxDelete = document.getElementById('ctxNoteDelete')
 
     if (!btn || !panel || !listEl) return
 
@@ -43,9 +52,11 @@ function bindNotesUi({ store, tGet, authorizedInvoke, openRightPanel, closeRight
     let loading = false
     let activeNote = null // текущая открытая заметка (полный объект с сервера)
     let saveTimer = null
+    let pendingSave = null // функция отложенного сохранения — дёргаем сразу по кнопке "Сохранить"
     let searchQuery = ''
     let viewingArchived = false
     let dragId = null // id перетаскиваемой карточки — drag&drop сортировка списка
+    let contextNoteId = null // заметка, на которую было выполнено правое нажатие
 
     function escapeHtml(str) {
         const div = document.createElement('div')
@@ -64,7 +75,12 @@ function bindNotesUi({ store, tGet, authorizedInvoke, openRightPanel, closeRight
     // pro_required, см. handleAuthError ниже.
     function updateButtonVisibility() {
         const visible = isEnabled() && (typeof getUserIsPro === 'function' ? getUserIsPro() : true)
-        btn.style.display = visible ? '' : 'none'
+        // BUGFIX (2026-09-09, "иконка медиа прыгает с места на место") —
+        // visibility:hidden instead of display:none keeps this button's slot
+        // reserved in the shared .activity-top flex column, so mediaPlayerBtn
+        // (rendered right after it in index.html) doesn't shift position
+        // every time Notes gets enabled/disabled or re-checked for Pro.
+        btn.style.visibility = visible ? '' : 'hidden'
         if (!visible && panel.classList.contains('active')) closeRightPanel?.()
     }
 
@@ -131,7 +147,7 @@ function bindNotesUi({ store, tGet, authorizedInvoke, openRightPanel, closeRight
                 <div class="note-card-icon">
                     ${n.type === 'CHECKLIST'
                         ? '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>'
-                        : '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M15 3v6h6"/></svg>'}
+                        : '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>'}
                 </div>
                 <div class="note-card-body">
                     <div class="note-card-title">${escapeHtml(n.title) || `<span style="opacity:.5">${escapeHtml(tGet('notes.titlePlaceholder') || 'Без названия')}</span>`}</div>
@@ -283,6 +299,7 @@ function bindNotesUi({ store, tGet, authorizedInvoke, openRightPanel, closeRight
         const noteId = activeNote.id
         clearTimeout(saveTimer)
         const run = async () => {
+            pendingSave = null
             setSaving()
             const result = await authorizedInvoke('api-notes-update', noteId, patch)
             if (!result?.success) { await handleAuthError(result); return }
@@ -299,7 +316,17 @@ function bindNotesUi({ store, tGet, authorizedInvoke, openRightPanel, closeRight
             }
         }
         if (immediate) run()
-        else saveTimer = setTimeout(run, 500)
+        else { pendingSave = run; saveTimer = setTimeout(run, 500) }
+    }
+
+    // Кнопка "Сохранить" — для клиентов, которым непонятно молчаливое
+    // автосохранение: дёргает уже отложенный запрос немедленно, либо (если
+    // сохранять нечего) просто мигает индикатором "Сохранено".
+    function forceSave() {
+        if (!activeNote) return
+        clearTimeout(saveTimer)
+        if (pendingSave) { const run = pendingSave; pendingSave = null; run() }
+        else setSaved()
     }
 
     async function deleteActiveNote() {
@@ -309,6 +336,50 @@ function bindNotesUi({ store, tGet, authorizedInvoke, openRightPanel, closeRight
         if (!result?.success) { await handleAuthError(result); return }
         notes = notes.filter(n => n.id !== id)
         showList()
+    }
+
+    // ── операции по id (для контекстного меню — карточка не обязательно
+    // открыта в редакторе, patchActiveNote/deleteActiveNote тут не подходят) ─
+    async function patchNoteById(id, patch) {
+        const result = await authorizedInvoke('api-notes-update', id, patch)
+        if (!result?.success) { await handleAuthError(result); return }
+        notes = notes.map(n => n.id === id ? result.data.note : n)
+        if (activeNote?.id === id) activeNote = result.data.note
+        renderList()
+    }
+
+    async function deleteNoteById(id) {
+        const note = notes.find(n => n.id === id)
+        const ok = await window.showConfirmModal({
+            title: tGet('notes.deleteConfirmTitle') || 'Удалить заметку?',
+            message: tGet('notes.deleteConfirmText') || 'Действие нельзя отменить.',
+            confirmText: tGet('notes.deleteBtn') || 'Удалить',
+            cancelText: tGet('notes.cancelBtn') || 'Отмена',
+            danger: true
+        })
+        if (!ok) return
+        const result = await authorizedInvoke('api-notes-delete', id)
+        if (!result?.success) { await handleAuthError(result); return }
+        notes = notes.filter(n => n.id !== id)
+        if (activeNote?.id === id) showList()
+        else renderList()
+    }
+
+    async function duplicateNoteById(id) {
+        const note = notes.find(n => n.id === id)
+        if (!note) return
+        const suffix = tGet('notes.copySuffix') || 'копия'
+        const result = await authorizedInvoke('api-notes-create', {
+            type: note.type,
+            title: note.title ? `${note.title} (${suffix})` : '',
+            body: note.body || '',
+            items: Array.isArray(note.items) ? note.items.map(i => ({ ...i, id: `item-${Date.now()}-${Math.random().toString(36).slice(2, 7)}` })) : [],
+            color: note.color || '',
+            position: notes.length
+        })
+        if (!result?.success) { await handleAuthError(result); return }
+        notes = [result.data.note, ...notes]
+        renderList()
     }
 
     // ── события ──────────────────────────────────────────────────────────
@@ -322,6 +393,88 @@ function bindNotesUi({ store, tGet, authorizedInvoke, openRightPanel, closeRight
         if (!card) return
         const note = notes.find(n => String(n.id) === card.dataset.id)
         if (note) showEdit(note)
+    })
+
+    // ── правая кнопка мыши по карточке — открыть/закрепить/дублировать/
+    // архивировать/удалить, не открывая редактор ────────────────────────
+    function closeCtxMenu() {
+        ctxMenu?.classList.remove('show')
+        contextNoteId = null
+    }
+    document.addEventListener('close-all-popups', closeCtxMenu)
+
+    listEl.addEventListener('contextmenu', (e) => {
+        const card = e.target.closest('.note-card')
+        if (!card || !ctxMenu) return
+        e.preventDefault()
+        e.stopPropagation()
+        document.dispatchEvent(new CustomEvent('close-all-popups'))
+        contextNoteId = card.dataset.id
+        const note = notes.find(n => String(n.id) === contextNoteId)
+        if (!note) return
+
+        if (ctxPinLabel) ctxPinLabel.setAttribute('data-i18n', note.pinned ? 'notes.unpin' : 'notes.pin')
+        if (ctxPinLabel) ctxPinLabel.textContent = tGet(note.pinned ? 'notes.unpin' : 'notes.pin') || (note.pinned ? 'Открепить' : 'Закрепить')
+        if (ctxArchiveLabel) ctxArchiveLabel.setAttribute('data-i18n', note.archived ? 'notes.unarchive' : 'notes.archive')
+        if (ctxArchiveLabel) ctxArchiveLabel.textContent = tGet(note.archived ? 'notes.unarchive' : 'notes.archive') || (note.archived ? 'Разархивировать' : 'Архивировать')
+
+        ctxMenu.style.left = `${e.clientX}px`
+        ctxMenu.style.top = `${e.clientY}px`
+        ctxMenu.classList.add('show')
+        const rect = ctxMenu.getBoundingClientRect()
+        if (rect.right > window.innerWidth) ctxMenu.style.left = `${e.clientX - rect.width}px`
+        if (rect.bottom > window.innerHeight) ctxMenu.style.top = `${e.clientY - rect.height}px`
+        document.dispatchEvent(new CustomEvent('popup-opened'))
+    })
+
+    ctxOpen?.addEventListener('click', (e) => {
+        e.stopPropagation()
+        const note = notes.find(n => String(n.id) === contextNoteId)
+        closeCtxMenu()
+        if (note) showEdit(note)
+    })
+    ctxPin?.addEventListener('click', (e) => {
+        e.stopPropagation()
+        const id = contextNoteId
+        const note = notes.find(n => String(n.id) === id)
+        closeCtxMenu()
+        if (note) patchNoteById(note.id, { pinned: !note.pinned })
+    })
+    ctxDuplicate?.addEventListener('click', (e) => {
+        e.stopPropagation()
+        const id = contextNoteId
+        closeCtxMenu()
+        if (id != null) duplicateNoteById(notes.find(n => String(n.id) === id)?.id)
+    })
+    ctxArchive?.addEventListener('click', async (e) => {
+        e.stopPropagation()
+        const id = contextNoteId
+        const note = notes.find(n => String(n.id) === id)
+        closeCtxMenu()
+        if (!note) return
+        const nextArchived = !note.archived
+        await patchNoteById(note.id, { archived: nextArchived })
+        // Список сейчас показывает либо архив, либо обычные заметки (фильтр
+        // применяется на сервере через loadNotes) — если после переключения
+        // заметка больше не относится к текущему виду, убираем её из DOM
+        // без повторного похода на сервер.
+        if (nextArchived !== viewingArchived) {
+            notes = notes.filter(n => n.id !== note.id)
+            if (activeNote?.id === note.id) showList()
+            else renderList()
+        }
+    })
+    ctxDelete?.addEventListener('click', (e) => {
+        e.stopPropagation()
+        const id = contextNoteId
+        const note = notes.find(n => String(n.id) === id)
+        closeCtxMenu()
+        if (note) deleteNoteById(note.id)
+    })
+
+    saveBtn?.addEventListener('click', (e) => {
+        e.stopPropagation()
+        forceSave()
     })
 
     archiveToggleBtn?.addEventListener('click', (e) => {
@@ -456,7 +609,19 @@ function bindNotesUi({ store, tGet, authorizedInvoke, openRightPanel, closeRight
         if (addItemInput) addItemInput.value = ''
     })
 
-    panel.addEventListener('click', (e) => e.stopPropagation())
+    // BUGFIX ("контекстное меню не закрывается при клике в другое место"):
+    // этот listener глушит клик до document — 'close-all-popups' (см.
+    // popup-backdrop-bind.js) диспатчится только для клика ВНЕ панели,
+    // поэтому клик по пустому месту ВНУТРИ самой панели (например, по фону
+    // списка) ctxMenu не закрывал. ctxMenu — отдельный DOM-узел вне panel
+    // (см. index.html), так что stopPropagation() здесь на него не влияет:
+    // безопасно закрывать меню на любой клик по панели, если сам клик не по
+    // ctxMenu (иначе клик по пункту меню закрывал бы его раньше, чем
+    // успевал сработать collapse обработчик пункта).
+    panel.addEventListener('click', (e) => {
+        e.stopPropagation()
+        if (!ctxMenu?.contains(e.target)) closeCtxMenu()
+    })
 
     function openPanel() {
         viewingArchived = false

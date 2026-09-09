@@ -19,11 +19,17 @@ function bindTodosUi({ store, tGet, openRightPanel, closeRightPanel }) {
     const listTabsEl  = document.getElementById('todosListTabs')
     const listAddBtn   = document.getElementById('todoListAddBtn')
     const listAddInput = document.getElementById('todoListAddInput')
+    const ctxMenu      = document.getElementById('todosContextMenu')
+    const ctxEdit      = document.getElementById('ctxTodoEdit')
+    const ctxStar      = document.getElementById('ctxTodoStar')
+    const ctxStarLabel = document.getElementById('ctxTodoStarLabel')
+    const ctxDelete    = document.getElementById('ctxTodoDelete')
 
     if (!btn || !panel || !list) return
 
     // 'starred' или id одного из data.lists
     let activeTab = DEFAULT_LIST_ID
+    let contextTodoId = null // задача, на которую было выполнено правое нажатие
 
     function getData() {
         let data = store.get('todos', null)
@@ -124,6 +130,51 @@ function bindTodosUi({ store, tGet, openRightPanel, closeRightPanel }) {
         renderList()
     }
 
+    // Инлайн-редактирование текста задачи — по контекстному меню (см. ниже),
+    // без отдельного экрана редактирования, как у заметок: задача — это
+    // одна строка, отдельный "редактор" был бы избыточен.
+    function editTodoInline(id) {
+        const itemEl = list.querySelector(`.todo-item[data-id="${id}"]`)
+        const textEl = itemEl?.querySelector('.todo-item-text')
+        if (!itemEl || !textEl) return
+
+        const data = getData()
+        const todo = data.items.find(t => String(t.id) === String(id))
+        if (!todo) return
+
+        const input = document.createElement('input')
+        input.type = 'text'
+        input.className = 'todo-item-edit-input'
+        input.value = todo.text
+        input.maxLength = 200
+        textEl.replaceWith(input)
+        input.focus()
+        input.select()
+
+        let done = false
+        const commit = (save) => {
+            if (done) return
+            done = true
+            if (save) {
+                const text = input.value.trim()
+                if (text) {
+                    const fresh = getData()
+                    const idx = fresh.items.findIndex(t => String(t.id) === String(id))
+                    if (idx !== -1) {
+                        fresh.items[idx].text = text
+                        saveData(fresh)
+                    }
+                }
+            }
+            renderList()
+        }
+        input.addEventListener('blur', () => commit(true))
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') { e.preventDefault(); commit(true) }
+            else if (e.key === 'Escape') { e.preventDefault(); commit(false) }
+        })
+    }
+
     function setActiveTab(tab) {
         activeTab = tab
         renderAll()
@@ -153,6 +204,72 @@ function bindTodosUi({ store, tGet, openRightPanel, closeRightPanel }) {
         } else {
             data.items[idx].done = !data.items[idx].done
         }
+        saveData(data)
+        renderList()
+    })
+
+    // ── правая кнопка мыши по задаче — изменить/закрепить/удалить ────────
+    function closeCtxMenu() {
+        ctxMenu?.classList.remove('show')
+        contextTodoId = null
+    }
+    document.addEventListener('close-all-popups', closeCtxMenu)
+
+    list.addEventListener('contextmenu', (e) => {
+        const itemEl = e.target.closest('.todo-item')
+        if (!itemEl || !ctxMenu) return
+        e.preventDefault()
+        e.stopPropagation()
+        document.dispatchEvent(new CustomEvent('close-all-popups'))
+        contextTodoId = itemEl.dataset.id
+        const data = getData()
+        const todo = data.items.find(t => String(t.id) === String(contextTodoId))
+        if (!todo) return
+
+        if (ctxStarLabel) ctxStarLabel.textContent = tGet(todo.starred ? 'todos.unstar' : 'todos.star') || (todo.starred ? 'Открепить' : 'Закрепить')
+
+        ctxMenu.style.left = `${e.clientX}px`
+        ctxMenu.style.top = `${e.clientY}px`
+        ctxMenu.classList.add('show')
+        const rect = ctxMenu.getBoundingClientRect()
+        if (rect.right > window.innerWidth) ctxMenu.style.left = `${e.clientX - rect.width}px`
+        if (rect.bottom > window.innerHeight) ctxMenu.style.top = `${e.clientY - rect.height}px`
+        document.dispatchEvent(new CustomEvent('popup-opened'))
+    })
+
+    ctxEdit?.addEventListener('click', (e) => {
+        e.stopPropagation()
+        const id = contextTodoId
+        closeCtxMenu()
+        if (id != null) editTodoInline(id)
+    })
+    ctxStar?.addEventListener('click', (e) => {
+        e.stopPropagation()
+        const id = contextTodoId
+        closeCtxMenu()
+        if (id == null) return
+        const data = getData()
+        const idx = data.items.findIndex(t => String(t.id) === String(id))
+        if (idx === -1) return
+        data.items[idx].starred = !data.items[idx].starred
+        saveData(data)
+        renderList()
+    })
+    ctxDelete?.addEventListener('click', async (e) => {
+        e.stopPropagation()
+        const id = contextTodoId
+        closeCtxMenu()
+        if (id == null) return
+        const ok = await window.showConfirmModal({
+            title: tGet('todos.deleteConfirmTitle') || 'Удалить задачу?',
+            message: tGet('todos.deleteConfirmText') || 'Действие нельзя отменить.',
+            confirmText: tGet('todos.delete') || 'Удалить',
+            cancelText: tGet('todos.cancel') || 'Отмена',
+            danger: true
+        })
+        if (!ok) return
+        const data = getData()
+        data.items = data.items.filter(t => String(t.id) !== String(id))
         saveData(data)
         renderList()
     })
@@ -249,7 +366,14 @@ function bindTodosUi({ store, tGet, openRightPanel, closeRightPanel }) {
         requestAnimationFrame(() => addInput?.focus())
     })
 
-    panel.addEventListener('click', (e) => e.stopPropagation())
+    // BUGFIX ("контекстное меню не закрывается при клике в другое место") —
+    // см. тот же комментарий в renderer/notes-bind.js: клик по пустому месту
+    // внутри самой панели раньше не закрывал ctxMenu, т.к. stopPropagation()
+    // здесь не даёт клику дойти до document-уровневого 'close-all-popups'.
+    panel.addEventListener('click', (e) => {
+        e.stopPropagation()
+        closeCtxMenu()
+    })
 
     return { closePanel }
 }

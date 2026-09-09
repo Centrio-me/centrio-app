@@ -292,7 +292,8 @@ module.exports = {
         pause: '暂停',
         previous: '上一曲',
         next: '下一曲',
-        switch: '其他来源'
+        switch: '其他来源',
+        nothingPlaying: '当前没有正在播放的内容'
     },
 
     welcome: {
@@ -705,11 +706,15 @@ module.exports = {
         addList: '新建列表',
         empty: '暂无任务',
         star: '标记',
+        unstar: '取消标记',
         delete: '删除',
         deleteList: '删除列表',
         deleteListConfirmTitle: '删除此列表？',
         deleteListConfirmText: '列表"{name}"及其所有任务将被永久删除。',
-        cancel: '取消'
+        deleteConfirmTitle: '删除此任务？',
+        deleteConfirmText: '此操作无法撤销。',
+        cancel: '取消',
+        ctxEdit: '编辑'
     },
 
     pro: {
@@ -799,7 +804,10 @@ module.exports = {
         copySuffix: '副本',
         viewArchive: '归档',
         archive: '归档',
-        archiveEmpty: '归档为空'
+        unarchive: '取消归档',
+        archiveEmpty: '归档为空',
+        ctxOpen: '打开',
+        saveBtn: '保存'
     },
 
     webview: {

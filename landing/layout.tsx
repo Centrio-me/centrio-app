@@ -1,15 +1,16 @@
 import type { Metadata } from 'next'
-import { Geist, Bricolage_Grotesque } from 'next/font/google'
+import { Geist, Montserrat } from 'next/font/google'
 import Script from 'next/script'
 import './globals.css'
 
 const geist = Geist({ subsets: ['latin', 'cyrillic'], variable: '--font-geist' })
-// Bricolage Grotesque has no `cyrillic` subset (only latin, latin-ext,
-// vietnamese) — Turbopack silently ignored the invalid subset request,
-// but webpack's next/font loader fails the build hard on it. Bricolage is
-// only used for display/headline text (see .sh in page.tsx and friends),
-// which falls back to var(--font-geist) for any Cyrillic glyphs anyway.
-const display = Bricolage_Grotesque({ subsets: ['latin'], variable: '--font-display' })
+// REDESIGN (2026-09-08, "не нравится этот шрифт заголовков... Montserrat
+// пусть будет" — live user request): was Oswald (tall/narrow, tried right
+// after Bricolage Grotesque) — user didn't like it either. Montserrat has a
+// real `cyrillic` subset (unlike both previous display faces), so headline
+// text now renders in Montserrat directly for Cyrillic too instead of
+// falling back to var(--font-geist) — see .sh/.fh in page.tsx.
+const display = Montserrat({ subsets: ['latin', 'cyrillic'], weight: ['400', '500', '600'], variable: '--font-display' })
 
 const SITE_URL = 'https://centrio.me'
 // Fixed 2026-08-03: this used to point at /og-image.png, which does not

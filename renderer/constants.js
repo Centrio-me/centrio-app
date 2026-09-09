@@ -38,7 +38,6 @@ const popularMessengers = [
     { name: 'Signal',           url: 'https://signal.me',                   icon: 'assets/logomessenger/signal.png',        color: '#3A76F0', category: 'messengers' },
     { name: 'LINE',             url: 'https://web.line.me',                 icon: 'assets/logomessenger/line.png',          color: '#00B900', category: 'messengers' },
     { name: 'Messenger',        url: 'https://messenger.com',               icon: 'assets/logomessenger/messenger.png',     color: '#0099FF', category: 'messengers' },
-    { name: 'Instagram',        url: 'https://www.instagram.com/direct/inbox/', icon: 'assets/logomessenger/instagram.png', color: '#E1306C', category: 'messengers' },
     { name: 'X (Twitter)',      url: 'https://x.com/messages',              icon: 'assets/logomessenger/x.png',            color: '#000000', category: 'messengers' },
     { name: 'LinkedIn',         url: 'https://www.linkedin.com/messaging',  icon: 'assets/logomessenger/linkedin.png',      color: '#0A66C2', category: 'messengers' },
     { name: 'Google Chat',      url: 'https://chat.google.com',             icon: 'assets/logomessenger/googlechat.png',    color: '#00897B', category: 'messengers' },
@@ -110,6 +109,11 @@ const popularMessengers = [
     // собственных favicon/apple-touch-icon — см. assets/logomessenger/*.
     // ────────────────────────────────────────────────────────────────────
     { name: 'YouTube',          url: 'https://www.youtube.com',             icon: 'assets/logomessenger/youtube.svg',       color: '#FF0000', category: 'media' },
+    // Instagram (2026-09-08, live user request) — переехал из "Мессенджеров"
+    // в "Медиа": используется в основном как лента/сторис, а не как чат.
+    { name: 'Instagram',        url: 'https://www.instagram.com/direct/inbox/', icon: 'assets/logomessenger/instagram.png', color: '#E1306C', category: 'media' },
+    // TikTok (2026-09-08, live user request) — иконка из simple-icons.
+    { name: 'TikTok',           url: 'https://www.tiktok.com',              icon: 'assets/logomessenger/tiktok.svg',        color: '#000000', category: 'media' },
     { name: 'Spotify',          url: 'https://open.spotify.com',            icon: 'assets/logomessenger/spotify.svg',       color: '#1ED760', category: 'media' },
     // popular: true (2026-08-28, live user request — "в популярные добавь
     // Яндекс Музыка") — та же схема двойного показа, что и у остального

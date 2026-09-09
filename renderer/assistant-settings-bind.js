@@ -40,7 +40,7 @@ const BYOK_MODELS = {
     ]
 }
 
-function bindAssistantSettingsUi({ store, invokeIpc, tGet, requirePro, hasEffectivePro }) {
+function bindAssistantSettingsUi({ store, invokeIpc, tGet, requirePro, hasEffectivePro, refreshUser }) {
     const modeGrid = document.getElementById('assistantModeGrid')
     const byokGroup = document.getElementById('assistantByokGroup')
     const localGroup = document.getElementById('assistantLocalGroup')
@@ -284,6 +284,21 @@ function bindAssistantSettingsUi({ store, invokeIpc, tGet, requirePro, hasEffect
 
         renderProStatus()
         refreshProUsage()
+
+        // BUGFIX (2026-09-09, "PRO поставил ручками, нейросетью не даёт
+        // пользоваться" — live user report): renderProStatus()/refreshProUsage()
+        // above read hasEffectivePro(), which is backed by a local cache
+        // only refreshed on startup/focus/30-min interval (renderer.js). A
+        // plan granted manually on the server while this exact tab was
+        // already open would show "недоступен на плане Pro" indefinitely
+        // until one of those unrelated triggers fired. Revalidate the moment
+        // the user opens this tab and re-render if it changed anything.
+        if (typeof refreshUser === 'function') {
+            refreshUser().then(() => {
+                renderProStatus()
+                refreshProUsage()
+            }).catch(() => {})
+        }
     }
 
     return { openAssistantSection }

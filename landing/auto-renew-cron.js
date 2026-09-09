@@ -136,7 +136,25 @@ async function runAutoRenew () {
     }
   }
 
-  // Понизить план истёкших PRO-пользователей без автопродления
+  // Понизить план истёкших PRO-пользователей без автопродления.
+  // BUGFIX (2026-09-09, "PRO поставил ручками — план откатился обратно" —
+  // live incident, user Эля Гусейнова 18f64c06-9190-4ee4-bfdc-e8579d02411b):
+  // ad-hoc правка plan='PRO' напрямую в БД без обновления planExpiresAt
+  // молча тикала здесь до ближайшего запуска крона, который откатывал её
+  // обратно на FREE без единого следа в логах, кроме общего счётчика —
+  // отследить, ЧЕЙ именно план откатился и почему, было нечем. Логируем
+  // email+бывший planExpiresAt каждого затронутого пользователя ДО
+  // updateMany, чтобы подобный инцидент был виден в логах сразу, а не
+  // требовал ручного расследования постфактум. Поведение самого даунгрейда
+  // не меняется — см. scripts/grant-pro.js для безопасного ручного продления.
+  const toExpire = await prisma.user.findMany({
+    where: { plan: 'PRO', planExpiresAt: { lt: now } },
+    select: { id: true, email: true, planExpiresAt: true }
+  })
+  if (toExpire.length > 0) {
+    console.log('[AutoRenew] About to downgrade to FREE: ' + toExpire.map(u => `${u.email} (expired ${u.planExpiresAt.toISOString()})`).join(', '))
+  }
+
   const expired = await prisma.user.updateMany({
     where: { plan: 'PRO', planExpiresAt: { lt: now } },
     data:  { plan: 'FREE', autoRenew: false }

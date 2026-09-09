@@ -292,7 +292,8 @@ module.exports = {
         pause: 'Pausa',
         previous: 'Pista anterior',
         next: 'Pista siguiente',
-        switch: 'Otras fuentes'
+        switch: 'Otras fuentes',
+        nothingPlaying: 'Ahora mismo no se está reproduciendo nada'
     },
 
     welcome: {
@@ -705,11 +706,15 @@ module.exports = {
         addList: 'Nueva lista',
         empty: 'Sin tareas',
         star: 'Destacar',
+        unstar: 'Quitar destacado',
         delete: 'Eliminar',
         deleteList: 'Eliminar lista',
         deleteListConfirmTitle: 'Eliminar lista?',
         deleteListConfirmText: 'La lista "{name}" y todas sus tareas se eliminaran permanentemente.',
-        cancel: 'Cancelar'
+        deleteConfirmTitle: 'Eliminar tarea?',
+        deleteConfirmText: 'Esta accion no se puede deshacer.',
+        cancel: 'Cancelar',
+        ctxEdit: 'Editar'
     },
 
     pro: {
@@ -799,7 +804,10 @@ module.exports = {
         copySuffix: 'copia',
         viewArchive: 'Archivo',
         archive: 'Archivar',
-        archiveEmpty: 'El archivo esta vacio'
+        unarchive: 'Desarchivar',
+        archiveEmpty: 'El archivo esta vacio',
+        ctxOpen: 'Abrir',
+        saveBtn: 'Guardar'
     },
 
     webview: {
