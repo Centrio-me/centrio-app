@@ -10,6 +10,10 @@ The format is based on Keep a Changelog. This project does not currently follow 
 
 _No unreleased changes yet — add entries here as they land, then move them under a new version heading at release time._
 
+## [2.6.3]
+
+- Исправлено: подключение по ссылке в VPN могло не срабатывать
+
 ## [2.6.2]
 
 - Улучшена надёжность VPN — более стабильное подключение и переподключение

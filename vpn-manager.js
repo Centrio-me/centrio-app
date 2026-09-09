@@ -827,5 +827,18 @@ module.exports = {
   deleteConfig,
   pingServer,
   pingConfig,
-  PROXY_PORT
+  PROXY_PORT,
+  // BUGFIX (2026-09-09, live report "No handler registered for
+  // 'vpn-connect'" — CRITICAL regression from this session's own VPN fix):
+  // setUnexpectedExitHandler was defined above but never added here, so
+  // main/ipc/vpn.js's `getVpn().setUnexpectedExitHandler(...)` — called at
+  // the very top of registerVpnIpc(), before any ipcMain.handle(...) — threw
+  // "is not a function" on every app start. That exception aborted
+  // registerVpnIpc() entirely (no vpn-* channel ever got registered) and,
+  // since main/bootstrap/registerIpc.js calls registration functions
+  // sequentially and unconditionally, silently broke everything registered
+  // after it too (screenshot, settingsPortability, extensions,
+  // lockBackground, assistant). Always smoke-test require()+registration
+  // after touching this file's exports — this shipped in 2.6.2 unverified.
+  setUnexpectedExitHandler
 }
