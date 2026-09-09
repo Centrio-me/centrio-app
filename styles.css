@@ -3306,10 +3306,21 @@ body:has(.modal.show) .split-handle { display: none !important; }
    "широкими". См. общий комментарий у .content-area выше. */
 
 /* ── Превью в настройках ─────────────────────────────────────────── */
+/* REDESIGN (2026-09-10, "иконки встроенной и светлой темы нужно поменять.
+   Они какие-то не очень" — live user report): these two previews were just
+   flat two-tone rectangles with nothing else, plainer than "dock" (glow) or
+   "adaptive" (gradient sidebar) next to them in the same picker — added a
+   small dotted "messenger icon" column to the sidebar strip (a stack of 3
+   accent-tinted dots, mirroring what the real sidebar looks like) so these
+   two read as a screenshot of the app rather than an empty swatch. */
 .embedded-preview { background: #0f0f0f; }
 .embedded-preview .tp-sidebar {
     background: #0f0f0f;
     box-shadow: none;
+    background-image:
+        radial-gradient(circle 3px at 11px 10px, var(--accent) 99%, transparent 100%),
+        radial-gradient(circle 3px at 11px 22px, #3a3a3a 99%, transparent 100%),
+        radial-gradient(circle 3px at 11px 34px, #3a3a3a 99%, transparent 100%);
 }
 .embedded-preview .tp-content {
     background: #1a1a1a;
@@ -4072,7 +4083,14 @@ body:has(.modal.show) .split-handle { display: none !important; }
    plus the same floating-rounded-card .tp-content treatment as
    .embedded-preview below, since "light" now shares embedded's structure. */
 .light-preview { background: #ffffff; }
-.light-preview .tp-sidebar { background: #ffffff; box-shadow: none; }
+.light-preview .tp-sidebar {
+    background: #ffffff;
+    box-shadow: none;
+    background-image:
+        radial-gradient(circle 3px at 11px 10px, var(--accent) 99%, transparent 100%),
+        radial-gradient(circle 3px at 11px 22px, #dcdce4 99%, transparent 100%),
+        radial-gradient(circle 3px at 11px 34px, #dcdce4 99%, transparent 100%);
+}
 .light-preview .tp-content {
     background: #f6f6f8;
     margin: 4px 4px 4px 2px;
@@ -4724,6 +4742,20 @@ body:has(.modal.show) .split-handle { display: none !important; }
 .media-player-popup-btn:hover {
     background: var(--bg-tertiary);
     color: var(--text-bright);
+}
+
+/* REDESIGN (2026-09-10, "сохранять, пока вкладка открыта. И добавить
+   крестик, если хочешь убрать" — live user request): a paused source now
+   keeps its row (see media-player-ui.js) instead of vanishing — dimmed
+   slightly so playing sources still stand out at a glance. The remove (×)
+   button reuses .media-player-popup-btn but turns red on hover like other
+   destructive actions in the app (.vpn-cfg-delete, .settings-vpn-delete). */
+.media-player-popup-item.paused { opacity: 0.6; }
+.media-player-popup-item.paused:hover { opacity: 0.85; }
+
+.media-player-popup-remove:hover {
+    background: var(--danger-dim);
+    color: var(--danger);
 }
 
 /* ===== ОЗНАКОМИТЕЛЬНЫЙ ТУР ===== */
@@ -10463,11 +10495,27 @@ button:active {
     display: block;
 }
 
+/* BUGFIX (2026-09-10, "В белой версии логотип должен быть чёрный. А то там
+   кружок белый и его не видно" — live user report): assets/logo.png is a
+   plain white glyph on transparent — invisible on the light theme's white
+   background. There's no separate dark-logo asset, so invert(1) flips the
+   white pixels to black (alpha untouched) instead of adding a new file. */
+[data-theme="light"] .about-logo-img,
+[data-theme="light"] .welcome-logo,
+[data-theme="light"] .startup-logo,
+[data-theme="light"] .onb-logo {
+    filter: invert(1);
+}
+
+/* BUGFIX (2026-09-10, "там где 'о приложении', тоже не видно что написано"
+   — live user report): these were hardcoded near-white values, invisible
+   against the light theme's white/near-white background — switched to
+   theme-aware tokens so this section reads correctly in every theme. */
 .about-name {
     font-size: 22px;
     font-weight: 700;
     letter-spacing: 0.2px;
-    color: #f3f6ff;
+    color: var(--text-bright);
 }
 
 .about-version-row {
@@ -10505,7 +10553,7 @@ button:active {
 
 .about-desc {
     max-width: 420px;
-    color: rgba(230, 236, 255, 0.72);
+    color: var(--text-secondary);
     font-size: 13px;
     line-height: 1.5;
 }
@@ -12111,6 +12159,40 @@ body.startup-locked #contentArea {
 .app-notif-delete-btn:hover {
     color: var(--danger);
     background: var(--danger-dim);
+}
+
+/* FEATURE (2026-09-10, "сверху поиск... фильтр" — live user request) */
+.app-notif-search {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 8px 10px 0;
+    padding: 7px 10px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+
+.app-notif-search-input {
+    flex: 1;
+    min-width: 0;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text-primary);
+    font-size: 12.5px;
+    font-family: inherit;
+}
+
+.app-notif-search-input::placeholder { color: var(--text-muted); }
+
+.app-notif-hl {
+    background: var(--accent-dim);
+    color: var(--accent-hover);
+    border-radius: 3px;
+    padding: 0 1px;
 }
 
 .app-notif-list {

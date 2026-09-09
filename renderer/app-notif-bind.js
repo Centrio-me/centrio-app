@@ -22,10 +22,12 @@ function bindAppNotifUi({
     const markAllBtn   = document.getElementById('appNotifMarkAllRead')
     const deleteAllBtn = document.getElementById('appNotifDeleteAll')
     const muteToggle   = document.getElementById('appNotifMuteToggle')
+    const searchInput  = document.getElementById('appNotifSearchInput')
 
     if (!btn || !panel) return
 
     let notifications = []
+    let searchQuery = ''
     // Панель теперь встроена в раскладку и её открытие/закрытие управляется
     // общим контроллером в renderer.js (может закрыться из-за клика по
     // ДРУГОЙ кнопке правого сайдбара) — поэтому вместо своего "open"-флага
@@ -65,7 +67,27 @@ function bindAppNotifUi({
 
     function getVisible() {
         const dismissed = getDismissed()
-        return notifications.filter(n => !dismissed.has(n.id))
+        const base = notifications.filter(n => !dismissed.has(n.id))
+        const q = searchQuery.trim().toLowerCase()
+        if (!q) return base
+        // FEATURE (2026-09-10, "поиск... который будет работать как фильтр.
+        // Вводишь символы и он убирает те, в которых нет" — live user
+        // request): plain substring match across title+body — no fuzzy
+        // matching, matches the user's own description exactly.
+        return base.filter(n =>
+            String(n.title || '').toLowerCase().includes(q) ||
+            String(n.body || '').toLowerCase().includes(q)
+        )
+    }
+
+    // Оборачивает совпадения искомой строки в <mark> — вызывается ПОСЛЕ
+    // escapeHtml(text), поэтому сам query тоже экранируем перед вставкой в
+    // regex/разметку, чтобы спецсимволы (< > &) в поиске не сломали HTML.
+    function highlightMatch(escapedText) {
+        const q = searchQuery.trim()
+        if (!q) return escapedText
+        const escapedQuery = escapeHtml(q).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+        return escapedText.replace(new RegExp(escapedQuery, 'ig'), (m) => `<mark class="app-notif-hl">${m}</mark>`)
     }
 
     // ── Helpers ────────────────────────────────────────────────────────────────
@@ -142,7 +164,8 @@ function bindAppNotifUi({
         const visible = getVisible()
 
         if (!visible.length) {
-            list.innerHTML = `<div class="app-notif-empty">${tGet('notifications.noNotifs')}</div>`
+            const msg = searchQuery.trim() ? tGet('notifications.searchNoResults') : tGet('notifications.noNotifs')
+            list.innerHTML = `<div class="app-notif-empty">${msg}</div>`
             return
         }
 
@@ -176,8 +199,8 @@ function bindAppNotifUi({
                     </div>
                     <div class="app-notif-item-content">
                         ${imgHtml}
-                        <div class="app-notif-item-title">${escapeHtml(n.title)}</div>
-                        <div class="app-notif-item-body">${escapeHtml(n.body)}</div>
+                        <div class="app-notif-item-title">${highlightMatch(escapeHtml(n.title))}</div>
+                        <div class="app-notif-item-body">${highlightMatch(escapeHtml(n.body))}</div>
                         ${actionHtml}
                         <div class="app-notif-item-time">${formatDate(n.createdAt)}</div>
                     </div>
@@ -369,6 +392,12 @@ function bindAppNotifUi({
         notifications.forEach(n => dismissed.add(n.id))
         localStorage.setItem(DISMISSED_KEY, JSON.stringify([...dismissed]))
         updateBadge()
+        renderPanel()
+    })
+
+    searchInput?.addEventListener('click', (e) => e.stopPropagation())
+    searchInput?.addEventListener('input', (e) => {
+        searchQuery = e.target.value || ''
         renderPanel()
     })
 

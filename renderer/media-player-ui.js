@@ -40,15 +40,25 @@
 // рабочий метод самого элемента <webview> в хост-рендерере, не связанный с
 // preload-атрибутом вообще.
 //
-// Дизайн-решение (не изменилось с первой версии): запись в mediaState
-// существует, ТОЛЬКО пока playing === true у источника — как только
-// пользователь ставит воспроизведение на паузу (из попапа или прямо на
-// странице), запись удаляется. Отдельного состояния "на паузе, нажми чтобы
-// продолжить" сознательно нет — проще и предсказуемее, чем гадать, какой из
-// потенциально нескольких источников пользователь хотел бы возобновить
-// именно отсюда (тогда и кнопка в списке всегда одна — "Пауза", без toggle).
+// REDESIGN (2026-09-10, "все равно скачут вверх вниз табы... Нажимаешь
+// паузу и вкладка пропадает. Чтобы обратно включить приходится идти и
+// руками включать. Наверное нужно сохранять, пока вкладка открыта. И
+// добавить крестик, если хочешь убрать из медиаплеера" — live user
+// request): the original design (see history above) deleted a source from
+// mediaState the instant it paused, which caused two separate problems —
+// (1) the row vanished from the popup and the whole list re-sorted/jumped
+// around every other source's row, and (2) there was no way to resume from
+// the popup at all once paused, since a paused source didn't exist in
+// mediaState to click "play" on — the user had to go back into the
+// messenger tab itself. Now an entry is created once (`addedAt` fixed at
+// that moment, never touched again — this is what keeps ordering stable,
+// instead of the old resort-by-updatedAt-on-every-change) and stays until
+// EITHER the tab closes (onMessengerRemoved) OR the user explicitly
+// dismisses it with the new × button. `playing` is now a per-entry flag
+// instead of presence-in-the-Map, so a paused source keeps its row with a
+// "Play" button in place of "Pause".
 function createMediaPlayerUiApi({ state, tGet, switchTab, mediaPlayerBtn }) {
-    const mediaState = new Map() // messengerId -> { title, hasNext, hasPrev, updatedAt }
+    const mediaState = new Map() // messengerId -> { title, hasNext, hasPrev, playing, addedAt }
     let popupEl = null
     let popupOpen = false
 
@@ -56,10 +66,20 @@ function createMediaPlayerUiApi({ state, tGet, switchTab, mediaPlayerBtn }) {
         return state.activeMessengers.find((m) => m.id === id)
     }
 
-    function playingIds() {
+    // Stable insertion order (addedAt never changes after creation) — a
+    // source doesn't jump around the list just because it paused/resumed
+    // or its track title changed.
+    function trackedIds() {
         return [...mediaState.keys()]
             .filter((id) => getMessenger(id))
-            .sort((a, b) => mediaState.get(b).updatedAt - mediaState.get(a).updatedAt)
+            .sort((a, b) => mediaState.get(a).addedAt - mediaState.get(b).addedAt)
+    }
+
+    // Kept for getPlayingSources() (AI assistant tool) — only sources
+    // actually playing right now, unlike trackedIds() which includes
+    // paused-but-not-dismissed ones too.
+    function playingIds() {
+        return trackedIds().filter((id) => mediaState.get(id).playing)
     }
 
     // Каждый скрипт сначала пробует перехваченный mediaSession-обработчик
@@ -170,7 +190,7 @@ function createMediaPlayerUiApi({ state, tGet, switchTab, mediaPlayerBtn }) {
         header.textContent = tGet ? tGet('rightbar.mediaPlayer') : 'Медиаплеер'
         el.appendChild(header)
 
-        const ids = playingIds()
+        const ids = trackedIds()
         if (!ids.length) {
             const empty = document.createElement('div')
             empty.className = 'media-player-popup-empty'
@@ -184,11 +204,18 @@ function createMediaPlayerUiApi({ state, tGet, switchTab, mediaPlayerBtn }) {
             const info = mediaState.get(id) || {}
 
             const row = document.createElement('div')
-            row.className = 'media-player-popup-item'
+            row.className = 'media-player-popup-item' + (info.playing ? '' : ' paused')
             const subtitle = info.title && info.title !== messenger.name ? info.title : ''
-            const prevLabel = tGet ? tGet('mediaPlayer.previous') : 'Предыдущий трек'
-            const pauseLabel = tGet ? tGet('mediaPlayer.pause') : 'Пауза'
-            const nextLabel = tGet ? tGet('mediaPlayer.next') : 'Следующий трек'
+            const prevLabel  = tGet ? tGet('mediaPlayer.previous') : 'Предыдущий трек'
+            const pauseLabel = tGet ? tGet('mediaPlayer.pause')    : 'Пауза'
+            const playLabel  = tGet ? tGet('mediaPlayer.play')     : 'Play'
+            const nextLabel  = tGet ? tGet('mediaPlayer.next')     : 'Следующий трек'
+            const removeLabel = tGet ? tGet('mediaPlayer.remove')  : 'Убрать'
+            // Play/pause is a single toggle button now (was always "Pause"
+            // when a source could only exist while playing).
+            const toggleSvg = info.playing
+                ? `<rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/>`
+                : `<path d="M6 4l14 8-14 8V4z"/>`
             row.innerHTML = `
                 <img src="${messenger.icon || ''}" alt="" width="28" height="28">
                 <div class="media-player-popup-info">
@@ -199,11 +226,14 @@ function createMediaPlayerUiApi({ state, tGet, switchTab, mediaPlayerBtn }) {
                     <button type="button" class="media-player-popup-btn media-player-popup-prev" title="${prevLabel}" style="display:${info.hasPrev ? '' : 'none'}">
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h2v14H6zM20 5v14l-11-7z"/></svg>
                     </button>
-                    <button type="button" class="media-player-popup-btn media-player-popup-pause" title="${pauseLabel}">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>
+                    <button type="button" class="media-player-popup-btn media-player-popup-toggle" title="${info.playing ? pauseLabel : playLabel}">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">${toggleSvg}</svg>
                     </button>
                     <button type="button" class="media-player-popup-btn media-player-popup-next" title="${nextLabel}" style="display:${info.hasNext ? '' : 'none'}">
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M16 5h2v14h-2zM4 5v14l11-7z"/></svg>
+                    </button>
+                    <button type="button" class="media-player-popup-btn media-player-popup-remove" title="${removeLabel}">
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                     </button>
                 </div>
             `
@@ -215,13 +245,18 @@ function createMediaPlayerUiApi({ state, tGet, switchTab, mediaPlayerBtn }) {
                 e.stopPropagation()
                 sendCommand(id, 'previous')
             })
-            row.querySelector('.media-player-popup-pause').addEventListener('click', (e) => {
+            row.querySelector('.media-player-popup-toggle').addEventListener('click', (e) => {
                 e.stopPropagation()
-                sendCommand(id, 'pause')
+                sendCommand(id, info.playing ? 'pause' : 'play')
             })
             row.querySelector('.media-player-popup-next').addEventListener('click', (e) => {
                 e.stopPropagation()
                 sendCommand(id, 'next')
+            })
+            row.querySelector('.media-player-popup-remove').addEventListener('click', (e) => {
+                e.stopPropagation()
+                mediaState.delete(id)
+                renderPopup()
             })
             el.appendChild(row)
         })
@@ -263,16 +298,19 @@ function createMediaPlayerUiApi({ state, tGet, switchTab, mediaPlayerBtn }) {
     function onMediaState(messengerId, payload) {
         if (!messengerId || !payload) return
 
-        if (payload.playing) {
-            mediaState.set(messengerId, {
-                title: typeof payload.title === 'string' ? payload.title : '',
-                hasNext: !!payload.hasNext,
-                hasPrev: !!payload.hasPrev,
-                updatedAt: Date.now()
-            })
-        } else {
-            mediaState.delete(messengerId)
-        }
+        // BUGFIX (2026-09-10, see REDESIGN comment above createMediaPlayerUiApi):
+        // a source used to be dropped from mediaState entirely the moment it
+        // paused. Now it's kept — `playing` reflects the live state, `addedAt`
+        // is only ever set once (first time this id is seen) so the row's
+        // position in the list never jumps around on pause/resume/title change.
+        const existing = mediaState.get(messengerId)
+        mediaState.set(messengerId, {
+            title: typeof payload.title === 'string' ? payload.title : '',
+            hasNext: !!payload.hasNext,
+            hasPrev: !!payload.hasPrev,
+            playing: !!payload.playing,
+            addedAt: existing ? existing.addedAt : Date.now()
+        })
 
         render()
     }

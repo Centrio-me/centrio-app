@@ -304,7 +304,9 @@ module.exports = {
         previous: 'Previous track',
         next: 'Next track',
         switch: 'Other sources',
-        nothingPlaying: 'Nothing is playing right now'
+        nothingPlaying: 'Nothing is playing right now',
+        play: 'Play',
+        remove: 'Remove from list'
     },
 
     welcome: {
@@ -389,6 +391,8 @@ module.exports = {
         appNotifTitle: 'Notifications',
         markAllRead:   'Mark all read',
         noNotifs:      'No new notifications',
+        searchPlaceholder: 'Search notifications',
+        searchNoResults: 'No matches found',
         dismiss:       'Dismiss',
         justNow:       'just now',
         minAgo:        '{n} min ago',
@@ -677,12 +681,12 @@ module.exports = {
         example6: 'Add a note "Call the client"',
         errMissingKey: 'No API key set. Add one in Settings → AI Assistant.',
         errNoOllamaModel: 'No local model selected. Set one in Settings → AI Assistant.',
-        errNotAuthenticated: 'Sign in to your Centrio account to use "Our AI" mode.',
+        errNotAuthenticated: 'Sign in to your Centrio account to use "Centrio AI" mode.',
         errUnknown: 'Unknown model provider.',
         errTooManyRounds: 'Too many steps in a row — stopped for safety.',
         errCancelled: 'Request cancelled.',
         errGeneric: 'Something went wrong. Please try again.',
-        errProRequired: '"Our AI" mode requires the Pro plan.',
+        errProRequired: '"Centrio AI" mode requires the Pro plan.',
         errQuotaExceeded: 'You\'ve reached this month\'s message limit. It resets at the start of next month.',
         settings: {
             modeTitle: 'Inference mode',
@@ -691,7 +695,7 @@ module.exports = {
             modeByokDesc: 'Connect OpenAI, Anthropic, Gemini, or DeepSeek with your own API key',
             modeLocal: 'Local',
             modeLocalDesc: 'Runs on your computer via Ollama — free and private',
-            modePro: 'Our AI',
+            modePro: 'Centrio AI',
             modeProDesc: 'A ready-to-use Centrio model, no setup — included with Pro',
             byokTitle: 'API keys',
             byokHint: 'Keys are stored encrypted on this device only and never sent to us',
@@ -711,7 +715,7 @@ module.exports = {
             localTesting: 'Testing connection…',
             localTestOk: 'Connected — models found: {count}',
             localTestFail: 'Couldn\'t connect. Make sure Ollama is running',
-            proTitle: 'Our AI',
+            proTitle: 'Centrio AI',
             proHint: 'A ready-to-use Centrio model, no keys or setup — included with Pro',
             proActive: 'Pro is active — you\'re all set',
             proInactive: 'Requires the Pro plan',

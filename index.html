@@ -559,6 +559,18 @@
                     </button>
                 </div>
             </div>
+            <!-- FEATURE (2026-09-10, "Нужно сделать внутри уведомлений (колокольчик)
+                 — сверху поиск... подсвечивает те, в которых есть эти символы" —
+                 live user request): plain filter-as-you-type over title+body, no
+                 server round-trip — renderer/app-notif-bind.js filters the already
+                 in-memory `notifications` array and wraps matches in <mark>. -->
+            <div class="app-notif-search">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="11" cy="11" r="8"/>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                </svg>
+                <input type="text" id="appNotifSearchInput" class="app-notif-search-input" data-i18n-placeholder="notifications.searchPlaceholder">
+            </div>
             <div id="appNotifList" class="app-notif-list">
                 <div class="app-notif-empty" data-i18n="notifications.noNotifs"></div>
             </div>
@@ -909,7 +921,16 @@
         </div>
         <div class="color-picker-presets" id="colorPickerPresets"></div>
         <!-- Color wheel -->
-        <div style="position:relative;width:200px;height:200px;margin:8px auto 4px;flex-shrink:0;">
+        <!-- BUGFIX (2026-09-10, "Кружок, где все цвета, почему-то показан
+             как квадрат внутри кружка" — live user report): border-radius
+             on the <canvas> itself doesn't reliably clip its own painted
+             pixels in every Chromium/Electron rendering path — the wheel is
+             drawn as a proper circle (settings-bind.js drawColorWheel, 360
+             radial pie-slices), but the canvas's own square bounding box
+             could still show through at the corners. overflow:hidden on
+             this wrapper is the standard, reliable way to clip a canvas —
+             moved the radius here instead of relying on the canvas alone. -->
+        <div style="position:relative;width:200px;height:200px;margin:8px auto 4px;flex-shrink:0;border-radius:50%;overflow:hidden;">
             <canvas id="colorWheelCanvas" width="200" height="200" style="display:block;border-radius:50%;cursor:crosshair;width:200px;height:200px;"></canvas>
             <div id="colorWheelDot" style="position:absolute;width:12px;height:12px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.5);transform:translate(-50%,-50%);pointer-events:none;top:50%;left:50%;"></div>
         </div>
@@ -966,6 +987,17 @@
         <button class="changelog-popup-close" id="changelogPopupClose">✕</button>
     </div>
     <div class="changelog-popup-body">
+        <div class="changelog-entry">
+            <div class="changelog-version">v2.6.5</div>
+            <ul class="changelog-list">
+                <li>Мини-плеер: источник теперь остаётся в списке, пока открыта вкладка, с кнопкой «Убрать» и переключением плей/пауза</li>
+                <li>Исправлено: контекстное меню заметок иногда не закрывалось</li>
+                <li>Новое: поиск-фильтр в панели уведомлений</li>
+                <li>Обновлена светлая тема: логотип, раздел «О приложении» и иконки тем в оформлении</li>
+                <li>Исправлен внешний вид палитры цветов в настройках</li>
+                <li>Исправлено отображение выбранного режима ИИ-ассистента; «Наша нейросеть» переименована в Centrio AI</li>
+            </ul>
+        </div>
         <div class="changelog-entry">
             <div class="changelog-version">v2.6.4</div>
             <ul class="changelog-list">

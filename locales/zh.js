@@ -293,7 +293,9 @@ module.exports = {
         previous: '上一曲',
         next: '下一曲',
         switch: '其他来源',
-        nothingPlaying: '当前没有正在播放的内容'
+        nothingPlaying: '当前没有正在播放的内容',
+        play: '播放',
+        remove: '从列表中移除'
     },
 
     welcome: {
@@ -378,6 +380,8 @@ module.exports = {
         appNotifTitle: '通知',
         markAllRead:   '全部标为已读',
         noNotifs:      '没有新通知',
+        searchPlaceholder: '搜索通知',
+        searchNoResults: '未找到匹配项',
     },
 
     downloads: {
@@ -652,12 +656,12 @@ module.exports = {
         example6: '添加备忘录"给客户打电话"',
         errMissingKey: '未设置 API 密钥。请在 设置 → AI 助手 中添加。',
         errNoOllamaModel: '未选择本地模型。请在 设置 → AI 助手 中设置。',
-        errNotAuthenticated: '使用"我们的 AI"模式需要登录你的 Centrio 账户。',
+        errNotAuthenticated: '使用"Centrio AI"模式需要登录你的 Centrio 账户。',
         errUnknown: '未知的模型提供商。',
         errTooManyRounds: '连续步骤过多——为安全起见已中止。',
         errCancelled: '请求已取消。',
         errGeneric: '出了点问题，请重试。',
-        errProRequired: '"我们的 AI"模式需要 Pro 套餐。',
+        errProRequired: '"Centrio AI"模式需要 Pro 套餐。',
         errQuotaExceeded: '本月消息额度已用完，将于下月初重置。',
         settings: {
             modeTitle: '运行模式',
@@ -666,7 +670,7 @@ module.exports = {
             modeByokDesc: '使用你自己的 API 密钥连接 OpenAI、Anthropic、Gemini 或 DeepSeek',
             modeLocal: '本地',
             modeLocalDesc: '通过 Ollama 在你的电脑上运行——免费且私密',
-            modePro: '我们的 AI',
+            modePro: 'Centrio AI',
             modeProDesc: '开箱即用的 Centrio 模型，无需配置——Pro 套餐已包含',
             byokTitle: 'API 密钥',
             byokHint: '密钥仅加密保存在本设备上，绝不会发送给我们',
@@ -686,7 +690,7 @@ module.exports = {
             localTesting: '正在测试连接…',
             localTestOk: '已连接——找到模型数：{count}',
             localTestFail: '连接失败，请确认 Ollama 正在运行',
-            proTitle: '我们的 AI',
+            proTitle: 'Centrio AI',
             proHint: '开箱即用的 Centrio 模型，无需密钥或配置——Pro 套餐已包含',
             proActive: 'Pro 已激活——一切就绪',
             proInactive: '需要 Pro 套餐',

@@ -305,7 +305,9 @@ module.exports = {
         previous: 'Предыдущий трек',
         next: 'Следующий трек',
         switch: 'Другие источники',
-        nothingPlaying: 'Сейчас ничего не воспроизводится'
+        nothingPlaying: 'Сейчас ничего не воспроизводится',
+        play: 'Воспроизвести',
+        remove: 'Убрать из списка'
     },
 
     welcome: {
@@ -390,6 +392,8 @@ module.exports = {
         appNotifTitle: 'Центр уведомлений',
         markAllRead: 'Прочитать все',
         noNotifs: 'Новых уведомлений нет',
+        searchPlaceholder: 'Поиск по уведомлениям',
+        searchNoResults: 'Ничего не найдено',
         dismiss:       'Скрыть навсегда',
         justNow:       'только что',
         minAgo:        '{n} мин назад',
@@ -678,12 +682,12 @@ module.exports = {
         example6: 'Добавь заметку "Позвонить клиенту"',
         errMissingKey: 'Не указан API-ключ. Добавьте его в Настройки → AI-ассистент.',
         errNoOllamaModel: 'Не выбрана локальная модель. Укажите её в Настройки → AI-ассистент.',
-        errNotAuthenticated: 'Нужен вход в аккаунт Centrio для режима «Наша нейросеть».',
+        errNotAuthenticated: 'Нужен вход в аккаунт Centrio для режима «Centrio AI».',
         errUnknown: 'Неизвестный провайдер модели.',
         errTooManyRounds: 'Слишком много шагов подряд — прервано для безопасности.',
         errCancelled: 'Запрос отменён.',
         errGeneric: 'Что-то пошло не так. Попробуйте ещё раз.',
-        errProRequired: 'Режим «Наша нейросеть» доступен только на плане Pro.',
+        errProRequired: 'Режим «Centrio AI» доступен только на плане Pro.',
         errQuotaExceeded: 'Лимит сообщений на этот месяц исчерпан. Он обновится в начале следующего месяца.',
         settings: {
             modeTitle: 'Режим работы',
@@ -692,7 +696,7 @@ module.exports = {
             modeByokDesc: 'Подключите OpenAI, Anthropic, Gemini или DeepSeek своим API-ключом',
             modeLocal: 'Локально',
             modeLocalDesc: 'Модель работает на вашем компьютере через Ollama — бесплатно и приватно',
-            modePro: 'Наша нейросеть',
+            modePro: 'Centrio AI',
             modeProDesc: 'Готовая модель Centrio без настройки — доступно на плане Pro',
             byokTitle: 'API-ключи',
             byokHint: 'Ключ хранится только на этом устройстве в зашифрованном виде и никогда не передаётся нам',
@@ -712,7 +716,7 @@ module.exports = {
             localTesting: 'Проверяем подключение…',
             localTestOk: 'Подключено — найдено моделей: {count}',
             localTestFail: 'Не удалось подключиться. Проверьте, что Ollama запущена',
-            proTitle: 'Наша нейросеть',
+            proTitle: 'Centrio AI',
             proHint: 'Готовая модель Centrio без ключей и установки — входит в план Pro',
             proActive: 'Pro активен — можно пользоваться',
             proInactive: 'Нужен план Pro',

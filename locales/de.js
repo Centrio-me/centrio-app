@@ -293,7 +293,9 @@ module.exports = {
         previous: 'Vorheriger Titel',
         next: 'Nächster Titel',
         switch: 'Andere Quellen',
-        nothingPlaying: 'Gerade wird nichts abgespielt'
+        nothingPlaying: 'Gerade wird nichts abgespielt',
+        play: 'Abspielen',
+        remove: 'Aus der Liste entfernen'
     },
 
     welcome: {
@@ -378,6 +380,8 @@ module.exports = {
         appNotifTitle: 'Benachrichtigungen',
         markAllRead:   'Alle als gelesen markieren',
         noNotifs:      'Keine neuen Benachrichtigungen',
+        searchPlaceholder: 'Benachrichtigungen durchsuchen',
+        searchNoResults: 'Keine Treffer',
     },
 
     downloads: {
@@ -652,12 +656,12 @@ module.exports = {
         example6: 'Füge die Notiz "Kunden anrufen" hinzu',
         errMissingKey: 'Kein API-Schlüssel hinterlegt. Füge einen unter Einstellungen → AI-Assistent hinzu.',
         errNoOllamaModel: 'Kein lokales Modell ausgewählt. Lege eins unter Einstellungen → AI-Assistent fest.',
-        errNotAuthenticated: 'Melde dich bei deinem Centrio-Konto an, um den Modus „Unsere KI" zu nutzen.',
+        errNotAuthenticated: 'Melde dich bei deinem Centrio-Konto an, um den Modus „Centrio AI" zu nutzen.',
         errUnknown: 'Unbekannter Modell-Anbieter.',
         errTooManyRounds: 'Zu viele Schritte hintereinander — aus Sicherheitsgründen abgebrochen.',
         errCancelled: 'Anfrage abgebrochen.',
         errGeneric: 'Etwas ist schiefgelaufen. Bitte versuche es erneut.',
-        errProRequired: 'Der Modus „Unsere KI" erfordert den Pro-Plan.',
+        errProRequired: 'Der Modus „Centrio AI" erfordert den Pro-Plan.',
         errQuotaExceeded: 'Das Nachrichtenlimit für diesen Monat ist erreicht. Es wird zu Beginn des nächsten Monats zurückgesetzt.',
         settings: {
             modeTitle: 'Betriebsmodus',
@@ -666,7 +670,7 @@ module.exports = {
             modeByokDesc: 'Verbinde OpenAI, Anthropic, Gemini oder DeepSeek mit deinem eigenen API-Schlüssel',
             modeLocal: 'Lokal',
             modeLocalDesc: 'Läuft über Ollama auf deinem Computer — kostenlos und privat',
-            modePro: 'Unsere KI',
+            modePro: 'Centrio AI',
             modeProDesc: 'Ein fertiges Centrio-Modell ohne Einrichtung — im Pro-Plan enthalten',
             byokTitle: 'API-Schlüssel',
             byokHint: 'Schlüssel werden verschlüsselt nur auf diesem Gerät gespeichert und nie an uns übertragen',
@@ -686,7 +690,7 @@ module.exports = {
             localTesting: 'Verbindung wird getestet…',
             localTestOk: 'Verbunden — gefundene Modelle: {count}',
             localTestFail: 'Verbindung fehlgeschlagen. Stelle sicher, dass Ollama läuft',
-            proTitle: 'Unsere KI',
+            proTitle: 'Centrio AI',
             proHint: 'Ein fertiges Centrio-Modell ohne Schlüssel oder Einrichtung — im Pro-Plan enthalten',
             proActive: 'Pro ist aktiv — alles bereit',
             proInactive: 'Erfordert den Pro-Plan',

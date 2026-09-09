@@ -293,7 +293,9 @@ module.exports = {
         previous: 'Pista anterior',
         next: 'Pista siguiente',
         switch: 'Otras fuentes',
-        nothingPlaying: 'Ahora mismo no se está reproduciendo nada'
+        nothingPlaying: 'Ahora mismo no se está reproduciendo nada',
+        play: 'Reproducir',
+        remove: 'Quitar de la lista'
     },
 
     welcome: {
@@ -378,6 +380,8 @@ module.exports = {
         appNotifTitle: 'Notificaciones',
         markAllRead:   'Marcar todo como leído',
         noNotifs:      'No hay nuevas notificaciones',
+        searchPlaceholder: 'Buscar en notificaciones',
+        searchNoResults: 'No se encontraron resultados',
     },
 
     downloads: {
@@ -652,12 +656,12 @@ module.exports = {
         example6: 'Añade una nota "Llamar al cliente"',
         errMissingKey: 'No hay una clave de API configurada. Añádela en Ajustes → Asistente de IA.',
         errNoOllamaModel: 'No hay un modelo local seleccionado. Elígelo en Ajustes → Asistente de IA.',
-        errNotAuthenticated: 'Inicia sesión en tu cuenta de Centrio para usar el modo "Nuestra IA".',
+        errNotAuthenticated: 'Inicia sesión en tu cuenta de Centrio para usar el modo "Centrio AI".',
         errUnknown: 'Proveedor de modelo desconocido.',
         errTooManyRounds: 'Demasiados pasos seguidos — detenido por seguridad.',
         errCancelled: 'Solicitud cancelada.',
         errGeneric: 'Algo salió mal. Inténtalo de nuevo.',
-        errProRequired: 'El modo "Nuestra IA" requiere el plan Pro.',
+        errProRequired: 'El modo "Centrio AI" requiere el plan Pro.',
         errQuotaExceeded: 'Has alcanzado el límite de mensajes de este mes. Se restablecerá al comienzo del próximo mes.',
         settings: {
             modeTitle: 'Modo de funcionamiento',
@@ -666,7 +670,7 @@ module.exports = {
             modeByokDesc: 'Conecta OpenAI, Anthropic, Gemini o DeepSeek con tu propia clave de API',
             modeLocal: 'Local',
             modeLocalDesc: 'Se ejecuta en tu ordenador mediante Ollama — gratis y privado',
-            modePro: 'Nuestra IA',
+            modePro: 'Centrio AI',
             modeProDesc: 'Un modelo de Centrio listo para usar, sin configuración — incluido en el plan Pro',
             byokTitle: 'Claves de API',
             byokHint: 'Las claves se guardan cifradas solo en este dispositivo y nunca se nos envían',
@@ -686,7 +690,7 @@ module.exports = {
             localTesting: 'Probando conexión…',
             localTestOk: 'Conectado — modelos encontrados: {count}',
             localTestFail: 'No se pudo conectar. Comprueba que Ollama esté en ejecución',
-            proTitle: 'Nuestra IA',
+            proTitle: 'Centrio AI',
             proHint: 'Un modelo de Centrio listo para usar, sin claves ni configuración — incluido en el plan Pro',
             proActive: 'Pro está activo — todo listo',
             proInactive: 'Requiere el plan Pro',

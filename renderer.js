@@ -518,7 +518,16 @@ async function bootstrap() {
         ['cloud.lastSyncAt', null],
         ['cloud.lastSyncError', null],
         ['onboardingAuthSeen', false],
-        ['localProTrialExpiresAt', null]
+        ['localProTrialExpiresAt', null],
+        // BUGFIX (2026-09-10, "в настройке ИИ-ассистент — всегда подсвечен
+        // типа выбран 'Свой ключ'" — live user report): same disease as
+        // every other entry's comment above — renderer/assistant-settings-bind.js
+        // getConfig() reads this synchronously via store.get('assistant', {}),
+        // which only ever returns whatever hydrate() populated. Never having
+        // been added here meant it silently fell back to {} on every launch
+        // (mode undefined → 'byok') no matter which mode (BYOK/Local/
+        // Centrio AI) was actually saved from a previous session.
+        ['assistant', {}]
         // NOTE: cloud.accessToken and cloud.refreshToken are hydrated below
         //       via secure (encrypted) channel to avoid plain-text disk exposure
     ])

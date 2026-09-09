@@ -388,9 +388,19 @@ function bindNotesUi({ store, tGet, authorizedInvoke, openRightPanel, closeRight
     backBtn?.addEventListener('click', (e) => { e.stopPropagation(); showList() })
 
     listEl.addEventListener('click', (e) => {
-        e.stopPropagation()
         const card = e.target.closest('.note-card')
+        // BUGFIX (2026-09-10, "меню ПКМ в заметках не исчезает если не
+        // выбрать никакой пункт а например щёлкнуть ЛКМ в любом пустом
+        // месте" — live user report): stopPropagation() used to run
+        // unconditionally here, even for a click on empty space inside the
+        // list (not on a card) — that swallowed the click before it could
+        // bubble up to panel's own click listener below (added by an
+        // earlier "context menu doesn't close" fix), which is what actually
+        // closes ctxMenu. Only stop propagation once we know this click is
+        // actually opening a note, so an empty-space click keeps bubbling
+        // and reaches the handler that closes the menu.
         if (!card) return
+        e.stopPropagation()
         const note = notes.find(n => String(n.id) === card.dataset.id)
         if (note) showEdit(note)
     })
