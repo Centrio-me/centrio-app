@@ -526,9 +526,22 @@ function buildSingboxConfig (outbound) {
     // encrypted DoH resolver over the DIRECT path (not the not-yet-
     // established proxy — this only resolves the proxy server itself),
     // sidestepping a tampered local resolver.
+    //
+    // BUGFIX (2026-09-09, live report "VPN не подключается вообще, таймаут
+    // на любом сервере" — CRITICAL regression from the DNS fix above): this
+    // block originally used sing-box's NEW (1.12+) DNS server schema
+    // ({ type, server, detour }). SING_BOX_VERSION above is pinned to
+    // 1.11.4, which only understands the legacy schema
+    // ({ tag, address, detour }) — every single connect attempt failed
+    // instantly with "decode config: dns.servers[0].type: unknown field
+    // 'type'", sing-box exited immediately, and NOTHING in this app ever
+    // surfaced that (see the checkLine() fix a few lines below) — it just
+    // looked like a generic 20s timeout on every server. Confirmed by
+    // running the shipped sing-box.exe directly against the actual
+    // generated config.json.
     dns: {
       servers: [
-        { type: 'https', tag: 'remote', server: '1.1.1.1', detour: 'direct' }
+        { tag: 'remote', address: 'https://1.1.1.1/dns-query', detour: 'direct' }
       ],
       final: 'remote',
       strategy: 'prefer_ipv4'
@@ -674,7 +687,16 @@ async function startProxy (parsed, onLog) {
         currentConfig = parsed
         resolve(PROXY_PORT)
       }
-      if (!started && (line.includes('panic') || line.includes('fatal'))) {
+      // BUGFIX (2026-09-09, same live report as the DNS schema fix above):
+      // sing-box's own FATAL config-decode errors print as "FATAL[...]"
+      // (uppercase, ANSI-colored) — this check only ever matched lowercase
+      // 'fatal', so a real, immediate config error (like the DNS schema
+      // mismatch just fixed) never got caught here and fell through to the
+      // generic 20-second VPN_START_TIMEOUT instead of surfacing the actual
+      // reason. Case-insensitive now so any future config regression fails
+      // fast with a real error message instead of a silent timeout.
+      const lower = line.toLowerCase()
+      if (!started && (lower.includes('panic') || lower.includes('fatal'))) {
         clearTimeout(timeout)
         clearInterval(portPoller)
         const err = new Error('sing-box: ' + line.trim())
