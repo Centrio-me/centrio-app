@@ -643,6 +643,7 @@ module.exports = {
     assistant: {
         openSettings: 'Assistant settings',
         clearHistory: 'Clear history',
+        cancel: 'Cancel',
         clearHistoryConfirm: 'Delete the entire assistant chat history?',
         inputPlaceholder: 'Ask the assistant…',
         send: 'Send',

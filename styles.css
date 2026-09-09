@@ -4111,10 +4111,19 @@ body:has(.modal.show) .split-handle { display: none !important; }
     flex-wrap: wrap;
 }
 
+/* BUGFIX (2026-09-10, "Кружок цвета всё-также квадрат какой-то" — live user
+   report, with screenshot showing the rainbow .accent-custom swatch in the
+   accent-color row): border-radius clips a plain CSS background reliably in
+   theory, but adding overflow:hidden here is the same belt-and-suspenders
+   fix already applied to the color-wheel canvas for the same class of
+   clipping issue — background-clip made explicit too so nothing paints past
+   the rounded edge regardless of box-sizing. */
 .accent-item {
     width: 28px;
     height: 28px;
     border-radius: 50%;
+    overflow: hidden;
+    background-clip: padding-box;
     cursor: pointer;
     border: 2px solid transparent;
     transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
@@ -10503,7 +10512,8 @@ button:active {
 [data-theme="light"] .about-logo-img,
 [data-theme="light"] .welcome-logo,
 [data-theme="light"] .startup-logo,
-[data-theme="light"] .onb-logo {
+[data-theme="light"] .onb-logo,
+[data-theme="light"] .app-logo {
     filter: invert(1);
 }
 

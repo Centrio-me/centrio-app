@@ -158,13 +158,22 @@ function createLockApi({
         widget.style.display = ''
         list.innerHTML = rows.map(({ messenger, count, latest }) => `
             <div class="lock-activity-item">
-                <img class="lock-activity-icon" src="${escapeHtml(messenger.icon || 'assets/logo.png')}" alt=""
-                     onerror="this.src='assets/logo.png'">
+                <img class="lock-activity-icon" src="${escapeHtml(messenger.icon || 'assets/logo.png')}" alt="">
                 <span class="lock-activity-name">${escapeHtml(messenger.name)}</span>
                 <span class="lock-activity-count">${count > 99 ? '99+' : count}</span>
                 <span class="lock-activity-time">${escapeHtml(formatRelativeTime(latest))}</span>
             </div>
         `).join('')
+
+        // BUGFIX (2026-09-10, same audit as media-player-ui.js's VK Video
+        // icon fix): inline onerror="..." is silently blocked by this app's
+        // CSP (script-src 'self', no 'unsafe-inline') — attach via JS instead.
+        list.querySelectorAll('.lock-activity-icon').forEach(img => {
+            img.addEventListener('error', () => {
+                img.onerror = null
+                img.src = 'assets/logo.png'
+            })
+        })
     }
 
     let widgetRefreshTimer = null

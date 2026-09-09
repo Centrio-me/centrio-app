@@ -644,6 +644,7 @@ module.exports = {
     assistant: {
         openSettings: 'Настройки ассистента',
         clearHistory: 'Очистить историю',
+        cancel: 'Отмена',
         clearHistoryConfirm: 'Удалить всю историю переписки с ассистентом?',
         inputPlaceholder: 'Спросите ассистента…',
         send: 'Отправить',

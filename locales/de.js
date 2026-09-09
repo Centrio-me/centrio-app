@@ -618,6 +618,7 @@ module.exports = {
     assistant: {
         openSettings: 'Assistent-Einstellungen',
         clearHistory: 'Verlauf löschen',
+        cancel: 'Abbrechen',
         clearHistoryConfirm: 'Den gesamten Chatverlauf mit dem Assistenten löschen?',
         inputPlaceholder: 'Frag den Assistenten…',
         send: 'Senden',

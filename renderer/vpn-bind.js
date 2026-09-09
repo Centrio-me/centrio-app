@@ -27,6 +27,16 @@ function bindVpnUi ({ invokeIpc, tGet, ipcRenderer, onVpnStatusChange }) {
   const panel = document.getElementById('vpnPanel')
   if (!btn || !panel) return
 
+  // BUGFIX (2026-09-10, same audit as media-player-ui.js's VK Video icon
+  // fix): inline onerror="..." on .vpn-flag-img is silently blocked by this
+  // app's CSP (script-src 'self', no 'unsafe-inline'). Flag rows get
+  // rebuilt on every render(), so instead of re-attaching a listener per
+  // <img> after each rebuild, delegate once here — 'error' doesn't bubble,
+  // but it does fire during the capture phase on ancestors.
+  panel.addEventListener('error', (e) => {
+    if (e.target?.classList?.contains('vpn-flag-img')) e.target.style.display = 'none'
+  }, true)
+
   // ── Состояние ─────────────────────────────────────────────────────
   let status       = { active: false, port: 7890, name: null, configs: [] }
   let selectedId   = null   // выбранный конфиг в списке
@@ -73,7 +83,7 @@ function bindVpnUi ({ invokeIpc, tGet, ipcRenderer, onVpnStatusChange }) {
     const { emoji, label } = splitFlag(name)
     if (emoji) {
       const url = flagImgUrl(emoji)
-      return `<img class="vpn-flag-img" src="${url}" alt="${esc(emoji)}" onerror="this.style.display='none'"><span class="vpn-config-name">${esc(label)}</span>`
+      return `<img class="vpn-flag-img" src="${url}" alt="${esc(emoji)}"><span class="vpn-config-name">${esc(label)}</span>`
     }
     return `<span class="vpn-config-name">${esc(label)}</span>`
   }
@@ -687,6 +697,12 @@ function bindVpnSettings ({ invokeIpc, tGet, applyI18n, getActiveMessengers, onA
   const statusEl = document.getElementById('settingsVpnStatus')
   if (!listEl || !importBtn) return
 
+  // BUGFIX (2026-09-10, same as bindVpnUi above) — delegated fallback for
+  // .vpn-flag-img error events in the Settings > Сеть VPN list too.
+  listEl.addEventListener('error', (e) => {
+    if (e.target?.classList?.contains('vpn-flag-img')) e.target.style.display = 'none'
+  }, true)
+
   function esc (s) {
     return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
   }
@@ -724,7 +740,7 @@ function bindVpnSettings ({ invokeIpc, tGet, applyI18n, getActiveMessengers, onA
     listEl.innerHTML = configs.map(c => {
       const { emoji, label } = splitFlag(c.name)
       const flagHtml = emoji
-        ? `<img class="vpn-flag-img" src="${flagImgUrl(emoji)}" alt="${esc(emoji)}" onerror="this.style.display='none'">`
+        ? `<img class="vpn-flag-img" src="${flagImgUrl(emoji)}" alt="${esc(emoji)}">`
         : ''
       return `
         <div class="settings-vpn-item">

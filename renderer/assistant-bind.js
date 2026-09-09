@@ -425,11 +425,24 @@ function bindAssistantUi({ store, ipcRenderer, invokeIpc, tGet, toolsApi, openRi
         toolsApi.executeAssistantTool('open_settings_section', { section: 'assistant' })
     })
 
-    clearHistoryBtn?.addEventListener('click', (e) => {
+    // BUGFIX (2026-09-10, "Очистить историю ИИ — всплывающее окно в нашем
+    // стиле сделать" — live user request): window.confirm() is the bare OS
+    // dialog, jarring next to the app's own dark UI. window.showConfirmModal
+    // (renderer.js) is the shared styled confirm dialog already used by
+    // notes-bind.js/todos-bind.js/webview-tabs-bind.js for the same kind of
+    // destructive confirmation.
+    clearHistoryBtn?.addEventListener('click', async (e) => {
         e.stopPropagation()
         if (activeRequestId) return
         if (history.length === 0) return
-        if (!window.confirm(tGet('assistant.clearHistoryConfirm'))) return
+        const ok = await window.showConfirmModal({
+            title: tGet('assistant.clearHistory') || 'Очистить историю',
+            message: tGet('assistant.clearHistoryConfirm'),
+            confirmText: tGet('assistant.clearHistory') || 'Очистить',
+            cancelText: tGet('assistant.cancel') || 'Отмена',
+            danger: true
+        })
+        if (!ok) return
         history = []
         saveHistory()
         renderEmptyState()

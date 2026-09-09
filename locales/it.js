@@ -618,6 +618,7 @@ module.exports = {
     assistant: {
         openSettings: 'Impostazioni assistente',
         clearHistory: 'Cancella cronologia',
+        cancel: 'Annulla',
         clearHistoryConfirm: 'Eliminare tutta la cronologia della chat con l\'assistente?',
         inputPlaceholder: 'Chiedi all\'assistente…',
         send: 'Invia',

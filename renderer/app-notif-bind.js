@@ -194,7 +194,7 @@ function bindAppNotifUi({
                 <div class="app-notif-item ${n.isRead ? '' : 'unread'} ${clickable ? 'clickable' : ''}" data-id="${escapeHtml(n.id)}">
                     <button class="app-notif-dismiss" data-dismiss-id="${escapeHtml(n.id)}" title="${tGet('notifications.dismiss') || 'Dismiss'}">✕</button>
                     <div class="app-notif-avatar-wrap">
-                        <img class="app-notif-avatar" src="${escapeHtml(avatarSrc)}" alt="" onerror="this.src='../assets/logo.png'">
+                        <img class="app-notif-avatar" src="${escapeHtml(avatarSrc)}" alt="">
                         ${unreadDotHtml}
                     </div>
                     <div class="app-notif-item-content">
@@ -207,6 +207,16 @@ function bindAppNotifUi({
                 </div>
             `
         }).join('')
+
+        // BUGFIX (2026-09-10, same audit as media-player-ui.js's VK Video
+        // icon fix): inline onerror="..." is silently blocked by this app's
+        // CSP (script-src 'self', no 'unsafe-inline') — attach via JS instead.
+        list.querySelectorAll('.app-notif-avatar').forEach(img => {
+            img.addEventListener('error', () => {
+                img.onerror = null
+                img.src = '../assets/logo.png'
+            })
+        })
 
         // Attach dismiss listeners
         list.querySelectorAll('.app-notif-dismiss').forEach(btn => {

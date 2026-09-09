@@ -618,6 +618,7 @@ module.exports = {
     assistant: {
         openSettings: 'Réglages de l\'assistant',
         clearHistory: 'Effacer l\'historique',
+        cancel: 'Annuler',
         clearHistoryConfirm: 'Supprimer tout l\'historique de conversation avec l\'assistant ?',
         inputPlaceholder: 'Interroger l\'assistant…',
         send: 'Envoyer',

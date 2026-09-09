@@ -186,9 +186,17 @@ function bindTodosUi({ store, tGet, openRightPanel, closeRightPanel }) {
     // stopPropagation здесь на случай, если такая логика где-то появится
     // снова — клики внутри панели никогда не должны её закрывать.
     list.addEventListener('click', (e) => {
-        e.stopPropagation()
+        // BUGFIX (2026-09-10, "в задачах ещё не закрывается контекстное меню
+        // при нажатии в другом месте" — live user report, same class of bug
+        // just fixed in renderer/notes-bind.js): stopPropagation() ran
+        // unconditionally here, even for a click on empty list space (not on
+        // a .todo-item) — that swallowed the click before it could bubble up
+        // to panel's own click listener below, which is what actually closes
+        // ctxMenu. Only stop propagation once we know this click is actually
+        // acting on a todo item.
         const itemEl = e.target.closest('.todo-item')
         if (!itemEl) return
+        e.stopPropagation()
         const id = itemEl.dataset.id
         const actionEl = e.target.closest('[data-action]')
         const action = actionEl?.dataset.action || 'toggle'

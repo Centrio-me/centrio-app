@@ -183,28 +183,53 @@ function createMediaPlayerUiApi({ state, tGet, switchTab, mediaPlayerBtn }) {
 
     function renderPopup() {
         const el = ensurePopup()
-        el.innerHTML = ''
 
-        const header = document.createElement('div')
-        header.className = 'media-player-popup-header'
-        header.textContent = tGet ? tGet('rightbar.mediaPlayer') : 'Медиаплеер'
-        el.appendChild(header)
+        if (!el.querySelector('.media-player-popup-header')) {
+            const header = document.createElement('div')
+            header.className = 'media-player-popup-header'
+            header.textContent = tGet ? tGet('rightbar.mediaPlayer') : 'Медиаплеер'
+            el.appendChild(header)
+        }
 
         const ids = trackedIds()
+
+        // BUGFIX (2026-09-10, "в медиа моргает почему-то выбор. Наводишь -
+        // она не подсвечивается, а моргает" — live user report): renderPopup()
+        // used to wipe the whole popup (el.innerHTML = '') and rebuild every
+        // row from scratch on every single onMediaState update — including
+        // ones from a source the user isn't even looking at. That destroyed
+        // and recreated the DOM node under the cursor on every poll tick,
+        // which resets :hover (a new element starts unhovered until the next
+        // mousemove/compositor pass re-evaluates it), reading as a flicker
+        // instead of a steady highlight. Now existing rows are updated in
+        // place by id — only rows for ids that appeared/disappeared are
+        // actually added/removed, so a row already under the mouse keeps its
+        // own DOM identity (and hover state) across updates.
+        const existingRows = new Map()
+        el.querySelectorAll('.media-player-popup-item[data-id]').forEach((row) => {
+            existingRows.set(row.dataset.id, row)
+        })
+
+        let empty = el.querySelector('.media-player-popup-empty')
         if (!ids.length) {
-            const empty = document.createElement('div')
-            empty.className = 'media-player-popup-empty'
+            if (!empty) {
+                empty = document.createElement('div')
+                empty.className = 'media-player-popup-empty'
+                el.appendChild(empty)
+            }
             empty.textContent = tGet ? tGet('mediaPlayer.nothingPlaying') : 'Сейчас ничего не воспроизводится'
-            el.appendChild(empty)
+        } else if (empty) {
+            empty.remove()
         }
+
+        const seen = new Set()
 
         ids.forEach((id) => {
             const messenger = getMessenger(id)
             if (!messenger) return
             const info = mediaState.get(id) || {}
+            seen.add(id)
 
-            const row = document.createElement('div')
-            row.className = 'media-player-popup-item' + (info.playing ? '' : ' paused')
             const subtitle = info.title && info.title !== messenger.name ? info.title : ''
             const prevLabel  = tGet ? tGet('mediaPlayer.previous') : 'Предыдущий трек'
             const pauseLabel = tGet ? tGet('mediaPlayer.pause')    : 'Пауза'
@@ -216,6 +241,25 @@ function createMediaPlayerUiApi({ state, tGet, switchTab, mediaPlayerBtn }) {
             const toggleSvg = info.playing
                 ? `<rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/>`
                 : `<path d="M6 4l14 8-14 8V4z"/>`
+
+            let row = existingRows.get(id)
+            const isNew = !row
+            if (isNew) {
+                row = document.createElement('div')
+                row.dataset.id = id
+                el.appendChild(row)
+            }
+            row.className = 'media-player-popup-item' + (info.playing ? '' : ' paused')
+            // BUGFIX (2026-09-10, "прыгают кнопки переключения. То показаны,
+            // то нет. Пусть они все по-умолчанию показываются" — live user
+            // report): hasNext/hasPrev come from a best-effort detection of
+            // whether the page registered a MediaSession action handler,
+            // polled every 2s — flaky enough (handler re-registered on
+            // navigation, momentarily undetected, etc.) that the buttons
+            // visibly flickered in and out. Always show prev/next now;
+            // sendCommand() already no-ops safely if the page never
+            // registered a handler for that action, so showing the button
+            // even when unsupported has no real downside.
             row.innerHTML = `
                 <img src="${messenger.icon || ''}" alt="" width="28" height="28">
                 <div class="media-player-popup-info">
@@ -223,13 +267,13 @@ function createMediaPlayerUiApi({ state, tGet, switchTab, mediaPlayerBtn }) {
                     <span class="media-player-popup-title" style="display:${subtitle ? '' : 'none'}">${subtitle}</span>
                 </div>
                 <div class="media-player-popup-controls">
-                    <button type="button" class="media-player-popup-btn media-player-popup-prev" title="${prevLabel}" style="display:${info.hasPrev ? '' : 'none'}">
+                    <button type="button" class="media-player-popup-btn media-player-popup-prev" title="${prevLabel}">
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h2v14H6zM20 5v14l-11-7z"/></svg>
                     </button>
                     <button type="button" class="media-player-popup-btn media-player-popup-toggle" title="${info.playing ? pauseLabel : playLabel}">
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">${toggleSvg}</svg>
                     </button>
-                    <button type="button" class="media-player-popup-btn media-player-popup-next" title="${nextLabel}" style="display:${info.hasNext ? '' : 'none'}">
+                    <button type="button" class="media-player-popup-btn media-player-popup-next" title="${nextLabel}">
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M16 5h2v14h-2zM4 5v14l11-7z"/></svg>
                     </button>
                     <button type="button" class="media-player-popup-btn media-player-popup-remove" title="${removeLabel}">
@@ -237,6 +281,23 @@ function createMediaPlayerUiApi({ state, tGet, switchTab, mediaPlayerBtn }) {
                     </button>
                 </div>
             `
+            // BUGFIX (2026-09-10, "Вк-видео — иконка всё ещё битая в
+            // медиаплеере" — live user report, persisted even after adding
+            // an inline onerror="..." fallback in the previous fix): this
+            // app's CSP is `script-src 'self'` with NO 'unsafe-inline' (see
+            // index.html) — inline event-handler attributes like onerror="…"
+            // are inline scripts and get silently blocked by CSP, so that
+            // fallback never actually ran. Same root cause the app already
+            // hit once before (main/services/entitlement.js's sibling
+            // comments, the whole preload-allowlist saga) just in a new
+            // spot: anything that looks like inline JS in this app's HTML is
+            // dead on arrival. Attaching the listener from actual script
+            // (this file already executes under CSP's allowed 'self') works.
+            const iconImg = row.querySelector('img')
+            iconImg.addEventListener('error', () => {
+                iconImg.onerror = null
+                iconImg.src = 'assets/logo.png'
+            })
             row.addEventListener('click', () => {
                 switchTab(id)
                 closePopup()
@@ -258,7 +319,11 @@ function createMediaPlayerUiApi({ state, tGet, switchTab, mediaPlayerBtn }) {
                 mediaState.delete(id)
                 renderPopup()
             })
-            el.appendChild(row)
+        })
+
+        // Remove rows for ids no longer tracked (tab closed / dismissed).
+        existingRows.forEach((row, id) => {
+            if (!seen.has(id)) row.remove()
         })
     }
 
@@ -303,7 +368,21 @@ function createMediaPlayerUiApi({ state, tGet, switchTab, mediaPlayerBtn }) {
         // paused. Now it's kept — `playing` reflects the live state, `addedAt`
         // is only ever set once (first time this id is seen) so the row's
         // position in the list never jumps around on pause/resume/title change.
+        //
+        // BUGFIX 2 (2026-09-10, "не нужно по-умолчанию все вкладки в медиа
+        // показывать. Просто если один раз запустили, то оставлять её там" —
+        // live user report): the fix above unconditionally created an entry
+        // for the FIRST payload from any tab, including a false one — every
+        // webview with a <video>/<audio> element on the page gets an initial
+        // "playing:false" poll from startMediaStatePolling on dom-ready even
+        // if the user never pressed play, which meant every such tab showed
+        // up in the popup regardless of ever actually playing anything. Only
+        // start tracking a source once it's genuinely observed playing at
+        // least once; a false payload for a source we've never tracked is
+        // simply ignored instead of creating a "never played" row.
         const existing = mediaState.get(messengerId)
+        if (!existing && !payload.playing) return
+
         mediaState.set(messengerId, {
             title: typeof payload.title === 'string' ? payload.title : '',
             hasNext: !!payload.hasNext,

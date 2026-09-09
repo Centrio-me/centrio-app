@@ -182,12 +182,18 @@ function createSearchUiApi({
             const muted = isMessengerMuted(m.id)
 
             item.innerHTML = `
-                <img src="https://www.google.com/s2/favicons?domain=${hostname}&sz=32"
-                     onerror="this.style.display='none'" width="24" height="24" style="border-radius:6px;">
+                <img src="https://www.google.com/s2/favicons?domain=${encodeURIComponent(hostname)}&sz=32"
+                     width="24" height="24" style="border-radius:6px;">
                 <span class="quick-search-item-name">${nameHtml}</span>
                 ${muted ? `<span class="quick-search-item-muted" title="${tGet('notifications.muteIcon')}">🔕</span>` : ''}
                 ${unread > 0 ? `<span class="quick-search-item-badge">${unread}</span>` : ''}
             `
+
+            // BUGFIX (2026-09-10, same audit as media-player-ui.js's VK Video
+            // icon fix): inline onerror="..." is silently blocked by this
+            // app's CSP (script-src 'self', no 'unsafe-inline') — attach via
+            // JS instead.
+            item.querySelector('img')?.addEventListener('error', function () { this.style.display = 'none' })
 
             item.addEventListener('click', () => {
                 switchTab(m.id)

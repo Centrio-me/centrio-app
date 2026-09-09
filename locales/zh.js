@@ -618,6 +618,7 @@ module.exports = {
     assistant: {
         openSettings: '助手设置',
         clearHistory: '清除历史记录',
+        cancel: '取消',
         clearHistoryConfirm: '删除与助手的全部聊天记录？',
         inputPlaceholder: '向助手提问…',
         send: '发送',

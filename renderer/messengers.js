@@ -173,12 +173,17 @@ function createMessengersApi({
         })()
 
         tab.innerHTML = `
-            <img src="https://www.google.com/s2/favicons?domain=${hostname}&sz=32"
-                 onerror="this.style.display='none'" width="16" height="16"
+            <img src="https://www.google.com/s2/favicons?domain=${encodeURIComponent(hostname)}&sz=32"
+                 width="16" height="16"
                  style="border-radius:6px;flex-shrink:0;">
             <span class="tab-name" style="overflow:hidden;text-overflow:ellipsis;">${escHtml(messenger.name)}</span>
             <span class="tab-close" data-id="${escHtml(messenger.id)}">✕</span>
         `
+
+        // BUGFIX (2026-09-10, same audit as media-player-ui.js's VK Video
+        // icon fix): inline onerror="..." is silently blocked by this app's
+        // CSP (script-src 'self', no 'unsafe-inline') — attach via JS instead.
+        tab.querySelector('img')?.addEventListener('error', function () { this.style.display = 'none' })
 
         tab.addEventListener('click', (e) => {
             if (!e.target.classList.contains('tab-close')) switchTab(messenger.id)

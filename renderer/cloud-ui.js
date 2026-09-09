@@ -46,7 +46,7 @@ function createCloudUiApi({
         const pro   = _isPro(user)
         const size  = pro ? 26 : 26  // inner avatar size
         const inner = user.avatar
-            ? `<img src="${user.avatar}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" onerror="this.style.display='none'">`
+            ? `<img src="${user.avatar}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`
             : `<div style="width:100%;height:100%;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:white;">${getUserInitial(user)}</div>`
 
         if (pro) {
@@ -57,6 +57,13 @@ function createCloudUiApi({
         } else {
             btn.innerHTML = `
                 <div style="width:${size}px;height:${size}px;border-radius:50%;overflow:hidden;flex-shrink:0;">${inner}</div>`
+        }
+        // BUGFIX (2026-09-10, same audit as media-player-ui.js's VK Video
+        // icon fix): inline onerror="..." is silently blocked by this app's
+        // CSP (script-src 'self', no 'unsafe-inline') — attach via JS instead.
+        const avatarImg = btn.querySelector('img')
+        if (avatarImg) {
+            avatarImg.addEventListener('error', () => { avatarImg.style.display = 'none' })
         }
         btn.title = user.name
         _updateCloudBtnLabel(user.name)

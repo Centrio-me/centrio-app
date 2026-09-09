@@ -71,10 +71,20 @@ function createAddModalUiApi({
 
         item.innerHTML = `
             <img src="${messenger.icon}"
-                 onerror="this.src='https://www.google.com/s2/favicons?domain=${hostname}&sz=64'"
                  alt="${messenger.name}" loading="lazy">
             <span>${messenger.name}</span>
         `
+
+        // BUGFIX (2026-09-10, same audit as media-player-ui.js's VK Video
+        // icon fix): inline onerror="..." is silently blocked by this app's
+        // CSP (script-src 'self', no 'unsafe-inline') — attach via JS instead.
+        const iconImgEl = item.querySelector('img')
+        if (iconImgEl) {
+            iconImgEl.addEventListener('error', () => {
+                iconImgEl.onerror = null
+                iconImgEl.src = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(hostname)}&sz=64`
+            })
+        }
 
         item.addEventListener('click', () => {
             addMessenger(messenger)
