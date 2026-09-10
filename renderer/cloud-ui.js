@@ -3,7 +3,8 @@ function createCloudUiApi({
     tGet,
     getUserInitial,
     getLocalStats,  // () => { messengers, folders, lastSyncAt }
-    getCloudStats   // async () => api-get-stats response data, or null on failure
+    getCloudStats,  // async () => api-get-stats response data, or null on failure
+    applyOrgLogo = () => {} // (user) => void — swaps app logo images for the org's custom one, see renderer/org-branding.js
 }) {
     const PRO_PLANS = new Set(['PRO', 'PRO_YEAR', 'TEAM'])
 
@@ -46,6 +47,7 @@ function createCloudUiApi({
         if (!btn) return
 
         const user = cloudStore.getUser()
+        applyOrgLogo(user)
         if (!user) {
             btn.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none">
                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>

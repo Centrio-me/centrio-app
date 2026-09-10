@@ -410,6 +410,71 @@ function createMessengersApi({
         }
     }
 
+    // FEATURE (2026-09-10, TEAM owner-control epic — "владелец распределяет
+    // мессенджеры по сотрудникам"): mirrors addMessenger()'s DOM/tab/webview
+    // setup but is meant to be called repeatedly from a background poll
+    // (renderer/org-team.js), so — unlike addMessenger — it must be
+    // idempotent (skip if already injected), must NOT steal focus
+    // (no switchTab), and must NOT reset an unread count that's already
+    // being tracked. `messenger.id` is caller-supplied and stable (the
+    // assignment's own id, prefixed) precisely so repeated polls recognize
+    // an already-injected slot instead of duplicating it.
+    function addOrgAssignedMessenger(messenger) {
+        if (state.activeMessengers.some((m) => m.id === messenger.id)) return
+
+        const newMessenger = { ...messenger, orgAssigned: true, folderId: null, notifSound: '__default__' }
+        state.activeMessengers.push(newMessenger)
+        const item = createMessengerItem(newMessenger)
+        messengerList.appendChild(item)
+
+        addTab(newMessenger)
+        addWebview(newMessenger)
+
+        if (state.unreadCounts[newMessenger.id] === undefined) {
+            state.rawUnreadCounts[newMessenger.id] = 0
+            state.unreadCounts[newMessenger.id] = 0
+        }
+
+        if (!state.activeTabId) {
+            welcomeScreen.style.display = 'none'
+            switchTab(newMessenger.id)
+        }
+
+        updateStatusBar()
+    }
+
+    // Counterpart cleanup for a slot the owner has since unassigned. Unlike
+    // removeMessenger() (built for a deliberate single manual click), this
+    // avoids switchTab entirely unless the removed tab was the one actually
+    // focused — a background poll silently yanking the user to a random
+    // other tab every few minutes would be far more disruptive than leaving
+    // a closed tab's focus alone.
+    function removeOrgAssignedMessenger(id) {
+        const wasActive = state.activeTabId === id
+
+        state.activeMessengers = state.activeMessengers.filter((m) => m.id !== id)
+        delete state.unreadCounts[id]
+        delete state.rawUnreadCounts[id]
+        delete state.messengerNotifyState[id]
+        state.webviewWatchBound.delete(`webview-${id}`)
+
+        document.getElementById(`sidebar-${id}`)?.remove()
+        document.getElementById(`tab-${id}`)?.remove()
+        document.getElementById(`webview-${id}`)?.remove()
+
+        if (wasActive) {
+            if (state.activeMessengers.length > 0) {
+                switchTab(state.activeMessengers[0].id)
+            } else {
+                welcomeScreen.style.display = 'flex'
+                state.activeTabId = null
+            }
+        }
+
+        tabsContent.style.pointerEvents = state.activeMessengers.length > 0 ? 'auto' : 'none'
+        updateStatusBar()
+    }
+
     function removeMessenger(id) {
         const messenger = state.activeMessengers.find((m) => m.id === id)
         const folderId = messenger?.folderId
@@ -450,7 +515,9 @@ function createMessengersApi({
         addWebview,
         addMessenger,
         switchTab,
-        removeMessenger
+        removeMessenger,
+        addOrgAssignedMessenger,
+        removeOrgAssignedMessenger
     }
 }
 

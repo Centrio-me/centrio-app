@@ -92,7 +92,7 @@ async function getOrgSummaryForUser(userId) {
             organization: {
                 select: {
                     id: true, name: true, slug: true, tier: true, seatLimit: true, ownerId: true,
-                    seatsExpiresAt: true, autoRenewSeats: true
+                    seatsExpiresAt: true, autoRenewSeats: true, logoUrl: true
                 }
             }
         }
@@ -126,7 +126,11 @@ async function getOrgSummaryForUser(userId) {
         // alongside the individual account plan/trial, so a member gets Pro
         // features purely from occupying a paid team seat, independent of
         // their own personal plan.
-        orgProSeat: proSeatHolderIds.has(userId)
+        orgProSeat: proSeatHolderIds.has(userId),
+        // FEATURE (2026-09-10, custom org branding): carried through
+        // login/me → cloud.user so the desktop app can swap its logo
+        // without a separate request. null means "use the default logo".
+        orgLogoUrl: membership.organization.logoUrl || null
     }
 }
 

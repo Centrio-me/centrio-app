@@ -183,6 +183,25 @@ function registerApiIpc() {
         return wrapApi(() => api.getNotifications(token))
     })
 
+    // FEATURE (2026-09-10, TEAM owner-control epic) — desktop-side reads for
+    // shared VPN, forced settings, and assigned messengers; the one write is
+    // read-status stats (counts/timestamps only, never message content).
+    ipcMain.handle('api-org-get-vpn', async (event, token, orgId) => {
+        return wrapApi(() => api.orgGetVpn(token, orgId))
+    })
+
+    ipcMain.handle('api-org-get-settings', async (event, token, orgId) => {
+        return wrapApi(() => api.orgGetSettings(token, orgId))
+    })
+
+    ipcMain.handle('api-org-get-messenger-assignments', async (event, token, orgId) => {
+        return wrapApi(() => api.orgGetMessengerAssignments(token, orgId))
+    })
+
+    ipcMain.handle('api-org-push-messenger-stats', async (event, token, orgId, stats) => {
+        return wrapApi(() => api.orgPushMessengerStats(token, orgId, stats))
+    })
+
     ipcMain.handle('api-read-all-notifications', async (event, token) => {
         return wrapApi(() => api.readAllNotifications(token))
     })

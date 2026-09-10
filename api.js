@@ -236,5 +236,26 @@ module.exports = {
     // skipped account creation. No token, hence no Authorization header.
     deviceTrialRedeem(hardwareId) {
         return request('POST', '/api/payments/device-trial-redeem', { hardwareId })
+    },
+
+    // FEATURE (2026-09-10, TEAM owner-control epic). The desktop app only
+    // ever READS these — the owner sets logo/VPN/settings/assignments from
+    // the website's team dashboard (landing/team-server.tsx), same division
+    // of labor as seat billing already has. The one write from the desktop
+    // side is orgPushMessengerStats (read-status counts, never content).
+    orgGetVpn(token, orgId) {
+        return request('GET', `/api/org/${orgId}/vpn`, null, token)
+    },
+
+    orgGetSettings(token, orgId) {
+        return request('GET', `/api/org/${orgId}/settings`, null, token)
+    },
+
+    orgGetMessengerAssignments(token, orgId) {
+        return request('GET', `/api/org/${orgId}/messenger-assignments`, null, token)
+    },
+
+    orgPushMessengerStats(token, orgId, stats) {
+        return request('POST', `/api/org/${orgId}/messenger-stats`, { stats }, token)
     }
 }

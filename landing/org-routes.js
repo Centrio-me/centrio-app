@@ -1,6 +1,8 @@
 const router  = require('express').Router()
 const axios    = require('axios')
 const { v4: uuidv4 } = require('uuid')
+const multer   = require('multer')
+const path     = require('path')
 const authMiddleware = require('../middleware/auth')
 const prisma   = require('../utils/prisma')
 const { rateLimit } = require('../middleware/rateLimit')
@@ -33,6 +35,36 @@ const acceptInviteLimiter = rateLimit({ name: 'org-invite-accept', windowMs: 60 
 const memberActionLimiter = rateLimit({ name: 'org-member-action', windowMs: 60 * 60 * 1000,      max: 60 })
 const seatPaymentLimiter  = rateLimit({ name: 'org-seats-create',  windowMs: 5 * 60 * 1000,       max: 10 })
 const orgWebhookLimiter   = rateLimit({ name: 'org-seats-webhook', windowMs: 60 * 1000,           max: 60 })
+
+// Phase 2 (2026-09-10 — owner-control features: branding, forced settings,
+// shared VPN, assigned messengers, read-status stats). Same rate-limit floor
+// rationale as the Phase 1 limiters above.
+const orgLogoLimiter       = rateLimit({ name: 'org-logo',        windowMs: 60 * 60 * 1000, max: 10 })
+const orgSettingsLimiter   = rateLimit({ name: 'org-settings',    windowMs: 60 * 1000,      max: 30 })
+const orgVpnLimiter        = rateLimit({ name: 'org-vpn',         windowMs: 60 * 1000,      max: 30 })
+const orgAssignLimiter     = rateLimit({ name: 'org-assign',      windowMs: 60 * 1000,      max: 60 })
+const orgStatsPushLimiter  = rateLimit({ name: 'org-stats-push',  windowMs: 60 * 1000,      max: 20 })
+
+// Mirrors routes/upload.js's avatar-upload pattern exactly (same multer
+// config shape, same disk-storage-by-fixed-id convention) — just a
+// different destination dir and keyed by orgId instead of userId.
+const logoStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, '/var/www/centrio-api/uploads/org-logos')
+  },
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname) || '.png'
+    cb(null, `${req.params.orgId}${ext}`)
+  }
+})
+const uploadLogo = multer({
+  storage: logoStorage,
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) cb(null, true)
+    else cb(new Error('Только изображения'))
+  }
+})
 
 const YK_SHOP   = process.env.YUKASSA_SHOP_ID
 const YK_SECRET = process.env.YUKASSA_SECRET_KEY
@@ -577,6 +609,293 @@ router.post('/seats/webhook', orgWebhookLimiter, async (req, res) => {
   } catch (err) {
     console.error('Org webhook error:', err.message)
     res.status(500).json({ error: 'Internal error' })
+  }
+})
+
+// ══════════════════════════════════════════════════════════════════════
+// Phase 2 (2026-09-10) — owner-control features
+// ══════════════════════════════════════════════════════════════════════
+// Real customer request (see chat log): an owner who splits staff across
+// branches wants to (1) see whether employees are actually reading their
+// assigned messengers — counts/timestamps only, never message content,
+// (2) hand each employee a specific set of messenger tabs instead of
+// employees adding their own, (3) brand the app with the company logo,
+// (4) push one set of default/forced app settings to the whole team,
+// (5) hand out one shared VPN config instead of everyone hunting their own.
+
+// ── PATCH /api/org/:orgId/logo — upload/replace org logo (OWNER only) ──
+router.patch('/:orgId/logo', orgLogoLimiter, authMiddleware, requireOrgRole(['OWNER']), (req, res, next) => {
+  uploadLogo.single('logo')(req, res, (err) => {
+    if (!err) return next()
+    if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({ success: false, error: 'Файл слишком большой (максимум 5 МБ)' })
+    }
+    return res.status(400).json({ success: false, error: err.message || 'Не удалось загрузить файл' })
+  })
+}, async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ success: false, error: 'Файл не загружен' })
+    const logoUrl = `${process.env.API_URL}/uploads/org-logos/${req.file.filename}`
+    await prisma.organization.update({ where: { id: req.params.orgId }, data: { logoUrl } })
+    await logOrgAudit(req.params.orgId, req.user.id, 'org.logo.update', {})
+    res.json({ success: true, data: { logoUrl } })
+  } catch (err) {
+    console.error('Org logo upload error:', err.message)
+    res.status(500).json({ success: false, error: 'Ошибка загрузки логотипа' })
+  }
+})
+
+// ── DELETE /api/org/:orgId/logo — revert to default app logo ───────────
+router.delete('/:orgId/logo', orgLogoLimiter, authMiddleware, requireOrgRole(['OWNER']), async (req, res) => {
+  try {
+    await prisma.organization.update({ where: { id: req.params.orgId }, data: { logoUrl: null } })
+    await logOrgAudit(req.params.orgId, req.user.id, 'org.logo.remove', {})
+    res.json({ success: true })
+  } catch (err) {
+    console.error('Org logo remove error:', err.message)
+    res.status(500).json({ success: false, error: 'Ошибка удаления логотипа' })
+  }
+})
+
+// ── GET/PATCH /api/org/:orgId/settings — forced desktop settings ───────
+// Deliberately separate from the personal SyncSettings table: sync.js
+// destructively deleteMany+recreates a user's own settings row from
+// whatever their device's local state is, so org-forced values can't live
+// there without getting overwritten by the next routine sync.
+router.get('/:orgId/settings', authMiddleware, requireOrgRole(['OWNER', 'ADMIN', 'MEMBER']), async (req, res) => {
+  try {
+    const org = await prisma.organization.findUnique({
+      where: { id: req.params.orgId },
+      select: { forcedSettingsJson: true }
+    })
+    res.json({ success: true, data: org?.forcedSettingsJson || null })
+  } catch (err) {
+    console.error('Org settings get error:', err.message)
+    res.status(500).json({ success: false, error: 'Ошибка получения настроек' })
+  }
+})
+
+router.patch('/:orgId/settings', orgSettingsLimiter, authMiddleware, requireOrgRole(['OWNER']), async (req, res) => {
+  try {
+    const settings = req.body?.settings
+    if (settings !== null && (typeof settings !== 'object' || Array.isArray(settings))) {
+      return res.status(400).json({ success: false, error: 'Некорректные настройки' })
+    }
+    await prisma.organization.update({
+      where: { id: req.params.orgId },
+      data: { forcedSettingsJson: settings === null ? null : settings }
+    })
+    await logOrgAudit(req.params.orgId, req.user.id, 'org.settings.update', {})
+    res.json({ success: true, data: settings })
+  } catch (err) {
+    console.error('Org settings update error:', err.message)
+    res.status(500).json({ success: false, error: 'Ошибка сохранения настроек' })
+  }
+})
+
+// ── GET/PATCH /api/org/:orgId/vpn — shared org VPN config ──────────────
+router.get('/:orgId/vpn', authMiddleware, requireOrgRole(['OWNER', 'ADMIN', 'MEMBER']), async (req, res) => {
+  try {
+    const org = await prisma.organization.findUnique({
+      where: { id: req.params.orgId },
+      select: { vpnConfigName: true, vpnConfigLink: true }
+    })
+    if (!org || !org.vpnConfigLink) return res.json({ success: true, data: null })
+    res.json({ success: true, data: { name: org.vpnConfigName, link: org.vpnConfigLink } })
+  } catch (err) {
+    console.error('Org VPN get error:', err.message)
+    res.status(500).json({ success: false, error: 'Ошибка получения VPN' })
+  }
+})
+
+router.patch('/:orgId/vpn', orgVpnLimiter, authMiddleware, requireOrgRole(['OWNER']), async (req, res) => {
+  try {
+    const name = req.body?.name === null ? null : String(req.body?.name || '').trim().slice(0, 80) || null
+    const link = req.body?.link === null ? null : String(req.body?.link || '').trim().slice(0, 2000) || null
+    await prisma.organization.update({
+      where: { id: req.params.orgId },
+      data: { vpnConfigName: link ? name : null, vpnConfigLink: link }
+    })
+    await logOrgAudit(req.params.orgId, req.user.id, 'org.vpn.update', { hasLink: !!link })
+    res.json({ success: true, data: link ? { name, link } : null })
+  } catch (err) {
+    console.error('Org VPN update error:', err.message)
+    res.status(500).json({ success: false, error: 'Ошибка сохранения VPN' })
+  }
+})
+
+// ── Messenger assignments — "владелец распределяет мессенджеры по
+// сотрудникам" ──────────────────────────────────────────────────────────
+// OWNER/ADMIN manage the full list; a plain MEMBER can only read their own
+// slice (GET below scopes by role). This table is intentionally separate
+// from the personal Messenger model — see schema.prisma comment.
+
+// GET /api/org/:orgId/messenger-assignments — OWNER/ADMIN: everyone's
+// assignments; MEMBER: only their own.
+router.get('/:orgId/messenger-assignments', authMiddleware, requireOrgRole(['OWNER', 'ADMIN', 'MEMBER']), async (req, res) => {
+  try {
+    const isManager = req.orgMembership.role === 'OWNER' || req.orgMembership.role === 'ADMIN'
+    const where = isManager
+      ? { orgId: req.params.orgId }
+      : { orgId: req.params.orgId, userId: req.user.id }
+    const assignments = await prisma.orgMessengerAssignment.findMany({
+      where,
+      orderBy: [{ userId: 'asc' }, { sortOrder: 'asc' }]
+    })
+    res.json({ success: true, data: assignments })
+  } catch (err) {
+    console.error('Org messenger assignments list error:', err.message)
+    res.status(500).json({ success: false, error: 'Ошибка получения мессенджеров' })
+  }
+})
+
+// POST /api/org/:orgId/messenger-assignments — OWNER/ADMIN create a slot
+// for a specific member.
+router.post('/:orgId/messenger-assignments', orgAssignLimiter, authMiddleware, requireOrgRole(['OWNER', 'ADMIN']), async (req, res) => {
+  try {
+    const { userId, name, url, icon, color, sortOrder } = req.body || {}
+    if (!userId || !name || !url) {
+      return res.status(400).json({ success: false, error: 'Не указаны обязательные поля' })
+    }
+    const targetMembership = await prisma.orgMember.findUnique({
+      where: { orgId_userId: { orgId: req.params.orgId, userId } }
+    })
+    if (!targetMembership || targetMembership.status !== 'ACTIVE') {
+      return res.status(404).json({ success: false, error: 'Сотрудник не найден в организации' })
+    }
+    const created = await prisma.orgMessengerAssignment.create({
+      data: {
+        orgId: req.params.orgId,
+        userId,
+        name: String(name).trim().slice(0, 100),
+        url: String(url).trim().slice(0, 500),
+        icon: icon ? String(icon).slice(0, 500) : null,
+        color: color ? String(color).slice(0, 20) : null,
+        sortOrder: typeof sortOrder === 'number' ? sortOrder : 0
+      }
+    })
+    await logOrgAudit(req.params.orgId, req.user.id, 'org.messenger.assign', { userId, name: created.name })
+    res.json({ success: true, data: created })
+  } catch (err) {
+    console.error('Org messenger assignment create error:', err.message)
+    res.status(500).json({ success: false, error: 'Ошибка добавления мессенджера' })
+  }
+})
+
+// PATCH /api/org/:orgId/messenger-assignments/:id — OWNER/ADMIN edit a slot.
+router.patch('/:orgId/messenger-assignments/:id', orgAssignLimiter, authMiddleware, requireOrgRole(['OWNER', 'ADMIN']), async (req, res) => {
+  try {
+    const existing = await prisma.orgMessengerAssignment.findUnique({ where: { id: req.params.id } })
+    if (!existing || existing.orgId !== req.params.orgId) {
+      return res.status(404).json({ success: false, error: 'Мессенджер не найден' })
+    }
+    const { name, url, icon, color, sortOrder } = req.body || {}
+    const data = {}
+    if (name !== undefined) data.name = String(name).trim().slice(0, 100)
+    if (url !== undefined) data.url = String(url).trim().slice(0, 500)
+    if (icon !== undefined) data.icon = icon ? String(icon).slice(0, 500) : null
+    if (color !== undefined) data.color = color ? String(color).slice(0, 20) : null
+    if (typeof sortOrder === 'number') data.sortOrder = sortOrder
+
+    const updated = await prisma.orgMessengerAssignment.update({ where: { id: req.params.id }, data })
+    await logOrgAudit(req.params.orgId, req.user.id, 'org.messenger.update', { id: req.params.id })
+    res.json({ success: true, data: updated })
+  } catch (err) {
+    console.error('Org messenger assignment update error:', err.message)
+    res.status(500).json({ success: false, error: 'Ошибка обновления мессенджера' })
+  }
+})
+
+// DELETE /api/org/:orgId/messenger-assignments/:id — OWNER/ADMIN remove a slot.
+router.delete('/:orgId/messenger-assignments/:id', orgAssignLimiter, authMiddleware, requireOrgRole(['OWNER', 'ADMIN']), async (req, res) => {
+  try {
+    const existing = await prisma.orgMessengerAssignment.findUnique({ where: { id: req.params.id } })
+    if (!existing || existing.orgId !== req.params.orgId) {
+      return res.status(404).json({ success: false, error: 'Мессенджер не найден' })
+    }
+    await prisma.orgMessengerAssignment.delete({ where: { id: req.params.id } })
+    // Orphan any read-status stats reported against this slot's key — the
+    // slot itself is gone, so the aggregate table showing it would be a
+    // dangling reference otherwise.
+    await prisma.orgMessengerStat.deleteMany({ where: { orgId: req.params.orgId, messengerKey: req.params.id } })
+    await logOrgAudit(req.params.orgId, req.user.id, 'org.messenger.remove', { id: req.params.id })
+    res.json({ success: true })
+  } catch (err) {
+    console.error('Org messenger assignment delete error:', err.message)
+    res.status(500).json({ success: false, error: 'Ошибка удаления мессенджера' })
+  }
+})
+
+// ── Read-status statistics — "Только статус — прочитано или нет" ───────
+// Desktop app pushes counts/timestamps only, never message content.
+
+// POST /api/org/:orgId/messenger-stats — any ACTIVE member reports their
+// own read status for their own messengers (assigned or personal).
+router.post('/:orgId/messenger-stats', orgStatsPushLimiter, authMiddleware, requireOrgRole(['OWNER', 'ADMIN', 'MEMBER']), async (req, res) => {
+  try {
+    const stats = req.body?.stats
+    if (!Array.isArray(stats) || stats.length === 0) {
+      return res.status(400).json({ success: false, error: 'Нет данных для отправки' })
+    }
+    // Hard cap — a member reports their own messenger count, which is
+    // already bounded (FREE_MESSENGER_LIMIT / org assignment count), so a
+    // huge payload here can only be a bug or abuse, never a real use case.
+    const capped = stats.slice(0, 200)
+    await prisma.$transaction(
+      capped.map((s) =>
+        prisma.orgMessengerStat.upsert({
+          where: {
+            orgId_userId_messengerKey: {
+              orgId: req.params.orgId,
+              userId: req.user.id,
+              messengerKey: String(s.messengerKey || '').slice(0, 200)
+            }
+          },
+          create: {
+            orgId: req.params.orgId,
+            userId: req.user.id,
+            messengerKey: String(s.messengerKey || '').slice(0, 200),
+            messengerName: String(s.messengerName || '').slice(0, 100),
+            unreadCount: typeof s.unreadCount === 'number' ? Math.max(0, s.unreadCount) : 0,
+            lastReadAt: s.lastReadAt ? new Date(s.lastReadAt) : null,
+            lastMessageAt: s.lastMessageAt ? new Date(s.lastMessageAt) : null
+          },
+          update: {
+            messengerName: String(s.messengerName || '').slice(0, 100),
+            unreadCount: typeof s.unreadCount === 'number' ? Math.max(0, s.unreadCount) : 0,
+            lastReadAt: s.lastReadAt ? new Date(s.lastReadAt) : null,
+            lastMessageAt: s.lastMessageAt ? new Date(s.lastMessageAt) : null
+          }
+        })
+      )
+    )
+    res.json({ success: true })
+  } catch (err) {
+    console.error('Org messenger stats push error:', err.message)
+    res.status(500).json({ success: false, error: 'Ошибка отправки статистики' })
+  }
+})
+
+// GET /api/org/:orgId/messenger-stats — OWNER/ADMIN: aggregate read-status
+// table for the Team page (employee × messenger × unread × last-read).
+router.get('/:orgId/messenger-stats', authMiddleware, requireOrgRole(['OWNER', 'ADMIN']), async (req, res) => {
+  try {
+    const stats = await prisma.orgMessengerStat.findMany({
+      where: { orgId: req.params.orgId },
+      orderBy: [{ userId: 'asc' }, { messengerName: 'asc' }]
+    })
+    const userIds = [...new Set(stats.map((s) => s.userId))]
+    const users = userIds.length
+      ? await prisma.user.findMany({ where: { id: { in: userIds } }, select: { id: true, name: true, email: true } })
+      : []
+    const usersById = Object.fromEntries(users.map((u) => [u.id, u]))
+    res.json({
+      success: true,
+      data: stats.map((s) => ({ ...s, user: usersById[s.userId] || null }))
+    })
+  } catch (err) {
+    console.error('Org messenger stats get error:', err.message)
+    res.status(500).json({ success: false, error: 'Ошибка получения статистики' })
   }
 })
 

@@ -24,6 +24,8 @@ const { createTooltipsApi } = require('./renderer/tooltips')
 const { createUnreadApi } = require('./renderer/unread')
 const { createLockApi } = require('./renderer/lock')
 const { createCloudUiApi } = require('./renderer/cloud-ui')
+const { applyOrgLogo } = require('./renderer/org-branding')
+const { createOrgTeamApi } = require('./renderer/org-team')
 const { createContextMenusApi } = require('./renderer/context-menus')
 const { bindPopupBackdrop } = require('./renderer/popup-backdrop-bind')
 const { createFoldersUiApi } = require('./renderer/folders-ui')
@@ -649,7 +651,17 @@ async function bootstrap() {
         cloudStore,
         invokeIpc,
         getSyncPayload: () => {
-            const messengers = state.activeMessengers.map((m, idx) => ({
+            // FEATURE (2026-09-10, TEAM owner-control epic — assigned
+            // messengers): org-assigned slots live in state.activeMessengers
+            // (orgAssigned: true, see renderer/org-team.js) purely so they
+            // render in the sidebar/tabs alongside personal ones — they must
+            // NEVER be pushed through this sync payload. POST /api/sync
+            // deleteMany+recreates the user's OWN Messenger rows from
+            // whatever's sent here; letting an org-assigned entry leak in
+            // would turn it into a personal messenger (surviving
+            // unassignment, counting against FREE_MESSENGER_LIMIT) the next
+            // time any of the user's devices syncs.
+            const messengers = state.activeMessengers.filter((m) => !m.orgAssigned).map((m, idx) => ({
                 id: m.id,
                 name: m.name,
                 url: m.url,
@@ -939,7 +951,10 @@ async function bootstrap() {
     // СОХРАНЕНИЕ ДАННЫХ
     // ==============================
     function saveData() {
-        const messengers = state.activeMessengers.map(m => ({
+        // See the matching comment in getSyncPayload() above — org-assigned
+        // messengers must never be persisted into the personal 'messengers'
+        // store key either, or they'd survive unassignment locally too.
+        const messengers = state.activeMessengers.filter((m) => !m.orgAssigned).map(m => ({
             name: m.name,
             url: m.url,
             icon: m.icon,
@@ -1164,7 +1179,8 @@ async function bootstrap() {
         getCloudStats: async () => {
             const result = await authorizedInvoke('api-get-stats')
             return result?.success ? result.data : null
-        }
+        },
+        applyOrgLogo
     })
 
     const {
@@ -2144,6 +2160,85 @@ function applyTabZoom(level) {
         reapplyMessengerLocks()
     }
 
+    // FEATURE (2026-09-10, TEAM owner-control epic — "владелец распределяет
+    // мессенджеры по сотрудникам"): mirrors addMessenger() above but is
+    // meant to be called repeatedly from a background poll
+    // (renderer/org-team.js), so — unlike addMessenger — it must be
+    // idempotent (skip if this assignment is already injected), must NOT
+    // steal focus (no unconditional switchTab), must NOT count against
+    // FREE_MESSENGER_LIMIT (it's the owner's grant, not the employee's own
+    // messenger), and must NOT reset an unread count already being tracked.
+    // `messenger.id` is caller-supplied and stable (the assignment's own id,
+    // prefixed) precisely so repeated polls recognize an already-injected
+    // slot instead of duplicating it.
+    async function addOrgAssignedMessenger(messenger) {
+        if (state.activeMessengers.some(m => m.id === messenger.id)) return
+
+        const newMessenger = {
+            ...messenger,
+            orgAssigned: true,
+            folderId: null,
+            notifSound: '__default__',
+            zoomLevel: state.tabZoomLevel || store.get('tabZoomLevel', 1) || 1
+        }
+
+        state.activeMessengers.push(newMessenger)
+        addToSidebar(newMessenger)
+        addTab(newMessenger)
+        addWebview(newMessenger)
+        invokeIpc('vpn-set-app-vpn', newMessenger.id, true).catch(() => {})
+
+        if (state.unreadCounts[newMessenger.id] === undefined) {
+            state.rawUnreadCounts[newMessenger.id] = 0
+            state.unreadCounts[newMessenger.id] = 0
+            resetMessengerNotifyState(newMessenger.id, 0)
+        }
+
+        if (!state.activeTabId) {
+            welcomeScreen.style.display = 'none'
+            switchTab(newMessenger.id)
+        }
+        tabsContent.style.pointerEvents = 'auto'
+
+        updateStatusBar()
+    }
+
+    // Counterpart cleanup for a slot the owner has since unassigned. Unlike
+    // removeMessenger() above (built for a deliberate single manual click,
+    // which always jumps focus to the last remaining tab), this only moves
+    // focus if the removed tab was the one actually active — a background
+    // poll silently yanking the user to a random other tab every few
+    // minutes would be far more disruptive than leaving a closed tab alone.
+    function removeOrgAssignedMessenger(id) {
+        const wasActive = state.activeTabId === id
+
+        state.activeMessengers = state.activeMessengers.filter(m => m.id !== id)
+        delete state.unreadCounts[id]
+        delete state.rawUnreadCounts[id]
+        delete state.messengerNotifyState[id]
+        delete state.siteNotificationState[id]
+        state.webviewWatchBound.delete(`webview-${id}`)
+
+        document.getElementById(`sidebar-${id}`)?.remove()
+        document.getElementById(`tab-${id}`)?.remove()
+        document.getElementById(`webview-${id}`)?.remove()
+
+        mediaPlayerUiApi?.onMessengerRemoved(id)
+        splitApi?.onMessengerRemoved(id)
+
+        if (wasActive) {
+            if (state.activeMessengers.length > 0) {
+                switchTab(state.activeMessengers[0].id)
+            } else {
+                welcomeScreen.style.display = 'flex'
+                state.activeTabId = null
+            }
+        }
+
+        tabsContent.style.pointerEvents = state.activeMessengers.length > 0 ? 'auto' : 'none'
+        updateStatusBar()
+    }
+
     // ==============================
     // ИЗМЕНЕНИЕ APP ZOOM
     // ==============================
@@ -2250,6 +2345,7 @@ function applyTabZoom(level) {
     })
 
     const {
+        applyTheme,
         applySettings,
         collectSettings,
         openSettings,
@@ -3031,6 +3127,22 @@ function applyTabZoom(level) {
     })
 
     bindVpnUi({ invokeIpc, tGet, state, ipcRenderer, onVpnStatusChange: refreshAllVpnBadges })
+
+    // FEATURE (2026-09-10, TEAM owner-control epic) — background poll for
+    // shared VPN / forced theme / assigned messengers / read-status stats.
+    // tick() itself no-ops whenever the current user isn't an org member, so
+    // it's safe to always start this regardless of login state.
+    const orgTeamApi = createOrgTeamApi({
+        authorizedInvoke,
+        invokeIpc,
+        cloudStore,
+        state,
+        applyTheme,
+        addOrgAssignedMessenger,
+        removeOrgAssignedMessenger,
+        refreshAllVpnBadges
+    })
+    orgTeamApi.start()
     bindVpnSettings({
         invokeIpc,
         tGet,

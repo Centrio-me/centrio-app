@@ -40,6 +40,29 @@ interface OrgSummary {
   orgSeatsExpiresAt?: string | null
   orgAutoRenewSeats?: boolean
   orgIsOwner?: boolean
+  orgLogoUrl?: string | null
+}
+
+// FEATURE (2026-09-10, TEAM owner-control epic — see chat log). Backend:
+// landing/org-routes.js (PATCH/DELETE .../logo, GET/PATCH .../vpn,
+// GET/PATCH .../settings, .../messenger-assignments, .../messenger-stats).
+interface MessengerAssignment {
+  id: string
+  userId: string
+  name: string
+  url: string
+  icon?: string | null
+  color?: string | null
+}
+
+interface MessengerStat {
+  userId: string
+  messengerKey: string
+  messengerName: string
+  unreadCount: number
+  lastReadAt?: string | null
+  lastMessageAt?: string | null
+  user: { id: string; name?: string | null; email: string } | null
 }
 
 interface Member {
@@ -112,6 +135,12 @@ const IcoShield = () => (
     <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/>
   </svg>
 )
+const IcoManage = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+    <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.8"/>
+    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
+  </svg>
+)
 const IcoCrown = () => (
   <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
     <path d="M3 8.5l4.5 3L12 4l4.5 7.5 4.5-3-2 10.5H5L3 8.5Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round"/>
@@ -182,7 +211,7 @@ function TeamPageInner() {
   const paymentStatus = searchParams.get('payment')
   const { user, _hasHydrated, setUser } = useAuthStore()
 
-  const [tab, setTab] = useState<'overview' | 'members' | 'billing' | 'audit'>('overview')
+  const [tab, setTab] = useState<'overview' | 'members' | 'billing' | 'audit' | 'manage'>('overview')
   const [org, setOrg] = useState<OrgSummary | null>((user?.orgSummary as OrgSummary) ?? null)
 
   // Create-org (no-org state)
@@ -215,6 +244,30 @@ function TeamPageInner() {
   // Audit
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([])
   const [loadingAudit, setLoadingAudit] = useState(false)
+
+  // ── Управление (2026-09-10, TEAM owner-control epic) ──────────────────
+  const [uploadingLogo, setUploadingLogo] = useState(false)
+  const [logoMsg, setLogoMsg] = useState<Msg>(null)
+
+  const [vpnName, setVpnName] = useState('')
+  const [vpnLink, setVpnLink] = useState('')
+  const [savingVpn, setSavingVpn] = useState(false)
+  const [vpnMsg, setVpnMsg] = useState<Msg>(null)
+
+  const [forcedTheme, setForcedTheme] = useState<string>('')
+  const [savingSettings, setSavingSettings] = useState(false)
+  const [settingsMsg, setSettingsMsg] = useState<Msg>(null)
+
+  const [assignments, setAssignments] = useState<MessengerAssignment[]>([])
+  const [loadingAssignments, setLoadingAssignments] = useState(false)
+  const [assignUserId, setAssignUserId] = useState('')
+  const [assignName, setAssignName] = useState('')
+  const [assignUrl, setAssignUrl] = useState('')
+  const [savingAssignment, setSavingAssignment] = useState(false)
+  const [assignMsg, setAssignMsg] = useState<Msg>(null)
+
+  const [stats, setStats] = useState<MessengerStat[]>([])
+  const [loadingStats, setLoadingStats] = useState(false)
 
   useEffect(() => {
     if (_hasHydrated && !user) router.push('/auth/login')
@@ -262,6 +315,36 @@ function TeamPageInner() {
       .then(({ data }) => { if (data?.success) setAuditLogs(data.data) })
       .catch(() => {})
       .finally(() => setLoadingAudit(false))
+  }, [tab, org?.orgId])
+
+  useEffect(() => {
+    if (tab !== 'manage' || !org?.orgId) return
+
+    api.get(`/api/org/${org.orgId}/vpn`).then(({ data }) => {
+      if (data?.success && data.data) {
+        setVpnName(data.data.name || '')
+        setVpnLink(data.data.link || '')
+      }
+    }).catch(() => {})
+
+    api.get(`/api/org/${org.orgId}/settings`).then(({ data }) => {
+      if (data?.success && data.data?.theme) setForcedTheme(data.data.theme)
+    }).catch(() => {})
+
+    setLoadingAssignments(true)
+    api.get(`/api/org/${org.orgId}/messenger-assignments`)
+      .then(({ data }) => { if (data?.success) setAssignments(data.data) })
+      .catch(() => {})
+      .finally(() => setLoadingAssignments(false))
+
+    if (canManage) {
+      setLoadingStats(true)
+      api.get(`/api/org/${org.orgId}/messenger-stats`)
+        .then(({ data }) => { if (data?.success) setStats(data.data) })
+        .catch(() => {})
+        .finally(() => setLoadingStats(false))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, org?.orgId])
 
   // Best-effort confirmation after the YooKassa redirect. There's no
@@ -381,6 +464,133 @@ function TeamPageInner() {
     }
   }
 
+  // ── Управление (2026-09-10, TEAM owner-control epic) — handlers ───────
+  // Logo upload mirrors dashboard-server.tsx's handleAvatarUpload exactly
+  // (same multer-backed FormData pattern, see landing/org-routes.js
+  // PATCH /:orgId/logo). No explicit Content-Type — axios sets the
+  // multipart boundary itself.
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file || !org || uploadingLogo) return
+    if (!file.type.startsWith('image/')) { setLogoMsg({ type: 'err', text: 'Можно загрузить только изображение' }); return }
+    if (file.size > 5 * 1024 * 1024) { setLogoMsg({ type: 'err', text: 'Файл слишком большой (максимум 5 МБ)' }); return }
+
+    setUploadingLogo(true)
+    setLogoMsg(null)
+    try {
+      const formData = new FormData()
+      formData.append('logo', file)
+      const { data } = await api.patch(`/api/org/${org.orgId}/logo`, formData)
+      if (data?.success) {
+        const updated = { ...org, orgLogoUrl: data.data.logoUrl }
+        setOrg(updated)
+        if (user) setUser({ ...(user as any), orgSummary: updated })
+        setLogoMsg({ type: 'ok', text: 'Логотип обновлён' })
+      }
+    } catch (err: any) {
+      setLogoMsg({ type: 'err', text: err.response?.data?.error || 'Не удалось загрузить логотип' })
+    } finally {
+      setUploadingLogo(false)
+    }
+  }
+
+  const handleRemoveLogo = async () => {
+    if (!org) return
+    setUploadingLogo(true)
+    setLogoMsg(null)
+    try {
+      await api.delete(`/api/org/${org.orgId}/logo`)
+      const updated = { ...org, orgLogoUrl: null }
+      setOrg(updated)
+      if (user) setUser({ ...(user as any), orgSummary: updated })
+      setLogoMsg({ type: 'ok', text: 'Логотип сброшен на стандартный' })
+    } catch (err: any) {
+      setLogoMsg({ type: 'err', text: err.response?.data?.error || 'Не удалось удалить логотип' })
+    } finally {
+      setUploadingLogo(false)
+    }
+  }
+
+  const handleSaveVpn = async () => {
+    if (!org) return
+    setSavingVpn(true)
+    setVpnMsg(null)
+    try {
+      const { data } = await api.patch(`/api/org/${org.orgId}/vpn`, { name: vpnName.trim() || null, link: vpnLink.trim() || null })
+      if (data?.success) setVpnMsg({ type: 'ok', text: data.data ? 'Общий VPN сохранён' : 'Общий VPN отключён' })
+    } catch (err: any) {
+      setVpnMsg({ type: 'err', text: err.response?.data?.error || 'Не удалось сохранить VPN' })
+    } finally {
+      setSavingVpn(false)
+    }
+  }
+
+  const handleClearVpn = async () => {
+    setVpnName('')
+    setVpnLink('')
+    if (!org) return
+    setSavingVpn(true)
+    setVpnMsg(null)
+    try {
+      await api.patch(`/api/org/${org.orgId}/vpn`, { name: null, link: null })
+      setVpnMsg({ type: 'ok', text: 'Общий VPN отключён' })
+    } catch (err: any) {
+      setVpnMsg({ type: 'err', text: err.response?.data?.error || 'Не удалось отключить VPN' })
+    } finally {
+      setSavingVpn(false)
+    }
+  }
+
+  const handleSaveTheme = async (theme: string) => {
+    if (!org) return
+    setForcedTheme(theme)
+    setSavingSettings(true)
+    setSettingsMsg(null)
+    try {
+      const settings = theme ? { theme } : null
+      await api.patch(`/api/org/${org.orgId}/settings`, { settings })
+      setSettingsMsg({ type: 'ok', text: theme ? 'Тема будет применена у всех сотрудников' : 'Принудительная тема отключена' })
+    } catch (err: any) {
+      setSettingsMsg({ type: 'err', text: err.response?.data?.error || 'Не удалось сохранить настройки' })
+    } finally {
+      setSavingSettings(false)
+    }
+  }
+
+  const handleAddAssignment = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!org) return
+    const name = assignName.trim()
+    const url = assignUrl.trim()
+    if (!assignUserId || !name || !url) { setAssignMsg({ type: 'err', text: 'Заполните сотрудника, название и ссылку' }); return }
+    setSavingAssignment(true)
+    setAssignMsg(null)
+    try {
+      const { data } = await api.post(`/api/org/${org.orgId}/messenger-assignments`, { userId: assignUserId, name, url })
+      if (data?.success) {
+        setAssignments(prev => [...prev, data.data])
+        setAssignName('')
+        setAssignUrl('')
+        setAssignMsg({ type: 'ok', text: 'Мессенджер назначен' })
+      }
+    } catch (err: any) {
+      setAssignMsg({ type: 'err', text: err.response?.data?.error || 'Не удалось назначить мессенджер' })
+    } finally {
+      setSavingAssignment(false)
+    }
+  }
+
+  const handleDeleteAssignment = async (id: string) => {
+    if (!org) return
+    try {
+      await api.delete(`/api/org/${org.orgId}/messenger-assignments/${id}`)
+      setAssignments(prev => prev.filter(a => a.id !== id))
+    } catch {
+      setAssignMsg({ type: 'err', text: 'Не удалось удалить мессенджер' })
+    }
+  }
+
   if (!_hasHydrated || (_hasHydrated && !user)) {
     return (
       <div style={{ minHeight: '100vh', background: '#060a14', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -400,6 +610,7 @@ function TeamPageInner() {
     { key: 'overview', label: 'Обзор', Icon: IcoOverview },
     { key: 'members', label: 'Участники', Icon: IcoUsers },
     { key: 'billing', label: 'Места и оплата', Icon: IcoCard },
+    ...(isOwner ? [{ key: 'manage', label: 'Управление', Icon: IcoManage }] : []),
     ...(canManage ? [{ key: 'audit', label: 'Журнал действий', Icon: IcoShield }] : []),
   ] as const
 
@@ -735,6 +946,128 @@ function TeamPageInner() {
                     <p style={{ fontSize: 13.5, color: 'rgba(255,255,255,0.5)' }}>Покупка мест доступна только владельцу организации.</p>
                   </div>
                 )}
+              </>
+            )}
+
+            {tab === 'manage' && isOwner && (
+              <>
+                <div className="section-title"><IcoManage /> Управление</div>
+
+                <div className="glass-card" style={{ padding: 26, marginBottom: 20 }}>
+                  <div style={{ fontSize: 14, fontWeight: 800, marginBottom: 4 }}>Логотип программы</div>
+                  <p style={{ fontSize: 12.5, color: 'rgba(255,255,255,0.45)', marginBottom: 16 }}>Заменяет стандартный логотип Centrio в приложении у всех сотрудников организации.</p>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                    <div style={{ width: 56, height: 56, borderRadius: 14, background: 'rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0 }}>
+                      {org.orgLogoUrl ? <img src={org.orgLogoUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} /> : <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)' }}>по умолч.</span>}
+                    </div>
+                    <label className="btn-primary" style={{ cursor: uploadingLogo ? 'not-allowed' : 'pointer', opacity: uploadingLogo ? 0.55 : 1 }}>
+                      {uploadingLogo ? 'Загружаем…' : 'Загрузить логотип'}
+                      <input type="file" accept="image/*" onChange={handleLogoUpload} disabled={uploadingLogo} style={{ display: 'none' }} />
+                    </label>
+                    {org.orgLogoUrl && (
+                      <button className="btn-danger" disabled={uploadingLogo} onClick={handleRemoveLogo}>Сбросить</button>
+                    )}
+                  </div>
+                  {logoMsg && <div className={`form-msg ${logoMsg.type}`} style={{ marginTop: 12 }}>{logoMsg.text}</div>}
+                </div>
+
+                <div className="glass-card" style={{ padding: 26, marginBottom: 20 }}>
+                  <div style={{ fontSize: 14, fontWeight: 800, marginBottom: 4 }}>Общий VPN для команды</div>
+                  <p style={{ fontSize: 12.5, color: 'rgba(255,255,255,0.45)', marginBottom: 16 }}>Ссылка-подписка на VPN, которую приложение подключит автоматически у всех сотрудников (если у них ещё нет собственного активного VPN).</p>
+                  <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 12 }}>
+                    <div style={{ flex: '1 1 200px' }}>
+                      <label className="field-label">Название</label>
+                      <input className="field-input" value={vpnName} onChange={e => setVpnName(e.target.value)} placeholder="Например, Офис" />
+                    </div>
+                    <div style={{ flex: '2 1 320px' }}>
+                      <label className="field-label">Ссылка на подписку</label>
+                      <input className="field-input" value={vpnLink} onChange={e => setVpnLink(e.target.value)} placeholder="vless://... или https://.../sub" />
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 10 }}>
+                    <button className="btn-primary" disabled={savingVpn || !vpnLink.trim()} onClick={handleSaveVpn}>{savingVpn ? 'Сохраняем…' : 'Сохранить'}</button>
+                    {vpnLink && <button className="btn-danger" disabled={savingVpn} onClick={handleClearVpn}>Отключить</button>}
+                  </div>
+                  {vpnMsg && <div className={`form-msg ${vpnMsg.type}`} style={{ marginTop: 12 }}>{vpnMsg.text}</div>}
+                </div>
+
+                <div className="glass-card" style={{ padding: 26, marginBottom: 20 }}>
+                  <div style={{ fontSize: 14, fontWeight: 800, marginBottom: 4 }}>Единая тема оформления</div>
+                  <p style={{ fontSize: 12.5, color: 'rgba(255,255,255,0.45)', marginBottom: 16 }}>Применяется у всех сотрудников организации. «Не задано» — каждый выбирает тему сам.</p>
+                  <select className="field-select" value={forcedTheme} disabled={savingSettings} onChange={e => handleSaveTheme(e.target.value)} style={{ maxWidth: 240 }}>
+                    <option value="">Не задано</option>
+                    <option value="embedded">Тёмная</option>
+                    <option value="light">Светлая</option>
+                  </select>
+                  {settingsMsg && <div className={`form-msg ${settingsMsg.type}`} style={{ marginTop: 12 }}>{settingsMsg.text}</div>}
+                </div>
+
+                <div className="glass-card" style={{ padding: 26, marginBottom: 20 }}>
+                  <div style={{ fontSize: 14, fontWeight: 800, marginBottom: 4 }}>Мессенджеры сотрудников</div>
+                  <p style={{ fontSize: 12.5, color: 'rgba(255,255,255,0.45)', marginBottom: 16 }}>Назначьте сотруднику мессенджер — он появится у него в приложении. Сотрудник по-прежнему входит в сервис под своим аккаунтом.</p>
+
+                  <form onSubmit={handleAddAssignment} style={{ display: 'flex', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap', marginBottom: 16 }}>
+                    <div style={{ flex: '1 1 180px' }}>
+                      <label className="field-label">Сотрудник</label>
+                      <select className="field-select" value={assignUserId} onChange={e => setAssignUserId(e.target.value)}>
+                        <option value="">Выберите…</option>
+                        {members.filter(m => m.role !== 'OWNER').map(m => (
+                          <option key={m.userId} value={m.userId}>{m.name || m.email}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div style={{ flex: '1 1 160px' }}>
+                      <label className="field-label">Название</label>
+                      <input className="field-input" value={assignName} onChange={e => setAssignName(e.target.value)} placeholder="WhatsApp" />
+                    </div>
+                    <div style={{ flex: '2 1 240px' }}>
+                      <label className="field-label">Ссылка</label>
+                      <input className="field-input" value={assignUrl} onChange={e => setAssignUrl(e.target.value)} placeholder="https://web.whatsapp.com" />
+                    </div>
+                    <button type="submit" className="btn-primary" disabled={savingAssignment}>{savingAssignment ? 'Добавляем…' : 'Назначить'}</button>
+                  </form>
+                  {assignMsg && <div className={`form-msg ${assignMsg.type}`} style={{ marginBottom: 12 }}>{assignMsg.text}</div>}
+
+                  {loadingAssignments ? (
+                    <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13.5 }}>Загрузка…</div>
+                  ) : assignments.length === 0 ? (
+                    <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13.5 }}>Пока никому ничего не назначено.</div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      {assignments.map(a => (
+                        <div key={a.id} className="member-row">
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 14, fontWeight: 700 }}>{a.name}</div>
+                            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)' }}>{byUser[a.userId]?.name || byUser[a.userId]?.email || a.userId} · {a.url}</div>
+                          </div>
+                          <button className="btn-danger" onClick={() => handleDeleteAssignment(a.id)}><IcoTrash /> Убрать</button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="glass-card" style={{ padding: 26 }}>
+                  <div style={{ fontSize: 14, fontWeight: 800, marginBottom: 4 }}>Кто читает сообщения</div>
+                  <p style={{ fontSize: 12.5, color: 'rgba(255,255,255,0.45)', marginBottom: 16 }}>Только статус — прочитано или нет. Содержимое переписки Centrio не видит и не хранит.</p>
+
+                  {loadingStats ? (
+                    <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13.5 }}>Загрузка…</div>
+                  ) : stats.length === 0 ? (
+                    <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13.5 }}>Пока нет данных — сотрудники ещё не открывали приложение с этой версией.</div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {stats.map(s => (
+                        <div key={`${s.userId}:${s.messengerKey}`} className="audit-row">
+                          <span>{s.user?.name || s.user?.email || s.userId} · {s.messengerName}</span>
+                          <span style={{ color: s.unreadCount > 0 ? '#f59e0b' : '#22c55e', flexShrink: 0, fontWeight: 700 }}>
+                            {s.unreadCount > 0 ? `${s.unreadCount} непрочитано` : 'прочитано'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </>
             )}
 
