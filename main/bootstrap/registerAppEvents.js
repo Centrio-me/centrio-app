@@ -575,6 +575,15 @@ function startNotifPolling(contents, getMainWindow) {
     contents.once('destroyed', () => clearInterval(timer))
 }
 
+// Mirrors renderer/webview-tabs-bind.js's baseDomain() exactly (last two
+// hostname labels) — used by the did-create-window popup fallback below to
+// tell a same-site popup (e.g. Mail.ru's own "Входящие" window.open()) apart
+// from a genuinely external one.
+function baseDomain(hostname) {
+    const parts = String(hostname || '').split('.').filter(Boolean)
+    return parts.length <= 2 ? parts.join('.') : parts.slice(-2).join('.')
+}
+
 function findMessengerIdForSession(targetSession) {
     try {
         const messengers = store.get('messengers', []) || []
@@ -1679,6 +1688,41 @@ function registerAppEvents({
                 childWindow.webContents.once('did-navigate', (_evt, navUrl) => {
                     if (isDownload || childWindow.isDestroyed()) return
                     if (!navUrl || navUrl === 'about:blank') return
+
+                    // BUGFIX (2026-09-11, "Mail.ru — запрети ходить ему в
+                    // браузер. Нажимаешь 'Входящие' — он браузер открывает"):
+                    // this fallback used to bounce EVERY non-OAuth popup to
+                    // the external browser unconditionally — including a
+                    // popup the guest page opened for ITS OWN site (e.g.
+                    // Mail.ru's "Входящие" opening the inbox via
+                    // window.open()). A first attempt just `show()`d such a
+                    // same-site popup in-app instead — technically correct
+                    // (right session, no external browser) but still a
+                    // separate floating OS window on top of the messenger's
+                    // own tab, which the user correctly rejected as "still
+                    // wrong" (screenshot: a second "(13) Входящие" window
+                    // sitting over the Mail.ru tab). What the user actually
+                    // wants is what a normal browser does for same-tab
+                    // navigation dressed up as window.open(): show it IN THE
+                    // EXISTING TAB. So instead of showing the popup, redirect
+                    // the ORIGINATING webview's own webContents (`contents`)
+                    // to the popup's URL and discard the popup window
+                    // entirely — the messenger tab itself just navigates to
+                    // the inbox, exactly like clicking a normal link would.
+                    // Only truly cross-site popups (share dialogs, payment
+                    // processors, "open in new tab" links to another
+                    // service) still make sense to hand to the real browser.
+                    const messenger = findMessengerRecordForSession(contents.session)
+                    if (messenger?.url) {
+                        try {
+                            if (baseDomain(new URL(navUrl).hostname) === baseDomain(new URL(messenger.url).hostname)) {
+                                if (!contents.isDestroyed()) contents.loadURL(navUrl).catch(() => {})
+                                if (!childWindow.isDestroyed()) childWindow.destroy()
+                                return
+                            }
+                        } catch {}
+                    }
+
                     // DEBUG (2026-08-24, see matching comment on
                     // browser-window-created above) — this is the fallback
                     // for a webview-originated window.open() that did NOT

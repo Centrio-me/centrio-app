@@ -67,6 +67,11 @@ app.use('/api/assistant', require('./routes/assistant'))
 app.use('/api/telegram', require('./routes/telegram-webhook'))
 // Корпоративная версия (TEAM) — Phase 1 (см. Obsidian → Centrio → Корпоративная версия)
 app.use('/api/org', require('./routes/org'))
+// Онлайн-чат для сайта клиента (2026-09-11, Pro-фича) — /chat-sites требует
+// авторизации Centrio-аккаунтом (управление из приложения), /widget не
+// требует вообще (публичный виджет на чужом сайте) — см. routes/widget.js.
+app.use('/api/chat-sites', require('./routes/chat-sites'))
+app.use('/api/widget', require('./routes/widget'))
 app.use('/uploads', require('express').static('/var/www/centrio-api/uploads'))
 
 // Health check

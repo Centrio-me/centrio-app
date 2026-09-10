@@ -4,12 +4,34 @@
 // и закрытие делает общий контроллер openRightPanel/closeRightPanel,
 // этот модуль отвечает только за содержимое (списки, задачи, вкладки).
 //
-// Формат данных: { lists: [{id, name}], items: [{id, text, done, starred, listId}] }.
-// Раньше 'todos' был плоским массивом задач без списков — miграция ниже
+// Формат данных: { lists: [{id, name}], items: [{id, text, done, starred,
+// listId, dueDate, priority, notes, subtasks, reminderEnabled, reminderFired,
+// createdAt}] }.
+// Раньше 'todos' был плоским массивом задач без списков — миграция ниже
 // оборачивает его в один список по умолчанию, если обнаружен старый формат.
+//
+// FEATURE (2026-09-11, "расширить функционал задач... сильно... больше
+// данных... дату нужно добавить" — live user request): items gained
+// dueDate/priority/notes/subtasks/reminder — see migrateItem() below for the
+// backward-compatible defaulting of pre-existing tasks, and openTaskDetail()
+// for the new detail modal that edits them.
 const DEFAULT_LIST_ID = 'default'
+const REMINDER_CHECK_INTERVAL_MS = 60 * 1000
 
-function bindTodosUi({ store, tGet, openRightPanel, closeRightPanel }) {
+function migrateItem(t) {
+    return {
+        ...t,
+        dueDate: t.dueDate ?? null,
+        priority: t.priority || 'none',
+        notes: t.notes || '',
+        subtasks: Array.isArray(t.subtasks) ? t.subtasks : [],
+        reminderEnabled: !!t.reminderEnabled,
+        reminderFired: !!t.reminderFired,
+        createdAt: t.createdAt || Date.now()
+    }
+}
+
+function bindTodosUi({ store, tGet, ipcRenderer, openRightPanel, closeRightPanel }) {
     const btn         = document.getElementById('todosBtn')
     const panel       = document.getElementById('todosPanel')
     const list        = document.getElementById('todosList')
@@ -21,9 +43,27 @@ function bindTodosUi({ store, tGet, openRightPanel, closeRightPanel }) {
     const listAddInput = document.getElementById('todoListAddInput')
     const ctxMenu      = document.getElementById('todosContextMenu')
     const ctxEdit      = document.getElementById('ctxTodoEdit')
+    const ctxDetails   = document.getElementById('ctxTodoDetails')
     const ctxStar      = document.getElementById('ctxTodoStar')
     const ctxStarLabel = document.getElementById('ctxTodoStarLabel')
     const ctxDelete    = document.getElementById('ctxTodoDelete')
+
+    // ── Модал "Подробности задачи" (2026-09-11) ───────────────────────────
+    const detailModal     = document.getElementById('taskDetailModal')
+    const detailTitle     = document.getElementById('taskDetailTitle')
+    const detailDueDate   = document.getElementById('taskDetailDueDate')
+    const detailPriority  = document.getElementById('taskDetailPriority')
+    const detailReminder  = document.getElementById('taskDetailReminder')
+    const detailNotes     = document.getElementById('taskDetailNotes')
+    const detailSubtasks  = document.getElementById('taskDetailSubtasks')
+    const detailSubInput  = document.getElementById('taskDetailSubtaskInput')
+    const detailSubAddBtn = document.getElementById('taskDetailSubtaskAddBtn')
+    const detailSaveBtn   = document.getElementById('taskDetailSaveBtn')
+    const detailDeleteBtn = document.getElementById('taskDetailDeleteBtn')
+    const detailCloseBtn  = document.getElementById('closeTaskDetailBtn')
+
+    let detailTodoId = null
+    let detailSubtasksDraft = []
 
     if (!btn || !panel || !list) return
 
@@ -33,6 +73,7 @@ function bindTodosUi({ store, tGet, openRightPanel, closeRightPanel }) {
 
     function getData() {
         let data = store.get('todos', null)
+        let dirty = false
         if (!data || Array.isArray(data) || !Array.isArray(data.lists)) {
             // Миграция старого плоского формата (или пустое хранилище).
             const oldItems = Array.isArray(data) ? data : []
@@ -40,8 +81,16 @@ function bindTodosUi({ store, tGet, openRightPanel, closeRightPanel }) {
                 lists: [{ id: DEFAULT_LIST_ID, name: tGet('todos.all') || 'Todos' }],
                 items: oldItems.map(t => ({ ...t, listId: DEFAULT_LIST_ID }))
             }
-            store.set('todos', data)
+            dirty = true
         }
+        // Миграция на расширенный формат задачи (дата/приоритет/заметки/
+        // подзадачи/напоминание) — добавляет только недостающие поля,
+        // ничего не перезаписывает у уже расширенных задач.
+        if (data.items.some(t => t.priority === undefined)) {
+            data.items = data.items.map(migrateItem)
+            dirty = true
+        }
+        if (dirty) store.set('todos', data)
         return data
     }
 
@@ -114,7 +163,12 @@ function bindTodosUi({ store, tGet, openRightPanel, closeRightPanel }) {
                 <div class="todo-item-check" data-action="toggle">
                     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                 </div>
-                <span class="todo-item-text">${escapeHtml(todo.text)}</span>
+                ${todo.priority && todo.priority !== 'none' ? `<span class="todo-item-priority-dot ${todo.priority}" title="${escapeHtml(tGet('todos.priority' + todo.priority[0].toUpperCase() + todo.priority.slice(1)) || todo.priority)}"></span>` : ''}
+                <span class="todo-item-text" data-action="open">${escapeHtml(todo.text)}</span>
+                <div class="todo-item-meta">
+                    ${renderSubtaskProgress(todo)}
+                    ${renderDueBadge(todo)}
+                </div>
                 <button class="todo-item-star ${todo.starred ? 'starred' : ''}" data-action="star" title="${escapeHtml(tGet('todos.star') || 'Закрепить')}">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
                 </button>
@@ -123,6 +177,24 @@ function bindTodosUi({ store, tGet, openRightPanel, closeRightPanel }) {
                 </button>
             </div>
         `).join('')
+    }
+
+    function renderSubtaskProgress(todo) {
+        if (!todo.subtasks || todo.subtasks.length === 0) return ''
+        const done = todo.subtasks.filter(s => s.done).length
+        return `<span class="todo-item-subtask-progress">${done}/${todo.subtasks.length}</span>`
+    }
+
+    function renderDueBadge(todo) {
+        if (!todo.dueDate) return ''
+        const due = new Date(todo.dueDate + 'T00:00:00')
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
+        const isOverdue = !todo.done && due < today
+        const isToday = due.getTime() === today.getTime()
+        const label = due.toLocaleDateString(undefined, { day: '2-digit', month: '2-digit' })
+        const cls = isOverdue ? 'overdue' : (isToday ? 'today' : '')
+        return `<span class="todo-item-due ${cls}">${escapeHtml(label)}</span>`
     }
 
     function renderAll() {
@@ -201,6 +273,16 @@ function bindTodosUi({ store, tGet, openRightPanel, closeRightPanel }) {
         const actionEl = e.target.closest('[data-action]')
         const action = actionEl?.dataset.action || 'toggle'
 
+        // BUGFIX/FEATURE (2026-09-11, extended tasks): clicking the task
+        // TEXT now opens the detail modal instead of toggling done — the
+        // checkbox (data-action="toggle") is the only thing that still
+        // toggles completion, so a click meant to inspect/edit a task
+        // doesn't accidentally mark it done.
+        if (action === 'open') {
+            openTaskDetail(id)
+            return
+        }
+
         const data = getData()
         const idx = data.items.findIndex(t => String(t.id) === String(id))
         if (idx === -1) return
@@ -251,6 +333,12 @@ function bindTodosUi({ store, tGet, openRightPanel, closeRightPanel }) {
         closeCtxMenu()
         if (id != null) editTodoInline(id)
     })
+    ctxDetails?.addEventListener('click', (e) => {
+        e.stopPropagation()
+        const id = contextTodoId
+        closeCtxMenu()
+        if (id != null) openTaskDetail(id)
+    })
     ctxStar?.addEventListener('click', (e) => {
         e.stopPropagation()
         const id = contextTodoId
@@ -292,11 +380,150 @@ function bindTodosUi({ store, tGet, openRightPanel, closeRightPanel }) {
         // списка), кладёт её в первый обычный список — иначе непонятно,
         // куда её сохранять.
         const listId = activeTab === 'starred' ? (data.lists[0]?.id || DEFAULT_LIST_ID) : activeTab
-        data.items.unshift({ id: Date.now(), text, done: false, starred: false, listId })
+        data.items.unshift(migrateItem({ id: Date.now(), text, done: false, starred: false, listId }))
         saveData(data)
         if (addInput) addInput.value = ''
         renderList()
     })
+
+    // ── Подробности задачи (2026-09-11) ───────────────────────────────────
+    function renderDetailSubtasks() {
+        if (!detailSubtasks) return
+        if (detailSubtasksDraft.length === 0) {
+            detailSubtasks.innerHTML = ''
+            return
+        }
+        detailSubtasks.innerHTML = detailSubtasksDraft.map(s => `
+            <div class="task-detail-subtask-item ${s.done ? 'done' : ''}" data-id="${s.id}">
+                <input type="checkbox" data-action="toggle-subtask" ${s.done ? 'checked' : ''}>
+                <span class="task-detail-subtask-text">${escapeHtml(s.text)}</span>
+                <button type="button" class="task-detail-subtask-remove" data-action="remove-subtask">&times;</button>
+            </div>
+        `).join('')
+    }
+
+    function openTaskDetail(id) {
+        const data = getData()
+        const todo = data.items.find(t => String(t.id) === String(id))
+        if (!todo || !detailModal) return
+
+        detailTodoId = id
+        detailSubtasksDraft = (todo.subtasks || []).map(s => ({ ...s }))
+
+        if (detailTitle) detailTitle.value = todo.text
+        if (detailDueDate) detailDueDate.value = todo.dueDate || ''
+        if (detailPriority) detailPriority.value = todo.priority || 'none'
+        if (detailReminder) detailReminder.checked = !!todo.reminderEnabled
+        if (detailNotes) detailNotes.value = todo.notes || ''
+        renderDetailSubtasks()
+
+        detailModal.classList.add('show')
+    }
+
+    function closeTaskDetail() {
+        detailModal?.classList.remove('show')
+        detailTodoId = null
+    }
+
+    function saveTaskDetail() {
+        if (detailTodoId == null) return
+        const data = getData()
+        const idx = data.items.findIndex(t => String(t.id) === String(detailTodoId))
+        if (idx === -1) return
+
+        const newDueDate = detailDueDate?.value || null
+        const item = data.items[idx]
+        // Меняем дату — сбрасываем "уже сработавшее" напоминание, иначе
+        // перенос задачи на другой день никогда бы больше не напомнил.
+        if (newDueDate !== item.dueDate) item.reminderFired = false
+
+        item.text = (detailTitle?.value || '').trim() || item.text
+        item.dueDate = newDueDate
+        item.priority = detailPriority?.value || 'none'
+        item.reminderEnabled = !!detailReminder?.checked
+        item.notes = detailNotes?.value || ''
+        item.subtasks = detailSubtasksDraft
+
+        saveData(data)
+        closeTaskDetail()
+        renderList()
+    }
+
+    detailSubAddBtn?.addEventListener('click', () => {
+        const text = (detailSubInput?.value || '').trim()
+        if (!text) return
+        detailSubtasksDraft.push({ id: `sub-${Date.now()}`, text, done: false })
+        if (detailSubInput) detailSubInput.value = ''
+        renderDetailSubtasks()
+    })
+    detailSubInput?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); detailSubAddBtn?.click() }
+    })
+    detailSubtasks?.addEventListener('click', (e) => {
+        const itemEl = e.target.closest('.task-detail-subtask-item')
+        if (!itemEl) return
+        const subId = itemEl.dataset.id
+        const action = e.target.closest('[data-action]')?.dataset.action
+        if (action === 'remove-subtask') {
+            detailSubtasksDraft = detailSubtasksDraft.filter(s => String(s.id) !== String(subId))
+            renderDetailSubtasks()
+        } else if (action === 'toggle-subtask') {
+            const sub = detailSubtasksDraft.find(s => String(s.id) === String(subId))
+            if (sub) sub.done = !sub.done
+            renderDetailSubtasks()
+        }
+    })
+
+    detailSaveBtn?.addEventListener('click', saveTaskDetail)
+    detailCloseBtn?.addEventListener('click', closeTaskDetail)
+    detailDeleteBtn?.addEventListener('click', async () => {
+        if (detailTodoId == null) return
+        const ok = await window.showConfirmModal({
+            title: tGet('todos.deleteConfirmTitle') || 'Удалить задачу?',
+            message: tGet('todos.deleteConfirmText') || 'Действие нельзя отменить.',
+            confirmText: tGet('todos.delete') || 'Удалить',
+            cancelText: tGet('todos.cancel') || 'Отмена',
+            danger: true
+        })
+        if (!ok) return
+        const data = getData()
+        data.items = data.items.filter(t => String(t.id) !== String(detailTodoId))
+        saveData(data)
+        closeTaskDetail()
+        renderList()
+    })
+    detailModal?.addEventListener('click', (e) => { if (e.target === detailModal) closeTaskDetail() })
+
+    // ── Напоминания (2026-09-11) ───────────────────────────────────────────
+    // Раз в минуту проверяем задачи с включённым напоминанием, у которых
+    // наступила (или прошла) дата и напоминание ещё не срабатывало —
+    // используем тот же 'show-notification' канал, что и уведомления
+    // мессенджеров (main/ipc/notifications.js), поэтому никакой новой
+    // main-процессной логики не требуется.
+    function checkReminders() {
+        if (!ipcRenderer) return
+        const data = getData()
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
+        let changed = false
+
+        data.items.forEach(t => {
+            if (!t.reminderEnabled || t.reminderFired || t.done || !t.dueDate) return
+            const due = new Date(t.dueDate + 'T00:00:00')
+            if (due > today) return
+            ipcRenderer.send('show-notification', {
+                title: tGet('todos.reminderNotifTitle') || 'Напоминание о задаче',
+                body: t.text,
+                messengerId: 'todos-reminder'
+            })
+            t.reminderFired = true
+            changed = true
+        })
+
+        if (changed) saveData(data)
+    }
+    setInterval(checkReminders, REMINDER_CHECK_INTERVAL_MS)
+    checkReminders()
 
     tabStarred?.addEventListener('click', (e) => {
         e.stopPropagation()

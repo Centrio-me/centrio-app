@@ -202,6 +202,35 @@ function registerApiIpc() {
         return wrapApi(() => api.orgPushMessengerStats(token, orgId, stats))
     })
 
+    // FEATURE (2026-09-11, встроенный чат-виджет — Pro)
+    ipcMain.handle('api-chat-site-get', async (event, token) => {
+        return wrapApi(() => api.chatSiteGet(token))
+    })
+
+    ipcMain.handle('api-chat-site-create', async (event, token, data) => {
+        return wrapApi(() => api.chatSiteCreate(token, data))
+    })
+
+    ipcMain.handle('api-chat-site-update', async (event, token, siteId, data) => {
+        return wrapApi(() => api.chatSiteUpdate(token, siteId, data))
+    })
+
+    ipcMain.handle('api-chat-site-conversations', async (event, token, siteId) => {
+        return wrapApi(() => api.chatSiteConversations(token, siteId))
+    })
+
+    ipcMain.handle('api-chat-site-messages', async (event, token, siteId, conversationId, since) => {
+        return wrapApi(() => api.chatSiteMessages(token, siteId, conversationId, since))
+    })
+
+    ipcMain.handle('api-chat-site-reply', async (event, token, siteId, conversationId, body) => {
+        return wrapApi(() => api.chatSiteReply(token, siteId, conversationId, body))
+    })
+
+    ipcMain.handle('api-chat-site-set-status', async (event, token, siteId, conversationId, status) => {
+        return wrapApi(() => api.chatSiteSetStatus(token, siteId, conversationId, status))
+    })
+
     ipcMain.handle('api-read-all-notifications', async (event, token) => {
         return wrapApi(() => api.readAllNotifications(token))
     })

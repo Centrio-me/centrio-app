@@ -257,5 +257,38 @@ module.exports = {
 
     orgPushMessengerStats(token, orgId, stats) {
         return request('POST', `/api/org/${orgId}/messenger-stats`, { stats }, token)
+    },
+
+    // FEATURE (2026-09-11, встроенный чат-виджет — Pro). Desktop-side
+    // (authenticated) API for managing the site + reading/replying to
+    // conversations. The public, unauthenticated widget-facing side never
+    // goes through the desktop app at all — see landing/widget-routes.js.
+    chatSiteGet(token) {
+        return request('GET', '/api/chat-sites', null, token)
+    },
+
+    chatSiteCreate(token, { domain, name }) {
+        return request('POST', '/api/chat-sites', { domain, name }, token)
+    },
+
+    chatSiteUpdate(token, siteId, { domain, name }) {
+        return request('PATCH', `/api/chat-sites/${siteId}`, { domain, name }, token)
+    },
+
+    chatSiteConversations(token, siteId) {
+        return request('GET', `/api/chat-sites/${siteId}/conversations`, null, token)
+    },
+
+    chatSiteMessages(token, siteId, conversationId, since) {
+        const q = since ? `?since=${encodeURIComponent(since)}` : ''
+        return request('GET', `/api/chat-sites/${siteId}/conversations/${conversationId}/messages${q}`, null, token)
+    },
+
+    chatSiteReply(token, siteId, conversationId, body) {
+        return request('POST', `/api/chat-sites/${siteId}/conversations/${conversationId}/messages`, { body }, token)
+    },
+
+    chatSiteSetStatus(token, siteId, conversationId, status) {
+        return request('PATCH', `/api/chat-sites/${siteId}/conversations/${conversationId}`, { status }, token)
     }
 }

@@ -26,6 +26,7 @@ const { createLockApi } = require('./renderer/lock')
 const { createCloudUiApi } = require('./renderer/cloud-ui')
 const { applyOrgLogo } = require('./renderer/org-branding')
 const { createOrgTeamApi } = require('./renderer/org-team')
+const { createChatWidgetUi } = require('./renderer/chat-widget-ui')
 const { createContextMenusApi } = require('./renderer/context-menus')
 const { bindPopupBackdrop } = require('./renderer/popup-backdrop-bind')
 const { createFoldersUiApi } = require('./renderer/folders-ui')
@@ -3075,8 +3076,21 @@ function applyTabZoom(level) {
     bindTodosUi({
         store,
         tGet,
+        ipcRenderer,
         openRightPanel: () => toggleRightPanel('todos'),
         closeRightPanel
+    })
+
+    // FEATURE (2026-09-11, встроенный чат-виджет для сайта — Pro)
+    const chatWidgetUiApi = createChatWidgetUi({
+        authorizedInvoke,
+        invokeIpc,
+        tGet,
+        hasEffectivePro,
+        showUpgradeModal
+    })
+    document.getElementById('chatWidgetBtn')?.addEventListener('click', () => {
+        chatWidgetUiApi?.openModal?.()
     })
 
     notesUiApiRef = bindNotesUi({

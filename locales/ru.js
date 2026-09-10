@@ -643,7 +643,32 @@ module.exports = {
         assistantSoon: 'Скоро',
         todos: 'Задачи',
         notes: 'Заметки',
-        mediaPlayer: 'Медиаплеер'
+        mediaPlayer: 'Медиаплеер',
+        chatWidget: 'Онлайн-чат'
+    },
+
+    chatWidget: {
+        title: 'Онлайн-чат для сайта',
+        paywallTitle: 'Онлайн-чат для сайта — Pro',
+        paywallDesc: 'Подключите виджет чата на свой сайт — сообщения посетителей будут приходить прямо сюда, без почты и сторонних сервисов.',
+        upgrade: 'Оформить Pro',
+        setupTitle: 'Подключите свой сайт',
+        setupHint: 'Укажите домен сайта, куда будет установлен виджет — по нему мы проверяем, что чат встроен именно туда.',
+        domain: 'Домен сайта',
+        name: 'Название',
+        namePlaceholder: 'Мой сайт',
+        connect: 'Подключить',
+        setupError: 'Не удалось подключить сайт',
+        noConversations: 'Пока нет диалогов',
+        selectConversation: 'Выберите диалог слева',
+        anonymous: 'Гость',
+        you: 'Вы: ',
+        close: 'Закрыть диалог',
+        reopen: 'Открыть снова',
+        replyPlaceholder: 'Ответить…',
+        send: 'Отправить',
+        embedLabel: 'Код для вставки на сайт',
+        copy: 'Скопировать'
     },
 
     assistant: {
@@ -750,7 +775,25 @@ module.exports = {
         deleteConfirmTitle: 'Удалить задачу?',
         deleteConfirmText: 'Действие нельзя отменить.',
         cancel: 'Отмена',
-        ctxEdit: 'Изменить'
+        ctxEdit: 'Изменить',
+
+        // FEATURE (2026-09-11, "расширить функционал задач" — live user request)
+        ctxDetails: 'Подробнее',
+        detailsTitle: 'Подробности задачи',
+        titlePh: 'Название задачи',
+        dueDate: 'Срок',
+        priority: 'Приоритет',
+        priorityNone: 'Без приоритета',
+        priorityLow: 'Низкий',
+        priorityMedium: 'Средний',
+        priorityHigh: 'Высокий',
+        reminder: 'Напомнить в день срока',
+        reminderNotifTitle: 'Напоминание о задаче',
+        notes: 'Заметки',
+        notesPh: 'Дополнительные детали…',
+        subtasks: 'Подзадачи',
+        subtaskPh: 'Новая подзадача…',
+        save: 'Сохранить'
     },
 
     pro: {

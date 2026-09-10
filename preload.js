@@ -93,6 +93,13 @@ const invokeChannelMap = {
 // webview-preload.js) — это только про код самого главного окна.
 const validInvokeChannels = new Set([
     'api-assistant-usage',
+    'api-chat-site-conversations',
+    'api-chat-site-create',
+    'api-chat-site-get',
+    'api-chat-site-messages',
+    'api-chat-site-reply',
+    'api-chat-site-set-status',
+    'api-chat-site-update',
     'api-device-trial-redeem',
     'api-get-notifications',
     'api-get-stats',

@@ -75,6 +75,12 @@ const UPLOADS = [
     // on first request touching these routes.
     { local: path.join(__dirname, '..', 'landing', 'lib', 'org.js'),      remote: `${REMOTE_BASE}/src/lib/org.js` },
     { local: path.join(__dirname, '..', 'landing', 'org-routes.js'),      remote: `${REMOTE_BASE}/src/routes/org.js` },
+    // Онлайн-чат для сайта клиента (2026-09-11, Pro-фича). Both new files —
+    // routes/chat-sites.js and routes/widget.js don't exist live yet.
+    // Requires the ChatSite/ChatConversation/ChatMessage Prisma models to be
+    // pushed to the DB first (this script does NOT do that).
+    { local: path.join(__dirname, '..', 'landing', 'chat-sites-routes.js'), remote: `${REMOTE_BASE}/src/routes/chat-sites.js` },
+    { local: path.join(__dirname, '..', 'landing', 'widget-routes.js'),     remote: `${REMOTE_BASE}/src/routes/widget.js` },
 ]
 
 function exec(conn, cmd) {
