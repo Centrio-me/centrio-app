@@ -486,9 +486,18 @@ function DashboardPageInner() {
       .finally(() => setLoadingPayments(false))
   }, [])
 
+  // BUGFIX (2026-09-10, support ticket — team disappeared client-side after
+  // being created): this used to setUser(r.data), a full REPLACE of the
+  // cached user object with whatever /api/user/profile returns — that
+  // endpoint didn't select every field the richer /api/auth/me response
+  // carries (orgSummary was missing entirely, now fixed server-side too,
+  // see landing/user-route.js), so calling refreshUser() silently wiped
+  // fields this endpoint doesn't know about. Merging is the correct default
+  // for a "just refresh a few fields" call regardless — this endpoint was
+  // never meant to be the single source of truth for the whole user shape.
   const refreshUser = useCallback(() => {
     api.get('/api/user/profile')
-      .then(r => { if (r.data?.id) setUser(r.data) })
+      .then(r => { if (r.data?.id) setUser({ ...(useAuthStore.getState().user as any), ...r.data }) })
       .catch(() => {})
   }, [setUser])
 

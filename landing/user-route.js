@@ -3,11 +3,28 @@ const authMiddleware = require('../middleware/auth')
 const prisma = require('../utils/prisma')
 const bcrypt = require('bcryptjs')
 const { rateLimit } = require('../middleware/rateLimit')
+const { getOrgSummaryForUser } = require('../lib/org')
 
 const deleteAccountLimiter = rateLimit({ name: 'user-delete-account', windowMs: 60 * 60 * 1000, max: 5 })
 const exportLimiter        = rateLimit({ name: 'user-export-data',    windowMs: 60 * 60 * 1000, max: 5 })
 
 // GET /api/user/profile
+//
+// BUGFIX (2026-09-10, support ticket — "Создала команду, добавила участника.
+// И при попытке зайти в раздел 'создать команду' предлагает снова ввести
+// создать команду... как управлять командой я не понимаю"): this endpoint
+// never selected/returned orgSummary at all, unlike /api/auth/me and the
+// other auth routes (all of which call getOrgSummaryForUser and include it).
+// landing/dashboard-server.tsx's refreshUser() calls this endpoint and does
+// setUser(r.data) — a full REPLACE of the cached user object, not a merge —
+// so any time refreshUser() fired (visiting the "Тариф" tab, redeeming a
+// promo code, confirming email — see call sites in dashboard-server.tsx),
+// the client's cached orgSummary was silently wiped even though the
+// organization still existed correctly in the database. The dashboard's own
+// "Команда"/"Создать команду" link text is driven directly by
+// user.orgSummary, so this read as "the team disappeared" / "it thinks I
+// never created one" client-side, while POST /api/org correctly rejected a
+// second creation server-side because the org was never actually gone.
 router.get('/profile', authMiddleware, async (req, res) => {
   try {
     const user = await prisma.user.findUnique({
@@ -18,7 +35,9 @@ router.get('/profile', authMiddleware, async (req, res) => {
         _count: { select: { messengers: true, folders: true } }
       }
     })
-    res.json(user)
+    if (!user) return res.status(404).json({ error: 'Пользователь не найден' })
+    const orgSummary = await getOrgSummaryForUser(user.id).catch(e => { console.error('[org] summary lookup failed:', e.message); return null })
+    res.json({ ...user, orgSummary })
   } catch (err) {
     res.status(500).json({ error: 'Ошибка получения профиля' })
   }

@@ -1725,6 +1725,14 @@ function applyTabZoom(level) {
     // «Пропустить» → api-device-trial-redeem, см. renderer/onboarding-auth.js).
     // Пока триал не истёк, устройство считается Pro независимо от того,
     // вошёл ли пользователь в аккаунт.
+    // FEATURE (2026-09-10, "свяжи Pro-доступ с оплаченным местом в команде.
+    // И бесплатно никому не даём" — live product decision): mirrors the
+    // identical third OR branch just added to isEffectivePro() in
+    // main/services/entitlement.js — orgSummary.orgProSeat is computed
+    // server-side (never client-writable, arrives read-only inside the same
+    // cloud.user object `plan` itself comes from) and grants Pro purely from
+    // occupying one of the org's actually-PAID seats. The free base seats
+    // intentionally grant nothing.
     function hasEffectivePro() {
         const user = cloudStore.getUser()
         const plan = (user?.plan || 'FREE').toUpperCase()
@@ -1732,6 +1740,8 @@ function applyTabZoom(level) {
 
         const trialExpiresAt = store.get('localProTrialExpiresAt', null)
         if (trialExpiresAt && new Date(trialExpiresAt) > new Date()) return true
+
+        if (user?.orgSummary?.orgProSeat === true) return true
 
         return false
     }
@@ -2999,6 +3009,7 @@ function applyTabZoom(level) {
         invokeIpc,
         authorizedInvoke,
         getRecentNotifications: appNotifApi?.getRecentNotifications,
+        searchRecentNotifications: appNotifApi?.searchRecentNotifications,
         applySettings,
         mediaPlayerApi: mediaPlayerUiApi
     })

@@ -130,6 +130,8 @@ module.exports = {
         notifSoundChoose: 'Ton auswählen',
         notifSoundUpload: 'Eigenen Ton hochladen',
         trayBadge:        'Tray-Badge',
+        notifHistoryLimit: 'Anzahl gespeicherter Benachrichtigungen',
+        notifHistoryLimitHint: 'Ältere Benachrichtigungen werden über diese Anzahl hinaus automatisch entfernt. Die Suche durchsucht den gesamten Verlauf — die Liste zeigt jeweils nur bis zu 300 Einträge',
         apply:            'Anwenden',
         applied:          '✓ Einstellungen übernommen',
         resetLabel:       'Alle Einstellungen zurücksetzen',
@@ -382,6 +384,7 @@ module.exports = {
         noNotifs:      'Keine neuen Benachrichtigungen',
         searchPlaceholder: 'Benachrichtigungen durchsuchen',
         searchNoResults: 'Keine Treffer',
+        truncatedHint: 'Zeigt die neuesten {shown} von {total} — Suche verfeinern, um Gesuchtes zu finden',
     },
 
     downloads: {
@@ -523,6 +526,8 @@ module.exports = {
         fillAll:      'Alle Felder ausfüllen',
         changePhoto:  'Ändern',
         accountBtn:   'Centrio-Konto',
+        proFromTeam: 'Pro über Team',
+        teamBadgeSuffix: 'TEAM',
         freePlan:     'FREE',
         oauthError:   'Autorisierungsfehler',
         loginGoogle:  'Mit Google anmelden',

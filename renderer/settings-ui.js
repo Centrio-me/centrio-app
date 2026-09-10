@@ -284,6 +284,7 @@ function createSettingsUiApi({
             notifications: document.getElementById('settingNotifications')?.checked ?? true,
             notifSound: document.getElementById('settingNotifSound')?.checked ?? true,
             trayBadge: document.getElementById('settingTrayBadge')?.checked ?? true,
+            notifHistoryLimit: Number(document.getElementById('settingNotifHistoryLimit')?.value) || currentSettings.notifHistoryLimit || 200,
             foldersEnabled: document.getElementById('settingFoldersEnabled')?.checked ?? true,
             folderLabel: document.getElementById('settingFolderLabel')?.checked ?? true,
             theme: document.querySelector('.theme-item.active')?.dataset.theme || currentSettings.theme || 'embedded',
@@ -313,6 +314,7 @@ function createSettingsUiApi({
         const settingNotifications = document.getElementById('settingNotifications')
         const settingNotifSound = document.getElementById('settingNotifSound')
         const settingTrayBadge = document.getElementById('settingTrayBadge')
+        const settingNotifHistoryLimit = document.getElementById('settingNotifHistoryLimit')
         const settingFoldersEnabled = document.getElementById('settingFoldersEnabled')
         const settingFolderLabel = document.getElementById('settingFolderLabel')
 
@@ -324,6 +326,7 @@ function createSettingsUiApi({
         if (settingNotifications) settingNotifications.checked = settings.notifications !== false
         if (settingNotifSound) settingNotifSound.checked = settings.notifSound !== false
         if (settingTrayBadge) settingTrayBadge.checked = settings.trayBadge !== false
+        if (settingNotifHistoryLimit) settingNotifHistoryLimit.value = String(settings.notifHistoryLimit || 200)
         if (settingFoldersEnabled) settingFoldersEnabled.checked = settings.foldersEnabled !== false
         if (settingFolderLabel) settingFolderLabel.checked = settings.folderLabel !== false
 

@@ -12,6 +12,35 @@ const {
     isOAuthBrokerActive, markOAuthBrokerActive, clearOAuthBrokerActive
 } = require('../ipc/window')
 const { isOAuthProviderUrl, isYandexInternalSsoHost } = require('../services/oauthProviders')
+const { popularMessengers } = require('../../renderer/constants')
+
+// BUGFIX (2026-09-10, "Яндекс почта попадает в медиалеер всё равно" — live
+// user report, persisted despite the messenger.category === 'media' gate
+// added just before this): trusting the CATEGORY FIELD STORED ON THE
+// MESSENGER RECORD is fragile — addMessenger() (renderer/messengers.js)
+// only ever copies whatever the catalog entry looked like AT THE MOMENT the
+// user added it, so any messenger added before `category` existed in
+// renderer/constants.js (or added as a "custom" URL rather than picked from
+// the catalog) simply has no category field, or a stale one from an older
+// catalog shape. Cross-check by the messenger's actual URL hostname against
+// the LIVE catalog instead — this is the same module the add-messenger
+// picker (renderer/add-modal-ui.js) itself groups tiles by, so it can never
+// drift out of sync with what a user would see labeled "Медиа" there.
+const MEDIA_CATALOG_HOSTNAMES = new Set(
+    popularMessengers
+        .filter(m => m.category === 'media')
+        .map(m => { try { return new URL(m.url).hostname } catch { return null } })
+        .filter(Boolean)
+)
+function isMediaMessenger(messenger) {
+    if (!messenger) return false
+    if (messenger.category === 'media') return true
+    try {
+        return MEDIA_CATALOG_HOSTNAMES.has(new URL(messenger.url).hostname)
+    } catch {
+        return false
+    }
+}
 
 // BUGFIX ("Google: бесконечный повторяющийся [popup] loadURL failed
 // ERR_FAILED loading 'https://accounts.google.com/_/bscframe'" —
@@ -709,9 +738,24 @@ const MEDIA_STATE_DETECT_SCRIPT = `(function() {
 
 const MEDIA_STATE_POLL_MS = 2000
 
+// BUGFIX (2026-09-10, "медиа плеер нужно ограничить только для вкладок из
+// категории 'Медиа'. Для мессенджеров не нужно. Иначе он каждое
+// аудиосообщение — поднимает" — live user request): this used to poll
+// EVERY messenger tab regardless of what it is — a voice message playing
+// in Telegram/WhatsApp/MAX has a real <audio>/<video> element too, so it
+// tripped the exact same MediaSession/playing detection as an actual media
+// site and popped the mini-player for something that was never meant to be
+// "now playing" material. Only start polling for messengers whose catalog
+// entry (renderer/constants.js) tags them category:'media' (Yandex Музыка,
+// VK Видео, etc.) — see addMessenger() in renderer/messengers.js, which
+// spreads the full catalog entry (category included) onto the saved
+// messenger record, so this persists for already-added tabs too. Custom/
+// non-catalog messengers have no category and are correctly treated as
+// not-media (no popup at all) rather than defaulting to "yes, poll it".
 function startMediaStatePolling(contents, getMainWindow) {
-    const messengerId = findMessengerIdForSession(contents.session)
-    if (!messengerId) return
+    const messenger = findMessengerRecordForSession(contents.session)
+    if (!isMediaMessenger(messenger)) return
+    const messengerId = messenger.id
 
     let inFlight = false
     let lastPlaying = false

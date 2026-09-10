@@ -94,7 +94,7 @@ function summarizeNote(n) {
     }
 }
 
-function bindAssistantTools({ state, store, tGet, switchTab, openSettings, invokeIpc, authorizedInvoke, getRecentNotifications, applySettings, mediaPlayerApi }) {
+function bindAssistantTools({ state, store, tGet, switchTab, openSettings, invokeIpc, authorizedInvoke, getRecentNotifications, searchRecentNotifications, applySettings, mediaPlayerApi }) {
     function getTodosData() {
         const data = store.get('todos', null)
         if (!data || Array.isArray(data) || !Array.isArray(data.lists)) {
@@ -180,12 +180,31 @@ function bindAssistantTools({ state, store, tGet, switchTab, openSettings, invok
 
         // См. комментарий в шапке файла — единственное разрешённое чтение
         // "контента": превью title/body из панели-колокольчика (не диалоги).
-        get_recent_notifications({ limit, unreadOnly } = {}) {
-            if (typeof getRecentNotifications !== 'function') return { notifications: [] }
-            let list = getRecentNotifications()
+        //
+        // BUGFIX (2026-09-10, "в уведомлениях полный текст, а ИИ наш ищет не
+        // по полному тексту" — live user report): without `query`, this only
+        // ever saw the most recent ~50 (post-slice) items — with local
+        // history now storable up to 10,000, a keyword search request like
+        // "найди уведомление про доставку" had no way to reach anything
+        // past the very latest few. When `query` is given, this now runs
+        // renderer/app-notif-bind.js searchRecentNotifications() — the exact
+        // same substring match the panel's own search box uses — over the
+        // FULL stored+cloud history, THEN caps the returned count (not what
+        // gets searched). Without `query`, behavior is unchanged (most
+        // recent N, optionally unread-only).
+        get_recent_notifications({ limit, unreadOnly, query } = {}) {
+            const trimmedQuery = typeof query === 'string' ? query.trim() : ''
+            let list
+            if (trimmedQuery && typeof searchRecentNotifications === 'function') {
+                list = searchRecentNotifications(trimmedQuery)
+            } else if (typeof getRecentNotifications === 'function') {
+                list = getRecentNotifications()
+            } else {
+                return { notifications: [] }
+            }
             if (unreadOnly) list = list.filter(n => !n.isRead)
             const cap = Math.min(Math.max(parseInt(limit, 10) || 20, 1), 50)
-            return { notifications: list.slice(0, cap) }
+            return { notifications: list.slice(0, cap), matchedCount: list.length, query: trimmedQuery || null }
         },
 
         async get_vpn_status() {
@@ -392,11 +411,12 @@ function bindAssistantTools({ state, store, tGet, switchTab, openSettings, invok
         },
         {
             name: 'get_recent_notifications',
-            description: 'Прочитать недавние уведомления из колокольчика приложения (заголовок и текст превью). Не даёт доступ к перепискам мессенджеров — только к самим системным/пуш-уведомлениям, которые пользователь уже видел в панели.',
+            description: 'Прочитать уведомления из колокольчика приложения (заголовок и текст превью). Без query возвращает самые последние (по умолчанию 20, максимум 50). С query — ищет подстроку по заголовку и ПОЛНОМУ тексту всей сохранённой истории уведомлений (не только последних), а затем уже применяет limit к найденному — используй query, когда пользователь просит найти конкретное уведомление, а не просто "покажи последние". Не даёт доступ к перепискам мессенджеров — только к самим системным/пуш-уведомлениям, которые пользователь уже видел в панели.',
             parameters: {
                 type: 'object',
                 properties: {
-                    limit: { type: 'number', description: 'Максимум уведомлений (по умолчанию 20, максимум 50)' },
+                    query: { type: 'string', description: 'Строка для поиска по заголовку и тексту (регистронезависимо, ищет по всей истории, не только последним)' },
+                    limit: { type: 'number', description: 'Максимум уведомлений в ответе (по умолчанию 20, максимум 50)' },
                     unreadOnly: { type: 'boolean', description: 'Вернуть только непрочитанные' }
                 },
                 required: []

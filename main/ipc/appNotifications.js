@@ -17,13 +17,25 @@ const store = require('../services/store')
 // PRIVACY: это ЧИСТО локальная функция. Заголовок/текст уведомления никогда
 // никуда не отправляются — ни на сервер Centrio, ни куда-либо ещё. AI-дайджест
 // (PRO, opt-in) — отдельная, более поздняя фаза, здесь её нет и close.
-const MAX_APP_NOTIF_HISTORY = 200
+// FEATURE (2026-09-10, "давай сделаем в настройках такой счётчик. Именно
+// для уведомлений. Сколько уведомлений хранить" — live user request): was a
+// hardcoded constant — now reads settings.notifHistoryLimit (Настройки →
+// Уведомления, renderer/settings-ui.js), falling back to the same 200
+// default if unset/invalid. `store` here is the real electron-store
+// instance (not the renderer's cache shim), so this always reflects the
+// latest saved value with no extra plumbing needed.
+const DEFAULT_MAX_APP_NOTIF_HISTORY = 200
+function getMaxAppNotifHistory() {
+    const configured = Number(store.get('settings', {})?.notifHistoryLimit)
+    return Number.isFinite(configured) && configured > 0 ? configured : DEFAULT_MAX_APP_NOTIF_HISTORY
+}
 let messengerNotifHistory = store.get('messengerNotifHistory', []) || []
 let mainWindowGetter = null
 
 function persistMessengerNotifHistory() {
-    if (messengerNotifHistory.length > MAX_APP_NOTIF_HISTORY) {
-        messengerNotifHistory = messengerNotifHistory.slice(0, MAX_APP_NOTIF_HISTORY)
+    const max = getMaxAppNotifHistory()
+    if (messengerNotifHistory.length > max) {
+        messengerNotifHistory = messengerNotifHistory.slice(0, max)
     }
     store.set('messengerNotifHistory', messengerNotifHistory)
 }

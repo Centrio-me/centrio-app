@@ -130,6 +130,8 @@ module.exports = {
         notifSoundChoose: 'Scegli suono',
         notifSoundUpload: 'Carica suono personalizzato',
         trayBadge:        'Badge tray',
+        notifHistoryLimit: 'Notifiche da conservare',
+        notifHistoryLimitHint: 'Le notifiche più vecchie vengono rimosse automaticamente oltre questo numero. La ricerca copre tutta la cronologia salvata — l\'elenco mostra al massimo 300 righe alla volta',
         apply:            'Applica',
         applied:          '✓ Impostazioni applicate',
         resetLabel:       'Ripristina tutte le impostazioni',
@@ -382,6 +384,7 @@ module.exports = {
         noNotifs:      'Nessuna nuova notifica',
         searchPlaceholder: 'Cerca nelle notifiche',
         searchNoResults: 'Nessun risultato',
+        truncatedHint: 'Vengono mostrate le ultime {shown} su {total} — affina la ricerca per trovare ciò che ti serve',
     },
 
     downloads: {
@@ -523,6 +526,8 @@ module.exports = {
         fillAll:      'Compila tutti i campi',
         changePhoto:  'Cambia',
         accountBtn:   'Account Centrio',
+        proFromTeam: 'Pro dal team',
+        teamBadgeSuffix: 'TEAM',
         freePlan:     'FREE',
         oauthError:   'Errore di autorizzazione',
         loginGoogle:  'Accedi con Google',

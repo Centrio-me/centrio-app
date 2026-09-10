@@ -130,6 +130,8 @@ module.exports = {
         notifSoundChoose: 'Choisir un son',
         notifSoundUpload: 'Importer un son personnalisé',
         trayBadge:        'Badge de la barre système',
+        notifHistoryLimit: 'Notifications à conserver',
+        notifHistoryLimitHint: 'Les notifications les plus anciennes sont supprimées automatiquement au-delà de ce nombre. La recherche porte sur tout l\'historique enregistré — la liste affiche au plus 300 lignes à la fois',
         apply:            'Appliquer',
         applied:          '✓ Paramètres appliqués',
         resetLabel:       'Réinitialiser tous les paramètres',
@@ -382,6 +384,7 @@ module.exports = {
         noNotifs:      'Aucune nouvelle notification',
         searchPlaceholder: 'Rechercher dans les notifications',
         searchNoResults: 'Aucun résultat',
+        truncatedHint: 'Affichage des {shown} plus récentes sur {total} — affinez la recherche pour trouver ce qu\'il vous faut',
     },
 
     downloads: {
@@ -523,6 +526,8 @@ module.exports = {
         fillAll:      'Remplissez tous les champs',
         changePhoto:  'Modifier',
         accountBtn:   'Compte Centrio',
+        proFromTeam: 'Pro via l\'équipe',
+        teamBadgeSuffix: 'ÉQUIPE',
         freePlan:     'FREE',
         oauthError:   'Erreur d\'autorisation',
         loginGoogle:  'Se connecter avec Google',

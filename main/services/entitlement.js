@@ -33,13 +33,25 @@ function persistTrialExpiry(iso) {
 // которой можно доверять для проверок в main-процессе (main/ipc/extensions.js,
 // main.js's store:set гейт лимита мессенджеров), т.к. renderer больше не
 // может исказить ни одно из двух значений, от которых она зависит.
+//
+// FEATURE (2026-09-10, "свяжи Pro-доступ с оплаченным местом в команде. И
+// бесплатно никому не даём" — live product decision): added a third OR
+// branch — orgSummary.orgProSeat, computed server-side (getProSeatHolderIds
+// in landing/lib/org.js) and delivered read-only inside cloud.user, same
+// trust posture as `plan` itself (never client-writable, see the file-level
+// comment above). A team member gets Pro purely by occupying one of the
+// org's actually-PAID seats — the free base seats intentionally grant
+// nothing, matching the "никому бесплатно" instruction exactly.
 function isEffectivePro() {
     try {
-        const plan = String(store.get('cloud.user', null)?.plan || 'FREE').toUpperCase()
+        const cloudUser = store.get('cloud.user', null)
+        const plan = String(cloudUser?.plan || 'FREE').toUpperCase()
         if (plan !== 'FREE') return true
 
         const trialExpiresAt = store.get('localProTrialExpiresAt', null)
         if (trialExpiresAt && new Date(trialExpiresAt) > new Date()) return true
+
+        if (cloudUser?.orgSummary?.orgProSeat === true) return true
 
         return false
     } catch {

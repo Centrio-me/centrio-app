@@ -48,6 +48,20 @@ function bindAppNotifUi({
         notifications.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
     }
 
+    // FEATURE (2026-09-10, "максимум сделаем 2000... может есть вариант
+    // как-нибудь архивировать, чтобы кому нужно — хранил 10 000" — live user
+    // request): decouples STORAGE from RENDERING instead of building an
+    // actual separate archive file. settings.notifHistoryLimit (up to
+    // 10,000, see index.html) controls how many notifications main persists
+    // to disk and how many the search filter runs over — both stay full-size
+    // arrays in memory, which is cheap even at 10k entries. This constant
+    // caps only how many rows renderPanel() actually puts in the DOM at
+    // once (newest first, already sorted) — the expensive part at scale is
+    // the innerHTML rebuild + listener re-attachment on every render, not
+    // the array filtering. A user who set a high storage limit can still
+    // reach anything older via search.
+    const NOTIF_RENDER_CAP = 300
+
     // ── Dismiss (навсегда скрыть) ──────────────────────────────────────────────
     const DISMISSED_KEY = 'centrio-dismissed-notifs'
 
@@ -65,19 +79,24 @@ function bindAppNotifUi({
         renderPanel()
     }
 
+    // FEATURE (2026-09-10, "поиск... который будет работать как фильтр.
+    // Вводишь символы и он убирает те, в которых нет" — live user request):
+    // plain substring match across title+body — no fuzzy matching, matches
+    // the user's own description exactly. Extracted so the AI assistant
+    // tool below (searchRecentNotifications) can run the identical match
+    // against the FULL stored history, not just the panel's live search box.
+    function matchesQuery(n, q) {
+        if (!q) return true
+        return String(n.title || '').toLowerCase().includes(q) ||
+               String(n.body || '').toLowerCase().includes(q)
+    }
+
     function getVisible() {
         const dismissed = getDismissed()
         const base = notifications.filter(n => !dismissed.has(n.id))
         const q = searchQuery.trim().toLowerCase()
         if (!q) return base
-        // FEATURE (2026-09-10, "поиск... который будет работать как фильтр.
-        // Вводишь символы и он убирает те, в которых нет" — live user
-        // request): plain substring match across title+body — no fuzzy
-        // matching, matches the user's own description exactly.
-        return base.filter(n =>
-            String(n.title || '').toLowerCase().includes(q) ||
-            String(n.body || '').toLowerCase().includes(q)
-        )
+        return base.filter(n => matchesQuery(n, q))
     }
 
     // Оборачивает совпадения искомой строки в <mark> — вызывается ПОСЛЕ
@@ -169,7 +188,13 @@ function bindAppNotifUi({
             return
         }
 
-        list.innerHTML = visible.map(n => {
+        const truncated = visible.length > NOTIF_RENDER_CAP
+        const toRender = truncated ? visible.slice(0, NOTIF_RENDER_CAP) : visible
+        const truncatedHint = truncated
+            ? `<div class="app-notif-truncated-hint">${tGet('notifications.truncatedHint', { shown: NOTIF_RENDER_CAP, total: visible.length }) || `Показаны последние ${NOTIF_RENDER_CAP} из ${visible.length} — уточните поиск`}</div>`
+            : ''
+
+        list.innerHTML = truncatedHint + toRender.map(n => {
             const imgHtml = n.imageUrl
                 ? `<img class="app-notif-item-img" src="${escapeHtml(n.imageUrl)}" alt="" loading="lazy">`
                 : ''
@@ -471,7 +496,15 @@ function bindAppNotifUi({
     // "не читать контент мессенджеров": превью из колокольчика уведомлений,
     // не полные диалоги. См. заголовочный комментарий assistant-tools.js.
     function getRecentNotifications() {
-        return getVisible().map(n => ({
+        // BUGFIX (2026-09-10, "в уведомлениях полный текст, а ИИ наш ищет не
+        // по полному тексту" — live user report): this used to return
+        // getVisible(), which is filtered by whatever the user currently has
+        // typed into the PANEL's own search box (renderer/app-notif-bind.js
+        // searchQuery) — the AI tool's "recent notifications" request had
+        // nothing to do with that box, but would silently come back filtered
+        // (or empty) by it anyway. Just the dismissed-filtered list now.
+        const dismissed = getDismissed()
+        return notifications.filter(n => !dismissed.has(n.id)).map(n => ({
             id: n.id,
             title: n.title || '',
             body: n.body || '',
@@ -481,7 +514,33 @@ function bindAppNotifUi({
         }))
     }
 
-    return { fetchNotifications, addMessengerNotification, getRecentNotifications }
+    // FEATURE (2026-09-10, same report as above): the AI assistant's
+    // get_recent_notifications tool only ever saw the most recent ~50 items
+    // (assistant-tools.js caps `limit`) — with local history now storable up
+    // to 10,000 (see NOTIF_RENDER_CAP above), a real keyword search request
+    // ("найди уведомление про Х") had no way to reach anything past the very
+    // latest few, even though the notification bodies ARE the full text on
+    // disk. This runs matchesQuery() (the exact same substring match the
+    // panel's own search box uses) against the FULL stored+cloud
+    // `notifications` array, not a pre-capped slice — assistant-tools.js
+    // still caps the RETURNED count, just not what gets searched.
+    function searchRecentNotifications(query) {
+        const dismissed = getDismissed()
+        const q = String(query || '').trim().toLowerCase()
+        if (!q) return getRecentNotifications()
+        return notifications
+            .filter(n => !dismissed.has(n.id) && matchesQuery(n, q))
+            .map(n => ({
+                id: n.id,
+                title: n.title || '',
+                body: n.body || '',
+                isRead: !!n.isRead,
+                createdAt: n.createdAt || null,
+                messengerId: n.messengerId || null
+            }))
+    }
+
+    return { fetchNotifications, addMessengerNotification, getRecentNotifications, searchRecentNotifications }
 }
 
 module.exports = { bindAppNotifUi }

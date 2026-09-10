@@ -130,6 +130,8 @@ module.exports = {
         notifSoundChoose: '选择提示音',
         notifSoundUpload: '上传自定义声音',
         trayBadge:        '托盘角标',
+        notifHistoryLimit: '保留通知数量',
+        notifHistoryLimitHint: '超出此数量的旧通知将被自动删除。搜索会覆盖全部已保存的历史记录——列表一次最多显示 300 条',
         apply:            '应用',
         applied:          '✓ 设置已应用',
         resetLabel:       '重置所有设置',
@@ -382,6 +384,7 @@ module.exports = {
         noNotifs:      '没有新通知',
         searchPlaceholder: '搜索通知',
         searchNoResults: '未找到匹配项',
+        truncatedHint: '显示最新 {shown} 条，共 {total} 条 — 请缩小搜索范围以找到所需内容',
     },
 
     downloads: {
@@ -523,6 +526,8 @@ module.exports = {
         fillAll:      '请填写所有字段',
         changePhoto:  '更换',
         accountBtn:   'Centrio 账户',
+        proFromTeam: '来自团队的 Pro',
+        teamBadgeSuffix: '团队',
         freePlan:     'FREE',
         oauthError:   '授权错误',
         loginGoogle:  '使用 Google 登录',

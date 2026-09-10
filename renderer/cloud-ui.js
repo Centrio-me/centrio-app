@@ -7,8 +7,21 @@ function createCloudUiApi({
 }) {
     const PRO_PLANS = new Set(['PRO', 'PRO_YEAR', 'TEAM'])
 
+    // FEATURE (2026-09-10, "свяжи Pro-доступ с оплаченным местом в команде"):
+    // also true for a member occupying a paid team seat (orgSummary.orgProSeat),
+    // same OR branch just added to hasEffectivePro()/getUserIsPro() elsewhere.
     function _isPro(user) {
-        return PRO_PLANS.has((user?.plan || '').toUpperCase())
+        return PRO_PLANS.has((user?.plan || '').toUpperCase()) || user?.orgSummary?.orgProSeat === true
+    }
+
+    // FEATURE (2026-09-10, "оформи так все в приложении, что человек
+    // понимает, что у него про подписка команды. обводка у про команды
+    // другая" — live user request): drives a visually distinct ring/badge
+    // color (gold, vs. the personal-Pro indigo/cyan gradient) specifically
+    // when Pro comes from a paid team seat rather than the user's own plan —
+    // so a team member can tell at a glance WHY they have Pro.
+    function _isTeamPro(user) {
+        return user?.orgSummary?.orgProSeat === true
     }
 
     // ── Sidebar cloudBtn ──────────────────────────────────────────
@@ -43,7 +56,8 @@ function createCloudUiApi({
             return
         }
 
-        const pro   = _isPro(user)
+        const pro     = _isPro(user)
+        const teamPro = _isTeamPro(user)
         const size  = pro ? 26 : 26  // inner avatar size
         const inner = user.avatar
             ? `<img src="${user.avatar}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`
@@ -51,7 +65,7 @@ function createCloudUiApi({
 
         if (pro) {
             btn.innerHTML = `
-                <div class="sidebar-avatar-ring is-pro" style="width:30px;height:30px;">
+                <div class="sidebar-avatar-ring is-pro${teamPro ? ' is-team-pro' : ''}" style="width:30px;height:30px;" title="${teamPro ? (tGet('cloud.proFromTeam') || 'Pro от команды') : ''}">
                     <div class="sidebar-avatar-inner" style="width:${size}px;height:${size}px;">${inner}</div>
                 </div>`
         } else {
@@ -107,18 +121,26 @@ function createCloudUiApi({
     }
 
     // ── PRO-кольцо в модале ──────────────────────────────────────
-    function _applyProRing(isPro) {
+    function _applyProRing(isPro, isTeamPro) {
         const ring = document.getElementById('cloudAvatarRing')
         if (!ring) return
         ring.classList.toggle('is-pro', isPro)
+        ring.classList.toggle('is-team-pro', !!isTeamPro)
     }
 
     // ── Бейдж плана ──────────────────────────────────────────────
-    function _applyPlanBadge(plan) {
+    // UPDATE (2026-09-10, "оформи так все в приложении, что человек
+    // понимает, что у него про подписка команды" — live user request):
+    // isTeamPro appends "· КОМАНДА" to the badge text and switches it to
+    // the gold team-Pro color — the raw `plan` field alone (still FREE for
+    // a team member whose personal plan is unpaid) wouldn't say why they
+    // actually have Pro features.
+    function _applyPlanBadge(plan, isTeamPro) {
         const el = document.getElementById('cloudUserPlan')
         if (!el) return
-        el.textContent = plan
-        el.classList.toggle('is-pro', PRO_PLANS.has(plan))
+        el.textContent = isTeamPro ? `${plan} · ${tGet('cloud.teamBadgeSuffix') || 'КОМАНДА'}` : plan
+        el.classList.toggle('is-pro', PRO_PLANS.has(plan) || isTeamPro)
+        el.classList.toggle('is-team-pro', !!isTeamPro)
     }
 
     // ── Подсветка текущего тарифа ─────────────────────────────────
@@ -392,10 +414,11 @@ function createCloudUiApi({
         document.getElementById('cloudUserName').textContent  = user?.name  || ''
         document.getElementById('cloudUserEmail').textContent = user?.email || ''
 
-        const plan  = (user?.plan || 'FREE').toUpperCase()
-        const isPro = _isPro(user)
-        _applyPlanBadge(plan)
-        _applyProRing(isPro)
+        const plan     = (user?.plan || 'FREE').toUpperCase()
+        const isPro    = _isPro(user)
+        const isTeamPro = _isTeamPro(user)
+        _applyPlanBadge(plan, isTeamPro)
+        _applyProRing(isPro, isTeamPro)
         updateAvatarInModal(user?.avatar || null)
 
         document.getElementById('cloudEditNameWrap').style.display = 'none'

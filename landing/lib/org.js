@@ -16,6 +16,55 @@ const prisma = require('../utils/prisma')
 
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000 // 7 days
 
+// Mirrors MIN_SEATS in landing/org-routes.js — kept in sync by hand, same
+// cross-file convention already used for SEAT_PLANS between org-routes.js
+// and auto-renew-cron.js (no shared module between routes and lib in this
+// repo layout). The first MIN_SEATS org slots are free (org creation sets
+// seatLimit: MIN_SEATS with no payment, see POST /api/org) — but per the
+// 2026-09-10 product decision below, "free slot" only ever meant "a row in
+// the member list", never "free Pro". Don't conflate the two constants even
+// though they're numerically identical right now.
+const MIN_SEATS = 5
+
+// Role priority for deciding WHICH members hold the org's paid Pro seats
+// when there are more active members than paid seats — owner and admins are
+// prioritized over plain members, then earliest-joined within each rank.
+const ROLE_PRIORITY = { OWNER: 0, ADMIN: 1, MEMBER: 2 }
+
+/**
+ * FEATURE (2026-09-10, "свяжи Pro-доступ с оплаченным местом в команде. И
+ * бесплатно никому не даём" — live product decision, following up on the
+ * earlier finding that accepting an org invite never touched the invitee's
+ * own `plan` field at all — org membership granted zero product access by
+ * itself, paid or not): determines how many of this org's active members
+ * currently sit on a PAID seat (seatLimit beyond the free MIN_SEATS base,
+ * and only while the paid period — seatsExpiresAt — hasn't lapsed), then
+ * ranks active members (OWNER > ADMIN > MEMBER, then earliest joinedAt) and
+ * returns true only for members within that paid-seat count. The free base
+ * seats NEVER grant Pro, regardless of rank — only truly paid seats do.
+ *
+ * @param {object} org - organization record with id/seatLimit/seatsExpiresAt
+ * @returns {Promise<Set<string>>} userIds of members holding a paid Pro seat
+ */
+async function getProSeatHolderIds(org) {
+    const paidSeats = (org.seatsExpiresAt && org.seatsExpiresAt > new Date())
+        ? Math.max(0, org.seatLimit - MIN_SEATS)
+        : 0
+    if (paidSeats === 0) return new Set()
+
+    const members = await prisma.orgMember.findMany({
+        where: { orgId: org.id, status: 'ACTIVE' },
+        select: { userId: true, role: true, joinedAt: true }
+    })
+    members.sort((a, b) => {
+        const roleDiff = (ROLE_PRIORITY[a.role] ?? 9) - (ROLE_PRIORITY[b.role] ?? 9)
+        if (roleDiff !== 0) return roleDiff
+        return new Date(a.joinedAt).getTime() - new Date(b.joinedAt).getTime()
+    })
+
+    return new Set(members.slice(0, paidSeats).map(m => m.userId))
+}
+
 /**
  * Returns null if the user is not an ACTIVE member of any organization,
  * otherwise a small denormalized summary safe to embed in the `user` object
@@ -32,7 +81,8 @@ const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000 // 7 days
  * @returns {Promise<null | {
  *   orgId: string, orgName: string, orgSlug: string, orgRole: 'OWNER'|'ADMIN'|'MEMBER',
  *   orgTier: 'START'|'BUSINESS', orgSeatLimit: number, orgSeatsUsed: number,
- *   orgSeatsExpiresAt: string|null, orgAutoRenewSeats: boolean, orgIsOwner: boolean
+ *   orgSeatsExpiresAt: string|null, orgAutoRenewSeats: boolean, orgIsOwner: boolean,
+ *   orgProSeat: boolean
  * }>}
  */
 async function getOrgSummaryForUser(userId) {
@@ -53,6 +103,8 @@ async function getOrgSummaryForUser(userId) {
         where: { orgId: membership.orgId, status: 'ACTIVE' }
     })
 
+    const proSeatHolderIds = await getProSeatHolderIds(membership.organization)
+
     return {
         orgId: membership.orgId,
         orgName: membership.organization.name,
@@ -68,7 +120,13 @@ async function getOrgSummaryForUser(userId) {
             ? membership.organization.seatsExpiresAt.toISOString()
             : null,
         orgAutoRenewSeats: !!membership.organization.autoRenewSeats,
-        orgIsOwner: membership.organization.ownerId === userId
+        orgIsOwner: membership.organization.ownerId === userId,
+        // FEATURE (2026-09-10, see getProSeatHolderIds above) — the desktop
+        // app's isEffectivePro() (main/services/entitlement.js) ORs this in
+        // alongside the individual account plan/trial, so a member gets Pro
+        // features purely from occupying a paid team seat, independent of
+        // their own personal plan.
+        orgProSeat: proSeatHolderIds.has(userId)
     }
 }
 
