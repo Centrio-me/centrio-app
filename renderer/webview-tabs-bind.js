@@ -334,7 +334,10 @@ function createWebviewTabsApi({
     switchTab,
     removeMessenger,
     watchWebview,
-    showContextMenu
+    showContextMenu,
+    authorizedInvoke,
+    hasEffectivePro,
+    updateUnreadCount
 }) {
     if (webviewContextMenu && webviewContextMenu.parentElement !== document.body) {
         document.body.appendChild(webviewContextMenu)
@@ -1077,7 +1080,48 @@ function createWebviewTabsApi({
         })
     }
 
+    const chatWidgetPanes = new Map()
+
     function addWebview(messenger) {
+        // FEATURE (2026-09-11, "Онлайн чат должен добавляться как
+        // мессенджер" — live user request): there's no real external site
+        // to load a <webview> for, so this messenger renders a custom
+        // in-app pane instead — see renderer/chat-widget-pane.js. Kept at
+        // the very top of addWebview() specifically because this ONE
+        // function is the single, centralized place every call site
+        // (initial add, reapplyMessengerLocks, split-screen, etc.) goes
+        // through to materialize a tab's content — branching here means
+        // none of those call sites need their own special case.
+        // `id="webview-${id}"` is deliberately kept identical to the real
+        // <webview> convention: every other piece of code that looks up a
+        // tab's content element by that id (switchTab, removeMessenger's
+        // cleanup, split-screen positioning) works unchanged against a
+        // plain <div>, and the handful of functions that go on to call
+        // webview-only methods on it (setZoomFactor, executeJavaScript)
+        // already type/try-guard before calling — confirmed by reading
+        // each one rather than assumed.
+        if (messenger.native === 'chat-widget') {
+            const pane = document.createElement('div')
+            pane.id = `webview-${messenger.id}`
+            pane.className = 'chat-widget-pane'
+            tabsContent.appendChild(pane)
+            tabsContent.style.pointerEvents = 'auto'
+
+            const { createChatWidgetPane } = require('./chat-widget-pane')
+            const paneApi = createChatWidgetPane({
+                container: pane,
+                messengerId: messenger.id,
+                authorizedInvoke,
+                invokeIpc,
+                tGet,
+                hasEffectivePro,
+                onUnreadChange: (count) => updateUnreadCount?.(messenger.id, count)
+            })
+            chatWidgetPanes.set(messenger.id, paneApi)
+            paneApi.mount()
+            return
+        }
+
         invokeIpc('ext:apply-to-session', `persist:${messenger.id}`).catch(() => {})
         const webview = document.createElement('webview')
         webview.id = `webview-${messenger.id}`
@@ -1429,6 +1473,16 @@ function createWebviewTabsApi({
         })
     }
 
+    // FEATURE (2026-09-11, chat widget as a real messenger) — called from
+    // renderer.js's removeMessenger()/removeOrgAssignedMessenger() cleanup
+    // so a removed chat-widget tab's poll interval actually stops instead
+    // of leaking (it would otherwise keep firing against a detached DOM
+    // node forever, since nothing else references this pane instance).
+    function destroyChatWidgetPane(messengerId) {
+        chatWidgetPanes.get(messengerId)?.destroy()
+        chatWidgetPanes.delete(messengerId)
+    }
+
     return {
         addTab,
         attachFindListener,
@@ -1436,7 +1490,8 @@ function createWebviewTabsApi({
         addWebview,
         bindWebviewContextMenuActions,
         saveTabOrder,
-        loadTabOrder
+        loadTabOrder,
+        destroyChatWidgetPane
     }
 }
 

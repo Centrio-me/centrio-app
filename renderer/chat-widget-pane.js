@@ -1,23 +1,18 @@
-// FEATURE (2026-09-11, "встроенный чат-виджет" — Pro). Клиент подключает
-// свой сайт (домен) один раз, получает <script> для вставки на сайт (см.
-// landing/public/widget.js), и все сообщения посетителей приходят прямо
-// сюда, без почты/сторонних сервисов. Один сайт на аккаунт в v1.
-//
-// Backend (все три поверхности новые, добавлены тем же днём):
-//   landing/chat-sites-routes.js — authenticated CRUD для этой панели
-//   landing/widget-routes.js     — публичный, без авторизации, для самого виджета
-//   landing/public/widget.js     — сам встраиваемый скрипт
-function createChatWidgetUi({ authorizedInvoke, invokeIpc, tGet, hasEffectivePro, showUpgradeModal }) {
-    const modal = document.getElementById('chatWidgetModal')
-    const body = document.getElementById('chatWidgetBody')
-    const closeBtn = document.getElementById('closeChatWidgetBtn')
-    if (!modal || !body) return {}
-
+// FEATURE (2026-09-11, "Онлайн чат должен добавляться как мессенджер...
+// сделать интерфейс, похожий на Телеграм" — live user request). Replaces
+// the earlier standalone-modal version of this UI (renderer/chat-widget-ui.js)
+// — the chat widget now lives as a real tab, mounted into the tab's content
+// pane the same way a <webview> would be, by renderer/webview-tabs-bind.js's
+// addWebview() special-casing messenger.native === 'chat-widget' (see that
+// file). Backend unchanged — same landing/chat-sites-routes.js this session
+// already built and verified.
+function createChatWidgetPane({ container, messengerId, authorizedInvoke, invokeIpc, tGet, hasEffectivePro, onUnreadChange }) {
     let site = null
     let conversations = []
     let activeConversationId = null
     let messages = []
     let pollTimer = null
+    let destroyed = false
 
     function esc(str) {
         const div = document.createElement('div')
@@ -61,38 +56,31 @@ function createChatWidgetUi({ authorizedInvoke, invokeIpc, tGet, hasEffectivePro
 
     // ── Views ──────────────────────────────────────────────────────────
     function renderPaywall() {
-        body.innerHTML = `
+        container.innerHTML = `
             <div class="chatwidget-paywall">
                 <div class="chatwidget-paywall-icon">💬</div>
                 <h3>${esc(tGet('chatWidget.paywallTitle') || 'Онлайн-чат для сайта — Pro')}</h3>
-                <p>${esc(tGet('chatWidget.paywallDesc') || 'Подключите виджет чата на свой сайт — сообщения посетителей будут приходить прямо сюда, без почты и сторонних сервисов.')}</p>
-                <button class="chatwidget-btn-primary" id="chatWidgetUpgradeBtn">${esc(tGet('chatWidget.upgrade') || 'Оформить Pro')}</button>
+                <p>${esc(tGet('chatWidget.paywallDesc') || 'Оформите Pro, чтобы продолжить пользоваться онлайн-чатом.')}</p>
             </div>`
-        document.getElementById('chatWidgetUpgradeBtn')?.addEventListener('click', () => {
-            showUpgradeModal(
-                tGet('chatWidget.paywallTitle') || 'Онлайн-чат для сайта — Pro',
-                tGet('chatWidget.paywallDesc') || 'Подключите виджет чата на свой сайт — сообщения посетителей будут приходить прямо сюда.'
-            )
-        })
     }
 
     function renderOnboarding() {
-        body.innerHTML = `
+        container.innerHTML = `
             <div class="chatwidget-onboarding">
                 <h3>${esc(tGet('chatWidget.setupTitle') || 'Подключите свой сайт')}</h3>
                 <p class="chatwidget-hint">${esc(tGet('chatWidget.setupHint') || 'Укажите домен сайта, куда будет установлен виджет — по нему мы проверяем, что чат встроен именно туда.')}</p>
                 <label class="chatwidget-label">${esc(tGet('chatWidget.domain') || 'Домен сайта')}</label>
-                <input type="text" id="chatWidgetDomainInput" class="chatwidget-input" placeholder="example.com" maxlength="253">
+                <input type="text" id="chatWidgetDomainInput-${messengerId}" class="chatwidget-input" placeholder="example.com" maxlength="253">
                 <label class="chatwidget-label" style="margin-top:10px;">${esc(tGet('chatWidget.name') || 'Название')}</label>
-                <input type="text" id="chatWidgetNameInput" class="chatwidget-input" placeholder="${esc(tGet('chatWidget.namePlaceholder') || 'Мой сайт')}" maxlength="100">
-                <div id="chatWidgetSetupMsg" class="chatwidget-msg-status" style="display:none;margin-top:10px;"></div>
-                <button class="chatwidget-btn-primary" id="chatWidgetSetupBtn" style="margin-top:14px;">${esc(tGet('chatWidget.connect') || 'Подключить')}</button>
+                <input type="text" id="chatWidgetNameInput-${messengerId}" class="chatwidget-input" placeholder="${esc(tGet('chatWidget.namePlaceholder') || 'Мой сайт')}" maxlength="100">
+                <div id="chatWidgetSetupMsg-${messengerId}" class="chatwidget-msg-status" style="display:none;margin-top:10px;"></div>
+                <button class="chatwidget-btn-primary" id="chatWidgetSetupBtn-${messengerId}" style="margin-top:14px;">${esc(tGet('chatWidget.connect') || 'Подключить')}</button>
             </div>`
 
-        document.getElementById('chatWidgetSetupBtn')?.addEventListener('click', async () => {
-            const domain = document.getElementById('chatWidgetDomainInput')?.value.trim()
-            const name = document.getElementById('chatWidgetNameInput')?.value.trim()
-            const msgEl = document.getElementById('chatWidgetSetupMsg')
+        container.querySelector(`#chatWidgetSetupBtn-${messengerId}`)?.addEventListener('click', async () => {
+            const domain = container.querySelector(`#chatWidgetDomainInput-${messengerId}`)?.value.trim()
+            const name = container.querySelector(`#chatWidgetNameInput-${messengerId}`)?.value.trim()
+            const msgEl = container.querySelector(`#chatWidgetSetupMsg-${messengerId}`)
             if (!domain) return
             const result = await authorizedInvoke('api-chat-site-create', { domain, name })
             if (result.success) {
@@ -116,10 +104,14 @@ function createChatWidgetUi({ authorizedInvoke, invokeIpc, tGet, hasEffectivePro
             : conversations.map(c => {
                 const preview = c.lastMessage ? (c.lastMessage.fromVisitor ? '' : (tGet('chatWidget.you') || 'Вы: ')) + c.lastMessage.body : ''
                 const isActive = c.id === activeConversationId
+                const initial = (c.visitorName || c.visitorContact || '?').charAt(0).toUpperCase()
                 return `
                     <div class="chatwidget-conv-item ${isActive ? 'active' : ''} ${c.status === 'CLOSED' ? 'closed' : ''}" data-id="${esc(c.id)}">
-                        <div class="chatwidget-conv-name">${esc(c.visitorName || c.visitorContact || (tGet('chatWidget.anonymous') || 'Гость'))}</div>
-                        <div class="chatwidget-conv-preview">${esc(preview)}</div>
+                        <div class="chatwidget-conv-avatar">${esc(initial)}</div>
+                        <div class="chatwidget-conv-info">
+                            <div class="chatwidget-conv-name">${esc(c.visitorName || c.visitorContact || (tGet('chatWidget.anonymous') || 'Гость'))}</div>
+                            <div class="chatwidget-conv-preview">${esc(preview)}</div>
+                        </div>
                         <div class="chatwidget-conv-time">${fmtTime(c.lastMessageAt)}</div>
                     </div>`
             }).join('')
@@ -138,43 +130,44 @@ function createChatWidgetUi({ authorizedInvoke, invokeIpc, tGet, hasEffectivePro
 
             threadHtml = `
                 <div class="chatwidget-thread-header">
-                    <div>
+                    <div class="chatwidget-conv-avatar">${esc((activeConv.visitorName || activeConv.visitorContact || '?').charAt(0).toUpperCase())}</div>
+                    <div style="flex:1;min-width:0;">
                         <div class="chatwidget-thread-name">${esc(activeConv.visitorName || (tGet('chatWidget.anonymous') || 'Гость'))}</div>
                         ${activeConv.visitorContact ? `<div class="chatwidget-thread-contact">${esc(activeConv.visitorContact)}</div>` : ''}
                     </div>
-                    <button class="chatwidget-btn-secondary" id="chatWidgetToggleStatusBtn" data-status="${activeConv.status}">
+                    <button class="chatwidget-btn-secondary" id="chatWidgetToggleStatusBtn-${messengerId}" data-status="${activeConv.status}">
                         ${activeConv.status === 'CLOSED' ? esc(tGet('chatWidget.reopen') || 'Открыть снова') : esc(tGet('chatWidget.close') || 'Закрыть диалог')}
                     </button>
                 </div>
-                <div class="chatwidget-thread-body" id="chatWidgetThreadBody">${msgsHtml}</div>
+                <div class="chatwidget-thread-body" id="chatWidgetThreadBody-${messengerId}">${msgsHtml}</div>
                 <div class="chatwidget-thread-reply">
-                    <textarea id="chatWidgetReplyInput" placeholder="${esc(tGet('chatWidget.replyPlaceholder') || 'Ответить…')}" maxlength="4000"></textarea>
-                    <button class="chatwidget-btn-primary" id="chatWidgetSendBtn">${esc(tGet('chatWidget.send') || 'Отправить')}</button>
+                    <textarea id="chatWidgetReplyInput-${messengerId}" placeholder="${esc(tGet('chatWidget.replyPlaceholder') || 'Ответить…')}" maxlength="4000"></textarea>
+                    <button class="chatwidget-btn-primary" id="chatWidgetSendBtn-${messengerId}">${esc(tGet('chatWidget.send') || 'Отправить')}</button>
                 </div>`
         }
 
-        body.innerHTML = `
-            <div class="chatwidget-layout">
+        container.innerHTML = `
+            <div class="chatwidget-layout chatwidget-layout-pane">
                 <div class="chatwidget-sidebar">
                     <div class="chatwidget-embed-box">
                         <div class="chatwidget-embed-label">${esc(tGet('chatWidget.embedLabel') || 'Код для вставки на сайт')}</div>
                         <code class="chatwidget-embed-code">${esc(embedSnippet())}</code>
-                        <button class="chatwidget-btn-secondary" id="chatWidgetCopyBtn">${esc(tGet('chatWidget.copy') || 'Скопировать')}</button>
+                        <button class="chatwidget-btn-secondary" id="chatWidgetCopyBtn-${messengerId}">${esc(tGet('chatWidget.copy') || 'Скопировать')}</button>
                     </div>
                     <div class="chatwidget-conv-list">${listHtml}</div>
                 </div>
                 <div class="chatwidget-thread">${threadHtml}</div>
             </div>`
 
-        document.getElementById('chatWidgetCopyBtn')?.addEventListener('click', () => {
+        container.querySelector(`#chatWidgetCopyBtn-${messengerId}`)?.addEventListener('click', () => {
             invokeIpc('copy-text-to-clipboard', embedSnippet()).catch(() => {})
         })
 
-        body.querySelectorAll('.chatwidget-conv-item').forEach(el => {
+        container.querySelectorAll('.chatwidget-conv-item').forEach(el => {
             el.addEventListener('click', () => openConversation(el.dataset.id))
         })
 
-        document.getElementById('chatWidgetToggleStatusBtn')?.addEventListener('click', async (e) => {
+        container.querySelector(`#chatWidgetToggleStatusBtn-${messengerId}`)?.addEventListener('click', async (e) => {
             const nextStatus = e.currentTarget.dataset.status === 'CLOSED' ? 'OPEN' : 'CLOSED'
             const result = await authorizedInvoke('api-chat-site-set-status', site.id, activeConversationId, nextStatus)
             if (result.success) {
@@ -184,7 +177,7 @@ function createChatWidgetUi({ authorizedInvoke, invokeIpc, tGet, hasEffectivePro
         })
 
         const sendReply = async () => {
-            const input = document.getElementById('chatWidgetReplyInput')
+            const input = container.querySelector(`#chatWidgetReplyInput-${messengerId}`)
             const text = input?.value.trim()
             if (!text || !activeConversationId) return
             input.value = ''
@@ -193,16 +186,16 @@ function createChatWidgetUi({ authorizedInvoke, invokeIpc, tGet, hasEffectivePro
                 messages.push(result.data)
                 await loadConversations()
                 renderMain()
-                const threadBody = document.getElementById('chatWidgetThreadBody')
+                const threadBody = container.querySelector(`#chatWidgetThreadBody-${messengerId}`)
                 if (threadBody) threadBody.scrollTop = threadBody.scrollHeight
             }
         }
-        document.getElementById('chatWidgetSendBtn')?.addEventListener('click', sendReply)
-        document.getElementById('chatWidgetReplyInput')?.addEventListener('keydown', (e) => {
+        container.querySelector(`#chatWidgetSendBtn-${messengerId}`)?.addEventListener('click', sendReply)
+        container.querySelector(`#chatWidgetReplyInput-${messengerId}`)?.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendReply() }
         })
 
-        const threadBody = document.getElementById('chatWidgetThreadBody')
+        const threadBody = container.querySelector(`#chatWidgetThreadBody-${messengerId}`)
         if (threadBody) threadBody.scrollTop = threadBody.scrollHeight
     }
 
@@ -213,23 +206,39 @@ function createChatWidgetUi({ authorizedInvoke, invokeIpc, tGet, hasEffectivePro
     }
 
     async function render() {
+        if (destroyed) return
         if (!hasEffectivePro()) { renderPaywall(); return }
         await loadSite()
+        if (destroyed) return
         if (!site) { renderOnboarding(); return }
         await loadConversations()
+        if (destroyed) return
         renderMain()
+    }
+
+    function totalUnread() {
+        // "Unread" for the owner = visitor messages in conversations that
+        // haven't been replied to since — approximated here as any OPEN
+        // conversation whose last message is from the visitor (mirrors the
+        // simple heuristic already used for the read-status stats feature
+        // earlier this session: no per-message read-receipt table exists).
+        return conversations.filter(c => c.status === 'OPEN' && c.lastMessage && c.lastMessage.fromVisitor).length
     }
 
     function startPolling() {
         stopPolling()
         pollTimer = setInterval(async () => {
-            if (!site) return
+            if (destroyed || !site) return
+            const prevUnread = totalUnread()
             await loadConversations()
+            if (destroyed) return
             if (activeConversationId) {
                 const last = messages[messages.length - 1]
                 await loadMessagesSince(activeConversationId, last ? last.createdAt : null)
             }
             renderMain()
+            const nextUnread = totalUnread()
+            if (nextUnread !== prevUnread) onUnreadChange?.(nextUnread)
         }, 5000)
     }
 
@@ -238,21 +247,17 @@ function createChatWidgetUi({ authorizedInvoke, invokeIpc, tGet, hasEffectivePro
         pollTimer = null
     }
 
-    function openModal() {
-        modal.classList.add('show')
+    function mount() {
         render()
         startPolling()
     }
 
-    function closeModal() {
-        modal.classList.remove('show')
+    function destroy() {
+        destroyed = true
         stopPolling()
     }
 
-    closeBtn?.addEventListener('click', closeModal)
-    modal.addEventListener('click', (e) => { if (e.target === modal) closeModal() })
-
-    return { openModal, closeModal }
+    return { mount, destroy }
 }
 
-module.exports = { createChatWidgetUi }
+module.exports = { createChatWidgetPane }

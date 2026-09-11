@@ -1050,6 +1050,18 @@ function registerAppEvents({
             let mediaDiagPollingStarted = false
             let mediaStatePollingStarted = false
             contents.on('dom-ready', () => {
+                // FEATURE (2026-09-11, "Adblock вообще не работает. Реклама
+                // везде"): network-level blocking (main/services/adblock.js
+                // webRequest rules, applied per-session elsewhere) leaves ad
+                // slots' empty containers behind. Re-inject on every
+                // dom-ready, same reasoning as the other per-navigation
+                // patches below — insertCSS doesn't survive a real
+                // navigation to a new document.
+                try {
+                    const adblock = require('../services/adblock')
+                    if (adblock.isEnabled()) contents.insertCSS(adblock.COSMETIC_CSS).catch(() => {})
+                } catch {}
+
                 if (!unreadPollingStarted) {
                     unreadPollingStarted = true
                     startUnreadPolling(contents, getMainWindow)
@@ -1815,6 +1827,18 @@ function registerAppEvents({
                     clipboardPermissionPartitions.add(partition)
                     try {
                         const guestSession = session.fromPartition(partition)
+
+                        // BUGFIX (2026-09-11, "Adblock вообще не работает"):
+                        // adblock.updateAllSessions() (called at boot and on
+                        // the settings toggle) only iterates messengers that
+                        // already existed in the store at that moment — a
+                        // messenger added THIS session, whose webview
+                        // attaches for the first time right here, never got
+                        // its filter applied until the next toggle/restart.
+                        // Applying it once per partition on first attach
+                        // closes that gap.
+                        try { require('../services/adblock').applyToSession(guestSession) } catch {}
+
                         // 'hid'/'usb'/'serial' added alongside the rest (BUGFIX
                         // attempt, Google/Yandex OAuth rejection investigation):
                         // Ferdium's own real merged fix for this exact "This

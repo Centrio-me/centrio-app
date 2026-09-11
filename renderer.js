@@ -26,7 +26,6 @@ const { createLockApi } = require('./renderer/lock')
 const { createCloudUiApi } = require('./renderer/cloud-ui')
 const { applyOrgLogo } = require('./renderer/org-branding')
 const { createOrgTeamApi } = require('./renderer/org-team')
-const { createChatWidgetUi } = require('./renderer/chat-widget-ui')
 const { createContextMenusApi } = require('./renderer/context-menus')
 const { bindPopupBackdrop } = require('./renderer/popup-backdrop-bind')
 const { createFoldersUiApi } = require('./renderer/folders-ui')
@@ -1097,6 +1096,16 @@ async function bootstrap() {
         animateMessengerAdd(item)
     }
 
+    // FEATURE (2026-09-11, "поставить его в самый верх ... с нашим логотипом"
+    // — live user request): same as addToSidebar() but inserts as the very
+    // first item instead of appending, used only for the chat-widget
+    // messenger so it always leads the list.
+    function addToSidebarPinned(messenger) {
+        const item = createMessengerItem(messenger)
+        messengerList.insertBefore(item, messengerList.firstChild)
+        animateMessengerAdd(item)
+    }
+
     // ==============================
     // FOLDERS UI API
     // ==============================
@@ -1555,6 +1564,7 @@ function applyTabZoom(level) {
     function removeMessenger(id) {
         const messenger = state.activeMessengers.find(m => m.id === id)
         const folderId = messenger?.folderId
+        if (messenger?.native === 'chat-widget') destroyChatWidgetPane(id)
 
         state.activeMessengers = state.activeMessengers.filter(m => m.id !== id)
         delete state.unreadCounts[id]
@@ -1634,13 +1644,20 @@ function applyTabZoom(level) {
         onMediaState: mediaPlayerUiApi.onMediaState,
         switchTab,
         removeMessenger,
-        watchWebview
+        watchWebview,
+        // FEATURE (2026-09-11, chat widget as a real messenger) — passed
+        // through so addWebview() can mount renderer/chat-widget-pane.js
+        // instead of a <webview> for messenger.native === 'chat-widget'.
+        authorizedInvoke,
+        hasEffectivePro,
+        updateUnreadCount
     })
 
     const {
         addTab,
         addWebview,
-        bindWebviewContextMenuActions
+        bindWebviewContextMenuActions,
+        destroyChatWidgetPane
     } = webviewTabsApi
 
     // ==============================
@@ -2100,6 +2117,25 @@ function applyTabZoom(level) {
             )
             return
         }
+
+        // FEATURE (2026-09-11, chat widget as a real messenger): its own
+        // Pro-gate (independent of the free messenger-count limit above —
+        // this one is Pro-only regardless of how many free slots remain),
+        // and only one instance makes sense (one site per account, same as
+        // the backend's ChatSite.userId @unique).
+        if (messenger.native === 'chat-widget') {
+            if (!hasEffectivePro()) {
+                showUpgradeModal(
+                    tGet('chatWidget.paywallTitle') || 'Онлайн-чат для сайта — Pro',
+                    tGet('chatWidget.paywallDesc') || 'Подключите виджет чата на свой сайт — сообщения посетителей будут приходить прямо сюда.'
+                )
+                return
+            }
+            if (state.activeMessengers.some(m => m.native === 'chat-widget')) {
+                switchTab(state.activeMessengers.find(m => m.native === 'chat-widget').id)
+                return
+            }
+        }
         // ─────────────────────────────────────────────────────────
 
         const id = Date.now().toString()
@@ -2115,8 +2151,13 @@ function applyTabZoom(level) {
             zoomLevel: state.tabZoomLevel || store.get('tabZoomLevel', 1) || 1
         }
 
-        state.activeMessengers.push(newMessenger)
-        addToSidebar(newMessenger)
+        if (newMessenger.native === 'chat-widget') {
+            state.activeMessengers.unshift(newMessenger)
+            addToSidebarPinned(newMessenger)
+        } else {
+            state.activeMessengers.push(newMessenger)
+            addToSidebar(newMessenger)
+        }
         addTab(newMessenger)
 
         // RACE FIX (see CHANGELOG 1.8.7): persist to the main-process store
@@ -3079,18 +3120,6 @@ function applyTabZoom(level) {
         ipcRenderer,
         openRightPanel: () => toggleRightPanel('todos'),
         closeRightPanel
-    })
-
-    // FEATURE (2026-09-11, встроенный чат-виджет для сайта — Pro)
-    const chatWidgetUiApi = createChatWidgetUi({
-        authorizedInvoke,
-        invokeIpc,
-        tGet,
-        hasEffectivePro,
-        showUpgradeModal
-    })
-    document.getElementById('chatWidgetBtn')?.addEventListener('click', () => {
-        chatWidgetUiApi?.openModal?.()
     })
 
     notesUiApiRef = bindNotesUi({

@@ -705,17 +705,6 @@
                 </svg>
                 <span class="activity-btn-label" data-i18n="rightbar.todos"></span>
             </button>
-            <!-- FEATURE (2026-09-11, встроенный чат-виджет для сайта — Pro):
-                 renderer/chat-widget-ui.js's openModal() handles the Pro-gate
-                 itself (paywall view inside the modal), so this button is
-                 always visible/enabled, same posture as other Pro features
-                 that show an upgrade prompt on click rather than hiding. -->
-            <button id="chatWidgetBtn" class="activity-btn" data-i18n-title="rightbar.chatWidget">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
-                </svg>
-                <span class="activity-btn-label" data-i18n="rightbar.chatWidget"></span>
-            </button>
             <!-- Плагин "Заметки" — Pro/Team, включается в Настройки → Расширения
                  (см. renderer/extensions-ui.js NATIVE_EXTENSIONS 'notes'). Скрыта
                  по умолчанию (display:none инлайн) — renderer/notes-bind.js
@@ -3021,21 +3010,6 @@
             <button id="taskDetailDeleteBtn" class="chatwidget-btn-secondary task-detail-delete" data-i18n="todos.delete"></button>
             <button id="taskDetailSaveBtn" class="chatwidget-btn-primary" data-i18n="todos.save"></button>
         </div>
-    </div>
-</div>
-
-<!-- ===== МОДАЛ ОНЛАЙН-ЧАТА ДЛЯ САЙТА (2026-09-11, Pro) ===== -->
-<div id="chatWidgetModal" class="modal">
-    <div class="modal-content modal-settings">
-        <div class="modal-header">
-            <h3 data-i18n="chatWidget.title"></h3>
-            <button id="closeChatWidgetBtn" class="modal-close">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                    <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                </svg>
-            </button>
-        </div>
-        <div id="chatWidgetBody" class="chatwidget-body-root"></div>
     </div>
 </div>
 

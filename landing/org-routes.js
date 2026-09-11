@@ -161,6 +161,24 @@ router.get('/:orgId', authMiddleware, requireOrgRole(['OWNER', 'ADMIN', 'MEMBER'
   }
 })
 
+// ── PATCH /api/org/:orgId — rename organization (2026-09-11, "сделать в
+// ЛК возможность изменить название команды" — live user request) ──────
+router.patch('/:orgId', authMiddleware, requireOrgRole(['OWNER']), async (req, res) => {
+  try {
+    const name = String(req.body?.name || '').trim().slice(0, 80)
+    if (!name) return res.status(400).json({ success: false, error: 'Введите название организации' })
+
+    await prisma.organization.update({ where: { id: req.params.orgId }, data: { name } })
+    await logOrgAudit(req.params.orgId, req.user.id, 'org.rename', { name })
+
+    const summary = await getOrgSummaryForUser(req.user.id)
+    res.json({ success: true, data: summary })
+  } catch (err) {
+    console.error('Org rename error:', err.message)
+    res.status(500).json({ success: false, error: 'Ошибка переименования организации' })
+  }
+})
+
 // ── GET /api/org/:orgId/members ──────────────────────────────────────
 router.get('/:orgId/members', authMiddleware, requireOrgRole(['OWNER', 'ADMIN', 'MEMBER']), async (req, res) => {
   try {

@@ -19,6 +19,17 @@
 // как основная группировка. Одна и та же запись показывается дважды
 // (в "Популярные" и в своей теме) — так и задумано.
 const popularMessengers = [
+    // FEATURE (2026-09-11, "Онлайн чат должен добавляться как мессенджер...
+    // поставить его в самый верх в популярных и в мессенджерах с нашим
+    // логотипом" — live user request): Centrio's own embedded chat widget
+    // (Pro), added exactly like any other messenger but with `native:
+    // 'chat-widget'` instead of a real destination — renderer.js's
+    // addWebview()/addMessenger() special-case that marker to render a
+    // custom in-app pane (renderer/chat-widget-pane.js) instead of a
+    // <webview>, since there's no real external site to load. Listed first
+    // so it sorts before the real top-8 messengers below in both the
+    // "Популярные" section and the "Мессенджеры" category.
+    { name: 'Онлайн-чат', url: 'centrio://chat-widget', native: 'chat-widget', icon: 'assets/logo.png', color: '#5AA9FF', category: 'messengers', popular: true },
     // ── Топ-8 (также помечены popular: true — см. коммент выше) ────────
     { name: 'Telegram',         url: 'https://web.telegram.org/k/',         icon: 'assets/logomessenger/telegram.png',      color: '#2AABEE', category: 'messengers', popular: true },
     { name: 'WhatsApp',         url: 'https://web.whatsapp.com',            icon: 'assets/logomessenger/whatsapp.png',      color: '#25D366', category: 'messengers', popular: true },

@@ -245,6 +245,13 @@ function TeamPageInner() {
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([])
   const [loadingAudit, setLoadingAudit] = useState(false)
 
+  // Переименование команды (2026-09-11, "сделать в ЛК возможность изменить
+  // названия команды" — live user request)
+  const [renamingOrg, setRenamingOrg] = useState(false)
+  const [orgRenameDraft, setOrgRenameDraft] = useState('')
+  const [savingOrgRename, setSavingOrgRename] = useState(false)
+  const [orgRenameMsg, setOrgRenameMsg] = useState<Msg>(null)
+
   // ── Управление (2026-09-10, TEAM owner-control epic) ──────────────────
   const [uploadingLogo, setUploadingLogo] = useState(false)
   const [logoMsg, setLogoMsg] = useState<Msg>(null)
@@ -461,6 +468,28 @@ function TeamPageInner() {
     } catch (err: any) {
       setBuyMsg({ type: 'err', text: err.response?.data?.error || 'Не удалось создать платёж' })
       setBuyingSeats(false)
+    }
+  }
+
+  const handleRenameOrg = async () => {
+    if (!org) return
+    const name = orgRenameDraft.trim()
+    if (!name) { setOrgRenameMsg({ type: 'err', text: 'Введите название организации' }); return }
+    setSavingOrgRename(true)
+    setOrgRenameMsg(null)
+    try {
+      const { data } = await api.patch(`/api/org/${org.orgId}`, { name })
+      if (data?.success) {
+        setOrg(data.data)
+        if (user) setUser({ ...(user as any), orgSummary: data.data })
+        setRenamingOrg(false)
+      } else {
+        setOrgRenameMsg({ type: 'err', text: data?.error || 'Не удалось переименовать' })
+      }
+    } catch (err: any) {
+      setOrgRenameMsg({ type: 'err', text: err.response?.data?.error || 'Не удалось переименовать' })
+    } finally {
+      setSavingOrgRename(false)
     }
   }
 
@@ -817,7 +846,54 @@ function TeamPageInner() {
 
             {tab === 'overview' && (
               <>
-                <div className="section-title"><IcoOverview /> Обзор</div>
+                <div className="section-title" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <IcoOverview /> Обзор
+                </div>
+
+                {isOwner && (
+                  <div className="glass-card" style={{ padding: 20, marginBottom: 16 }}>
+                    {renamingOrg ? (
+                      <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                        <div style={{ flex: '1 1 220px' }}>
+                          <label className="field-label">Название команды</label>
+                          <input
+                            className="field-input"
+                            value={orgRenameDraft}
+                            onChange={e => setOrgRenameDraft(e.target.value)}
+                            maxLength={80}
+                            autoFocus
+                            onKeyDown={e => { if (e.key === 'Enter') handleRenameOrg() }}
+                          />
+                        </div>
+                        <button className="btn-primary" disabled={savingOrgRename} onClick={handleRenameOrg}>
+                          {savingOrgRename ? 'Сохраняем…' : 'Сохранить'}
+                        </button>
+                        <button
+                          className="btn-danger"
+                          disabled={savingOrgRename}
+                          onClick={() => { setRenamingOrg(false); setOrgRenameMsg(null) }}
+                        >
+                          Отмена
+                        </button>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <div>
+                          <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginBottom: 2 }}>Название команды</div>
+                          <div style={{ fontSize: 16, fontWeight: 800 }}>{org.orgName}</div>
+                        </div>
+                        <button
+                          className="btn-primary"
+                          onClick={() => { setOrgRenameDraft(org.orgName); setRenamingOrg(true) }}
+                        >
+                          Переименовать
+                        </button>
+                      </div>
+                    )}
+                    {orgRenameMsg && <div className={`form-msg ${orgRenameMsg.type}`} style={{ marginTop: 10 }}>{orgRenameMsg.text}</div>}
+                  </div>
+                )}
+
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 14, marginBottom: 24 }}>
                   <div className="mini-stat"><div className="mini-stat-value">{org.orgSeatsUsed}/{org.orgSeatLimit}</div><div className="mini-stat-label">мест занято</div></div>
                   <div className="mini-stat"><div className="mini-stat-value">{freeSeats}</div><div className="mini-stat-label">свободно</div></div>

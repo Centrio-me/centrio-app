@@ -14533,3 +14533,55 @@ body.onb-active #titlebarMenu {
     color: var(--text-muted, var(--text-secondary));
     white-space: nowrap;
 }
+
+/* ===== ЧАТ-ВИДЖЕТ КАК МЕССЕНДЖЕР (2026-09-11) — Telegram-стиль ===== */
+.chat-widget-pane {
+    width: 100%;
+    height: 100%;
+    display: none;
+    position: absolute;
+    inset: 0;
+    background: var(--bg-primary, #0b0a08);
+}
+
+.chat-widget-pane.active { display: flex; }
+
+.chatwidget-layout-pane {
+    width: 100%;
+    height: 100%;
+}
+
+.chatwidget-layout-pane .chatwidget-sidebar {
+    width: 320px;
+}
+
+.chatwidget-conv-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.chatwidget-conv-avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 15px;
+    flex-shrink: 0;
+}
+
+.chatwidget-conv-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.chatwidget-thread-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
