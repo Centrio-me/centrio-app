@@ -13,6 +13,7 @@ function createChatWidgetPane({ container, messengerId, authorizedInvoke, invoke
     let messages = []
     let pollTimer = null
     let destroyed = false
+    let settingsOpen = false
 
     // BUGFIX (2026-09-11, "data-token=undefined... сообщение с сайта не
     // отправляется" — live user report): main/ipc/api.js's wrapApi() wraps
@@ -210,37 +211,73 @@ function createChatWidgetPane({ container, messengerId, authorizedInvoke, invoke
         const widgetColor = site.widgetColor || '#5AA9FF'
         const widgetLogoUrl = site.widgetLogoUrl
 
+        // FEATURE (2026-09-11, "она не должна уступать по дизайну
+        // мессенджеру... все настройки спрячь" — live user request): embed
+        // code + appearance controls used to sit permanently in the
+        // sidebar, competing with the conversation list for space and
+        // making the tab look like a settings form rather than a
+        // messenger. Both now live behind a single gear icon → popover,
+        // closed by default; the sidebar itself only ever shows a small
+        // header + the conversation list, same balance a real messenger
+        // tab keeps.
         container.innerHTML = `
             <div class="chatwidget-layout chatwidget-layout-pane">
                 <div class="chatwidget-sidebar">
-                    <div class="chatwidget-embed-box">
-                        <div class="chatwidget-embed-label">${esc(tGet('chatWidget.embedLabel') || 'Код для вставки на сайт')}</div>
-                        <code class="chatwidget-embed-code">${esc(embedSnippet())}</code>
-                        <button class="chatwidget-btn-secondary" id="chatWidgetCopyBtn-${messengerId}">${esc(tGet('chatWidget.copy') || 'Скопировать')}</button>
-                    </div>
-                    <div class="chatwidget-appearance-box">
-                        <div class="chatwidget-embed-label">${esc(tGet('chatWidget.appearance') || 'Внешний вид виджета')}</div>
-                        <div class="chatwidget-appearance-row">
-                            <span class="chatwidget-appearance-rowlabel">${esc(tGet('chatWidget.color') || 'Цвет')}</span>
-                            <input type="color" id="chatWidgetColorInput-${messengerId}" value="${esc(widgetColor)}">
-                        </div>
-                        <div class="chatwidget-appearance-row">
-                            <span class="chatwidget-appearance-rowlabel">${esc(tGet('chatWidget.logo') || 'Логотип')}</span>
-                            <div class="chatwidget-appearance-logo-controls">
-                                ${widgetLogoUrl ? `<img src="${esc(widgetLogoUrl)}" class="chatwidget-appearance-logo-preview" alt="">` : ''}
-                                <label class="chatwidget-btn-secondary chatwidget-logo-upload-label">
-                                    ${esc(tGet('chatWidget.uploadLogo') || 'Загрузить')}
-                                    <input type="file" accept="image/*" id="chatWidgetLogoInput-${messengerId}" style="display:none;">
-                                </label>
-                                ${widgetLogoUrl ? `<button class="chatwidget-btn-secondary" id="chatWidgetRemoveLogoBtn-${messengerId}">${esc(tGet('chatWidget.removeLogo') || 'Сбросить')}</button>` : ''}
-                            </div>
-                        </div>
-                        <div id="chatWidgetAppearanceMsg-${messengerId}" class="chatwidget-msg-status" style="display:none;"></div>
+                    <div class="chatwidget-sidebar-header">
+                        <span class="chatwidget-sidebar-title">${esc(site.name || tGet('chatWidget.title') || 'Чат для сайта')}</span>
+                        <button class="chatwidget-settings-btn" id="chatWidgetSettingsBtn-${messengerId}" title="${esc(tGet('chatWidget.settings') || 'Настройки виджета')}">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="3"/>
+                                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                            </svg>
+                        </button>
                     </div>
                     <div class="chatwidget-conv-list">${listHtml}</div>
                 </div>
                 <div class="chatwidget-thread">${threadHtml}</div>
+            </div>
+            <div class="chatwidget-settings-popover ${settingsOpen ? 'open' : ''}" id="chatWidgetSettingsPopover-${messengerId}">
+                <div class="chatwidget-settings-popover-header">
+                    <span>${esc(tGet('chatWidget.settings') || 'Настройки виджета')}</span>
+                    <button class="chatwidget-settings-close" id="chatWidgetSettingsCloseBtn-${messengerId}">&times;</button>
+                </div>
+                <div class="chatwidget-embed-box">
+                    <div class="chatwidget-embed-label">${esc(tGet('chatWidget.embedLabel') || 'Код для вставки на сайт')}</div>
+                    <code class="chatwidget-embed-code">${esc(embedSnippet())}</code>
+                    <button class="chatwidget-btn-secondary" id="chatWidgetCopyBtn-${messengerId}">${esc(tGet('chatWidget.copy') || 'Скопировать')}</button>
+                </div>
+                <div class="chatwidget-appearance-box">
+                    <div class="chatwidget-embed-label">${esc(tGet('chatWidget.appearance') || 'Внешний вид виджета')}</div>
+                    <div class="chatwidget-appearance-row">
+                        <span class="chatwidget-appearance-rowlabel">${esc(tGet('chatWidget.color') || 'Цвет')}</span>
+                        <input type="color" id="chatWidgetColorInput-${messengerId}" value="${esc(widgetColor)}">
+                    </div>
+                    <div class="chatwidget-appearance-row">
+                        <span class="chatwidget-appearance-rowlabel">${esc(tGet('chatWidget.logo') || 'Логотип')}</span>
+                        <div class="chatwidget-appearance-logo-controls">
+                            ${widgetLogoUrl ? `<img src="${esc(widgetLogoUrl)}" class="chatwidget-appearance-logo-preview" alt="">` : ''}
+                            <label class="chatwidget-btn-secondary chatwidget-logo-upload-label">
+                                ${esc(tGet('chatWidget.uploadLogo') || 'Загрузить')}
+                                <input type="file" accept="image/*" id="chatWidgetLogoInput-${messengerId}" style="display:none;">
+                            </label>
+                            ${widgetLogoUrl ? `<button class="chatwidget-btn-secondary" id="chatWidgetRemoveLogoBtn-${messengerId}">${esc(tGet('chatWidget.removeLogo') || 'Сбросить')}</button>` : ''}
+                        </div>
+                    </div>
+                    <div id="chatWidgetAppearanceMsg-${messengerId}" class="chatwidget-msg-status" style="display:none;"></div>
+                </div>
             </div>`
+
+        const settingsBtn = container.querySelector(`#chatWidgetSettingsBtn-${messengerId}`)
+        const settingsPopover = container.querySelector(`#chatWidgetSettingsPopover-${messengerId}`)
+        settingsBtn?.addEventListener('click', (e) => {
+            e.stopPropagation()
+            settingsOpen = !settingsOpen
+            settingsPopover?.classList.toggle('open', settingsOpen)
+        })
+        container.querySelector(`#chatWidgetSettingsCloseBtn-${messengerId}`)?.addEventListener('click', () => {
+            settingsOpen = false
+            settingsPopover?.classList.remove('open')
+        })
 
         container.querySelector(`#chatWidgetCopyBtn-${messengerId}`)?.addEventListener('click', () => {
             invokeIpc('copy-text-to-clipboard', embedSnippet()).catch(() => {})

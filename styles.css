@@ -14089,7 +14089,7 @@ body.onb-active #titlebarMenu {
     }
 }
 
-/* ===== ОНЛАЙН-ЧАТ ДЛЯ САЙТА (2026-09-11, Pro) — renderer/chat-widget-ui.js ===== */
+/* ===== ОНЛАЙН-ЧАТ ДЛЯ САЙТА (2026-09-11, Pro) — renderer/chat-widget-pane.js ===== */
 .chatwidget-body-root {
     min-height: 520px;
     max-height: 70vh;
@@ -14143,7 +14143,7 @@ body.onb-active #titlebarMenu {
 }
 
 .chatwidget-input {
-    background: var(--bg-tertiary);
+    background: var(--bg-primary);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
     padding: 9px 12px;
@@ -14177,16 +14177,18 @@ body.onb-active #titlebarMenu {
     cursor: pointer;
     font-weight: 600;
     font-family: inherit;
-    transition: opacity 0.15s, background 0.15s;
+    transition: opacity 0.15s, background 0.15s, transform 0.1s;
     white-space: nowrap;
 }
 
 .chatwidget-btn-primary {
     background: var(--accent);
     color: white;
+    box-shadow: 0 2px 10px var(--accent-dim);
 }
 
-.chatwidget-btn-primary:hover { opacity: 0.9; }
+.chatwidget-btn-primary:hover { opacity: 0.92; transform: translateY(-1px); }
+.chatwidget-btn-primary:active { transform: translateY(0); }
 
 .chatwidget-btn-secondary {
     background: var(--bg-tertiary);
@@ -14194,7 +14196,7 @@ body.onb-active #titlebarMenu {
     border: 1px solid var(--border);
 }
 
-.chatwidget-btn-secondary:hover { background: var(--bg-hover, var(--bg-tertiary)); }
+.chatwidget-btn-secondary:hover { background: var(--bg-hover, var(--bg-tertiary)); border-color: var(--border-light); }
 
 .chatwidget-layout {
     display: flex;
@@ -14209,7 +14211,94 @@ body.onb-active #titlebarMenu {
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    background: var(--bg-primary);
 }
+
+.chatwidget-sidebar-header {
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+}
+
+.chatwidget-sidebar-title {
+    font-size: 14px;
+    font-weight: 800;
+    color: var(--text-bright);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.chatwidget-settings-btn {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 6px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: background 0.15s, color 0.15s;
+}
+
+.chatwidget-settings-btn:hover {
+    background: var(--bg-hover, var(--bg-tertiary));
+    color: var(--text-bright);
+}
+
+/* Настройки (код виджета + оформление) — спрятаны за шестерёнкой, не
+   загромождают основной вид (2026-09-11, "все настройки спрячь"). */
+.chatwidget-settings-popover {
+    position: absolute;
+    top: 54px;
+    left: 12px;
+    width: 300px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-light);
+    border-radius: 14px;
+    box-shadow: 0 16px 40px rgba(0,0,0,0.45);
+    z-index: 20;
+    opacity: 0;
+    transform: translateY(-6px) scale(0.98);
+    pointer-events: none;
+    transition: opacity 0.15s ease, transform 0.15s ease;
+    max-height: calc(100% - 70px);
+    overflow-y: auto;
+}
+
+.chatwidget-settings-popover.open {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    pointer-events: auto;
+}
+
+.chatwidget-settings-popover-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border);
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--text-bright);
+}
+
+.chatwidget-settings-close {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 17px;
+    line-height: 1;
+    padding: 2px 4px;
+}
+
+.chatwidget-settings-close:hover { color: var(--text-bright); }
 
 .chatwidget-embed-box {
     padding: 14px;
@@ -14227,7 +14316,7 @@ body.onb-active #titlebarMenu {
 
 .chatwidget-embed-code {
     display: block;
-    background: var(--bg-tertiary);
+    background: var(--bg-primary);
     border-radius: var(--radius-sm);
     padding: 8px 10px;
     font-size: 10.5px;
@@ -14242,18 +14331,22 @@ body.onb-active #titlebarMenu {
 .chatwidget-conv-list {
     flex: 1;
     overflow-y: auto;
+    padding: 6px;
 }
 
+.chatwidget-conv-list::-webkit-scrollbar { width: 0; display: none; }
+
 .chatwidget-conv-item {
-    padding: 10px 14px;
-    border-bottom: 1px solid var(--border-light, var(--border));
+    padding: 10px 10px;
+    border-radius: 12px;
     cursor: pointer;
     transition: background 0.12s;
+    border-left: 3px solid transparent;
 }
 
 .chatwidget-conv-item:hover { background: var(--bg-hover, var(--bg-tertiary)); }
-.chatwidget-conv-item.active { background: var(--accent-dim); }
-.chatwidget-conv-item.closed { opacity: 0.55; }
+.chatwidget-conv-item.active { background: var(--accent-dim); border-left-color: var(--accent); }
+.chatwidget-conv-item.closed { opacity: 0.5; }
 
 .chatwidget-conv-name {
     font-size: 13px;
@@ -14284,6 +14377,7 @@ body.onb-active #titlebarMenu {
     display: flex;
     flex-direction: column;
     min-width: 0;
+    position: relative;
 }
 
 .chatwidget-thread-empty {
@@ -14296,11 +14390,13 @@ body.onb-active #titlebarMenu {
 }
 
 .chatwidget-thread-header {
-    padding: 14px 16px;
+    padding: 14px 18px;
     border-bottom: 1px solid var(--border);
     display: flex;
     align-items: center;
     justify-content: space-between;
+    background: var(--bg-secondary);
+    flex-shrink: 0;
 }
 
 .chatwidget-thread-name {
@@ -14318,40 +14414,51 @@ body.onb-active #titlebarMenu {
 .chatwidget-thread-body {
     flex: 1;
     overflow-y: auto;
-    padding: 14px 16px;
+    padding: 18px 20px;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 10px;
 }
 
+.chatwidget-thread-body::-webkit-scrollbar { width: 6px; }
+.chatwidget-thread-body::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 3px; }
+.chatwidget-thread-body::-webkit-scrollbar-track { background: transparent; }
+
 .chatwidget-msg {
-    max-width: 75%;
+    max-width: 72%;
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 3px;
+    animation: chatwidgetMsgIn 0.15s ease;
+}
+
+@keyframes chatwidgetMsgIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 .chatwidget-msg.visitor { align-self: flex-start; }
 .chatwidget-msg.operator { align-self: flex-end; }
 
 .chatwidget-msg-body {
-    padding: 8px 12px;
-    border-radius: 12px;
-    font-size: 13px;
+    padding: 9px 13px;
+    border-radius: 14px;
+    font-size: 13.5px;
     line-height: 1.45;
     word-wrap: break-word;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.18);
 }
 
 .chatwidget-msg.visitor .chatwidget-msg-body {
     background: var(--bg-tertiary);
     color: var(--text-bright);
-    border-bottom-left-radius: 3px;
+    border-bottom-left-radius: 4px;
 }
 
 .chatwidget-msg.operator .chatwidget-msg-body {
     background: var(--accent);
     color: white;
-    border-bottom-right-radius: 3px;
+    border-bottom-right-radius: 4px;
 }
 
 .chatwidget-msg-time {
@@ -14363,30 +14470,38 @@ body.onb-active #titlebarMenu {
 .chatwidget-msg.operator .chatwidget-msg-time { text-align: right; }
 
 .chatwidget-thread-reply {
-    padding: 12px 16px;
+    padding: 12px 16px 16px;
     border-top: 1px solid var(--border);
     display: flex;
-    gap: 8px;
+    gap: 10px;
     align-items: flex-end;
+    background: var(--bg-secondary);
+    flex-shrink: 0;
 }
 
 .chatwidget-thread-reply textarea {
     flex: 1;
-    background: var(--bg-tertiary);
+    background: var(--bg-primary);
     border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    padding: 8px 10px;
+    border-radius: 14px;
+    padding: 10px 14px;
     color: var(--text-bright);
-    font-size: 13px;
+    font-size: 13.5px;
     font-family: inherit;
     resize: none;
-    min-height: 38px;
+    min-height: 40px;
     max-height: 100px;
     outline: none;
+    transition: border-color 0.15s;
 }
 
 .chatwidget-thread-reply textarea:focus {
     border-color: var(--accent);
+}
+
+.chatwidget-thread-reply .chatwidget-btn-primary {
+    border-radius: 12px;
+    padding: 10px 16px;
 }
 
 /* ===== ПОДРОБНОСТИ ЗАДАЧИ (2026-09-11) — расширенные задачи ===== */
@@ -14534,14 +14649,24 @@ body.onb-active #titlebarMenu {
     white-space: nowrap;
 }
 
-/* ===== ЧАТ-ВИДЖЕТ КАК МЕССЕНДЖЕР (2026-09-11) — Telegram-стиль ===== */
+/* ===== ЧАТ-ВИДЖЕТ КАК МЕССЕНДЖЕР (2026-09-11) — Telegram-стиль =====
+   FEATURE ("фон сделай не чёрный. тёмный. можно с еле видным паттерном" —
+   live user request): flat var(--bg-primary) alone read as plain black at
+   a glance. Layered a very faint dot grid (radial-gradient trick, ~3%
+   opacity) over a two-stop diagonal gradient between --bg-primary and
+   --bg-secondary — same dark family the rest of the app uses, just with
+   depth and texture instead of a flat fill. */
 .chat-widget-pane {
     width: 100%;
     height: 100%;
     display: none;
     position: absolute;
     inset: 0;
-    background: var(--bg-primary, #0b0a08);
+    background-color: var(--bg-secondary);
+    background-image:
+        radial-gradient(circle at 1px 1px, rgba(255,255,255,0.05) 1px, transparent 0),
+        linear-gradient(155deg, var(--bg-secondary) 0%, var(--bg-primary) 55%, var(--bg-secondary) 100%);
+    background-size: 24px 24px, 100% 100%;
 }
 
 .chat-widget-pane.active { display: flex; }
@@ -14549,10 +14674,12 @@ body.onb-active #titlebarMenu {
 .chatwidget-layout-pane {
     width: 100%;
     height: 100%;
+    position: relative;
 }
 
 .chatwidget-layout-pane .chatwidget-sidebar {
     width: 320px;
+    background: transparent;
 }
 
 .chatwidget-conv-item {
@@ -14565,7 +14692,7 @@ body.onb-active #titlebarMenu {
     width: 38px;
     height: 38px;
     border-radius: 50%;
-    background: var(--accent);
+    background: linear-gradient(135deg, var(--accent), var(--accent-hover, var(--accent)));
     color: white;
     display: flex;
     align-items: center;
@@ -14573,6 +14700,7 @@ body.onb-active #titlebarMenu {
     font-weight: 700;
     font-size: 15px;
     flex-shrink: 0;
+    box-shadow: 0 2px 8px var(--accent-dim);
 }
 
 .chatwidget-conv-info {
@@ -14589,7 +14717,6 @@ body.onb-active #titlebarMenu {
 /* ===== Оформление виджета (2026-09-11) — цвет/логотип клиента ===== */
 .chatwidget-appearance-box {
     padding: 14px;
-    border-bottom: 1px solid var(--border);
 }
 
 .chatwidget-appearance-row {
@@ -14597,7 +14724,7 @@ body.onb-active #titlebarMenu {
     align-items: center;
     justify-content: space-between;
     gap: 10px;
-    margin-top: 8px;
+    margin-top: 10px;
 }
 
 .chatwidget-appearance-rowlabel {
