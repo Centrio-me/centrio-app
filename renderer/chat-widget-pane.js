@@ -14,6 +14,22 @@ function createChatWidgetPane({ container, messengerId, authorizedInvoke, invoke
     let pollTimer = null
     let destroyed = false
 
+    // BUGFIX (2026-09-11, "data-token=undefined... сообщение с сайта не
+    // отправляется" — live user report): main/ipc/api.js's wrapApi() wraps
+    // EVERY IPC call's raw HTTP body as `{success:true, data: <body>}` —
+    // that's the right layer for endpoints whose body IS the payload
+    // (sync.js, notes.js, tickets.js all just `res.json(payload)` directly,
+    // no envelope of their own). This session's newer routes
+    // (chat-sites-routes.js, widget-routes.js, org-routes.js) instead
+    // followed a `res.json({success, data})` convention of their OWN — so a
+    // successful call here actually resolves to
+    // `{success:true, data:{success:true, data:<real payload>}}`, one level
+    // deeper than every call site below assumed. `unwrap()` peels that
+    // extra layer off in one place instead of fixing it at each call site.
+    function unwrap(result) {
+        return result?.success && result.data?.success ? result.data.data : undefined
+    }
+
     function esc(str) {
         const div = document.createElement('div')
         div.textContent = String(str == null ? '' : str)
@@ -33,24 +49,27 @@ function createChatWidgetPane({ container, messengerId, authorizedInvoke, invoke
 
     async function loadSite() {
         const result = await authorizedInvoke('api-chat-site-get')
-        site = result.success ? result.data : null
+        site = unwrap(result) ?? null
     }
 
     async function loadConversations() {
         if (!site) return
         const result = await authorizedInvoke('api-chat-site-conversations', site.id)
-        if (result.success) conversations = result.data
+        const data = unwrap(result)
+        if (data) conversations = data
     }
 
     async function loadMessagesFresh(conversationId) {
         const result = await authorizedInvoke('api-chat-site-messages', site.id, conversationId)
-        if (result.success) messages = result.data.messages
+        const data = unwrap(result)
+        if (data) messages = data.messages
     }
 
     async function loadMessagesSince(conversationId, since) {
         const result = await authorizedInvoke('api-chat-site-messages', site.id, conversationId, since)
-        if (result.success && result.data.messages.length) {
-            messages = messages.concat(result.data.messages)
+        const data = unwrap(result)
+        if (data && data.messages.length) {
+            messages = messages.concat(data.messages)
         }
     }
 
@@ -83,8 +102,9 @@ function createChatWidgetPane({ container, messengerId, authorizedInvoke, invoke
             const msgEl = container.querySelector(`#chatWidgetSetupMsg-${messengerId}`)
             if (!domain) return
             const result = await authorizedInvoke('api-chat-site-create', { domain, name })
-            if (result.success) {
-                site = result.data
+            const data = unwrap(result)
+            if (data) {
+                site = data
                 await render()
             } else if (msgEl) {
                 msgEl.style.display = 'block'
@@ -182,8 +202,9 @@ function createChatWidgetPane({ container, messengerId, authorizedInvoke, invoke
             if (!text || !activeConversationId) return
             input.value = ''
             const result = await authorizedInvoke('api-chat-site-reply', site.id, activeConversationId, text)
-            if (result.success) {
-                messages.push(result.data)
+            const data = unwrap(result)
+            if (data) {
+                messages.push(data)
                 await loadConversations()
                 renderMain()
                 const threadBody = container.querySelector(`#chatWidgetThreadBody-${messengerId}`)

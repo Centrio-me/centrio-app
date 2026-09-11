@@ -174,6 +174,12 @@ function createAddModalUiApi({
 
         const byCategory = new Map()
         list.forEach((m) => {
+            // FEATURE (2026-09-11, chat widget "first in Популярные, last in
+            // Мессенджеры"): `hidden: true` marks an entry that exists ONLY
+            // for the popularItems filter above — see the matching comment
+            // on its constants.js entry for why a second, real tile handles
+            // the category section instead.
+            if (m.hidden) return
             const key = m.category || 'messengers'
             if (!byCategory.has(key)) byCategory.set(key, [])
             byCategory.get(key).push(m)

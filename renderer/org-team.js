@@ -28,11 +28,22 @@ function createOrgTeamApi({
         return cloudStore.getUser()?.orgSummary?.orgId || null
     }
 
+    // BUGFIX (2026-09-11, same root cause as renderer/chat-widget-pane.js's
+    // "data-token=undefined" bug — see the detailed comment there):
+    // main/ipc/api.js's wrapApi() wraps the raw HTTP body as
+    // `{success, data: <body>}`; landing/org-routes.js's own responses are
+    // ALSO `{success, data}`, so a successful call through authorizedInvoke
+    // resolves to `{success:true, data:{success:true, data:<real payload>}}`
+    // — one level deeper than every read below originally assumed. These
+    // reads silently no-op'd since the first release of this feature.
+    function unwrap(result) {
+        return result?.success && result.data?.success ? result.data.data : undefined
+    }
+
     async function syncForcedSettings(orgId) {
         try {
             const result = await authorizedInvoke('api-org-get-settings', orgId)
-            if (!result.success) return
-            const forced = result.data
+            const forced = unwrap(result)
             if (forced && typeof forced.theme === 'string' && forced.theme !== lastForcedTheme) {
                 lastForcedTheme = forced.theme
                 applyTheme(forced.theme)
@@ -43,10 +54,11 @@ function createOrgTeamApi({
     async function syncAssignments(orgId) {
         try {
             const result = await authorizedInvoke('api-org-get-messenger-assignments', orgId)
-            if (!result.success || !Array.isArray(result.data)) return
+            const assignments = unwrap(result)
+            if (!Array.isArray(assignments)) return
 
             const serverIds = new Set()
-            for (const a of result.data) {
+            for (const a of assignments) {
                 const id = `org:${a.id}`
                 serverIds.add(id)
                 await addOrgAssignedMessenger({
@@ -81,8 +93,9 @@ function createOrgTeamApi({
         if (state.vpnActive) return
         try {
             const result = await authorizedInvoke('api-org-get-vpn', orgId)
-            if (!result.success || !result.data?.link) return
-            const link = result.data.link
+            const vpnData = unwrap(result)
+            if (!vpnData?.link) return
+            const link = vpnData.link
             let connectResult = await invokeIpc('vpn-connect-saved', link)
             if (connectResult?.needsDownload) {
                 connectResult = await invokeIpc('vpn-download-and-connect', link)

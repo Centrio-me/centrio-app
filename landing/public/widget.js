@@ -42,30 +42,57 @@
     }
 
     // ── UI ──────────────────────────────────────────────────────────────
+    // BUGFIX/FEATURE (2026-09-11, live user report — "иконка чата в углу
+    // пустая... сам чат ужасен... должен быть похож на нашу программу"):
+    // the bubble used a hand-drawn stroke-only SVG at 26px that read as
+    // "empty" at a glance on some renderers; switched to the real Centrio
+    // logo image (same asset the desktop app itself uses), which also
+    // directly addresses "should look like our program" — it's the same
+    // mark. Redesigned the empty/pre-conversation state to show that logo
+    // plus a greeting instead of a bare black rectangle, and generally
+    // tightened spacing/contrast to match the desktop app's own dark theme
+    // (bg #0b0a08, warm text #F5F1E8, accent #5AA9FF) rather than a generic
+    // dark box.
+    var LOGO_URL = 'https://centrio.me/logo.png'
+
     var css = '' +
-        '#centrio-widget-bubble{position:fixed;bottom:20px;right:20px;width:56px;height:56px;border-radius:50%;' +
-        'background:#5AA9FF;box-shadow:0 4px 20px rgba(0,0,0,.25);cursor:pointer;z-index:2147483000;' +
-        'display:flex;align-items:center;justify-content:center;transition:transform .15s;border:none}' +
-        '#centrio-widget-bubble:hover{transform:scale(1.06)}' +
-        '#centrio-widget-badge{position:absolute;top:-4px;right:-4px;background:#ff4d4f;color:#fff;font:700 11px/18px sans-serif;' +
-        'min-width:18px;height:18px;border-radius:9px;text-align:center;padding:0 4px;display:none}' +
-        '#centrio-widget-panel{position:fixed;bottom:88px;right:20px;width:340px;max-width:calc(100vw - 32px);height:480px;' +
-        'max-height:calc(100vh - 120px);background:#0b0a08;border-radius:16px;box-shadow:0 12px 40px rgba(0,0,0,.35);' +
-        'display:none;flex-direction:column;overflow:hidden;z-index:2147483000;font-family:-apple-system,Segoe UI,Roboto,sans-serif;color:#F5F1E8}' +
-        '#centrio-widget-panel.open{display:flex}' +
-        '#centrio-widget-header{background:#5AA9FF;color:#04161a;padding:14px 16px;font-weight:700;font-size:14px;' +
-        'display:flex;align-items:center;justify-content:space-between}' +
-        '#centrio-widget-close{background:none;border:none;color:#04161a;cursor:pointer;font-size:18px;line-height:1;padding:0}' +
-        '#centrio-widget-body{flex:1;overflow-y:auto;padding:12px 14px;display:flex;flex-direction:column;gap:8px}' +
-        '.centrio-widget-msg{max-width:80%;padding:8px 11px;border-radius:12px;font-size:13px;line-height:1.4;word-wrap:break-word}' +
-        '.centrio-widget-msg.visitor{align-self:flex-end;background:#5AA9FF;color:#04161a;border-bottom-right-radius:3px}' +
-        '.centrio-widget-msg.operator{align-self:flex-start;background:rgba(255,255,255,.08);border-bottom-left-radius:3px}' +
-        '#centrio-widget-form{padding:12px;border-top:1px solid rgba(255,255,255,.08);display:flex;flex-direction:column;gap:8px}' +
+        '#centrio-widget-bubble{position:fixed;bottom:20px;right:20px;width:58px;height:58px;border-radius:50%;' +
+        'background:#5AA9FF;box-shadow:0 6px 24px rgba(0,0,0,.35);cursor:pointer;z-index:2147483000;' +
+        'display:flex;align-items:center;justify-content:center;transition:transform .15s;border:none;padding:0}' +
+        '#centrio-widget-bubble:hover{transform:scale(1.07)}' +
+        '#centrio-widget-bubble img{width:32px;height:32px;object-fit:contain;border-radius:50%;pointer-events:none}' +
+        '#centrio-widget-badge{position:absolute;top:-3px;right:-3px;background:#ff4d4f;color:#fff;font:700 11px/18px -apple-system,sans-serif;' +
+        'min-width:18px;height:18px;border-radius:9px;text-align:center;padding:0 4px;display:none;box-shadow:0 0 0 2px #0b0a08}' +
+        '#centrio-widget-panel{position:fixed;bottom:90px;right:20px;width:360px;max-width:calc(100vw - 32px);height:520px;' +
+        'max-height:calc(100vh - 120px);background:#0b0a08;border-radius:18px;box-shadow:0 16px 48px rgba(0,0,0,.45),0 0 0 1px rgba(255,255,255,.06);' +
+        'display:none;flex-direction:column;overflow:hidden;z-index:2147483000;' +
+        'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:#F5F1E8}' +
+        '#centrio-widget-panel.open{display:flex;animation:centrio-widget-in .18s ease}' +
+        '@keyframes centrio-widget-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}' +
+        '#centrio-widget-header{background:#5AA9FF;color:#04161a;padding:14px 16px;display:flex;align-items:center;gap:10px;flex-shrink:0}' +
+        '#centrio-widget-header img{width:28px;height:28px;border-radius:50%;object-fit:contain;background:rgba(4,22,26,.08)}' +
+        '#centrio-widget-header-title{flex:1;min-width:0}' +
+        '#centrio-widget-header-name{font-weight:800;font-size:14px;line-height:1.2}' +
+        '#centrio-widget-header-status{font-size:11px;opacity:.75;line-height:1.2}' +
+        '#centrio-widget-close{background:none;border:none;color:#04161a;cursor:pointer;font-size:20px;line-height:1;padding:4px;opacity:.7}' +
+        '#centrio-widget-close:hover{opacity:1}' +
+        '#centrio-widget-body{flex:1;overflow-y:auto;padding:14px 16px;display:flex;flex-direction:column;gap:9px}' +
+        '#centrio-widget-greeting{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:10px;padding:20px}' +
+        '#centrio-widget-greeting img{width:52px;height:52px;border-radius:50%;object-fit:contain;box-shadow:0 4px 16px rgba(90,169,255,.25)}' +
+        '#centrio-widget-greeting-title{font-size:15px;font-weight:800;color:#F5F1E8}' +
+        '#centrio-widget-greeting-sub{font-size:12.5px;color:rgba(245,241,232,.55);max-width:240px;line-height:1.5}' +
+        '.centrio-widget-msg{max-width:78%;padding:9px 12px;border-radius:13px;font-size:13.5px;line-height:1.45;word-wrap:break-word}' +
+        '.centrio-widget-msg.visitor{align-self:flex-end;background:#5AA9FF;color:#04161a;border-bottom-right-radius:4px;font-weight:500}' +
+        '.centrio-widget-msg.operator{align-self:flex-start;background:rgba(255,255,255,.07);border-bottom-left-radius:4px}' +
+        '#centrio-widget-form{padding:12px 14px 14px;border-top:1px solid rgba(255,255,255,.08);display:flex;flex-direction:column;gap:8px;flex-shrink:0}' +
         '#centrio-widget-form input,#centrio-widget-form textarea{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);' +
-        'border-radius:8px;color:#F5F1E8;padding:8px 10px;font-size:13px;font-family:inherit;outline:none}' +
-        '#centrio-widget-form textarea{resize:none;min-height:40px}' +
-        '#centrio-widget-send{background:#5AA9FF;color:#04161a;border:none;border-radius:8px;padding:9px;font-weight:700;' +
-        'font-size:13px;cursor:pointer}' +
+        'border-radius:10px;color:#F5F1E8;padding:10px 12px;font-size:13.5px;font-family:inherit;outline:none;transition:border-color .15s,background .15s}' +
+        '#centrio-widget-form input:focus,#centrio-widget-form textarea:focus{border-color:#5AA9FF;background:rgba(90,169,255,.08)}' +
+        '#centrio-widget-form input::placeholder,#centrio-widget-form textarea::placeholder{color:rgba(245,241,232,.35)}' +
+        '#centrio-widget-form textarea{resize:none;min-height:44px;font-family:inherit}' +
+        '#centrio-widget-send{background:#5AA9FF;color:#04161a;border:none;border-radius:10px;padding:10px;font-weight:700;' +
+        'font-size:13.5px;cursor:pointer;transition:opacity .15s}' +
+        '#centrio-widget-send:hover{opacity:.9}' +
         '#centrio-widget-send:disabled{opacity:.5;cursor:not-allowed}'
 
     var styleEl = document.createElement('style')
@@ -74,15 +101,20 @@
 
     var bubble = document.createElement('button')
     bubble.id = 'centrio-widget-bubble'
-    bubble.setAttribute('aria-label', 'Chat')
-    bubble.innerHTML = '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#04161a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>' +
+    bubble.setAttribute('aria-label', 'Открыть чат')
+    bubble.innerHTML = '<img src="' + LOGO_URL + '" alt="">' +
         '<span id="centrio-widget-badge"></span>'
     document.body.appendChild(bubble)
 
     var panel = document.createElement('div')
     panel.id = 'centrio-widget-panel'
     panel.innerHTML =
-        '<div id="centrio-widget-header"><span>Написать нам</span><button id="centrio-widget-close" aria-label="Close">&times;</button></div>' +
+        '<div id="centrio-widget-header">' +
+        '<img src="' + LOGO_URL + '" alt="">' +
+        '<div id="centrio-widget-header-title"><div id="centrio-widget-header-name">Написать нам</div>' +
+        '<div id="centrio-widget-header-status">Обычно отвечаем в течение дня</div></div>' +
+        '<button id="centrio-widget-close" aria-label="Закрыть">&times;</button>' +
+        '</div>' +
         '<div id="centrio-widget-body"></div>' +
         '<div id="centrio-widget-form"></div>'
     document.body.appendChild(panel)
@@ -101,6 +133,13 @@
     }
 
     function renderMessages() {
+        if (state.messages.length === 0) {
+            bodyEl.innerHTML =
+                '<div id="centrio-widget-greeting"><img src="' + LOGO_URL + '" alt="">' +
+                '<div id="centrio-widget-greeting-title">Здравствуйте! 👋</div>' +
+                '<div id="centrio-widget-greeting-sub">Напишите нам — ответим прямо здесь, как только увидим ваше сообщение.</div></div>'
+            return
+        }
         bodyEl.innerHTML = state.messages.map(function (m) {
             var cls = m.fromVisitor ? 'visitor' : 'operator'
             return '<div class="centrio-widget-msg ' + cls + '">' + escapeHtml(m.body) + '</div>'
@@ -214,7 +253,8 @@
         panel.classList.add('open')
         unread = 0
         renderBadge()
-        if (state.conversationId) { renderMessages(); renderReplyForm(); startPolling() } else { renderStartForm() }
+        renderMessages()
+        if (state.conversationId) { renderReplyForm(); startPolling() } else { renderStartForm() }
     }
 
     function closePanel() {

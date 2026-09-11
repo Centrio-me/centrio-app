@@ -26,10 +26,20 @@ const popularMessengers = [
     // 'chat-widget'` instead of a real destination — renderer.js's
     // addWebview()/addMessenger() special-case that marker to render a
     // custom in-app pane (renderer/chat-widget-pane.js) instead of a
-    // <webview>, since there's no real external site to load. Listed first
-    // so it sorts before the real top-8 messengers below in both the
-    // "Популярные" section and the "Мессенджеры" category.
-    { name: 'Онлайн-чат', url: 'centrio://chat-widget', native: 'chat-widget', icon: 'assets/logo.png', color: '#5AA9FF', category: 'messengers', popular: true },
+    // <webview>, since there's no real external site to load.
+    //
+    // UPDATE (same day, follow-up request): "в мессенджерах поставь его в
+    // конец. А в популярных оставь первым" — first in "Популярные" but LAST
+    // within the "Мессенджеры" category. Both sections derive their order
+    // from this array's order (add-modal-ui.js just filters/groups, never
+    // re-sorts) — one array position can't satisfy both. Split into two
+    // entries sharing the same `native: 'chat-widget'` id instead: this one
+    // is `hidden: true` (add-modal-ui.js's category grouping skips it, so
+    // it exists ONLY for the "Популярные" filter, which doesn't check
+    // `hidden`) and stays first; the real, clickable 'messengers'-category
+    // tile is appended at the end of that category's block below (search
+    // "Чат для сайта" further down this file).
+    { name: 'Чат для сайта', url: 'centrio://chat-widget', native: 'chat-widget', icon: 'assets/logo.png', color: '#5AA9FF', category: 'messengers', popular: true, hidden: true },
     // ── Топ-8 (также помечены popular: true — см. коммент выше) ────────
     { name: 'Telegram',         url: 'https://web.telegram.org/k/',         icon: 'assets/logomessenger/telegram.png',      color: '#2AABEE', category: 'messengers', popular: true },
     { name: 'WhatsApp',         url: 'https://web.whatsapp.com',            icon: 'assets/logomessenger/whatsapp.png',      color: '#25D366', category: 'messengers', popular: true },
@@ -61,6 +71,9 @@ const popularMessengers = [
     { name: 'GroupMe',          url: 'https://web.groupme.com',             icon: 'assets/logomessenger/groupme.png',       color: '#00AEEF', category: 'messengers' },
     { name: 'Threads',          url: 'https://www.threads.net',             icon: 'assets/logomessenger/threads.png',       color: '#000000', category: 'messengers' },
     { name: 'Snapchat',         url: 'https://web.snapchat.com',            icon: 'assets/logomessenger/snapchat.png',      color: '#FFFC00', category: 'messengers' },
+    // Чат для сайта — real, clickable tile (see the `hidden: true` popular-only
+    // decoy at the top of this file for why there are two entries).
+    { name: 'Чат для сайта',   url: 'centrio://chat-widget',               native: 'chat-widget',                            color: '#5AA9FF', icon: 'assets/logo.png', category: 'messengers' },
     // ── Почта ─────────────────────────────────────────────────────────
     { name: 'Gmail',            url: 'https://mail.google.com',             icon: 'assets/logomessenger/gmail.png',         color: '#EA4335', category: 'mail' },
     { name: 'Outlook',          url: 'https://outlook.live.com',            icon: 'assets/logomessenger/outlook.png',       color: '#0078D4', category: 'mail' },
@@ -87,9 +100,12 @@ const popularMessengers = [
     // категорию", Zoom/Teams/Meet/Webex перенесены сюда из messengers/
     // productivity — раньше были там просто потому, что отдельной категории
     // не существовало) ──
-    { name: 'Яндекс Телемост',  url: 'https://telemost.yandex.ru',          icon: 'assets/logomessenger/telemost.png',      color: '#43D854', category: 'calls', popular: true },
-    { name: 'Zoom',             url: 'https://zoom.us/wc',                  icon: 'assets/logomessenger/zoom.png',          color: '#2D8CFF', category: 'calls', popular: true },
-    { name: 'Google Meet',      url: 'https://meet.google.com',             icon: 'assets/logomessenger/googlemeet.png',    color: '#00AC47', category: 'calls', popular: true },
+    // popular: true removed (2026-09-11, live user request — "убери из
+    // популярных ... Телемост, Зум" — these three stay in their 'calls'
+    // category, just no longer duplicated into "Популярные").
+    { name: 'Яндекс Телемост',  url: 'https://telemost.yandex.ru',          icon: 'assets/logomessenger/telemost.png',      color: '#43D854', category: 'calls' },
+    { name: 'Zoom',             url: 'https://zoom.us/wc',                  icon: 'assets/logomessenger/zoom.png',          color: '#2D8CFF', category: 'calls' },
+    { name: 'Google Meet',      url: 'https://meet.google.com',             icon: 'assets/logomessenger/googlemeet.png',    color: '#00AC47', category: 'calls' },
     { name: 'Microsoft Teams',  url: 'https://teams.microsoft.com',         icon: 'assets/logomessenger/teams.png',         color: '#6264A7', category: 'calls' },
     { name: 'Webex',            url: 'https://web.webex.com',               icon: 'assets/logomessenger/webex.png',         color: '#049FD9', category: 'calls' },
     // ── Нейросети ─────────────────────────────────────────────────────────
@@ -126,11 +142,10 @@ const popularMessengers = [
     // TikTok (2026-09-08, live user request) — иконка из simple-icons.
     { name: 'TikTok',           url: 'https://www.tiktok.com',              icon: 'assets/logomessenger/tiktok.svg',        color: '#000000', category: 'media' },
     { name: 'Spotify',          url: 'https://open.spotify.com',            icon: 'assets/logomessenger/spotify.svg',       color: '#1ED760', category: 'media' },
-    // popular: true (2026-08-28, live user request — "в популярные добавь
-    // Яндекс Музыка") — та же схема двойного показа, что и у остального
-    // топ-8 в начале массива (см. коммент там): показывается и в
-    // "Популярные", и в своей теме 'media'.
-    { name: 'Yandex Музыка',    url: 'https://music.yandex.ru',             icon: 'assets/logomessenger/yandexmusic.ico',   color: '#FFCC00', category: 'media', popular: true },
+    // popular: true removed (2026-09-11, "убери из популярных ...
+    // Я.Музыка" — live user request) — stays in 'media', just no longer
+    // duplicated into "Популярные".
+    { name: 'Yandex Музыка',    url: 'https://music.yandex.ru',             icon: 'assets/logomessenger/yandexmusic.ico',   color: '#FFCC00', category: 'media' },
     { name: 'VK Видео',         url: 'https://vkvideo.ru',                  icon: 'assets/logomessenger/vkvideo.svg',       color: '#0077FF', category: 'media' },
     { name: 'Shazam',           url: 'https://www.shazam.com',              icon: 'assets/logomessenger/shazam.svg',        color: '#0088FF', category: 'media' },
     { name: 'Ivi',              url: 'https://www.ivi.ru',                  icon: 'assets/logomessenger/ivi.png',           color: '#FF6600', category: 'media' },
