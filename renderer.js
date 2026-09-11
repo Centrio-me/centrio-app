@@ -1470,7 +1470,15 @@ function switchTab(id) {
     // class is added), so there's no wrong size to ever get latched in.
     splitApi?.onPrimaryChanged(id)
 
-    document.querySelectorAll('webview').forEach(wv => wv.classList.remove('active'))
+    // BUGFIX (2026-09-11, "Онлайн чат не переключается как все вкладки" —
+    // live user report): the chat-widget messenger's tab content is a plain
+    // <div class="chat-widget-pane"> (see renderer/webview-tabs-bind.js's
+    // addWebview() special-case), not a <webview> element — this selector
+    // only ever matched real <webview> tags, so switching AWAY from the
+    // chat tab never removed ITS 'active' class, leaving it visually
+    // covering whatever tab you switched to (both are position:absolute;
+    // inset:0 on top of each other).
+    document.querySelectorAll('webview, .chat-widget-pane').forEach(wv => wv.classList.remove('active'))
 
     const activeWebview = document.getElementById(`webview-${id}`)
     const activeMessenger = state.activeMessengers.find(m => m.id === id)

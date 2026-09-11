@@ -25,14 +25,31 @@ app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ extended: true, limit: '10mb' }))
 
 // CORS
-app.use(cors({
-  origin: [
-    process.env.FRONTEND_URL,'https://centrio.me','https://www.centrio.me',
-    'http://localhost:3000',
-    'app://.'  // Electron
-  ],
-  credentials: true
-}))
+// BUGFIX (2026-09-11, "Сообщения с сайта не отправляются" — live user
+// report, root-caused after the widget-token fix didn't resolve it): this
+// strict allowlist applied to EVERY /api/* route, including the new public
+// widget endpoints (routes/widget.js) — which, by design, must be callable
+// from an ARBITRARY customer website (e.g. print-empire.ru), not just
+// centrio.me. A request from any other origin never got an
+// Access-Control-Allow-Origin header, so the browser blocked the fetch
+// client-side before it ever reached this server — widget.js's fetch calls
+// just silently rejected (caught by an empty .catch()), which is exactly
+// "nothing happens, no error shown" the user described. /api/widget gets
+// its own permissive CORS (no cookies/credentials involved there — it's
+// public, token-in-body auth, the same posture Intercom/Jivo-style widget
+// APIs use) and is excluded from the strict one below.
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api/widget')) return next() // handled by the permissive CORS mounted on that path below
+  return cors({
+    origin: [
+      process.env.FRONTEND_URL,'https://centrio.me','https://www.centrio.me',
+      'http://localhost:3000',
+      'app://.'  // Electron
+    ],
+    credentials: true
+  })(req, res, next)
+})
+app.use('/api/widget', cors({ origin: true, credentials: false }))
 
 // Rate limiting — защита публичных/анонимных маршрутов от злоупотреблений.
 // /api/admin специально исключён (skip): это не анонимный трафик — каждый
