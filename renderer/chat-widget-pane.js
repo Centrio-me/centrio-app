@@ -6,7 +6,19 @@
 // addWebview() special-casing messenger.native === 'chat-widget' (see that
 // file). Backend unchanged — same landing/chat-sites-routes.js this session
 // already built and verified.
-function createChatWidgetPane({ container, messengerId, authorizedInvoke, invokeIpc, tGet, hasEffectivePro, onUnreadChange }) {
+// FEATURE (2026-09-12, "функционал расширь" — live user request): a few
+// ready-made replies to insert with one click, Jivo/Intercom-style. Stored
+// locally per messenger (no server model needed for something this small
+// and account-local) via the same `store` shim every other renderer module
+// already uses.
+const DEFAULT_CANNED_REPLIES = [
+    'Здравствуйте! Спасибо за обращение, сейчас посмотрю ваш вопрос.',
+    'Уточните, пожалуйста, номер заказа?',
+    'Передал ваш вопрос коллеге, ответим в ближайшее время.',
+    'Спасибо за обращение! Хорошего дня.'
+]
+
+function createChatWidgetPane({ container, messengerId, authorizedInvoke, invokeIpc, ipcRenderer, store, tGet, hasEffectivePro, onUnreadChange }) {
     let site = null
     let conversations = []
     let activeConversationId = null
@@ -14,6 +26,26 @@ function createChatWidgetPane({ container, messengerId, authorizedInvoke, invoke
     let pollTimer = null
     let destroyed = false
     let settingsOpen = false
+    // FEATURE (2026-09-12, "функционал расширь" — live user request):
+    // search + open/all filter for the conversation list, useful once it
+    // grows past a handful of visitors.
+    let convFilter = 'open'
+    let convSearch = ''
+    let cannedOpen = false
+
+    function getCannedReplies() {
+        return store?.get(`chatWidgetCannedReplies-${messengerId}`, DEFAULT_CANNED_REPLIES) ?? DEFAULT_CANNED_REPLIES
+    }
+
+    function saveCannedReplies(list) {
+        store?.set(`chatWidgetCannedReplies-${messengerId}`, list)
+    }
+    // FEATURE (2026-09-12, "функционал расширь" — live user request): a
+    // desktop notification (same channel every other messenger already
+    // uses) when a NEW visitor message shows up, so the owner doesn't have
+    // to keep the chat tab open/focused to notice one. Tracked by message
+    // id so a poll tick never re-notifies for the same message twice.
+    const notifiedMessageIds = new Set()
 
     // BUGFIX (2026-09-11, "data-token=undefined... сообщение с сайта не
     // отправляется" — live user report): main/ipc/api.js's wrapApi() wraps
@@ -29,6 +61,24 @@ function createChatWidgetPane({ container, messengerId, authorizedInvoke, invoke
     // extra layer off in one place instead of fixing it at each call site.
     function unwrap(result) {
         return result?.success && result.data?.success ? result.data.data : undefined
+    }
+
+    // FEATURE (2026-09-12, live visual review — "не должна уступать по
+    // дизайну мессенджеру"): every avatar rendering the same flat --accent
+    // color made a multi-conversation list look monotonous at a glance —
+    // real messengers (Telegram, WhatsApp) assign each contact a distinct
+    // color. Deterministic (same name always gets the same color, no
+    // flicker on re-render) rather than random.
+    const AVATAR_GRADIENTS = [
+        ['#6366f1', '#818cf8'], ['#ec4899', '#f472b6'], ['#22c55e', '#4ade80'],
+        ['#f59e0b', '#fbbf24'], ['#06b6d4', '#22d3ee'], ['#8b5cf6', '#a78bfa'],
+        ['#ef4444', '#f87171'], ['#14b8a6', '#2dd4bf']
+    ]
+    function avatarGradient(seed) {
+        let hash = 0
+        for (let i = 0; i < seed.length; i++) hash = (hash * 31 + seed.charCodeAt(i)) | 0
+        const [c1, c2] = AVATAR_GRADIENTS[Math.abs(hash) % AVATAR_GRADIENTS.length]
+        return `background:linear-gradient(135deg, ${c1}, ${c2});box-shadow:0 2px 8px ${c1}40;`
     }
 
     function esc(str) {
@@ -53,11 +103,38 @@ function createChatWidgetPane({ container, messengerId, authorizedInvoke, invoke
         site = unwrap(result) ?? null
     }
 
+    let seededNotifiedIds = false
+
     async function loadConversations() {
         if (!site) return
         const result = await authorizedInvoke('api-chat-site-conversations', site.id)
         const data = unwrap(result)
-        if (data) conversations = data
+        if (!data) return
+
+        if (!seededNotifiedIds) {
+            // First load after mount — these are pre-existing messages, not
+            // "new" ones; seed the set so they're not notified once, then
+            // never again until the site changes (which reloads a fresh
+            // pane/instance anyway).
+            data.forEach(c => { if (c.lastMessage) notifiedMessageIds.add(c.lastMessage.id) })
+            seededNotifiedIds = true
+        } else {
+            notifyNewVisitorMessages(data)
+        }
+        conversations = data
+    }
+
+    function notifyNewVisitorMessages(freshConversations) {
+        freshConversations.forEach(c => {
+            const lm = c.lastMessage
+            if (!lm || !lm.fromVisitor || notifiedMessageIds.has(lm.id)) return
+            notifiedMessageIds.add(lm.id)
+            ipcRenderer?.send('show-notification', {
+                title: c.visitorName || c.visitorContact || tGet('chatWidget.anonymous') || 'Гость',
+                body: lm.body,
+                messengerId
+            })
+        })
     }
 
     async function loadMessagesFresh(conversationId) {
@@ -160,23 +237,43 @@ function createChatWidgetPane({ container, messengerId, authorizedInvoke, invoke
         return `<script src="https://centrio.me/widget.js" data-token="${site.widgetToken}"></script>`
     }
 
+    function visibleConversations() {
+        const q = convSearch.trim().toLowerCase()
+        return conversations.filter(c => {
+            if (convFilter === 'open' && c.status === 'CLOSED') return false
+            if (!q) return true
+            const haystack = `${c.visitorName || ''} ${c.visitorContact || ''}`.toLowerCase()
+            return haystack.includes(q)
+        })
+    }
+
+    function renderConvItem(c) {
+        const preview = c.lastMessage ? (c.lastMessage.fromVisitor ? '' : (tGet('chatWidget.you') || 'Вы: ')) + c.lastMessage.body : ''
+        const isActive = c.id === activeConversationId
+        const needsReply = c.status === 'OPEN' && c.lastMessage && c.lastMessage.fromVisitor
+        const initial = (c.visitorName || c.visitorContact || '?').charAt(0).toUpperCase()
+        return `
+            <div class="chatwidget-conv-item ${isActive ? 'active' : ''} ${c.status === 'CLOSED' ? 'closed' : ''} ${needsReply ? 'needs-reply' : ''}" data-id="${esc(c.id)}">
+                <div class="chatwidget-conv-avatar" style="${avatarGradient(c.visitorName || c.visitorContact || c.id)}">${esc(initial)}</div>
+                <div class="chatwidget-conv-info">
+                    <div class="chatwidget-conv-name">${esc(c.visitorName || c.visitorContact || (tGet('chatWidget.anonymous') || 'Гость'))}</div>
+                    <div class="chatwidget-conv-preview">${esc(preview)}</div>
+                </div>
+                <div class="chatwidget-conv-time">${fmtTime(c.lastMessageAt)}</div>
+            </div>`
+    }
+
+    function bindConvItemClicks(listEl) {
+        listEl.querySelectorAll('.chatwidget-conv-item').forEach(el => {
+            el.addEventListener('click', () => openConversation(el.dataset.id))
+        })
+    }
+
     function renderMain() {
-        const listHtml = conversations.length === 0
+        const filtered = visibleConversations()
+        const listHtml = filtered.length === 0
             ? `<div class="app-notif-empty">${esc(tGet('chatWidget.noConversations') || 'Пока нет диалогов')}</div>`
-            : conversations.map(c => {
-                const preview = c.lastMessage ? (c.lastMessage.fromVisitor ? '' : (tGet('chatWidget.you') || 'Вы: ')) + c.lastMessage.body : ''
-                const isActive = c.id === activeConversationId
-                const initial = (c.visitorName || c.visitorContact || '?').charAt(0).toUpperCase()
-                return `
-                    <div class="chatwidget-conv-item ${isActive ? 'active' : ''} ${c.status === 'CLOSED' ? 'closed' : ''}" data-id="${esc(c.id)}">
-                        <div class="chatwidget-conv-avatar">${esc(initial)}</div>
-                        <div class="chatwidget-conv-info">
-                            <div class="chatwidget-conv-name">${esc(c.visitorName || c.visitorContact || (tGet('chatWidget.anonymous') || 'Гость'))}</div>
-                            <div class="chatwidget-conv-preview">${esc(preview)}</div>
-                        </div>
-                        <div class="chatwidget-conv-time">${fmtTime(c.lastMessageAt)}</div>
-                    </div>`
-            }).join('')
+            : filtered.map(renderConvItem).join('')
 
         const activeConv = conversations.find(c => c.id === activeConversationId)
 
@@ -186,23 +283,38 @@ function createChatWidgetPane({ container, messengerId, authorizedInvoke, invoke
         } else {
             const msgsHtml = messages.map(m => `
                 <div class="chatwidget-msg ${m.fromVisitor ? 'visitor' : 'operator'}">
-                    <div class="chatwidget-msg-body">${esc(m.body)}</div>
-                    <div class="chatwidget-msg-time">${fmtTime(m.createdAt)}</div>
+                    <div class="chatwidget-msg-body">${esc(m.body)}<span class="chatwidget-msg-time-inline">${fmtTime(m.createdAt)}</span></div>
                 </div>`).join('')
 
             threadHtml = `
                 <div class="chatwidget-thread-header">
-                    <div class="chatwidget-conv-avatar">${esc((activeConv.visitorName || activeConv.visitorContact || '?').charAt(0).toUpperCase())}</div>
+                    <div class="chatwidget-conv-avatar" style="${avatarGradient(activeConv.visitorName || activeConv.visitorContact || activeConv.id)}">${esc((activeConv.visitorName || activeConv.visitorContact || '?').charAt(0).toUpperCase())}</div>
                     <div style="flex:1;min-width:0;">
                         <div class="chatwidget-thread-name">${esc(activeConv.visitorName || (tGet('chatWidget.anonymous') || 'Гость'))}</div>
                         ${activeConv.visitorContact ? `<div class="chatwidget-thread-contact">${esc(activeConv.visitorContact)}</div>` : ''}
                     </div>
-                    <button class="chatwidget-btn-secondary" id="chatWidgetToggleStatusBtn-${messengerId}" data-status="${activeConv.status}">
-                        ${activeConv.status === 'CLOSED' ? esc(tGet('chatWidget.reopen') || 'Открыть снова') : esc(tGet('chatWidget.close') || 'Закрыть диалог')}
+                    <button class="chatwidget-btn-secondary chatwidget-btn-compact" id="chatWidgetToggleStatusBtn-${messengerId}" data-status="${activeConv.status}">
+                        ${activeConv.status === 'CLOSED' ? esc(tGet('chatWidget.reopen') || 'Открыть') : esc(tGet('chatWidget.close') || 'Закрыть')}
                     </button>
                 </div>
                 <div class="chatwidget-thread-body" id="chatWidgetThreadBody-${messengerId}">${msgsHtml}</div>
+                <div class="chatwidget-canned-popover ${cannedOpen ? 'open' : ''}" id="chatWidgetCannedPopover-${messengerId}">
+                    ${getCannedReplies().map((r, i) => `
+                        <div class="chatwidget-canned-item" data-index="${i}">
+                            <span class="chatwidget-canned-text">${esc(r)}</span>
+                            <button class="chatwidget-canned-remove" data-index="${i}" title="${esc(tGet('chatWidget.cannedRemove') || 'Удалить')}">&times;</button>
+                        </div>`).join('') || `<div class="chatwidget-canned-empty">${esc(tGet('chatWidget.cannedEmpty') || 'Нет заготовок')}</div>`}
+                    <div class="chatwidget-canned-add">
+                        <input type="text" id="chatWidgetCannedInput-${messengerId}" placeholder="${esc(tGet('chatWidget.cannedAddPlaceholder') || 'Новая заготовка…')}" maxlength="500">
+                        <button class="chatwidget-btn-secondary chatwidget-btn-compact" id="chatWidgetCannedAddBtn-${messengerId}">${esc(tGet('chatWidget.cannedAdd') || 'Добавить')}</button>
+                    </div>
+                </div>
                 <div class="chatwidget-thread-reply">
+                    <button class="chatwidget-settings-btn chatwidget-canned-btn" id="chatWidgetCannedBtn-${messengerId}" title="${esc(tGet('chatWidget.cannedReplies') || 'Заготовленные ответы')}">
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M13 2 3 14h7l-1 8 10-12h-7z"/>
+                        </svg>
+                    </button>
                     <textarea id="chatWidgetReplyInput-${messengerId}" placeholder="${esc(tGet('chatWidget.replyPlaceholder') || 'Ответить…')}" maxlength="4000"></textarea>
                     <button class="chatwidget-btn-primary" id="chatWidgetSendBtn-${messengerId}">${esc(tGet('chatWidget.send') || 'Отправить')}</button>
                 </div>`
@@ -232,7 +344,14 @@ function createChatWidgetPane({ container, messengerId, authorizedInvoke, invoke
                             </svg>
                         </button>
                     </div>
-                    <div class="chatwidget-conv-list">${listHtml}</div>
+                    <div class="chatwidget-conv-toolbar">
+                        <input type="text" id="chatWidgetSearchInput-${messengerId}" class="chatwidget-conv-search" placeholder="${esc(tGet('chatWidget.search') || 'Поиск…')}" value="${esc(convSearch)}">
+                        <div class="chatwidget-conv-filter-tabs">
+                            <button class="chatwidget-filter-tab ${convFilter === 'open' ? 'active' : ''}" data-filter="open">${esc(tGet('chatWidget.filterOpen') || 'Открытые')}</button>
+                            <button class="chatwidget-filter-tab ${convFilter === 'all' ? 'active' : ''}" data-filter="all">${esc(tGet('chatWidget.filterAll') || 'Все')}</button>
+                        </div>
+                    </div>
+                    <div class="chatwidget-conv-list" id="chatWidgetConvList-${messengerId}">${listHtml}</div>
                 </div>
                 <div class="chatwidget-thread">${threadHtml}</div>
             </div>
@@ -283,6 +402,37 @@ function createChatWidgetPane({ container, messengerId, authorizedInvoke, invoke
             invokeIpc('copy-text-to-clipboard', embedSnippet()).catch(() => {})
         })
 
+        // Re-render only the list (not the whole pane) on search/filter
+        // changes — re-running renderMain() on every keystroke would also
+        // rebuild the thread pane and drop focus from the input itself.
+        function rerenderConvListOnly() {
+            const listEl = container.querySelector(`#chatWidgetConvList-${messengerId}`)
+            if (!listEl) return
+            const filtered = visibleConversations()
+            listEl.innerHTML = filtered.length === 0
+                ? `<div class="app-notif-empty">${esc(tGet('chatWidget.noConversations') || 'Пока нет диалогов')}</div>`
+                : filtered.map(renderConvItem).join('')
+            bindConvItemClicks(listEl)
+        }
+
+        const searchInput = container.querySelector(`#chatWidgetSearchInput-${messengerId}`)
+        searchInput?.addEventListener('input', () => {
+            convSearch = searchInput.value
+            rerenderConvListOnly()
+        })
+
+        container.querySelectorAll(`.chatwidget-filter-tab`).forEach(tab => {
+            tab.addEventListener('click', () => {
+                convFilter = tab.dataset.filter
+                renderMain()
+                // Re-focus the search box after a full re-render (only
+                // needed for the filter tabs, which do trigger a full
+                // renderMain — the search input's own listener uses the
+                // lighter list-only path above and never loses focus).
+                container.querySelector(`#chatWidgetSearchInput-${messengerId}`)?.focus()
+            })
+        })
+
         const appearanceMsgEl = container.querySelector(`#chatWidgetAppearanceMsg-${messengerId}`)
         function showAppearanceMsg(text, isErr) {
             if (!appearanceMsgEl) return
@@ -317,9 +467,7 @@ function createChatWidgetPane({ container, messengerId, authorizedInvoke, invoke
             if (ok) renderMain()
         })
 
-        container.querySelectorAll('.chatwidget-conv-item').forEach(el => {
-            el.addEventListener('click', () => openConversation(el.dataset.id))
-        })
+        bindConvItemClicks(container.querySelector(`#chatWidgetConvList-${messengerId}`) || container)
 
         container.querySelector(`#chatWidgetToggleStatusBtn-${messengerId}`)?.addEventListener('click', async (e) => {
             const nextStatus = e.currentTarget.dataset.status === 'CLOSED' ? 'OPEN' : 'CLOSED'
@@ -348,6 +496,46 @@ function createChatWidgetPane({ container, messengerId, authorizedInvoke, invoke
         container.querySelector(`#chatWidgetSendBtn-${messengerId}`)?.addEventListener('click', sendReply)
         container.querySelector(`#chatWidgetReplyInput-${messengerId}`)?.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendReply() }
+        })
+
+        const cannedPopover = container.querySelector(`#chatWidgetCannedPopover-${messengerId}`)
+        container.querySelector(`#chatWidgetCannedBtn-${messengerId}`)?.addEventListener('click', (e) => {
+            e.stopPropagation()
+            cannedOpen = !cannedOpen
+            cannedPopover?.classList.toggle('open', cannedOpen)
+        })
+        cannedPopover?.querySelectorAll('.chatwidget-canned-item').forEach(el => {
+            el.addEventListener('click', (e) => {
+                if (e.target.closest('.chatwidget-canned-remove')) return
+                const replies = getCannedReplies()
+                const text = replies[Number(el.dataset.index)]
+                const input = container.querySelector(`#chatWidgetReplyInput-${messengerId}`)
+                if (input && text) {
+                    input.value = text
+                    input.focus()
+                }
+                cannedOpen = false
+                cannedPopover.classList.remove('open')
+            })
+        })
+        cannedPopover?.querySelectorAll('.chatwidget-canned-remove').forEach(el => {
+            el.addEventListener('click', (e) => {
+                e.stopPropagation()
+                const replies = getCannedReplies()
+                replies.splice(Number(el.dataset.index), 1)
+                saveCannedReplies(replies)
+                renderMain()
+            })
+        })
+        container.querySelector(`#chatWidgetCannedAddBtn-${messengerId}`)?.addEventListener('click', () => {
+            const input = container.querySelector(`#chatWidgetCannedInput-${messengerId}`)
+            const text = input?.value.trim()
+            if (!text) return
+            const replies = getCannedReplies()
+            replies.push(text)
+            saveCannedReplies(replies)
+            cannedOpen = true
+            renderMain()
         })
 
         const threadBody = container.querySelector(`#chatWidgetThreadBody-${messengerId}`)

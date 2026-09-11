@@ -670,6 +670,14 @@ module.exports = {
         embedLabel: 'Код для вставки на сайт',
         copy: 'Скопировать',
         settings: 'Настройки виджета',
+        search: 'Поиск…',
+        filterOpen: 'Открытые',
+        filterAll: 'Все',
+        cannedReplies: 'Заготовленные ответы',
+        cannedRemove: 'Удалить',
+        cannedEmpty: 'Нет заготовок',
+        cannedAddPlaceholder: 'Новая заготовка…',
+        cannedAdd: 'Добавить',
 
         // FEATURE (2026-09-11, "внешний вид окна нужно давать настраивать
         // клиентам... лого можно ставить свой" — live user request)

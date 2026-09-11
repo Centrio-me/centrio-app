@@ -14198,6 +14198,8 @@ body.onb-active #titlebarMenu {
 
 .chatwidget-btn-secondary:hover { background: var(--bg-hover, var(--bg-tertiary)); border-color: var(--border-light); }
 
+.chatwidget-btn-compact { padding: 6px 12px; font-size: 12px; flex-shrink: 0; }
+
 .chatwidget-layout {
     display: flex;
     flex: 1;
@@ -14328,6 +14330,63 @@ body.onb-active #titlebarMenu {
     font-family: 'SF Mono', Consolas, monospace;
 }
 
+/* Поиск + фильтр "Открытые/Все" (2026-09-12, "функционал расширь" —
+   live user request). */
+.chatwidget-conv-toolbar {
+    padding: 10px 12px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.chatwidget-conv-search {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 7px 12px;
+    color: var(--text-bright);
+    font-size: 12.5px;
+    font-family: inherit;
+    outline: none;
+    width: 100%;
+    transition: border-color 0.15s;
+}
+
+.chatwidget-conv-search:focus { border-color: var(--accent); }
+.chatwidget-conv-search::placeholder { color: var(--text-secondary); }
+
+.chatwidget-conv-filter-tabs {
+    display: flex;
+    gap: 4px;
+    background: var(--bg-tertiary);
+    border-radius: 10px;
+    padding: 3px;
+}
+
+.chatwidget-filter-tab {
+    flex: 1;
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 11.5px;
+    font-weight: 600;
+    padding: 6px 8px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 0.15s, color 0.15s;
+}
+
+.chatwidget-filter-tab.active {
+    background: var(--accent);
+    color: white;
+}
+
+.chatwidget-filter-tab:not(.active):hover {
+    color: var(--text-bright);
+}
+
 .chatwidget-conv-list {
     flex: 1;
     overflow-y: auto;
@@ -14337,16 +14396,37 @@ body.onb-active #titlebarMenu {
 .chatwidget-conv-list::-webkit-scrollbar { width: 0; display: none; }
 
 .chatwidget-conv-item {
-    padding: 10px 10px;
+    padding: 10px 11px;
+    margin-bottom: 2px;
     border-radius: 12px;
     cursor: pointer;
-    transition: background 0.12s;
-    border-left: 3px solid transparent;
+    transition: background 0.14s, transform 0.1s;
+    position: relative;
 }
 
 .chatwidget-conv-item:hover { background: var(--bg-hover, var(--bg-tertiary)); }
-.chatwidget-conv-item.active { background: var(--accent-dim); border-left-color: var(--accent); }
+.chatwidget-conv-item.active {
+    background: linear-gradient(135deg, var(--accent-dim), transparent 140%), var(--bg-tertiary);
+    box-shadow: inset 3px 0 0 var(--accent);
+}
+.chatwidget-conv-item.active .chatwidget-conv-name { color: var(--accent-hover, var(--accent)); }
 .chatwidget-conv-item.closed { opacity: 0.5; }
+
+/* Значок "нужен ответ" — то же условие, что и totalUnread() в
+   chat-widget-pane.js (диалог открыт, последнее сообщение от посетителя). */
+.chatwidget-conv-item.needs-reply .chatwidget-conv-avatar::after {
+    content: '';
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: 2px solid var(--bg-primary);
+    top: -2px;
+    right: -2px;
+}
+.chatwidget-conv-item.needs-reply .chatwidget-conv-avatar { position: relative; }
+.chatwidget-conv-item.needs-reply .chatwidget-conv-preview { color: var(--text-bright); font-weight: 500; }
 
 .chatwidget-conv-name {
     font-size: 13px;
@@ -14428,7 +14508,6 @@ body.onb-active #titlebarMenu {
     max-width: 72%;
     display: flex;
     flex-direction: column;
-    gap: 3px;
     animation: chatwidgetMsgIn 0.15s ease;
 }
 
@@ -14440,13 +14519,29 @@ body.onb-active #titlebarMenu {
 .chatwidget-msg.visitor { align-self: flex-start; }
 .chatwidget-msg.operator { align-self: flex-end; }
 
+/* Время сидит ВНУТРИ пузыря, в конце текста — как в Телеграм/WhatsApp, а
+   не отдельной строкой под сообщением (2026-09-12, живой визуальный разбор
+   показал, что отдельная строка времени выглядела "оторванной" от пузыря).
+   Классический приём чат-приложений: время — float:right ПОСЛЕДНИМ узлом
+   внутри текста, отрицательный margin-bottom подтягивает его к базовой
+   линии последней строки, вместо того чтобы разрывать текст на отдельный
+   блок. Работает для любой длины сообщения — оборачивается вместе с
+   текстом, а не перекрывает его (в отличие от position:absolute). */
 .chatwidget-msg-body {
-    padding: 9px 13px;
-    border-radius: 14px;
+    padding: 8px 13px;
+    border-radius: 15px;
     font-size: 13.5px;
-    line-height: 1.45;
+    line-height: 1.4;
     word-wrap: break-word;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+.chatwidget-msg-time-inline {
+    float: right;
+    margin: 5px 0 -4px 10px;
+    font-size: 10px;
+    opacity: 0.6;
+    white-space: nowrap;
 }
 
 .chatwidget-msg.visitor .chatwidget-msg-body {
@@ -14461,15 +14556,8 @@ body.onb-active #titlebarMenu {
     border-bottom-right-radius: 4px;
 }
 
-.chatwidget-msg-time {
-    font-size: 10px;
-    color: var(--text-muted, var(--text-secondary));
-    padding: 0 4px;
-}
-
-.chatwidget-msg.operator .chatwidget-msg-time { text-align: right; }
-
 .chatwidget-thread-reply {
+    position: relative;
     padding: 12px 16px 16px;
     border-top: 1px solid var(--border);
     display: flex;
@@ -14478,6 +14566,97 @@ body.onb-active #titlebarMenu {
     background: var(--bg-secondary);
     flex-shrink: 0;
 }
+
+.chatwidget-canned-btn { background: var(--bg-tertiary); border: 1px solid var(--border); flex-shrink: 0; }
+.chatwidget-canned-btn:hover { background: var(--bg-hover, var(--bg-tertiary)); color: var(--text-bright); }
+
+/* Заготовленные ответы (2026-09-12, "функционал расширь" — live user
+   request) — всплывающий список над полем ввода, скрыт по умолчанию,
+   тот же паттерн, что и chatwidget-settings-popover. */
+.chatwidget-canned-popover {
+    position: absolute;
+    bottom: 100%;
+    left: 16px;
+    right: 16px;
+    margin-bottom: 8px;
+    max-height: 260px;
+    overflow-y: auto;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-light);
+    border-radius: 14px;
+    box-shadow: 0 16px 40px rgba(0,0,0,0.45);
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+    pointer-events: none;
+    transition: opacity 0.15s ease, transform 0.15s ease;
+    z-index: 15;
+}
+
+.chatwidget-canned-popover.open {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    pointer-events: auto;
+}
+
+.chatwidget-canned-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 9px 12px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    transition: background 0.12s;
+}
+
+.chatwidget-canned-item:hover { background: var(--bg-hover, var(--bg-primary)); }
+.chatwidget-canned-item:last-of-type { border-bottom: none; }
+
+.chatwidget-canned-text {
+    flex: 1;
+    font-size: 12.5px;
+    line-height: 1.4;
+    color: var(--text-primary);
+}
+
+.chatwidget-canned-remove {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 15px;
+    line-height: 1;
+    padding: 0 2px;
+    flex-shrink: 0;
+}
+
+.chatwidget-canned-remove:hover { color: var(--danger, #ef4444); }
+
+.chatwidget-canned-empty {
+    padding: 14px 12px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    text-align: center;
+}
+
+.chatwidget-canned-add {
+    display: flex;
+    gap: 6px;
+    padding: 10px;
+}
+
+.chatwidget-canned-add input {
+    flex: 1;
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 7px 10px;
+    color: var(--text-bright);
+    font-size: 12px;
+    font-family: inherit;
+    outline: none;
+}
+
+.chatwidget-canned-add input:focus { border-color: var(--accent); }
 
 .chatwidget-thread-reply textarea {
     flex: 1;

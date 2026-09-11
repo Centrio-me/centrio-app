@@ -1113,6 +1113,8 @@ function createWebviewTabsApi({
                 messengerId: messenger.id,
                 authorizedInvoke,
                 invokeIpc,
+                ipcRenderer,
+                store,
                 tGet,
                 hasEffectivePro,
                 onUnreadChange: (count) => updateUnreadCount?.(messenger.id, count)
