@@ -73,6 +73,33 @@ function createChatWidgetPane({ container, messengerId, authorizedInvoke, invoke
         }
     }
 
+    // FEATURE (2026-09-11, "внешний вид окна нужно давать настраивать
+    // клиентам... лого можно ставить свой" — live user request).
+    async function saveColor(color) {
+        const result = await authorizedInvoke('api-chat-site-update', site.id, { color })
+        const data = unwrap(result)
+        if (data) site = data
+        return !!data
+    }
+
+    async function uploadLogo(fileObj) {
+        const buffer = await fileObj.arrayBuffer()
+        const result = await authorizedInvoke('api-chat-site-upload-logo', site.id, {
+            buffer,
+            name: fileObj.name,
+            type: fileObj.type
+        })
+        const data = unwrap(result)
+        if (data) site = { ...site, widgetLogoUrl: data.widgetLogoUrl }
+        return !!data
+    }
+
+    async function removeLogo() {
+        const result = await authorizedInvoke('api-chat-site-delete-logo', site.id)
+        if (result?.success) site = { ...site, widgetLogoUrl: null }
+        return !!result?.success
+    }
+
     // ── Views ──────────────────────────────────────────────────────────
     function renderPaywall() {
         container.innerHTML = `
@@ -180,6 +207,9 @@ function createChatWidgetPane({ container, messengerId, authorizedInvoke, invoke
                 </div>`
         }
 
+        const widgetColor = site.widgetColor || '#5AA9FF'
+        const widgetLogoUrl = site.widgetLogoUrl
+
         container.innerHTML = `
             <div class="chatwidget-layout chatwidget-layout-pane">
                 <div class="chatwidget-sidebar">
@@ -188,6 +218,25 @@ function createChatWidgetPane({ container, messengerId, authorizedInvoke, invoke
                         <code class="chatwidget-embed-code">${esc(embedSnippet())}</code>
                         <button class="chatwidget-btn-secondary" id="chatWidgetCopyBtn-${messengerId}">${esc(tGet('chatWidget.copy') || 'Скопировать')}</button>
                     </div>
+                    <div class="chatwidget-appearance-box">
+                        <div class="chatwidget-embed-label">${esc(tGet('chatWidget.appearance') || 'Внешний вид виджета')}</div>
+                        <div class="chatwidget-appearance-row">
+                            <span class="chatwidget-appearance-rowlabel">${esc(tGet('chatWidget.color') || 'Цвет')}</span>
+                            <input type="color" id="chatWidgetColorInput-${messengerId}" value="${esc(widgetColor)}">
+                        </div>
+                        <div class="chatwidget-appearance-row">
+                            <span class="chatwidget-appearance-rowlabel">${esc(tGet('chatWidget.logo') || 'Логотип')}</span>
+                            <div class="chatwidget-appearance-logo-controls">
+                                ${widgetLogoUrl ? `<img src="${esc(widgetLogoUrl)}" class="chatwidget-appearance-logo-preview" alt="">` : ''}
+                                <label class="chatwidget-btn-secondary chatwidget-logo-upload-label">
+                                    ${esc(tGet('chatWidget.uploadLogo') || 'Загрузить')}
+                                    <input type="file" accept="image/*" id="chatWidgetLogoInput-${messengerId}" style="display:none;">
+                                </label>
+                                ${widgetLogoUrl ? `<button class="chatwidget-btn-secondary" id="chatWidgetRemoveLogoBtn-${messengerId}">${esc(tGet('chatWidget.removeLogo') || 'Сбросить')}</button>` : ''}
+                            </div>
+                        </div>
+                        <div id="chatWidgetAppearanceMsg-${messengerId}" class="chatwidget-msg-status" style="display:none;"></div>
+                    </div>
                     <div class="chatwidget-conv-list">${listHtml}</div>
                 </div>
                 <div class="chatwidget-thread">${threadHtml}</div>
@@ -195,6 +244,40 @@ function createChatWidgetPane({ container, messengerId, authorizedInvoke, invoke
 
         container.querySelector(`#chatWidgetCopyBtn-${messengerId}`)?.addEventListener('click', () => {
             invokeIpc('copy-text-to-clipboard', embedSnippet()).catch(() => {})
+        })
+
+        const appearanceMsgEl = container.querySelector(`#chatWidgetAppearanceMsg-${messengerId}`)
+        function showAppearanceMsg(text, isErr) {
+            if (!appearanceMsgEl) return
+            appearanceMsgEl.style.display = 'block'
+            appearanceMsgEl.className = `chatwidget-msg-status${isErr ? ' err' : ''}`
+            appearanceMsgEl.textContent = text
+            setTimeout(() => { appearanceMsgEl.style.display = 'none' }, 2500)
+        }
+
+        const colorInput = container.querySelector(`#chatWidgetColorInput-${messengerId}`)
+        colorInput?.addEventListener('change', async () => {
+            const ok = await saveColor(colorInput.value)
+            showAppearanceMsg(
+                ok ? (tGet('chatWidget.saved') || 'Сохранено') : (tGet('chatWidget.saveError') || 'Не удалось сохранить'),
+                !ok
+            )
+        })
+
+        container.querySelector(`#chatWidgetLogoInput-${messengerId}`)?.addEventListener('change', async (e) => {
+            const file = e.target.files?.[0]
+            e.target.value = ''
+            if (!file) return
+            if (!file.type.startsWith('image/')) { showAppearanceMsg(tGet('chatWidget.logoTypeError') || 'Можно загрузить только изображение', true); return }
+            if (file.size > 5 * 1024 * 1024) { showAppearanceMsg(tGet('chatWidget.logoSizeError') || 'Файл слишком большой (максимум 5 МБ)', true); return }
+            const ok = await uploadLogo(file)
+            if (ok) renderMain()
+            else showAppearanceMsg(tGet('chatWidget.saveError') || 'Не удалось сохранить', true)
+        })
+
+        container.querySelector(`#chatWidgetRemoveLogoBtn-${messengerId}`)?.addEventListener('click', async () => {
+            const ok = await removeLogo()
+            if (ok) renderMain()
         })
 
         container.querySelectorAll('.chatwidget-conv-item').forEach(el => {

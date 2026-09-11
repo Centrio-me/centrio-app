@@ -231,6 +231,19 @@ function registerApiIpc() {
         return wrapApi(() => api.chatSiteSetStatus(token, siteId, conversationId, status))
     })
 
+    // FEATURE (2026-09-11, custom widget logo). `file` is
+    // { buffer: ArrayBuffer, name: string, type: string } — Electron's IPC
+    // structured-clone handles ArrayBuffer natively, so the renderer just
+    // reads the picked File via FileReader.readAsArrayBuffer() and sends it
+    // straight through, no base64 round-trip needed.
+    ipcMain.handle('api-chat-site-upload-logo', async (event, token, siteId, file) => {
+        return wrapApi(() => api.chatSiteUploadLogo(token, siteId, Buffer.from(file.buffer), file.name, file.type))
+    })
+
+    ipcMain.handle('api-chat-site-delete-logo', async (event, token, siteId) => {
+        return wrapApi(() => api.chatSiteDeleteLogo(token, siteId))
+    })
+
     ipcMain.handle('api-read-all-notifications', async (event, token) => {
         return wrapApi(() => api.readAllNotifications(token))
     })

@@ -2,8 +2,7 @@
  * Centrio Chat Widget (2026-09-11).
  * NOTE on deploy path: this file is deployed to
  * /var/www/centrio-web/public/widget.js (Next.js serves everything under
- * public/ at the site root — see scripts/deploy-widget.js) and embedded by
- * clients as:
+ * public/ at the site root) and embedded by clients as:
  *   <script src="https://centrio.me/widget.js" data-token="THEIR_TOKEN"></script>
  *
  * Talks only to /api/widget/:token/* on api.centrio.me (see
@@ -11,6 +10,15 @@
  * surface this widget touches. No dependencies, no build step: this file is
  * shipped byte-for-byte to arbitrary third-party sites, so it stays plain,
  * small, and self-contained on purpose.
+ *
+ * FEATURE (2026-09-11, "внешний вид окна нужно давать настраивать
+ * клиентам... лого можно ставить свой" — live user request): color and
+ * logo are no longer hardcoded — GET /:token/config (public, see
+ * widget-routes.js) returns the site owner's chosen widgetColor/
+ * widgetLogoUrl (set from the desktop app's chat pane), applied here via a
+ * single CSS custom property (--centrio-c) plus swapping <img src>. Falls
+ * back to Centrio's own blue/logo if the owner hasn't customized anything,
+ * or if the config fetch fails — the widget must never end up unbranded.
  */
 (function () {
     'use strict'
@@ -22,11 +30,15 @@
     var API_BASE = 'https://api.centrio.me/api/widget/' + TOKEN
     var STORAGE_KEY = 'centrio_widget_' + TOKEN
     var POLL_INTERVAL_MS = 4000
+    var DEFAULT_LOGO_URL = 'https://centrio.me/logo.png'
+    var DEFAULT_COLOR = '#5AA9FF'
 
     var state = loadState()
     var pollTimer = null
     var panelOpen = false
     var unread = 0
+    var logoUrl = DEFAULT_LOGO_URL
+    var widgetName = 'Написать нам'
 
     function loadState() {
         try {
@@ -42,22 +54,13 @@
     }
 
     // ── UI ──────────────────────────────────────────────────────────────
-    // BUGFIX/FEATURE (2026-09-11, live user report — "иконка чата в углу
-    // пустая... сам чат ужасен... должен быть похож на нашу программу"):
-    // the bubble used a hand-drawn stroke-only SVG at 26px that read as
-    // "empty" at a glance on some renderers; switched to the real Centrio
-    // logo image (same asset the desktop app itself uses), which also
-    // directly addresses "should look like our program" — it's the same
-    // mark. Redesigned the empty/pre-conversation state to show that logo
-    // plus a greeting instead of a bare black rectangle, and generally
-    // tightened spacing/contrast to match the desktop app's own dark theme
-    // (bg #0b0a08, warm text #F5F1E8, accent #5AA9FF) rather than a generic
-    // dark box.
-    var LOGO_URL = 'https://centrio.me/logo.png'
-
+    // Color drives everything through one CSS custom property so applying
+    // a fetched config later is a single style.setProperty() call instead
+    // of rebuilding the stylesheet.
     var css = '' +
+        ':root{--centrio-c:' + DEFAULT_COLOR + '}' +
         '#centrio-widget-bubble{position:fixed;bottom:20px;right:20px;width:58px;height:58px;border-radius:50%;' +
-        'background:#5AA9FF;box-shadow:0 6px 24px rgba(0,0,0,.35);cursor:pointer;z-index:2147483000;' +
+        'background:var(--centrio-c);box-shadow:0 6px 24px rgba(0,0,0,.35);cursor:pointer;z-index:2147483000;' +
         'display:flex;align-items:center;justify-content:center;transition:transform .15s;border:none;padding:0}' +
         '#centrio-widget-bubble:hover{transform:scale(1.07)}' +
         '#centrio-widget-bubble img{width:32px;height:32px;object-fit:contain;border-radius:50%;pointer-events:none}' +
@@ -69,10 +72,10 @@
         'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:#F5F1E8}' +
         '#centrio-widget-panel.open{display:flex;animation:centrio-widget-in .18s ease}' +
         '@keyframes centrio-widget-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}' +
-        '#centrio-widget-header{background:#5AA9FF;color:#04161a;padding:14px 16px;display:flex;align-items:center;gap:10px;flex-shrink:0}' +
+        '#centrio-widget-header{background:var(--centrio-c);color:#04161a;padding:14px 16px;display:flex;align-items:center;gap:10px;flex-shrink:0}' +
         '#centrio-widget-header img{width:28px;height:28px;border-radius:50%;object-fit:contain;background:rgba(4,22,26,.08)}' +
         '#centrio-widget-header-title{flex:1;min-width:0}' +
-        '#centrio-widget-header-name{font-weight:800;font-size:14px;line-height:1.2}' +
+        '#centrio-widget-header-name{font-weight:800;font-size:14px;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}' +
         '#centrio-widget-header-status{font-size:11px;opacity:.75;line-height:1.2}' +
         '#centrio-widget-close{background:none;border:none;color:#04161a;cursor:pointer;font-size:20px;line-height:1;padding:4px;opacity:.7}' +
         '#centrio-widget-close:hover{opacity:1}' +
@@ -82,15 +85,15 @@
         '#centrio-widget-greeting-title{font-size:15px;font-weight:800;color:#F5F1E8}' +
         '#centrio-widget-greeting-sub{font-size:12.5px;color:rgba(245,241,232,.55);max-width:240px;line-height:1.5}' +
         '.centrio-widget-msg{max-width:78%;padding:9px 12px;border-radius:13px;font-size:13.5px;line-height:1.45;word-wrap:break-word}' +
-        '.centrio-widget-msg.visitor{align-self:flex-end;background:#5AA9FF;color:#04161a;border-bottom-right-radius:4px;font-weight:500}' +
+        '.centrio-widget-msg.visitor{align-self:flex-end;background:var(--centrio-c);color:#04161a;border-bottom-right-radius:4px;font-weight:500}' +
         '.centrio-widget-msg.operator{align-self:flex-start;background:rgba(255,255,255,.07);border-bottom-left-radius:4px}' +
         '#centrio-widget-form{padding:12px 14px 14px;border-top:1px solid rgba(255,255,255,.08);display:flex;flex-direction:column;gap:8px;flex-shrink:0}' +
         '#centrio-widget-form input,#centrio-widget-form textarea{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);' +
         'border-radius:10px;color:#F5F1E8;padding:10px 12px;font-size:13.5px;font-family:inherit;outline:none;transition:border-color .15s,background .15s}' +
-        '#centrio-widget-form input:focus,#centrio-widget-form textarea:focus{border-color:#5AA9FF;background:rgba(90,169,255,.08)}' +
+        '#centrio-widget-form input:focus,#centrio-widget-form textarea:focus{border-color:var(--centrio-c);background:rgba(90,169,255,.08)}' +
         '#centrio-widget-form input::placeholder,#centrio-widget-form textarea::placeholder{color:rgba(245,241,232,.35)}' +
         '#centrio-widget-form textarea{resize:none;min-height:44px;font-family:inherit}' +
-        '#centrio-widget-send{background:#5AA9FF;color:#04161a;border:none;border-radius:10px;padding:10px;font-weight:700;' +
+        '#centrio-widget-send{background:var(--centrio-c);color:#04161a;border:none;border-radius:10px;padding:10px;font-weight:700;' +
         'font-size:13.5px;cursor:pointer;transition:opacity .15s}' +
         '#centrio-widget-send:hover{opacity:.9}' +
         '#centrio-widget-send:disabled{opacity:.5;cursor:not-allowed}'
@@ -102,7 +105,7 @@
     var bubble = document.createElement('button')
     bubble.id = 'centrio-widget-bubble'
     bubble.setAttribute('aria-label', 'Открыть чат')
-    bubble.innerHTML = '<img src="' + LOGO_URL + '" alt="">' +
+    bubble.innerHTML = '<img src="' + DEFAULT_LOGO_URL + '" alt="">' +
         '<span id="centrio-widget-badge"></span>'
     document.body.appendChild(bubble)
 
@@ -110,7 +113,7 @@
     panel.id = 'centrio-widget-panel'
     panel.innerHTML =
         '<div id="centrio-widget-header">' +
-        '<img src="' + LOGO_URL + '" alt="">' +
+        '<img src="' + DEFAULT_LOGO_URL + '" alt="">' +
         '<div id="centrio-widget-header-title"><div id="centrio-widget-header-name">Написать нам</div>' +
         '<div id="centrio-widget-header-status">Обычно отвечаем в течение дня</div></div>' +
         '<button id="centrio-widget-close" aria-label="Закрыть">&times;</button>' +
@@ -122,6 +125,33 @@
     var bodyEl = panel.querySelector('#centrio-widget-body')
     var formEl = panel.querySelector('#centrio-widget-form')
     var badgeEl = bubble.querySelector('#centrio-widget-badge')
+    var headerImgEl = panel.querySelector('#centrio-widget-header img')
+    var headerNameEl = panel.querySelector('#centrio-widget-header-name')
+    var bubbleImgEl = bubble.querySelector('img')
+
+    // Fetch the owner's branding (color/logo/name) and apply it. Never
+    // blocks first paint — the widget already rendered above with Centrio
+    // defaults, this just swaps them in once the config arrives.
+    fetch(API_BASE + '/config')
+        .then(function (r) { return r.json() })
+        .then(function (res) {
+            if (!res.success || !res.data) return
+            if (res.data.color) {
+                document.documentElement.style.setProperty('--centrio-c', res.data.color)
+            }
+            if (res.data.logoUrl) {
+                logoUrl = res.data.logoUrl
+                headerImgEl.src = logoUrl
+                bubbleImgEl.src = logoUrl
+                var greetingImg = bodyEl.querySelector('#centrio-widget-greeting img')
+                if (greetingImg) greetingImg.src = logoUrl
+            }
+            if (res.data.name) {
+                widgetName = res.data.name
+                headerNameEl.textContent = widgetName
+            }
+        })
+        .catch(function () {})
 
     function renderBadge() {
         if (unread > 0 && !panelOpen) {
@@ -135,7 +165,7 @@
     function renderMessages() {
         if (state.messages.length === 0) {
             bodyEl.innerHTML =
-                '<div id="centrio-widget-greeting"><img src="' + LOGO_URL + '" alt="">' +
+                '<div id="centrio-widget-greeting"><img src="' + logoUrl + '" alt="">' +
                 '<div id="centrio-widget-greeting-title">Здравствуйте! 👋</div>' +
                 '<div id="centrio-widget-greeting-sub">Напишите нам — ответим прямо здесь, как только увидим ваше сообщение.</div></div>'
             return

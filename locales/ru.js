@@ -668,7 +668,19 @@ module.exports = {
         replyPlaceholder: 'Ответить…',
         send: 'Отправить',
         embedLabel: 'Код для вставки на сайт',
-        copy: 'Скопировать'
+        copy: 'Скопировать',
+
+        // FEATURE (2026-09-11, "внешний вид окна нужно давать настраивать
+        // клиентам... лого можно ставить свой" — live user request)
+        appearance: 'Внешний вид виджета',
+        color: 'Цвет',
+        logo: 'Логотип',
+        uploadLogo: 'Загрузить',
+        removeLogo: 'Сбросить',
+        saved: 'Сохранено',
+        saveError: 'Не удалось сохранить',
+        logoTypeError: 'Можно загрузить только изображение',
+        logoSizeError: 'Файл слишком большой (максимум 5 МБ)'
     },
 
     assistant: {

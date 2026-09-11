@@ -58,11 +58,25 @@ app.use('/api/widget', cors({ origin: true, credentials: false }))
 // само опрашивает несколько эндпоинтов параллельно (дашборд) и в фоне
 // (AdminMonitorService, каждые ~30с) — общий лимит 100 запросов/15 минут на
 // весь /api/ бил именно по этому легитимному трафику, а не по атакам.
+//
+// BUGFIX (2026-09-11, "сообщение отправилось, но в Центрио не пришло" —
+// live user report, root-caused via nginx access log: dozens of 429s on
+// GET /api/chat-sites/:id/conversations before the data finally showed up
+// over a minute later): same class of problem as /api/admin above.
+// renderer/chat-widget-pane.js polls that endpoint every 5s per open chat
+// tab — 12 req/min, ~180/15min just from that ONE feature, before counting
+// anything else the desktop app does (org-team.js's own polling, sync,
+// notifications). /api/chat-sites is authenticated (JWT, see
+// chat-sites-routes.js) exactly like /api/admin — not anonymous traffic
+// this limiter needs to police. The truly public, anonymous surface
+// (routes/widget.js) already has its own tighter per-route limiters
+// (startLimiter/sendLimiter/pollLimiter in that file) sized for that
+// threat model instead.
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
   message: { error: 'Слишком много запросов, попробуйте позже' },
-  skip: (req) => req.path.startsWith('/admin')
+  skip: (req) => req.path.startsWith('/admin') || req.path.startsWith('/chat-sites')
 })
 app.use('/api/', limiter)
 

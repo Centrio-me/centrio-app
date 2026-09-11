@@ -290,5 +290,26 @@ module.exports = {
 
     chatSiteSetStatus(token, siteId, conversationId, status) {
         return request('PATCH', `/api/chat-sites/${siteId}/conversations/${conversationId}`, { status }, token)
+    },
+
+    // FEATURE (2026-09-11, custom widget logo). File upload doesn't fit the
+    // JSON-only request() helper above (multipart body) — uses the global
+    // fetch/FormData/Blob Electron's bundled Node already provides, same as
+    // every other HTTP call in this file just via a different transport.
+    async chatSiteUploadLogo(token, siteId, fileBuffer, fileName, mimeType) {
+        const form = new FormData()
+        form.append('logo', new Blob([fileBuffer], { type: mimeType || 'application/octet-stream' }), fileName || 'logo.png')
+        const res = await fetch(`${API_URL}/api/chat-sites/${siteId}/logo`, {
+            method: 'PATCH',
+            headers: { Authorization: `Bearer ${token}` },
+            body: form
+        })
+        const data = await res.json().catch(() => null)
+        if (!res.ok) throw createHttpError(res.status, data)
+        return { status: res.status, data }
+    },
+
+    chatSiteDeleteLogo(token, siteId) {
+        return request('DELETE', `/api/chat-sites/${siteId}/logo`, null, token)
     }
 }

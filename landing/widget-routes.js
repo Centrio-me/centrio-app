@@ -59,6 +59,26 @@ async function loadSiteByToken(widgetToken) {
 }
 
 // POST /api/widget/:widgetToken/start — first message of a visit. Reuses an
+// GET /api/widget/:widgetToken/config — FEATURE (2026-09-11, "внешний вид
+// окна нужно давать настраивать клиентам... лого можно ставить свой" —
+// live user request). Public, no auth (the widget script fetches this
+// before any conversation/login exists) — only ever returns the small,
+// intentionally-public branding subset (name/color/logo), never anything
+// about the site owner's account or conversations.
+router.get('/:widgetToken/config', pollLimiter, async (req, res) => {
+    try {
+        const site = await loadSiteByToken(req.params.widgetToken)
+        if (!site) return res.status(404).json({ success: false, error: 'Widget not found' })
+        res.json({
+            success: true,
+            data: { name: site.name, color: site.widgetColor, logoUrl: site.widgetLogoUrl }
+        })
+    } catch (err) {
+        console.error('[widget] config error:', err.message)
+        res.status(500).json({ success: false, error: 'Ошибка' })
+    }
+})
+
 // existing OPEN conversation for the same visitorId (the widget persists
 // this in localStorage) instead of creating a new one on every page load —
 // a visitor browsing multiple pages on the same site is one conversation.

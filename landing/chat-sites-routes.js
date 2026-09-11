@@ -1,4 +1,6 @@
 const router = require('express').Router()
+const multer = require('multer')
+const path = require('path')
 const authMiddleware = require('../middleware/auth')
 const prisma = require('../utils/prisma')
 const { rateLimit } = require('../middleware/rateLimit')
@@ -94,6 +96,8 @@ router.post('/', createLimiter, authMiddleware, async (req, res) => {
 })
 
 // PATCH /api/chat-sites/:siteId — update domain/name.
+const HEX_COLOR_RE = /^#[0-9a-f]{6}$/i
+
 router.patch('/:siteId', authMiddleware, requireOwnSite, async (req, res) => {
     try {
         const data = {}
@@ -105,11 +109,69 @@ router.patch('/:siteId', authMiddleware, requireOwnSite, async (req, res) => {
         if (req.body?.name !== undefined) {
             data.name = String(req.body.name).trim().slice(0, MAX_NAME_LEN) || req.chatSite.name
         }
+        // FEATURE (2026-09-11, "внешний вид окна нужно давать настраивать
+        // клиентам" — live user request): hex accent color driving the
+        // public widget's bubble/header/visitor-bubble color — read by the
+        // unauthenticated GET /api/widget/:token/config below.
+        if (req.body?.color !== undefined) {
+            const color = String(req.body.color || '').trim()
+            if (!HEX_COLOR_RE.test(color)) return res.status(400).json({ success: false, error: 'Цвет должен быть в формате #RRGGBB' })
+            data.widgetColor = color
+        }
         const site = await prisma.chatSite.update({ where: { id: req.chatSite.id }, data })
         res.json({ success: true, data: site })
     } catch (err) {
         console.error('[chat-sites] update error:', err.message)
         res.status(500).json({ success: false, error: 'Ошибка обновления сайта' })
+    }
+})
+
+// PATCH /api/chat-sites/:siteId/logo — upload a custom widget logo, mirrors
+// org-routes.js's PATCH /:orgId/logo pattern exactly (same multer config
+// shape, same disk-storage-by-fixed-id convention, own subdirectory).
+const logoStorage = multer.diskStorage({
+    destination: (req, file, cb) => cb(null, '/var/www/centrio-api/uploads/chat-widget-logos'),
+    filename: (req, file, cb) => {
+        const ext = path.extname(file.originalname) || '.png'
+        cb(null, `${req.params.siteId}${ext}`)
+    }
+})
+const uploadLogo = multer({
+    storage: logoStorage,
+    limits: { fileSize: 5 * 1024 * 1024 },
+    fileFilter: (req, file, cb) => {
+        if (file.mimetype.startsWith('image/')) cb(null, true)
+        else cb(new Error('Только изображения'))
+    }
+})
+
+router.patch('/:siteId/logo', authMiddleware, requireOwnSite, (req, res, next) => {
+    uploadLogo.single('logo')(req, res, (err) => {
+        if (!err) return next()
+        if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
+            return res.status(400).json({ success: false, error: 'Файл слишком большой (максимум 5 МБ)' })
+        }
+        return res.status(400).json({ success: false, error: err.message || 'Не удалось загрузить файл' })
+    })
+}, async (req, res) => {
+    try {
+        if (!req.file) return res.status(400).json({ success: false, error: 'Файл не загружен' })
+        const widgetLogoUrl = `${process.env.API_URL}/uploads/chat-widget-logos/${req.file.filename}`
+        await prisma.chatSite.update({ where: { id: req.chatSite.id }, data: { widgetLogoUrl } })
+        res.json({ success: true, data: { widgetLogoUrl } })
+    } catch (err) {
+        console.error('[chat-sites] logo upload error:', err.message)
+        res.status(500).json({ success: false, error: 'Ошибка загрузки логотипа' })
+    }
+})
+
+router.delete('/:siteId/logo', authMiddleware, requireOwnSite, async (req, res) => {
+    try {
+        await prisma.chatSite.update({ where: { id: req.chatSite.id }, data: { widgetLogoUrl: null } })
+        res.json({ success: true })
+    } catch (err) {
+        console.error('[chat-sites] logo remove error:', err.message)
+        res.status(500).json({ success: false, error: 'Ошибка удаления логотипа' })
     }
 })
 
