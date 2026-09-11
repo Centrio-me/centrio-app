@@ -96,17 +96,31 @@ function createChatWidgetPane({ container, messengerId, authorizedInvoke, invoke
                 <button class="chatwidget-btn-primary" id="chatWidgetSetupBtn-${messengerId}" style="margin-top:14px;">${esc(tGet('chatWidget.connect') || 'Подключить')}</button>
             </div>`
 
-        container.querySelector(`#chatWidgetSetupBtn-${messengerId}`)?.addEventListener('click', async () => {
+        container.querySelector(`#chatWidgetSetupBtn-${messengerId}`)?.addEventListener('click', async (e) => {
+            // BUGFIX (2026-09-11, "Слишком много запросов, попробуйте
+            // позже" on the user's FIRST real attempt — live report): there
+            // was no disabled-while-in-flight guard here, so impatiently
+            // re-clicking "Подключить" (especially likely during the
+            // earlier double-envelope bug, when a genuinely successful
+            // create still LOOKED like nothing happened) fired one POST
+            // /api/chat-sites per click — each one counting separately
+            // against the 10/hour rate limit regardless of whether the
+            // account already had a site (a repeat click after the first
+            // success just gets a 409, but still consumes a request slot).
+            const btn = e.currentTarget
+            if (btn.disabled) return
             const domain = container.querySelector(`#chatWidgetDomainInput-${messengerId}`)?.value.trim()
             const name = container.querySelector(`#chatWidgetNameInput-${messengerId}`)?.value.trim()
             const msgEl = container.querySelector(`#chatWidgetSetupMsg-${messengerId}`)
             if (!domain) return
+            btn.disabled = true
             const result = await authorizedInvoke('api-chat-site-create', { domain, name })
             const data = unwrap(result)
             if (data) {
                 site = data
                 await render()
             } else if (msgEl) {
+                btn.disabled = false
                 msgEl.style.display = 'block'
                 msgEl.className = 'chatwidget-msg-status err'
                 msgEl.textContent = result.error || (tGet('chatWidget.setupError') || 'Не удалось подключить сайт')
