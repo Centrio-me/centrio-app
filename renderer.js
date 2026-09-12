@@ -12,7 +12,7 @@
 const state = require('./renderer/state')
 const { tGet, applyI18n, initI18n, setCurrentLanguage, getCurrentLanguage } = require('./renderer/i18n')
 const { getCurrentLocale, getUserInitial, hashPassword } = require('./renderer/helpers')
-const { popularMessengers, syntaxAiPromo, folderIcons, PAGE_SIZE } = require('./renderer/constants')
+const { popularMessengers, syntaxAiPromo, folderIcons, PAGE_SIZE, isChatWidgetMessenger } = require('./renderer/constants')
 const { createCloudStore, createCloudApi } = require('./renderer/cloud')
 const { createSoundsApi } = require('./renderer/sounds')
 const { bindDownloads } = require('./renderer/downloads')
@@ -1572,7 +1572,7 @@ function applyTabZoom(level) {
     function removeMessenger(id) {
         const messenger = state.activeMessengers.find(m => m.id === id)
         const folderId = messenger?.folderId
-        if (messenger?.native === 'chat-widget') destroyChatWidgetPane(id)
+        if (isChatWidgetMessenger(messenger)) destroyChatWidgetPane(id)
 
         state.activeMessengers = state.activeMessengers.filter(m => m.id !== id)
         delete state.unreadCounts[id]
@@ -2131,7 +2131,7 @@ function applyTabZoom(level) {
         // this one is Pro-only regardless of how many free slots remain),
         // and only one instance makes sense (one site per account, same as
         // the backend's ChatSite.userId @unique).
-        if (messenger.native === 'chat-widget') {
+        if (isChatWidgetMessenger(messenger)) {
             if (!hasEffectivePro()) {
                 showUpgradeModal(
                     tGet('chatWidget.paywallTitle') || 'Онлайн-чат для сайта — Pro',
@@ -2139,8 +2139,8 @@ function applyTabZoom(level) {
                 )
                 return
             }
-            if (state.activeMessengers.some(m => m.native === 'chat-widget')) {
-                switchTab(state.activeMessengers.find(m => m.native === 'chat-widget').id)
+            if (state.activeMessengers.some(isChatWidgetMessenger)) {
+                switchTab(state.activeMessengers.find(isChatWidgetMessenger).id)
                 return
             }
         }
@@ -2159,7 +2159,7 @@ function applyTabZoom(level) {
             zoomLevel: state.tabZoomLevel || store.get('tabZoomLevel', 1) || 1
         }
 
-        if (newMessenger.native === 'chat-widget') {
+        if (isChatWidgetMessenger(newMessenger)) {
             state.activeMessengers.unshift(newMessenger)
             addToSidebarPinned(newMessenger)
         } else {

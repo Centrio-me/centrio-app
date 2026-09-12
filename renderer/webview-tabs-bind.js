@@ -1,3 +1,5 @@
+const { isChatWidgetMessenger } = require('./constants')
+
 // ── Диплинки других мессенджеров (MAX / Telegram) ──────────────────────────
 // Классификация (какой href — деплинк какого сервиса) происходит ТОЛЬКО в
 // webview-preload.js, и только на настоящем клике пользователя (e.isTrusted)
@@ -1100,7 +1102,7 @@ function createWebviewTabsApi({
         // webview-only methods on it (setZoomFactor, executeJavaScript)
         // already type/try-guard before calling — confirmed by reading
         // each one rather than assumed.
-        if (messenger.native === 'chat-widget') {
+        if (isChatWidgetMessenger(messenger)) {
             const pane = document.createElement('div')
             pane.id = `webview-${messenger.id}`
             pane.className = 'chat-widget-pane'

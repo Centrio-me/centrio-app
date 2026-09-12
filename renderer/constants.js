@@ -201,9 +201,32 @@ const folderIcons = {
 
 const PAGE_SIZE = 8
 
+// BUGFIX (2026-09-13, "каждый запуск нужно заново добавлять чат для
+// сайта... при запуске чёрный экран" — live user report): the chat-widget
+// messenger was identified purely by its `native: 'chat-widget'` property
+// — a flag that only ever lived on the in-memory object. saveData() (see
+// renderer.js) persists messengers through an EXPLICIT field list
+// (name/url/icon/color/id/folderId/notifSound/zoomLevel) that never
+// included `native`, so it was silently dropped on every save; the next
+// app launch restored this messenger with a real-looking url
+// ('centrio://chat-widget') but no `native` flag, so addWebview() took the
+// normal <webview> path instead of the custom-pane one — a webview trying
+// to load an unregistered custom scheme, which just renders black.
+// `url` itself, unlike `native`, IS one of the explicitly-persisted
+// fields (and the one field the server's Messenger model also stores via
+// cloud sync) — using it as the actual identity check instead of the
+// flag makes this survive both local restarts and cross-device sync
+// without needing a schema change anywhere.
+const CHAT_WIDGET_URL = 'centrio://chat-widget'
+function isChatWidgetMessenger(m) {
+    return !!m && (m.native === 'chat-widget' || m.url === CHAT_WIDGET_URL)
+}
+
 module.exports = {
     popularMessengers,
     syntaxAiPromo,
     folderIcons,
-    PAGE_SIZE
+    PAGE_SIZE,
+    CHAT_WIDGET_URL,
+    isChatWidgetMessenger
 }
