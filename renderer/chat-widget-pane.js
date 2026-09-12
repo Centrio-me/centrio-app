@@ -336,7 +336,10 @@ function createChatWidgetPane({ container, messengerId, authorizedInvoke, invoke
             <div class="chatwidget-layout chatwidget-layout-pane">
                 <div class="chatwidget-sidebar">
                     <div class="chatwidget-sidebar-header">
-                        <span class="chatwidget-sidebar-title">${esc(site.name || tGet('chatWidget.title') || 'Чат для сайта')}</span>
+                        <div class="chatwidget-sidebar-title-wrap">
+                            <span class="chatwidget-sidebar-title">${esc(site.name || tGet('chatWidget.title') || 'Чат для сайта')}</span>
+                            <span class="chatwidget-alpha-badge" title="${esc(tGet('chatWidget.alphaHint') || 'Функция в разработке — возможны ошибки и изменения')}">${esc(tGet('chatWidget.alphaBadge') || 'ALPHA')}</span>
+                        </div>
                         <button class="chatwidget-settings-btn" id="chatWidgetSettingsBtn-${messengerId}" title="${esc(tGet('chatWidget.settings') || 'Настройки виджета')}">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                                 <circle cx="12" cy="12" r="3"/>

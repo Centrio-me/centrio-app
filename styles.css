@@ -14225,6 +14225,13 @@ body.onb-active #titlebarMenu {
     flex-shrink: 0;
 }
 
+.chatwidget-sidebar-title-wrap {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+}
+
 .chatwidget-sidebar-title {
     font-size: 14px;
     font-weight: 800;
@@ -14232,6 +14239,22 @@ body.onb-active #titlebarMenu {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    min-width: 0;
+}
+
+.chatwidget-alpha-badge {
+    flex-shrink: 0;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    color: #ffb020;
+    background: #ffb02022;
+    border: 1px solid #ffb02055;
+    border-radius: 4px;
+    padding: 2px 5px;
+    line-height: 1;
+    text-transform: uppercase;
+    cursor: default;
 }
 
 .chatwidget-settings-btn {

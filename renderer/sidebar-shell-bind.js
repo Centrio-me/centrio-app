@@ -53,6 +53,22 @@ function bindSidebarShellUi({
         e.stopPropagation()
         showSidebarContextMenuAt(e.clientX, e.clientY)
     })
+
+    // BUGFIX ("не удается создать больше 1 папки"): the only two ways to
+    // open sidebarContextMenu (the two handlers above) require right-clicking
+    // genuinely EMPTY pixel space in the messenger list / activity bar — space
+    // that shrinks with every messenger/folder/divider added. Once the sidebar
+    // fills up (a handful of messengers is enough), there's no empty pixel
+    // left to right-click, so "New Folder" (and "Add Divider") become
+    // permanently unreachable even though nothing about folder creation
+    // itself is broken. Give it a second, always-reachable entry point on the
+    // persistent "+" add-messenger button, which never scrolls out of view
+    // regardless of sidebar contents.
+    document.getElementById('addMessengerBtn')?.addEventListener('contextmenu', (e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        showSidebarContextMenuAt(e.clientX, e.clientY)
+    })
 }
 
 module.exports = {
