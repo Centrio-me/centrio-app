@@ -140,7 +140,7 @@ export default function FeaturesPage() {
       <div style={{ minHeight: '100vh', background: '#080810', color: '#fff', fontFamily: "'Inter', sans-serif" }}>
         <section style={{ maxWidth: 900, margin: '0 auto', padding: '60px 24px 48px', textAlign: 'center' }}>
           <div style={{ display: 'inline-block', background: 'rgba(99,102,241,0.15)', color: '#a5b4fc', borderRadius: 20, padding: '4px 14px', fontSize: 13, fontWeight: 500, marginBottom: 20 }}>
-            Возможности · v2.6.0
+            Возможности · v2.7.0
           </div>
           <h1 style={{ fontSize: 'clamp(28px,5vw,52px)', fontWeight: 800, letterSpacing: '-1px', lineHeight: 1.15, margin: '0 0 20px' }}>
             Всё, что умеет{' '}
@@ -189,11 +189,11 @@ export default function FeaturesPage() {
           <div style={{ textAlign: 'center', marginTop: 60 }}>
             <h2 style={{ fontSize: 28, fontWeight: 800, marginBottom: 12 }}>Готовы попробовать?</h2>
             <p style={{ color: 'rgba(255,255,255,0.45)', marginBottom: 28, fontSize: 16 }}>5 сервисов навсегда бесплатно. Без карты.</p>
-            <a href="https://download.centrio.me/Centrio%20Setup%202.6.0.exe"
+            <a href="https://download.centrio.me/Centrio%20Setup%202.7.0.exe"
               style={{ display: 'inline-block', background: 'linear-gradient(135deg,#6366f1,#8b5cf6)', color: '#fff', borderRadius: 14, padding: '15px 40px', textDecoration: 'none', fontWeight: 700, fontSize: 16, boxShadow: '0 4px 24px rgba(99,102,241,0.4)' }}>
               ⬇ Скачать Centrio бесплатно
             </a>
-            <p style={{ color: 'rgba(255,255,255,0.25)', fontSize: 13, marginTop: 12 }}>v2.6.0 · Windows · macOS · Linux</p>
+            <p style={{ color: 'rgba(255,255,255,0.25)', fontSize: 13, marginTop: 12 }}>v2.7.0 · Windows · macOS · Linux</p>
           </div>
         </div>
       </div>

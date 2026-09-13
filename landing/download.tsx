@@ -8,7 +8,7 @@ import { SiteNav, SiteFooter } from '@/components/ui/site-shell'
 import { useLang } from '@/lib/i18n'
 import { CHANGELOG } from './changelog-data'
 
-const VERSION = '2.6.0'
+const VERSION = '2.7.0'
 
 const URLS = {
   win:       `https://download.centrio.me/Centrio%20Setup%20${VERSION}.exe`,

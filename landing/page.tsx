@@ -8,7 +8,7 @@ import { GlassPricingSection, type PricingCardProps } from '@/components/ui/anim
 import { COMPARE_LINKS, LOCALIZED_ROUTES, canonicalPath, localizedHref } from '@/lib/site-nav'
 import { useRouter, usePathname } from 'next/navigation'
 
-const VERSION = '2.6.0'
+const VERSION = '2.7.0'
 const WIN_DOWNLOAD = `https://download.centrio.me/Centrio%20Setup%20${VERSION}.exe`
 
 /* ─── SVG icons ──────────────────────────────────────────────────────────── */

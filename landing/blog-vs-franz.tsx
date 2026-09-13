@@ -4,7 +4,7 @@ import SiteHeader from '@/components/SiteHeader';
 import SiteFooter from '@/components/SiteFooter';
 import { useLang } from '@/lib/i18n';
 
-const WIN_DOWNLOAD = 'https://download.centrio.me/Centrio%20Setup%202.6.0.exe';
+const WIN_DOWNLOAD = 'https://download.centrio.me/Centrio%20Setup%202.7.0.exe';
 
 const tableData = [
   { feature: 'Бесплатный тариф', centrio: '✅ До 5 сервисов навсегда', franz: '❌ Только 3 сервиса (ограничено)' },
@@ -215,7 +215,7 @@ export default function VsFranzPage() {
             >
               {t.blog_cta_dl_win ?? '⬇ Скачать Centrio для Windows'}
             </a>
-            <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 13, marginTop: 12 }}>{t.blog_cta_platforms ?? 'Версия 2.6.0 · Бесплатно · Windows · macOS · Linux'}</p>
+            <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 13, marginTop: 12 }}>{t.blog_cta_platforms ?? 'Версия 2.7.0 · Бесплатно · Windows · macOS · Linux'}</p>
           </section>
         </div>
       </div>
