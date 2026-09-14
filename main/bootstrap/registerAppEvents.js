@@ -25,21 +25,36 @@ const { popularMessengers } = require('../../renderer/constants')
 // catalog shape. Cross-check by the messenger's actual URL hostname against
 // the LIVE catalog instead — this is the same module the add-messenger
 // picker (renderer/add-modal-ui.js) itself groups tiles by, so it can never
-// drift out of sync with what a user would see labeled "Медиа" there.
-const MEDIA_CATALOG_HOSTNAMES = new Set(
+// drift out of sync with what a user would see labeled "Медиа" там.
+//
+// BUGFIX (2026-09-14, "Почта всё ещё продолжает висеть в медиаплеере" — live
+// user report, the SAME complaint recurring after the fix above): that fix
+// only ever used the hostname lookup as a FALLBACK for when
+// messenger.category was falsy — `if (messenger.category === 'media')
+// return true` still ran first and short-circuited. A messenger whose
+// PERSISTED category is stale-but-truthy 'media' (e.g. added back when an
+// earlier bug mis-tagged a mail catalog entry, or hand-edited/synced from an
+// older store shape) never even reached the hostname check, so the safety
+// net this exact BUGFIX comment describes never actually closed the loop
+// for that case — only for the falsy-category case it was originally
+// written for. Built a FULL hostname→category map now (not just the media
+// subset) so the live catalog can act as authoritative ground truth over a
+// stale persisted field whenever the hostname is recognized at all — only
+// a genuinely uncataloged (custom) URL falls back to trusting
+// messenger.category, since there's no live source to cross-check it against.
+const CATALOG_CATEGORY_BY_HOSTNAME = new Map(
     popularMessengers
-        .filter(m => m.category === 'media')
-        .map(m => { try { return new URL(m.url).hostname } catch { return null } })
+        .map(m => { try { return [new URL(m.url).hostname, m.category] } catch { return null } })
         .filter(Boolean)
 )
 function isMediaMessenger(messenger) {
     if (!messenger) return false
-    if (messenger.category === 'media') return true
-    try {
-        return MEDIA_CATALOG_HOSTNAMES.has(new URL(messenger.url).hostname)
-    } catch {
-        return false
+    let hostname = null
+    try { hostname = new URL(messenger.url).hostname } catch {}
+    if (hostname && CATALOG_CATEGORY_BY_HOSTNAME.has(hostname)) {
+        return CATALOG_CATEGORY_BY_HOSTNAME.get(hostname) === 'media'
     }
+    return messenger.category === 'media'
 }
 
 // BUGFIX ("Google: бесконечный повторяющийся [popup] loadURL failed
@@ -1733,6 +1748,38 @@ function registerAppEvents({
                                 return
                             }
                         } catch {}
+                    }
+
+                    // BUGFIX (2026-09-14, "вложения из яндекс почты не
+                    // скачиваются... кнопка скачать не работает" — live user
+                    // report): a blob: URL (how webmail attachment
+                    // "download" buttons typically hand off a File the page
+                    // already has in memory — window.open(blobUrl) — since
+                    // there's no real network request to make will-download
+                    // fire from) used to fall straight into the
+                    // shell.openExternal() fallback below. blob: URLs are
+                    // only resolvable inside the renderer that created them —
+                    // shell.openExternal('blob:...') hands the OS a URL
+                    // scheme it (and every other process) can never resolve,
+                    // so it silently no-ops: no error, no download, nothing
+                    // visible, exactly "the button does nothing" as
+                    // reported. new URL(navUrl).hostname is also empty for
+                    // blob: URLs, so the same-site check above never matches
+                    // either and this was the only remaining path. Route
+                    // blob:/data: URLs through webContents.downloadURL()
+                    // instead — called on THIS SAME childWindow.webContents
+                    // (the one that actually navigated to the blob, so the
+                    // blob reference is still valid there), it resolves the
+                    // in-memory data directly and emits a normal
+                    // 'will-download' on the child's session — already
+                    // listened to via wireSessionDownloads(contents.session)
+                    // at webview-attach time (child windows inherit their
+                    // opener's session/partition by default), so it lands in
+                    // Centrio's own download manager like any other file.
+                    if (navUrl.startsWith('blob:') || navUrl.startsWith('data:')) {
+                        try { childWindow.webContents.downloadURL(navUrl) } catch {}
+                        if (!childWindow.isDestroyed()) childWindow.close()
+                        return
                     }
 
                     // DEBUG (2026-08-24, see matching comment on

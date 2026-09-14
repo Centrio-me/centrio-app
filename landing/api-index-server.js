@@ -72,11 +72,33 @@ app.use('/api/widget', cors({ origin: true, credentials: false }))
 // (routes/widget.js) already has its own tighter per-route limiters
 // (startLimiter/sendLimiter/pollLimiter in that file) sized for that
 // threat model instead.
+//
+// BUGFIX (2026-09-14, "заметки то пропадают, то появляются" / "сбой
+// синхронизации заметок" — live user report): same disease, confirmed this
+// time directly in nginx access logs — 94 of 285 requests to /api/notes from
+// one IP in a 15-minute window came back 429. Root cause: every authenticated
+// desktop-app route (notes autosave debounced to one PATCH per 500ms of
+// typing pause, plus sync, notifications, stats, etc.) was still sharing this
+// SAME 100-req/15min-per-IP anonymous-abuse bucket that only /admin and
+// /chat-sites had been carved out of so far — completely ordinary single-
+// user typing in one note, combined with whatever else the app does in the
+// background, was enough to exhaust it. Extended the same fix to every other
+// route confirmed (by reading every single route definition in each file,
+// not just the router mount) to require authMiddleware on 100% of its
+// endpoints: sync, workspaces, upload, user, stats, tickets, assistant, and
+// notes itself. Deliberately did NOT add /notifications (its POST /subscribe
+// is a public, unauthenticated newsletter signup — still needs anonymous-
+// abuse protection) or /org (POST /seats/webhook is a public payment
+// webhook) — both have genuine public endpoints mixed in with the
+// authenticated ones, unlike the routes added here.
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
   message: { error: 'Слишком много запросов, попробуйте позже' },
-  skip: (req) => req.path.startsWith('/admin') || req.path.startsWith('/chat-sites')
+  skip: (req) => [
+    '/admin', '/chat-sites', '/sync', '/workspaces', '/upload',
+    '/user', '/stats', '/tickets', '/assistant', '/notes'
+  ].some((prefix) => req.path.startsWith(prefix))
 })
 app.use('/api/', limiter)
 

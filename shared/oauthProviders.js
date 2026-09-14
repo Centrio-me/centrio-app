@@ -36,7 +36,26 @@
 // делает event.preventDefault() + shell.openExternal() на КАЖДОЙ навигации
 // (см. 'will-navigate' в createPopupWindow) и обрывает вход сразу после
 // первого шага формы, выкидывая в системный браузер без сессии мессенджера.
-const OAUTH_PROVIDER_HOST_RE = /(^|\.)accounts\.google\.com$|(^|\.)appleid\.apple\.com$|(^|\.)login\.live\.com$|(^|\.)login\.microsoftonline\.com$|(^|\.)oauth\.yandex\.(ru|com)$|(^|\.)passport\.yandex\.(ru|com)$|(^|\.)id\.vk\.com$/i
+// BUGFIX (2026-09-14, "Грок на самом последнем этапе открывает браузер, а в
+// Centrio опять на страницу входа возвращается" — live user report): same
+// disease as the Yandex passport.yandex.ru gap documented above, just for
+// Grok's own native (non-Google) sign-in. grok.com's "Войти" flow does a
+// top-level `will-navigate` to accounts.x.ai — a first-party identity host,
+// not a window.open() popup — but accounts.x.ai was never in this list.
+// webview-tabs-bind.js's 'will-navigate' handler only skips its "different
+// domain → open-url" branch for hosts isOAuthProviderUrl() recognizes
+// (`if (isOAuthProviderUrl(url)) return`); since x.ai isn't grok.com's base
+// domain, the navigation fell straight into that branch — sent to the
+// system browser (no messenger session there) while the webview itself kept
+// navigating there too (will-navigate isn't actually cancelable on
+// <webview>, see the BUGFIX comment above it), landing on a half-finished
+// page with no way back — which is exactly "opens a browser, then Centrio
+// goes back to the login screen". The earlier [oauth-broker][DEBUG] fixes in
+// main/ipc/window.js (OAUTH_FINISH_SETTLE_MS, accounts.x.ai/oauth-complete
+// handling) only cover accounts.x.ai once a broker popup already exists —
+// they never fire if the flow never made it into a popup in the first
+// place, which is the actual gap here.
+const OAUTH_PROVIDER_HOST_RE = /(^|\.)accounts\.google\.com$|(^|\.)appleid\.apple\.com$|(^|\.)login\.live\.com$|(^|\.)login\.microsoftonline\.com$|(^|\.)oauth\.yandex\.(ru|com)$|(^|\.)passport\.yandex\.(ru|com)$|(^|\.)id\.vk\.com$|(^|\.)accounts\.x\.ai$/i
 
 function isOAuthProviderUrl(url) {
     try {
