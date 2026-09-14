@@ -1302,7 +1302,20 @@ function init() {
     bindDropFileHandler()
     bindLinkInterception()
     bindMsgSentDetection()
-    bindMediaPlaybackDetection()
+    // BUGFIX (2026-09-14, "Яндекс почта всё-равно показывает медиаплеер" —
+    // live-reproduced): this was assumed dead (preload supposedly doesn't
+    // execute for <webview> guests on this Electron version — see the
+    // BUGFIX comment on the 'media-state' listener in
+    // renderer/webview-tabs-bind.js) but actually still runs, and unlike
+    // main/bootstrap/registerAppEvents.js's startMediaStatePolling (the
+    // real, working detector) it has no way to check the messenger's
+    // category — it just reports ANY playing <video>/<audio> on the page,
+    // which picked up Yandex Mail's decorative looping dark-theme
+    // background video as "now playing" for every mail session. The
+    // renderer no longer listens for this channel at all (see that same
+    // BUGFIX comment), so calling it now only wastes a MutationObserver +
+    // polling loop for no one.
+    // bindMediaPlaybackDetection()
     startObserver()
     startUnreadInterval()
     setTimeout(checkUnread, 1000)

@@ -254,12 +254,33 @@ function bindNotesUi({ store, tGet, authorizedInvoke, openRightPanel, closeRight
     async function loadNotes() {
         if (loading) return
         loading = true
-        listEl.innerHTML = `<div class="app-notif-empty">…</div>`
+        // BUGFIX (2026-09-14, "клик — не открывается — двойной клик — опять
+        // не открывается — переключил на задачи и обратно — всё ок, и так
+        // каждый раз" — live-reproduced): this used to unconditionally wipe
+        // listEl to a "…" loading placeholder on EVERY openPanel(), even
+        // when we already had a perfectly good list from the last time the
+        // panel was open (loadNotes() is the only thing that resets `notes`
+        // to [] — invalidate() aside — `notes` itself survives a close).
+        // openRightPanel() makes the panel visible immediately, so a click
+        // that lands inside the ~100-300ms round-trip before this fetch
+        // resolves either hits the placeholder (no card there yet, click
+        // does nothing) or — worse, if it lands right as the fetch resolves
+        // and renderList() below replaces listEl's children mid-click —
+        // the browser drops the click entirely (target removed between
+        // mousedown/mouseup). Switching to Tasks and back gave the fetch
+        // time to finish in the background, so by the next click it always
+        // "worked" — exactly the reported pattern. Only show the loading
+        // placeholder when we have nothing to show yet; otherwise keep the
+        // existing (still fully clickable) list up while refreshing quietly
+        // underneath it, same as any normal cache-then-revalidate list.
+        if (!notes.length) listEl.innerHTML = `<div class="app-notif-empty">…</div>`
         const result = await authorizedInvoke('api-notes-list', { archived: viewingArchived })
         loading = false
         if (!result?.success) {
             if (await handleAuthError(result)) return
-            listEl.innerHTML = `<div class="app-notif-empty">${escapeHtml(tGet('notes.syncError') || 'Не удалось синхронизировать заметки')}</div>`
+            if (!notes.length) {
+                listEl.innerHTML = `<div class="app-notif-empty">${escapeHtml(tGet('notes.syncError') || 'Не удалось синхронизировать заметки')}</div>`
+            }
             return
         }
         notes = result.data?.notes || []

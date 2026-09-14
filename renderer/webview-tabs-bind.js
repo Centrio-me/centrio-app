@@ -1301,8 +1301,27 @@ function createWebviewTabsApi({
             // чуть выше — тот, main-процессный канал, реально работает).
             // Ветка оставлена как безобидный фолбэк на случай, если preload
             // когда-нибудь снова заработает сам по себе.
+            // BUGFIX (2026-09-14, "Яндекс почта всё-равно показывает
+            // медиаплеер" — live-reproduced with a diagnostic log: the
+            // main-process gate at startMediaStatePolling correctly logged
+            // isMedia=false for the Yandex Mail messenger and never sent a
+            // single 'media-state' IPC for it all session — yet the mini-
+            // player still tracked it as playing). Root cause: this branch
+            // was NOT actually dead like the comment above claims — preload
+            // does execute for at least some webviews, and webview-preload.js's
+            // bindMediaPlaybackDetection() scans for ANY playing
+            // <video>/<audio> completely ungated (no messenger-category
+            // check at all, unlike startMediaStatePolling). Yandex Mail's
+            // dark-theme has a decorative looping background <video>
+            // (yastatic.net/.../dark4low-*.webm) that's always "playing" —
+            // this old fallback picked it up and reported it as real media
+            // for every single messenger, category or not. Disabled instead
+            // of re-gating it here: this app-side handler has no way to know
+            // the messenger's category, and the main-process channel above
+            // already covers every case where this ever worked — keeping a
+            // second, ungated detector active is strictly worse than not
+            // having it.
             if (e.channel === 'media-state') {
-                if (typeof onMediaState === 'function') onMediaState(messenger.id, e.args[0])
                 return
             }
 
