@@ -85,107 +85,64 @@
     unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
 }
 
-/* Manrope самоxостится локально (assets/fonts/manrope/), тем же способом что
- * и Inter выше — по запросу заменяет Inter как основной шрифт приложения:
- * тоньше по начертанию, более геометричный и "грациозный" силуэт, при этом
- * прямой/читаемый, с хорошей поддержкой кириллицы. Файлы @font-face блоков
- * для Inter оставлены нетронутыми (используются как fallback-семейство и
- * не создают риска что-то сломать, раз ничего больше на них не ссылается). */
+/* Golos Text самоxостится локально (assets/fonts/golos-text/) — тем же
+ * способом, что и Inter/Manrope выше (2026-09-16, "Golos Text - давай его
+ * везде в приложении сделаем" — live user request, выбран из визуального
+ * сравнения нескольких кириллических шрифтов; заменяет Manrope как основной
+ * шрифт приложения). Логотип/точка рядом со словом Centrio при этом взяты
+ * с сайта centrio.me отдельным решением того же дня — см. .brand-period
+ * ниже; шрифт сайта (Geist) и шрифт приложения (Golos Text) сознательно
+ * РАЗНЫЕ, это два независимых запроса, не один и тот же. Golos Text на
+ * Google Fonts распространяется как ПЕРЕМЕННЫЙ шрифт (variable font) —
+ * один файл на каждый subset покрывает весь диапазон начертаний
+ * font-weight: 400–900, поэтому здесь всего 2 @font-face блока вместо
+ * 10-12 у Inter/Manrope (по одному на каждое статическое начертание).
+ * Начертание 300 (light), которое кое-где ещё используется в styles.css
+ * ниже как остаток от Manrope, у Golos Text не существует — браузер
+ * автоматически подставит ближайшее доступное (400), это штатное
+ * поведение font-weight-диапазона, а не баг. Файлы @font-face блоков для
+ * Inter/Manrope оставлены нетронутыми (fallback-семейства). */
 @font-face {
-    font-family: 'Manrope';
+    font-family: 'Golos Text';
     font-style: normal;
-    font-weight: 300;
+    font-weight: 400 900;
     font-display: swap;
-    src: url('assets/fonts/manrope/manrope-latin-300-normal.woff2') format('woff2');
-    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    src: url('assets/fonts/golos-text/golos-latin.woff2') format('woff2');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 @font-face {
-    font-family: 'Manrope';
+    font-family: 'Golos Text';
     font-style: normal;
-    font-weight: 300;
+    font-weight: 400 900;
     font-display: swap;
-    src: url('assets/fonts/manrope/manrope-cyrillic-300-normal.woff2') format('woff2');
+    src: url('assets/fonts/golos-text/golos-cyrillic.woff2') format('woff2');
     unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
 }
-@font-face {
-    font-family: 'Manrope';
-    font-style: normal;
-    font-weight: 400;
-    font-display: swap;
-    src: url('assets/fonts/manrope/manrope-latin-400-normal.woff2') format('woff2');
-    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-@font-face {
-    font-family: 'Manrope';
-    font-style: normal;
-    font-weight: 400;
-    font-display: swap;
-    src: url('assets/fonts/manrope/manrope-cyrillic-400-normal.woff2') format('woff2');
-    unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
-}
-@font-face {
-    font-family: 'Manrope';
-    font-style: normal;
-    font-weight: 500;
-    font-display: swap;
-    src: url('assets/fonts/manrope/manrope-latin-500-normal.woff2') format('woff2');
-    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-@font-face {
-    font-family: 'Manrope';
-    font-style: normal;
-    font-weight: 500;
-    font-display: swap;
-    src: url('assets/fonts/manrope/manrope-cyrillic-500-normal.woff2') format('woff2');
-    unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
-}
-@font-face {
-    font-family: 'Manrope';
-    font-style: normal;
-    font-weight: 600;
-    font-display: swap;
-    src: url('assets/fonts/manrope/manrope-latin-600-normal.woff2') format('woff2');
-    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-@font-face {
-    font-family: 'Manrope';
-    font-style: normal;
-    font-weight: 600;
-    font-display: swap;
-    src: url('assets/fonts/manrope/manrope-cyrillic-600-normal.woff2') format('woff2');
-    unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
-}
-@font-face {
-    font-family: 'Manrope';
-    font-style: normal;
-    font-weight: 700;
-    font-display: swap;
-    src: url('assets/fonts/manrope/manrope-latin-700-normal.woff2') format('woff2');
-    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-@font-face {
-    font-family: 'Manrope';
-    font-style: normal;
-    font-weight: 700;
-    font-display: swap;
-    src: url('assets/fonts/manrope/manrope-cyrillic-700-normal.woff2') format('woff2');
-    unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
-}
-@font-face {
-    font-family: 'Manrope';
-    font-style: normal;
-    font-weight: 800;
-    font-display: swap;
-    src: url('assets/fonts/manrope/manrope-latin-800-normal.woff2') format('woff2');
-    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-@font-face {
-    font-family: 'Manrope';
-    font-style: normal;
-    font-weight: 800;
-    font-display: swap;
-    src: url('assets/fonts/manrope/manrope-cyrillic-800-normal.woff2') format('woff2');
-    unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+
+/* Фирменная точка после "Centrio" (2026-09-16, тот же запрос про шрифт с
+ * сайта — "И с точкой и его шрифт"): на centrio.me это не символ "." (обычная
+ * точка из шрифта визуально мелкая и сидит низко на базовой линии), а
+ * отдельный circle-элемент — тот же приём, 1-в-1 скопирован с боевого сайта
+ * (getComputedStyle(.brand-period) там). em-размеры наследуют font-size
+ * родителя, поэтому одно правило работает и на startup-title (28px), и на
+ * about-name (18-22px) без дублирования под каждый размер.
+ * BUGFIX (2026-09-16, "Точку вообще не видно" — live user report): в шапке
+ * .app-name сидит на 12-15px, где 0.15em даёт ~2px — практически невидимо.
+ * min-width/min-height держат точку не мельче 5px в любом контексте, не
+ * ломая масштабирование там, где font-size достаточно большой (28px×0.15
+ * = 4.2px < 5px тоже подрастёт до пола — на глаз разница на startup-title
+ * незаметна, а мелкие контексты теперь гарантированно видимы). */
+.brand-period {
+    display: inline-block;
+    overflow: hidden;
+    width: 0.15em;
+    height: 0.15em;
+    min-width: 5px;
+    min-height: 5px;
+    margin-left: 0.055em;
+    line-height: 0;
+    border-radius: 50%;
+    background: #74a0ff;
 }
 
 /*
@@ -683,7 +640,7 @@
 
 /* ===== BODY ===== */
 body {
-    font-family: 'Manrope', 'Inter', -apple-system, 'Segoe UI', sans-serif;
+    font-family: 'Golos Text', 'Manrope', 'Inter', -apple-system, 'Segoe UI', sans-serif;
     background: var(--bg-primary);
     color: var(--text-primary);
     height: 100vh;
@@ -999,7 +956,15 @@ body.platform-darwin .titlebar-left  { padding-left: 78px; } /* отступ п�
     align-items: center;
     width: 100%;
     flex: 1;
-    overflow: hidden;
+    /* BUGFIX (2026-09-16, инлайн-разворачивание переключателя пространств,
+       см. .workspace-switcher-menu-inline и renderer/workspaces-ui.js):
+       было overflow:hidden без скролла — если открытый список пространств
+       делает контент выше доступной высоты, часть иконок дока просто
+       обрезалась бы вместо того, чтобы стать доступной прокруткой.
+       overflow-x остаётся hidden — по горизонтали контент не должен
+       вылезать в любом случае. */
+    overflow-x: hidden;
+    overflow-y: auto;
 }
 
 .activity-bottom {
@@ -1037,6 +1002,187 @@ body.platform-darwin .titlebar-left  { padding-left: 78px; } /* отступ п�
 
 .activity-btn:active {
     transform: scale(0.95);
+}
+
+/* ── Рабочие пространства — плагин (2026-09-14, второй пересмотр) ─────────
+   Кнопка-переключатель — самый обычный .activity-btn (см. workspaces-ui.js
+   ensureSwitcher() для объяснения почему), здесь только то, что ему не
+   хватает из коробки: контейнер-обёртка и цветная точка активного
+   пространства. Подпись (.activity-btn-label) и раскрытый/свёрнутый режим
+   сайдбара — уже готовые правила выше по файлу, ничего дублировать не
+   нужно. */
+.workspace-switcher {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    position: relative;
+    flex-shrink: 0;
+    margin-bottom: 2px;
+}
+
+#activityBar.sidebar-expanded .workspace-switcher {
+    justify-content: stretch;
+}
+
+.workspace-switcher-btn {
+    position: relative;
+}
+
+/* FEATURE (2026-09-16, "Выделить рабочее пространство рамкой. Как будто
+   это выпадающий список" — live user request): подсветка рамкой через
+   inset box-shadow (не border) — не двигает размер/раскладку кнопки при
+   открытии/закрытии меню, в отличие от настоящего border. */
+.workspace-switcher.open .workspace-switcher-btn {
+    box-shadow: inset 0 0 0 1.5px var(--accent);
+}
+
+.workspace-switcher-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+/* Шеврон — подсказывает "это выпадающий список", видим только в раскрытом
+   сайдбаре (в свёрнутой узкой колонке иконок ему негде поместиться рядом с
+   подписью, которой там и самой нет). */
+.workspace-switcher-chevron {
+    display: none;
+    flex-shrink: 0;
+    margin-left: auto;
+    transition: transform 0.18s ease;
+}
+
+#activityBar.sidebar-expanded .workspace-switcher-chevron {
+    display: block;
+}
+
+/* BUGFIX (2026-09-16, "Рабочее пространство зачем-то посередине подписано,
+   а не сбоку" — live user report, screenshot showing "Все" centered in the
+   row): flex:1 made the label's own box span the whole gap between icon
+   and chevron — and <button> has a browser-default text-align:center in
+   the UA stylesheet that nothing here overrides, so text centered inside
+   that wide box instead of hugging the icon like every .messenger-name
+   does (those never had flex:1, so their tight box made the same
+   inherited centering invisible). .workspace-switcher-chevron's own
+   margin-left:auto (above) already pushes it to the row's far end on its
+   own — flex:1 on the label was never needed for that and only caused
+   this bug, so it's removed rather than patched with an explicit
+   text-align override.
+   BUGFIX (same day, "Иконка папки не выровнена"): see .folder-icon-wrap
+   above for the analogous icon-box-size fix. */
+
+.workspace-switcher.open .workspace-switcher-chevron {
+    transform: rotate(180deg);
+}
+
+/* BUGFIX (2026-09-14, второй live-репорт — "вообще не создаётся, никак"):
+   z-index 200 не выдерживало сравнения с остальным UI приложения — обычные
+   контекстные меню/модалки в этом файле сидят на 1000-100000+, так что
+   меню-переключатель могло оказаться перекрыто чем угодно. Поднято до того
+   же порядка, что и split-раскладка (renderer/split.js), которую пользователь
+   явно привёл в пример как понятный, надёжно видимый UI.
+   position:fixed + top/left выставляются в JS (renderer/workspaces-ui.js) по
+   факту клика — элемент живёт в document.body, а не внутри
+   .workspace-switcher, поэтому overflow:hidden у .activity-top (нужен для
+   скролла иконок мессенджеров) не обрезает его. */
+.workspace-switcher-menu {
+    display: none;
+    position: fixed;
+    min-width: 200px;
+    max-width: 260px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+    padding: 6px;
+    z-index: 100000;
+}
+
+/* FEATURE (2026-09-16, "выпадает он не во всплывающем окне, а двигает всё
+   вниз... список сворачивается" — live user request): применяется вместо
+   .workspace-switcher-menu's position:fixed, когда сайдбар раскрыт (см.
+   renderer/workspaces-ui.js — position/parent решаются заново при каждом
+   открытии). Элемент — обычный сосед кнопки в потоке .activity-top, без
+   position и без плавающей тени: раскрытие/закрытие реально двигает
+   остальные иконки дока вниз/вверх, как обычный <select>, а не всплывает
+   поверх контента. */
+.workspace-switcher-menu-inline {
+    position: static;
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+    margin: 4px 0 2px;
+    box-shadow: none;
+    z-index: auto;
+}
+
+.workspace-switcher-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--text-primary);
+}
+
+.workspace-switcher-item:hover {
+    background: var(--bg-active);
+}
+
+.workspace-switcher-item.active {
+    background: var(--bg-active);
+    font-weight: 600;
+}
+
+.workspace-switcher-item-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.workspace-switcher-item-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+}
+
+.workspace-switcher-item-icon svg {
+    width: 16px;
+    height: 16px;
+}
+
+.workspace-switcher-item-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.workspace-switcher-divider {
+    height: 1px;
+    background: var(--border);
+    margin: 4px 2px;
+}
+
+.workspace-switcher-manage {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--accent);
+}
+
+.workspace-switcher-manage:hover {
+    background: var(--bg-active);
 }
 
 .activity-divider {
@@ -1126,6 +1272,48 @@ body.platform-darwin .titlebar-left  { padding-left: 78px; } /* отступ п�
     gap: 12px;
 }
 
+/* BUGFIX (2026-09-16, "У папок куда-то названия делись. Не показаны при
+   расширении сайдбара" — live user report): mirrors the .messenger-item
+   rule above — .folder-header was always a fixed 44×44 centered square
+   (icon-only), with no equivalent full-width/flex-start layout for the
+   expanded sidebar, so .folder-name (new element, see renderer.js's
+   renderFolder) never had room to actually show.
+   BUGFIX 2 (still "Названия папки нет" — first attempt at this only
+   widened .folder-header, but .folder-header's own PARENT — .folder-item,
+   the actual flex child of .messenger-list — was still stuck at its base
+   width:44px. A 100%-wide child inside a 44px-wide parent is still only
+   44px in absolute terms, so .folder-name had no more room than before;
+   .folder-item itself needs widening too, exactly like .messenger-item
+   gets widened directly (it has no separate parent wrapper). */
+#activityBar.sidebar-expanded .folder-item {
+    width: 100% !important;
+    align-items: stretch;
+}
+
+#activityBar.sidebar-expanded .folder-header {
+    width: 100% !important;
+    justify-content: flex-start;
+    padding: 0 10px;
+    gap: 12px;
+}
+
+/* BUGFIX (2026-09-16, "Иконка папки не выровнена" — live user report,
+   screenshot showing the folder icon visibly offset from messenger icons
+   in the row below it): .folder-icon-wrap is a fixed 36×36 box (tuned for
+   the collapsed 44×44 icon-only square, where it needs to be bigger than
+   the icon for breathing room) with its icon centered inside — 6.5px of
+   inset on every side. .messenger-icon-wrap has no such box at all, it
+   just tightly hugs the messenger's own 30×30 icon with zero inset. Same
+   padding/gap on both rows (10px/12px, see above and the .messenger-item
+   rule), but a 36px wrap vs an effectively-30px one shifts every folder's
+   icon (and therefore its name text after it) a few px right of where a
+   messenger's icon sits. Scoped to expanded mode only — the collapsed
+   44×44 square still wants the original 36px breathing room. */
+#activityBar.sidebar-expanded .folder-icon-wrap {
+    width: var(--density-icon-size, 30px);
+    height: var(--density-icon-size, 30px);
+}
+
 #activityBar.sidebar-expanded .activity-btn-label {
     display: inline-block;
     font-size: 13px;
@@ -1142,12 +1330,28 @@ body.platform-darwin .titlebar-left  { padding-left: 78px; } /* отступ п�
     text-overflow: ellipsis;
     white-space: nowrap;
     font-size: 13px;
-    font-weight: 600;
+    /* BUGFIX (2026-09-16, "После переименования... шрифт, когда открываешь
+       сайдбар... потоньше немного" — live user report, then "В сайдбаре
+       всё-таки сделай шрифт потоньше" after 500 still read too heavy):
+       600 → 500 wasn't enough — Golos Text's strokes read noticeably
+       thicker than Manrope's did at the same numeric weight. Dropped to
+       400 (regular), the thinnest step that's still legible at 13px. */
+    font-weight: 400;
     color: var(--text-bright);
 }
 
 #activityBar.sidebar-expanded .messenger-item:hover .messenger-name,
 #activityBar.sidebar-expanded .messenger-item.active .messenger-name {
+    color: var(--text-bright);
+}
+
+#activityBar.sidebar-expanded .folder-name {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 13px;
+    font-weight: 400;
     color: var(--text-bright);
 }
 
@@ -1360,6 +1564,7 @@ body.platform-darwin .titlebar-left  { padding-left: 78px; } /* отступ п�
 }
 
 .messenger-name { display: none; }
+.folder-name { display: none; }
 
 .messenger-badge {
     position: absolute;
@@ -1521,6 +1726,38 @@ body.platform-darwin .titlebar-left  { padding-left: 78px; } /* отступ п�
     width: 70px;
     border-right: 1px solid var(--border);
     box-shadow: 4px 0 24px rgba(0,0,0,0.4);
+}
+
+/* BUGFIX (2026-09-16, "Названия при открытии папки тоже нет" — live user
+   report): applied by renderer/folders-ui.js's openFolderPanel() only when
+   the main sidebar is expanded — matches its 232px width (see
+   #activityBar.sidebar-expanded) so messenger rows have room for a name,
+   same as every other messenger in the expanded sidebar. */
+.folder-panel.folder-panel-wide.open {
+    width: 232px;
+}
+
+.folder-panel-wide .folder-panel-content {
+    align-items: stretch;
+    padding: 8px 6px;
+}
+
+.folder-panel-wide .folder-panel-content .messenger-item {
+    width: 100%;
+    height: 44px;
+    justify-content: flex-start;
+    padding: 0 10px;
+    gap: 12px;
+}
+
+.folder-panel-wide .folder-panel-content .messenger-name {
+    display: block !important;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 13px;
+    font-weight: 400;
+    color: var(--text-bright);
 }
 
 /* Полоска с названием */
@@ -4301,9 +4538,9 @@ body:has(.modal.show) .split-handle { display: none !important; }
 
 .about-name {
     font-size: 18px;
-    font-weight: 700;
+    font-weight: 660;
     color: var(--text-bright);
-    letter-spacing: -0.4px;
+    letter-spacing: -0.05em;
 }
 
 .about-version {
@@ -9686,7 +9923,7 @@ button:active {
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    font-family: 'Manrope', 'Inter', sans-serif;
+    font-family: 'Golos Text', 'Manrope', 'Inter', sans-serif;
 }
 
 .onb-glow {
@@ -10245,19 +10482,39 @@ button:active {
     flex-shrink: 0;
 }
 
+/* BUGFIX (2026-09-16, "Логотип в шапке сделай побольше. Точку вообще не
+   видно" — live user report): this rule's !important was overriding the
+   inline style="height:20px" set on the <img> in index.html — the logo
+   was stuck at 16px no matter what markup said.
+   BUGFIX 2 (same day, "Точка очень большая в лого. Меньше сделай. И сам
+   кружок лого поменьше. Шрифт оставь таким" — 22px read as too large):
+   dialed back to 18px, a modest bump over the original 16px rather than
+   the +6px jump that made it "очень большая". .app-name's font-size stays
+   untouched per "Шрифт оставь таким" — only the icon and the dot (see
+   .app-name .brand-period below) shrink. */
 .app-logo {
-    height: 16px !important;
+    height: 18px !important;
     width: auto;
     opacity: 0.96;
     filter: none;
 }
 
 .app-name {
-    font-size: 12px;
-    font-weight: 600;
-    letter-spacing: -0.1px;
+    font-size: 15px;
+    font-weight: 660;
+    letter-spacing: -0.05em;
     color: var(--text-primary);
     white-space: nowrap;
+}
+
+/* BUGFIX (2026-09-16, same report — the global .brand-period min-width/
+   min-height:5px floor (added so the dot wouldn't vanish at 15px) ended up
+   reading oversized here specifically. Scoped override, smaller floor,
+   only for the titlebar context — about-name/startup-title (bigger
+   font-sizes, not part of this complaint) keep the original 5px floor. */
+.app-name .brand-period {
+    min-width: 3.5px;
+    min-height: 3.5px;
 }
 
 .titlebar-menu {
@@ -10549,8 +10806,8 @@ button:active {
    theme-aware tokens so this section reads correctly in every theme. */
 .about-name {
     font-size: 22px;
-    font-weight: 700;
-    letter-spacing: 0.2px;
+    font-weight: 660;
+    letter-spacing: -0.05em;
     color: var(--text-bright);
 }
 
@@ -10783,8 +11040,8 @@ button:active {
 .startup-title {
     font-size: 28px;
     line-height: 1;
-    font-weight: 800;
-    letter-spacing: 0.04em;
+    font-weight: 660;
+    letter-spacing: -0.05em;
     color: #ffffff;
     text-shadow: 0 2px 18px rgba(123, 104, 238, 0.12);
 }

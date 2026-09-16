@@ -10,7 +10,8 @@ function createContextMenusApi({
     tGet,
     getActiveMessengers,
     moveMessengerToFolder,
-    updateContextMuteLabel
+    updateContextMuteLabel,
+    isWorkspacesEnabled
 }) {
     function hideAllMenus() {
         contextMenu.classList.remove('show')
@@ -19,6 +20,12 @@ function createContextMenusApi({
         sidebarContextMenu.classList.remove('show')
         webviewContextMenu.classList.remove('show')
         if (dividerContextMenu) dividerContextMenu.classList.remove('show')
+        // #workspaceMoveMenu (2026-09-14) — не пробрасывается сюда как
+        // отдельный параметр (единственное место, где он используется —
+        // context-actions-bind.js's ctxMoveToWorkspace, берёт его напрямую
+        // через document.getElementById), но должен закрываться вместе со
+        // всем остальным по тому же 'close-all-popups'.
+        document.getElementById('workspaceMoveMenu')?.classList.remove('show')
         state.contextTargetId = null
         state.contextTargetFolderId = null
         state.contextTargetDividerId = null
@@ -38,6 +45,17 @@ function createContextMenusApi({
         const messenger = getActiveMessengers().find(m => m.id === messengerId)
         document.getElementById('ctxRemoveFromFolder').style.display =
             (messenger && messenger.folderId) ? 'flex' : 'none'
+
+        // FEATURE (2026-09-14, live-запрос) — пункт "в пространство"
+        // показывается только когда плагин включён, пространства есть, и
+        // мессенджер вне папки (внутри папки видимость решает сама папка —
+        // назначение тут не имело бы видимого эффекта).
+        const ctxMoveToWorkspace = document.getElementById('ctxMoveToWorkspace')
+        if (ctxMoveToWorkspace) {
+            const showWs = typeof isWorkspacesEnabled === 'function' && isWorkspacesEnabled() &&
+                state.workspaces.length > 0 && messenger && !messenger.folderId
+            ctxMoveToWorkspace.style.display = showWs ? 'flex' : 'none'
+        }
 
         updateContextMuteLabel(messengerId)
         document.dispatchEvent(new CustomEvent('contextmenu-opened', { detail: { messengerId } }))

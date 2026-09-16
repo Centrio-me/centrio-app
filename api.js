@@ -154,11 +154,11 @@ module.exports = {
         return request('POST', '/api/auth/vk/desktop', { accessToken, userId })
     },
 
-    syncPush(token, messengers, folders, settings) {
+    syncPush(token, messengers, folders, settings, workspaces = []) {
         return request(
             'POST',
             '/api/sync',
-            { messengers, folders, settings },
+            { messengers, folders, workspaces, settings },
             token
         )
     },

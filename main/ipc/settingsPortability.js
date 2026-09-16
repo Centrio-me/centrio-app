@@ -30,7 +30,7 @@ function safeHandle(channel, handler) {
 //                           which would leave VPN state broken silently on import.
 // Everything else is inert UI/behavior preference data — safe to move as-is.
 const PORTABLE_KEYS = [
-    'settings', 'folders', 'messengers', 'mutedMessengers', 'globalMuteAll',
+    'settings', 'folders', 'workspaces', 'activeWorkspaceId', 'messengers', 'mutedMessengers', 'globalMuteAll',
     'globalProxy', 'sidebarOrder', 'foldersEnabled', 'menuCollapsed',
     'tabZoomLevel', 'appZoomLevel', 'split', 'vpnAppModes', 'extensionsState'
 ]

@@ -10,6 +10,7 @@ function bindAppNotifUi({
     authorizedInvoke,
     tGet,
     state,
+    store,
     toggleMuteAll,
     switchTab,
     openRightPanel,
@@ -22,6 +23,7 @@ function bindAppNotifUi({
     const markAllBtn   = document.getElementById('appNotifMarkAllRead')
     const deleteAllBtn = document.getElementById('appNotifDeleteAll')
     const muteToggle   = document.getElementById('appNotifMuteToggle')
+    const soundToggle  = document.getElementById('appNotifSoundToggle')
     const searchInput  = document.getElementById('appNotifSearchInput')
 
     if (!btn || !panel) return
@@ -309,6 +311,29 @@ function bindAppNotifUi({
         }
     }
 
+    // FEATURE (2026-09-14, live-запрос — быстрый доступ к "звук выкл,
+    // уведомления остаются") — переключает ТОТ ЖЕ settings.notifSound,
+    // что и чекбокс "Звук уведомлений" в Настройках (renderer/sounds.js's
+    // playNotifSound() уже его читает — новой логики тут не нужно, только
+    // быстрый переключатель прямо в панели).
+    function syncSoundToggle() {
+        if (!soundToggle || !store) return
+        const soundOn = store.get('settings', {})?.notifSound !== false
+        const iconNormal = soundToggle.querySelector('.sound-icon-normal')
+        const iconMuted  = soundToggle.querySelector('.sound-icon-muted')
+        if (!soundOn) {
+            soundToggle.classList.add('muted')
+            soundToggle.title = tGet('notifications.soundOn') || 'Включить звук уведомлений'
+            if (iconNormal) iconNormal.style.display = 'none'
+            if (iconMuted)  iconMuted.style.display  = 'block'
+        } else {
+            soundToggle.classList.remove('muted')
+            soundToggle.title = tGet('notifications.soundOff') || 'Выключить звук уведомлений'
+            if (iconNormal) iconNormal.style.display = 'block'
+            if (iconMuted)  iconMuted.style.display  = 'none'
+        }
+    }
+
     async function fetchNotifications() {
         if (!cloudStore?.isLoggedIn?.()) return
 
@@ -382,6 +407,7 @@ function bindAppNotifUi({
 
     function openPanel() {
         syncMuteToggle()
+        syncSoundToggle()
         renderPanel()
         openRightPanel?.()
     }
@@ -442,6 +468,15 @@ function bindAppNotifUi({
             toggleMuteAll()
         }
         syncMuteToggle()
+    })
+
+    soundToggle?.addEventListener('click', (e) => {
+        e.stopPropagation()
+        if (!store) return
+        const settings = store.get('settings', {}) || {}
+        const nextSettings = { ...settings, notifSound: settings.notifSound === false }
+        store.set('settings', nextSettings)
+        syncSoundToggle()
     })
 
     // Закрытие "кликом мимо" убрано намеренно: панель теперь встроена в

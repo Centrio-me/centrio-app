@@ -787,10 +787,33 @@ function startMediaStatePolling(contents, getMainWindow) {
     let lastHasNext = false
     let lastHasPrev = false
 
+    // BUGFIX (2026-09-16, "если музыка долго играет, то медиплеер думает,
+    // что ничего уже не играет" — live user report): contents.executeJavaScript()
+    // can hang forever instead of ever resolving or rejecting if the guest
+    // frame's execution context is torn down mid-call — e.g. an internal SPA
+    // navigation (track change, route change) that races with a poll tick.
+    // That's a documented Electron/Chromium behavior, not a bug we can fix
+    // on the page side. When it happens, .then/.catch/.finally below never
+    // run, so `inFlight` stays true forever and every later poll() silently
+    // no-ops on the guard above — the player freezes on whatever state was
+    // last reported (often "false", since playback commonly blips during
+    // the very navigation that caused the hang). It only shows up "after a
+    // while" because it takes many navigations for one to actually hit the
+    // race. A watchdog timeout force-clears `inFlight` so a hung call can
+    // never permanently block future polls — it does NOT report
+    // playing:false itself, since a stuck request isn't evidence playback
+    // stopped; the next poll just tries again fresh.
     const poll = () => {
         if (contents.isDestroyed() || inFlight) return
         inFlight = true
+        let settled = false
+        const watchdog = setTimeout(() => {
+            if (settled) return
+            settled = true
+            inFlight = false
+        }, MEDIA_STATE_POLL_MS * 3)
         contents.executeJavaScript(MEDIA_STATE_DETECT_SCRIPT).then((result) => {
+            if (settled) return
             if (!result || typeof result !== 'object') return
             const playing = !!result.playing
             const title = typeof result.title === 'string' ? result.title : ''
@@ -804,7 +827,12 @@ function startMediaStatePolling(contents, getMainWindow) {
             const win = getMainWindow()
             if (!win || win.isDestroyed()) return
             win.webContents.send('media-state', messengerId, { playing, title, hasNext, hasPrev })
-        }).catch(() => {}).finally(() => { inFlight = false })
+        }).catch(() => {}).finally(() => {
+            if (settled) return
+            settled = true
+            clearTimeout(watchdog)
+            inFlight = false
+        })
     }
 
     poll()

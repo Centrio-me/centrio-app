@@ -214,6 +214,10 @@ const ALLOWED_STORE_ROOTS = new Set([
     'menuCollapsed', 'messengers', 'mutedMessengers', 'globalMuteAll',
     'globalProxy', 'sidebarOrder', 'vpnAppModes', 'vpnActiveLink',
     'vpnSubUrl', 'vpnSubLinks', 'tabZoomLevel', 'appZoomLevel', 'folders',
+    // Рабочие пространства — плагин (2026-09-14, второй пересмотр): опциональный
+    // контейнер ДЛЯ ПАПОК (folder.workspaceId), а не для мессенджеров напрямую.
+    // Включается/выключается через 'extensionsState.workspaces', уже в этом Set.
+    'workspaces', 'activeWorkspaceId',
     'dividers', 'lockOnStartup', 'pinEnabled', 'pinHash', 'split',
     // BUGFIX ("пресеты в сплитах не сохраняются"): these keys were added to
     // split.js/renderer.js well after this allowlist was written for the
@@ -288,7 +292,7 @@ const PROTECTED_SET_KEYS = new Set(['cloud', 'cloud.user', 'localProTrialExpires
 // renderer/extensions-ui.js) — kept here so the store:set backstop below and
 // any future main-process check can share one source of truth instead of
 // duplicating the id list.
-const NATIVE_EXTENSION_IDS = ['adblock', 'screenshot', 'darkmode', 'split', 'notes']
+const NATIVE_EXTENSION_IDS = ['adblock', 'screenshot', 'darkmode', 'split', 'notes', 'workspaces']
 
 // SECURITY: free-plan defaults for the Pro-gated theme/accent-color settings
 // (settings-bind.js's requirePro('themes')/requirePro('accent') gates the
@@ -364,7 +368,7 @@ safeHandle('store:set', async (_event, key, value) => {
     // updateCachedSetting() — see the BUGFIX comment there), so it's safe to
     // just reject dotted writes to these roots outright rather than trying
     // to merge-and-revalidate a partial nested value.
-    const PRO_GATED_STORE_ROOTS = new Set(['messengers', 'folders', 'extensionsState', 'settings'])
+    const PRO_GATED_STORE_ROOTS = new Set(['messengers', 'folders', 'workspaces', 'extensionsState', 'settings'])
     if (PRO_GATED_STORE_ROOTS.has(key.split('.')[0]) && key.includes('.')) {
         console.warn(`[store] Blocked nested store:set("${key}", …) — write the whole root object/array instead`)
         return { success: false, error: 'nested_write_disallowed' }
@@ -472,6 +476,20 @@ safeHandle('store:set', async (_event, key, value) => {
         if (!entitlement.isEffectivePro() && value.length > 0) {
             console.warn(`[store] Blocked store:set('folders', …) — folders require Pro`)
             return { success: false, error: 'pro_required', code: 'folders_require_pro' }
+        }
+    }
+    // SECURITY: defense-in-depth mirroring the 'folders' check above —
+    // рабочие пространства (2026-09-14, плагин) тоже требуют Pro
+    // (renderer/workspaces-ui.js создаётся только когда 'workspaces' включён
+    // в extensionsState, который сам по себе уже гейтится через
+    // NATIVE_EXTENSION_IDS выше, но `workspaces` — легитимно
+    // renderer-writable ключ (переименование/удаление), поэтому отдельно
+    // защищаем и его от прямого forged-IPC обхода тем же паттерном.
+    if (key === 'workspaces' && Array.isArray(value)) {
+        const entitlement = require('./main/services/entitlement')
+        if (!entitlement.isEffectivePro() && value.length > 0) {
+            console.warn(`[store] Blocked store:set('workspaces', …) — workspaces require Pro`)
+            return { success: false, error: 'pro_required', code: 'workspaces_require_pro' }
         }
     }
     // SECURITY: defense-in-depth for the native Pro-gated extension toggles

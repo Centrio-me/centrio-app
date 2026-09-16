@@ -118,7 +118,7 @@ function registerApiIpc() {
         return wrapApiAndPersistUser(() => api.refresh(refreshToken))
     })
 
-    ipcMain.handle('api-sync-push', async (event, token, arg1, arg2, arg3) => {
+    ipcMain.handle('api-sync-push', async (event, token, arg1, arg2, arg3, arg4) => {
         const pushPromise = wrapApi(() => {
             if (
                 arg1 &&
@@ -126,10 +126,10 @@ function registerApiIpc() {
                 !Array.isArray(arg1) &&
                 ('messengers' in arg1 || 'folders' in arg1 || 'settings' in arg1)
             ) {
-                return api.syncPush(token, arg1.messengers || [], arg1.folders || [], arg1.settings || {})
+                return api.syncPush(token, arg1.messengers || [], arg1.folders || [], arg1.settings || {}, arg1.workspaces || [])
             }
 
-            return api.syncPush(token, arg1 || [], arg2 || [], arg3 || {})
+            return api.syncPush(token, arg1 || [], arg2 || [], arg3 || {}, arg4 || [])
         })
 
         // See waitForPendingSyncPush() BUGFIX comment above.

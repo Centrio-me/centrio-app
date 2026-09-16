@@ -12,6 +12,12 @@ const state = {
     contextTargetDividerId: null,
     editMode: null,
     selectedFolderIcon: 'folder',
+    // Рабочие пространства — плагин (2026-09-14, второй пересмотр, см.
+    // renderer/workspaces-ui.js). workspaces: [{id,name,color,icon}],
+    // activeWorkspaceId: null значит «Все» (фильтр не применяется).
+    workspaces: [],
+    activeWorkspaceId: null,
+    selectedWorkspaceIcon: 'folder',
     soundTargetId: null,
     activeFolderPanelId: null,
     dragSrcId: null,

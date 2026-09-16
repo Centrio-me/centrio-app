@@ -70,6 +70,26 @@ function createExtensionsUiApi({
             border: 'rgba(251,191,36,.28)',
             titleKey: 'extensions.notes.title',
             descKey: 'extensions.notes.desc'
+        },
+        {
+            // Рабочие пространства (2026-09-14, второй пересмотр) — плагин по
+            // прямому запросу пользователя: "Папки нужно вернуть... Папки и
+            // рабочие пространства смогут существовать вместе. В рабочих
+            // пространствах могут быть папки. И они включаются как плагин".
+            // Пространство — необязательный контейнер ДЛЯ ПАПОК
+            // (folder.workspaceId), см. renderer/workspaces-ui.js.
+            id: 'workspaces',
+            icon: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="7" height="7" rx="1.5"/>
+                <rect x="14" y="3" width="7" height="7" rx="1.5"/>
+                <rect x="3" y="14" width="7" height="7" rx="1.5"/>
+                <rect x="14" y="14" width="7" height="7" rx="1.5"/>
+            </svg>`,
+            color: '#6366f1',
+            bg: 'rgba(99,102,241,.13)',
+            border: 'rgba(99,102,241,.28)',
+            titleKey: 'extensions.workspaces.title',
+            descKey: 'extensions.workspaces.desc'
         }
     ]
 

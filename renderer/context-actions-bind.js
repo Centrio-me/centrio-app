@@ -15,7 +15,8 @@ function bindContextActionsUi({
     getFolderById,
     requirePro,
     tGet,
-    ipcRenderer
+    ipcRenderer,
+    applyWorkspaceFilter
 }) {
     document.getElementById('ctxSidebarNewFolder')?.addEventListener('click', () => {
         if (requirePro && !requirePro('folders')) return
@@ -95,8 +96,28 @@ function bindContextActionsUi({
         openEditModal()
     })
 
-    document.getElementById('ctxMoveToFolder')?.addEventListener('click', () => {
+    document.getElementById('ctxMoveToFolder')?.addEventListener('click', (e) => {
+        // BUGFIX (2026-09-14, live-репорт "хрен пойми где появляется этот
+        // выбор пространства и папки, да ещё и не нажимается") — ВТОРАЯ
+        // причина: sidebar-shell-bind.js вешает НА ВЕСЬ document
+        // безусловный click-листенер `hideAllMenus()` (для закрытия меню
+        // кликом мимо). Этот обработчик открывает #folderPickMenu, но сам
+        // клик по #ctxMoveToFolder продолжает всплывать дальше к document —
+        // и та же самая функция hideAllMenus() тут же закрывает то, что
+        // только что открыли, ещё до того как пользователь успевает
+        // кликнуть по строке внутри. stopPropagation — единственное, что
+        // мешает всплытию добраться до document.
+        e.stopPropagation()
         const messenger = getMessengerById(state.contextTargetId)
+        // BUGFIX (2026-09-14) — ПЕРВАЯ причина, та же формулировка репорта:
+        // rect ЗДЕСЬ, ДО hideAllMenus() — та прячет родительское
+        // #contextMenu (снимает .show → display:none по базовому правилу
+        // .context-menu), а #ctxMoveToFolder лежит ВНУТРИ него.
+        // getBoundingClientRect() на уже-скрытом элементе возвращает все
+        // нули, так что пикер позиционировался в (6px, 0px) — левый
+        // верхний угол окна, а не
+        // рядом с реальным пунктом меню, на который кликнул пользователь.
+        const btnRect = document.getElementById('ctxMoveToFolder')?.getBoundingClientRect()
         hideAllMenus()
         if (!messenger) return
 
@@ -128,13 +149,82 @@ function bindContextActionsUi({
             menu.appendChild(item)
         })
 
-        menu.style.display = 'block'
+        // BUGFIX (2026-09-15, live-репорт "всплывающее окно пространства не
+        // закрывается... и если мимо нажать - тоже закрываться должно"):
+        // здесь раньше ЕЩЁ стояла строка menu.style.display = 'block' — тот
+        // же баг сидел и здесь. Инлайн-style.display сильнее CSS-правила
+        // .context-menu.show{display:block}/.context-menu{display:none},
+        // так что hideAllMenus() (закрывает всё через снятие класса .show)
+        // не мог визуально закрыть это меню НИКОГДА — ни при выборе пункта,
+        // ни кликом мимо. Каждое другое меню в файле управляется ТОЛЬКО
+        // классом .show — этот пикер и его брат чуть ниже (workspaceMoveMenu)
+        // были единственным исключением.
         menu.classList.add('show')
 
-        const rect = document.getElementById('ctxMoveToFolder')?.getBoundingClientRect()
-        if (rect) {
-            menu.style.left = `${rect.right + 6}px`
-            menu.style.top = `${rect.top}px`
+        if (btnRect) {
+            menu.style.left = `${btnRect.right + 6}px`
+            menu.style.top = `${btnRect.top}px`
+        }
+    })
+
+    // FEATURE (2026-09-14, live-запрос "Рядом с кнопкой 'в папку' - также
+    // организовать перемещение между пространствами") — тот же паттерн, что
+    // и ctxMoveToFolder выше, только пишет messenger.workspaceId вместо
+    // folderId и не трогает сайдбар (applyWorkspaceFilter просто
+    // показывает/скрывает уже существующий элемент, ничего не
+    // перемещает/не создаёт).
+    document.getElementById('ctxMoveToWorkspace')?.addEventListener('click', (e) => {
+        // BUGFIX (2026-09-14) — то же stopPropagation, что и у ctxMoveToFolder
+        // выше (см. объяснение там): без него клик всплывает до document,
+        // где sidebar-shell-bind.js безусловно закрывает всё через
+        // hideAllMenus() сразу после того, как этот обработчик открыл пикер.
+        e.stopPropagation()
+        const messenger = getMessengerById(state.contextTargetId)
+        // BUGFIX (2026-09-14, live-репорт — тот же баг, что и у
+        // ctxMoveToFolder выше, объяснение там): rect берём ДО hideAllMenus(),
+        // иначе кнопка уже display:none и позиция улетает в левый верхний угол.
+        const btnRect = document.getElementById('ctxMoveToWorkspace')?.getBoundingClientRect()
+        hideAllMenus()
+        if (!messenger) return
+
+        const menu = document.getElementById('workspaceMoveMenu')
+        if (!menu) return
+
+        menu.innerHTML = ''
+
+        const noneItem = document.createElement('div')
+        noneItem.className = 'context-item'
+        noneItem.textContent = tGet ? tGet('workspaces.none') : 'No Workspace'
+        noneItem.addEventListener('click', () => {
+            messenger.workspaceId = null
+            applyWorkspaceFilter?.()
+            saveData()
+            hideAllMenus()
+        })
+        menu.appendChild(noneItem)
+
+        state.workspaces.forEach(ws => {
+            const item = document.createElement('div')
+            item.className = 'context-item'
+            const iconSvg = (folderIcons && folderIcons[ws.icon]) || (folderIcons && folderIcons.folder) || ''
+            item.innerHTML = `
+                <span class="folder-mini-icon" style="color:${ws.color || 'var(--accent)'}">${iconSvg}</span>
+                <span>${ws.name}</span>
+            `
+            item.addEventListener('click', () => {
+                messenger.workspaceId = ws.id
+                applyWorkspaceFilter?.()
+                saveData()
+                hideAllMenus()
+            })
+            menu.appendChild(item)
+        })
+
+        menu.classList.add('show')
+
+        if (btnRect) {
+            menu.style.left = `${btnRect.right + 6}px`
+            menu.style.top = `${btnRect.top}px`
         }
     })
 

@@ -29,6 +29,7 @@ const { createOrgTeamApi } = require('./renderer/org-team')
 const { createContextMenusApi } = require('./renderer/context-menus')
 const { bindPopupBackdrop } = require('./renderer/popup-backdrop-bind')
 const { createFoldersUiApi } = require('./renderer/folders-ui')
+const { createWorkspacesUiApi } = require('./renderer/workspaces-ui')
 const { createSearchUiApi } = require('./renderer/search-ui')
 const { createAddModalUiApi } = require('./renderer/add-modal-ui')
 const { createSettingsUiApi, updateAdaptiveTheme } = require('./renderer/settings-ui')
@@ -670,6 +671,7 @@ async function bootstrap() {
                 isMuted: state.mutedMessengers[m.id] || false,
                 notifSound: m.notifSound || '__default__',
                 folderId: m.folderId || null,
+                workspaceId: m.workspaceId || null,
                 position: idx,
                 zoomLevel: typeof m.zoomLevel === 'number' ? m.zoomLevel : 1
             }))
@@ -678,6 +680,17 @@ async function bootstrap() {
                 id: f.id,
                 name: f.name,
                 icon: f.icon,
+                workspaceId: f.workspaceId || null,
+                position: idx
+            }))
+
+            // Рабочие пространства (плагин, 2026-09-14) — контейнеры ДЛЯ
+            // ПАПОК (folder.workspaceId выше), а не для мессенджеров
+            // напрямую. См. renderer/workspaces-ui.js.
+            const workspaces = state.workspaces.map((w, idx) => ({
+                id: w.id,
+                name: w.name,
+                color: w.color || null,
                 position: idx
             }))
 
@@ -686,6 +699,7 @@ async function bootstrap() {
             return {
                 messengers,
                 folders,
+                workspaces,
                 settings: {
                     theme: settings.theme || 'embedded',
                     accentColor: settings.accentColor || '#7b68ee',
@@ -714,6 +728,7 @@ async function bootstrap() {
                         sidebarOrder:    store.get('sidebarOrder', []),
                         menuCollapsed:   store.get('menuCollapsed', false),
                         appZoomLevel:    store.get('appZoomLevel', 0),
+                        activeWorkspaceId: store.get('activeWorkspaceId', null),
                         vpnAppModes:     store.get('vpnAppModes', {}) || {},
                         // extensionsState включает состояние всех расширений, в т.ч. нативного 'split'
                         extensionsState: store.get('extensionsState', {}) || {},
@@ -799,10 +814,12 @@ async function bootstrap() {
                     icon: m.icon || null,
                     color: m.color || null,
                     folderId: m.folderId || null,
+                    workspaceId: m.workspaceId || null,
                     notifSound: m.notifSound || '__default__',
                     zoomLevel: typeof m.zoomLevel === 'number' ? m.zoomLevel : 1
                 })))
                 await store.setAsync('folders', cloudData.folders || [])
+                await store.setAsync('workspaces', cloudData.workspaces || [])
                 if (cloudData.settings) {
                     const { extra, ...baseSettings } = cloudData.settings
                     const cur = store.get('settings', {}) || {}
@@ -836,6 +853,7 @@ async function bootstrap() {
                         if (extra.splitLeftPctPref !== undefined) await store.setAsync('splitLeftPctPref', extra.splitLeftPctPref)
                         if (extra.splitPresets !== undefined) await store.setAsync('splitPresets', extra.splitPresets)
                         if (extra.activeTabId !== undefined) await store.setAsync('activeTabId', extra.activeTabId)
+                        if (extra.activeWorkspaceId !== undefined) await store.setAsync('activeWorkspaceId', extra.activeWorkspaceId)
                     }
                 }
                 const muted = {}
@@ -961,6 +979,7 @@ async function bootstrap() {
             color: m.color,
             id: m.id,
             folderId: m.folderId || null,
+            workspaceId: m.workspaceId || null,
             notifSound: m.notifSound || '__default__',
             zoomLevel: typeof m.zoomLevel === 'number' ? m.zoomLevel : 1
         }))
@@ -1130,6 +1149,19 @@ async function bootstrap() {
     } = foldersUiApi
 
     // ==============================
+    // WORKSPACES UI API (плагин, 2026-09-14 — второй пересмотр, см.
+    // renderer/workspaces-ui.js для полного объяснения архитектуры)
+    // ==============================
+    const activityTop = document.querySelector('.activity-top')
+
+    const workspacesUiApi = createWorkspacesUiApi({
+        state, store, tGet, saveData, activityTop, folderIcons,
+        showTooltip, hideTooltip,
+        openEditModal: () => openEditModal()
+    })
+    workspacesUiApi.ensureSwitcher()
+
+    // ==============================
     // LOCK API
     // ==============================
     const lockApi = createLockApi({
@@ -1243,7 +1275,8 @@ async function bootstrap() {
         tGet,
         getActiveMessengers: () => state.activeMessengers,
         moveMessengerToFolder,
-        updateContextMuteLabel
+        updateContextMuteLabel,
+        isWorkspacesEnabled: workspacesUiApi.isEnabled
     })
 
     const {
@@ -1262,12 +1295,23 @@ async function bootstrap() {
         folderEl.id = `folder-${folder.id}`
 
         const iconSvg = folderIcons[folder.icon] || folderIcons.folder
+        // BUGFIX (2026-09-16, "У папок куда-то названия делись. Не показаны
+        // при расширении сайдбара" — live user report): there was never a
+        // visible name element here at all — .folder-header only ever held
+        // the icon, with the name reachable only via a hover tooltip
+        // (showTooltip below). Messengers already show .messenger-name when
+        // #activityBar.sidebar-expanded (see styles.css) — folders get the
+        // same treatment now via .folder-name, set through textContent (not
+        // interpolated into the innerHTML template) so an untrusted folder
+        // name can't inject markup.
         folderEl.innerHTML = `
             <div class="folder-header">
                 <div class="folder-icon-wrap">${iconSvg}</div>
+                <span class="folder-name"></span>
             </div>
             <div class="folder-children" id="folder-children-${folder.id}"></div>
         `
+        folderEl.querySelector('.folder-name').textContent = folder.name
 
         const header = folderEl.querySelector('.folder-header')
         header.addEventListener('click', () => toggleFolderPanel(folder.id))
@@ -2018,6 +2062,16 @@ function applyTabZoom(level) {
             })
             saveData()
         }
+        if (toDisable.includes('workspaces')) {
+            workspacesUiApi.setEnabled(false)
+            // Same treatment as reapplyFolderLocks() below for folders — a
+            // downgraded account shouldn't keep Pro-only workspace records
+            // sitting in local storage (main.js's own store:set backstop
+            // already blocks pushing a non-empty 'workspaces' array while
+            // non-Pro, this just makes local state consistent with that).
+            const staleWorkspaceIds = state.workspaces.map(w => w.id)
+            staleWorkspaceIds.forEach(id => workspacesUiApi.removeWorkspace(id))
+        }
     }
 
     // ==============================
@@ -2155,6 +2209,13 @@ function applyTabZoom(level) {
             id,
             name,
             folderId: null,
+            // FEATURE (2026-09-14, четвёртый пересмотр — "Пространства это
+            // смена всех мессенджеров и папок. Как-будто ещё аккаунт"): если
+            // сейчас активно конкретное пространство (не «Все»), новый
+            // мессенджер добавляется В НЕГО, а не в невидимый "общий фонд" —
+            // иначе он тут же пропал бы из вида сразу после добавления,
+            // ровно та путаница, о которой сообщил пользователь.
+            workspaceId: (workspacesUiApi.isEnabled() && state.activeWorkspaceId) || null,
             notifSound: '__default__',
             zoomLevel: state.tabZoomLevel || store.get('tabZoomLevel', 1) || 1
         }
@@ -2228,6 +2289,7 @@ function applyTabZoom(level) {
             ...messenger,
             orgAssigned: true,
             folderId: null,
+            workspaceId: null,
             notifSound: '__default__',
             zoomLevel: state.tabZoomLevel || store.get('tabZoomLevel', 1) || 1
         }
@@ -2429,6 +2491,9 @@ function applyTabZoom(level) {
             if (btn) btn.style.display = isEnabled ? 'flex' : 'none'
             if (!isEnabled && state.splitMode) splitApi?.exitSplitMode?.()
         }
+        if (extId === 'workspaces') {
+            workspacesUiApi.setEnabled(isEnabled)
+        }
         // Force refresh context menus if needed
     }
 
@@ -2552,11 +2617,20 @@ function applyTabZoom(level) {
                         icon: m.icon || null,
                         color: m.color || null,
                         folderId: m.folderId || null,
+                        workspaceId: m.workspaceId || null,
                         notifSound: m.notifSound || '__default__',
                         zoomLevel: typeof m.zoomLevel === 'number' ? m.zoomLevel : 1
                     })))
 
                     store.set('folders', cloudData.folders || [])
+                    // BUGFIX (2026-09-14, обнаружено при добавлении прямой
+                    // привязки мессенджер→пространство): этот отдельный
+                    // fast-path загрузки при старте (см. postLoginReload
+                    // ветку выше) никогда не писал 'workspaces' вообще —
+                    // пропущено при первой версии плагина, из-за чего
+                    // пространства могли не переживать обычный (не
+                    // пост-логин) перезапуск приложения при облачном логине.
+                    store.set('workspaces', cloudData.workspaces || [])
 
                     if (cloudData.settings) {
                         const currentSettings = store.get('settings', {}) || {}
@@ -2621,6 +2695,11 @@ function applyTabZoom(level) {
         state.globalMuteAll = await store.getAsync('globalMuteAll', false)
         state.folders = savedFolders || []
         state.dividers = savedDividers || []
+        state.workspaces = (await store.getAsync('workspaces', [])) || []
+        state.activeWorkspaceId = await store.getAsync('activeWorkspaceId', null)
+        if (state.activeWorkspaceId && !state.workspaces.some(w => w.id === state.activeWorkspaceId)) {
+            state.activeWorkspaceId = null
+        }
 
         updateMuteAllBtn()
 
@@ -2640,6 +2719,14 @@ function applyTabZoom(level) {
         const settings = await store.getAsync('settings', {})
         const foldersEnabled = settings?.foldersEnabled !== false
         if (!foldersEnabled) setTimeout(() => applyFoldersEnabled(false), 100)
+
+        // Плагин "Рабочие пространства" (2026-09-14) — включается через
+        // Расширения (extensionsState), не через отдельный тумблер настроек,
+        // как foldersEnabled выше. Применяем фильтр ПОСЛЕ рендера папок
+        // (renderFolder цикл выше), т.к. applyWorkspaceFilter ищет уже
+        // существующие #folder-* узлы.
+        const workspacesExtEnabled = (store.get('extensionsState', {}) || {}).workspaces === true
+        setTimeout(() => workspacesUiApi.setEnabled(workspacesExtEnabled), 100)
 
         // Pre-load extensions into ALL sessions BEFORE webviews load URLs
         // This ensures content scripts inject properly on first navigation
@@ -2885,7 +2972,10 @@ function applyTabZoom(level) {
         renderFolder,
         addToSidebar,
         getFolderById: (id) => state.folders.find(f => f.id === id),
-        getMessengerById: (id) => state.activeMessengers.find(m => m.id === id)
+        getMessengerById: (id) => state.activeMessengers.find(m => m.id === id),
+        applyWorkspaceFilter: workspacesUiApi.applyWorkspaceFilter,
+        getWorkspaceById: workspacesUiApi.getWorkspaceById,
+        updateSwitcherLabel: workspacesUiApi.updateSwitcherLabel
     })
 
     bindAddModalUi({
@@ -2989,39 +3079,104 @@ function applyTabZoom(level) {
         }
     })
 
+    // Вынесена именованной function-декларацией (а не инлайн-стрелкой прямо в
+    // вызове bindContextActionsUi(), как было раньше) — теперь её же вызывает
+    // и модалка рабочих пространств (createWorkspacesUiApi выше, "Новое
+    // пространство"/"Переименовать" — та же нативная модалка, что и у папок/
+    // мессенджеров, вместо отдельного самодельного попапа с текстовым полем,
+    // который пользователь не смог найти/использовать live-проверкой
+    // ("Вообще не создается рабочее пространство. Никак").
+    function openEditModal() {
+        editModal.classList.add('show')
+        const iconPickerWrap = document.getElementById('iconPickerWrap')
+        const iconPicker = document.getElementById('iconPicker')
+        const isFolder = state.editMode === 'folder' || state.editMode === 'newFolder'
+        const isWorkspace = state.editMode === 'workspace' || state.editMode === 'newWorkspace'
+        const showIconPicker = isFolder || isWorkspace
+        if (iconPickerWrap) iconPickerWrap.style.display = showIconPicker ? 'block' : 'none'
+        if (showIconPicker && iconPicker && !iconPicker.dataset.inited) {
+            iconPicker.dataset.inited = '1'
+            iconPicker.innerHTML = ''
+            Object.entries(folderIcons).forEach(([key, svg]) => {
+                const item = document.createElement('div')
+                item.className = 'icon-picker-item'
+                item.dataset.icon = key
+                item.innerHTML = svg
+                // FEATURE (2026-09-14, live-запрос "иконку выбирать для
+                // каждого нужно" — про рабочие пространства): пикер общий
+                // для папок и пространств (переиспользует тот же набор
+                // иконок и DOM), но пишет в РАЗНОЕ поле state в зависимости
+                // от того, какая модалка сейчас открыта — иначе выбор
+                // иконки для папки и для пространства перетирали бы друг
+                // друга через одно общее selectedFolderIcon.
+                item.addEventListener('click', () => {
+                    iconPicker.querySelectorAll('.icon-picker-item').forEach(el => el.classList.remove('selected'))
+                    item.classList.add('selected')
+                    if (state.editMode === 'workspace' || state.editMode === 'newWorkspace') {
+                        state.selectedWorkspaceIcon = key
+                    } else {
+                        state.selectedFolderIcon = key
+                    }
+                })
+                iconPicker.appendChild(item)
+            })
+        }
+        if (showIconPicker && iconPicker) {
+            const selected = isWorkspace ? (state.selectedWorkspaceIcon || 'folder') : (state.selectedFolderIcon || 'folder')
+            iconPicker.querySelectorAll('.icon-picker-item').forEach(el => {
+                el.classList.toggle('selected', el.dataset.icon === selected)
+            })
+        }
+
+        // Плагин "Рабочие пространства" (2026-09-14, третий пересмотр) —
+        // выбор пространства для папки ИЛИ для отдельного мессенджера вне
+        // папки ("пусть фильтрует и отдельные мессенджеры напрямую. Это
+        // важно" — live-запрос), показывается только когда плагин включён и
+        // хотя бы одно пространство существует. У мессенджера ВНУТРИ папки
+        // селектор скрыт — его видимость и так решает папка, назначение
+        // тут не имело бы видимого эффекта и только запутало бы. У самого
+        // пространства такого поля нет — не может входить само в себя.
+        const wsWrap = document.getElementById('folderWorkspaceWrap')
+        const wsSelect = document.getElementById('editFolderWorkspace')
+        if (wsWrap && wsSelect) {
+            const pendingId = document.getElementById('saveEditBtn')?.dataset.pendingMessengerId
+            const isMessengerMode = state.editMode === 'messenger'
+            const targetMessenger = isMessengerMode ? state.activeMessengers.find(m => m.id === pendingId) : null
+            const showWs = workspacesUiApi.isEnabled() && state.workspaces.length > 0 &&
+                (isFolder || (isMessengerMode && targetMessenger && !targetMessenger.folderId))
+            wsWrap.style.display = showWs ? 'block' : 'none'
+            if (showWs) {
+                const currentFolder = state.editMode === 'folder'
+                    ? state.folders.find(f => f.id === pendingId)
+                    : null
+                const escOpt = (s) => { const d = document.createElement('div'); d.textContent = s ?? ''; return d.innerHTML }
+                wsSelect.innerHTML = `<option value="">${escOpt(tGet('workspaces.none') || 'Без пространства')}</option>` +
+                    state.workspaces.map(w => `<option value="${escOpt(w.id)}">${escOpt(w.name)}</option>`).join('')
+                // FEATURE (2026-09-14, четвёртый пересмотр — "как будто ещё
+                // аккаунт"): у уже существующей папки/мессенджера — их
+                // реальный workspaceId. У НОВОЙ папки (editMode==='newFolder')
+                // — по умолчанию активное сейчас пространство, а не пусто:
+                // создание "внутри" пространства должно добавлять именно в
+                // него, иначе папка тут же пропала бы из вида.
+                const isNew = state.editMode === 'newFolder'
+                wsSelect.value = (
+                    isNew ? state.activeWorkspaceId
+                        : isMessengerMode ? targetMessenger?.workspaceId
+                            : currentFolder?.workspaceId
+                ) || ''
+            }
+        }
+        // editMode 'workspace'/'newWorkspace' не требует своего блока здесь —
+        // модалка для него это просто имя (editName) + заголовок, оба уже
+        // выставлены вызывающей стороной (workspaces-ui.js) до openEditModal().
+    }
+
     bindContextActionsUi({
         state,
         folderIcons,
         saveData,
         hideAllMenus,
-        openEditModal: () => {
-            editModal.classList.add('show')
-            const iconPickerWrap = document.getElementById('iconPickerWrap')
-            const iconPicker = document.getElementById('iconPicker')
-            const isFolder = state.editMode === 'folder' || state.editMode === 'newFolder'
-            if (iconPickerWrap) iconPickerWrap.style.display = isFolder ? 'block' : 'none'
-            if (isFolder && iconPicker && !iconPicker.dataset.inited) {
-                iconPicker.dataset.inited = '1'
-                iconPicker.innerHTML = ''
-                Object.entries(folderIcons).forEach(([key, svg]) => {
-                    const item = document.createElement('div')
-                    item.className = 'icon-picker-item'
-                    item.dataset.icon = key
-                    item.innerHTML = svg
-                    item.addEventListener('click', () => {
-                        iconPicker.querySelectorAll('.icon-picker-item').forEach(el => el.classList.remove('selected'))
-                        item.classList.add('selected')
-                        state.selectedFolderIcon = key
-                    })
-                    iconPicker.appendChild(item)
-                })
-            }
-            if (isFolder && iconPicker) {
-                iconPicker.querySelectorAll('.icon-picker-item').forEach(el => {
-                    el.classList.toggle('selected', el.dataset.icon === (state.selectedFolderIcon || 'folder'))
-                })
-            }
-        },
+        openEditModal,
         toggleMessengerVpn,
         removeMessenger,
         moveMessengerToFolder,
@@ -3033,7 +3188,8 @@ function applyTabZoom(level) {
         getFolderById: (id) => state.folders.find(f => f.id === id),
         requirePro,
         tGet,
-        ipcRenderer
+        ipcRenderer,
+        applyWorkspaceFilter: workspacesUiApi.applyWorkspaceFilter
     })
 
     bindPopupBackdrop({ contentArea })
@@ -3113,6 +3269,7 @@ function applyTabZoom(level) {
         authorizedInvoke,
         tGet,
         state,
+        store,
         toggleMuteAll,
         switchTab,
         openRightPanel: () => toggleRightPanel('notifications'),

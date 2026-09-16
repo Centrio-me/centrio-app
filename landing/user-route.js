@@ -32,7 +32,7 @@ router.get('/profile', authMiddleware, async (req, res) => {
       select: {
         id: true, email: true, name: true, avatar: true,
         plan: true, planExpiresAt: true, createdAt: true,
-        _count: { select: { messengers: true, folders: true } }
+        _count: { select: { messengers: true, folders: true, workspaces: true } }
       }
     })
     if (!user) return res.status(404).json({ error: 'Пользователь не найден' })
@@ -207,7 +207,7 @@ router.delete('/devices', authMiddleware, async (req, res) => {
 
 // GET /api/user/export — GDPR data export. Dumps everything we know is
 // attached to the user via existing, confirmed relations (messengers,
-// folders, sessions, payments). Session tokens/cookies themselves are
+// folders, workspaces, sessions, payments). Session tokens/cookies themselves are
 // deliberately excluded — only session metadata (device/IP/timestamps),
 // same fields already exposed via GET /devices.
 router.get('/export', exportLimiter, authMiddleware, async (req, res) => {
@@ -219,6 +219,7 @@ router.get('/export', exportLimiter, authMiddleware, async (req, res) => {
         plan: true, planExpiresAt: true, autoRenew: true, createdAt: true,
         messengers: true,
         folders: true,
+        workspaces: true,
         sessions: {
           select: { id: true, deviceInfo: true, ipAddress: true, createdAt: true, expiresAt: true }
         },
@@ -242,7 +243,7 @@ router.get('/export', exportLimiter, authMiddleware, async (req, res) => {
 // Deliberately anonymizes rather than hard-deletes: Payment rows are kept
 // (many jurisdictions require retaining financial/tax records for years —
 // see YooKassa receipt data above), but with `userId` no longer resolving
-// to any identifiable person after this runs. Sessions/messengers/folders
+// to any identifiable person after this runs. Sessions/messengers/folders/workspaces
 // (the actual personal configuration data) are hard-deleted immediately.
 //
 // This also sidesteps a real risk: prisma.user.delete() on a live schema
@@ -273,6 +274,7 @@ router.delete('/me', deleteAccountLimiter, authMiddleware, async (req, res) => {
       prisma.session.deleteMany({ where: { userId: user.id } }),
       prisma.messenger.deleteMany({ where: { userId: user.id } }),
       prisma.folder.deleteMany({ where: { userId: user.id } }),
+      prisma.workspace.deleteMany({ where: { userId: user.id } }),
       prisma.user.update({
         where: { id: user.id },
         data: {

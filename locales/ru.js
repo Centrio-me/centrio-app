@@ -6,6 +6,7 @@ module.exports = {
         reload: 'Обновить',
         rename: 'Переименовать',
         moveToFolder: 'В папку',
+        moveToWorkspace: 'В пространство',
         removeFromFolder: 'Убрать из папки',
         muteNotifications: 'Отключить уведомления',
         unmuteNotifications: 'Включить уведомления',
@@ -30,6 +31,21 @@ module.exports = {
         delete: 'Удалить папку',
         reloadAll: 'Обновить все вкладки',
         changeIcon: 'Сменить иконку'
+    },
+
+    // Рабочие пространства — плагин (2026-09-14, второй пересмотр): опциональный
+    // контейнер ДЛЯ ПАПОК, включается в Расширениях. См. extensions.workspaces
+    // ниже и renderer/workspaces-ui.js.
+    workspaces: {
+        title: 'Рабочие пространства',
+        all: 'Все',
+        none: 'Без пространства',
+        create: 'Новое пространство',
+        newTitle: 'Новое пространство',
+        rename: 'Переименовать',
+        renameTitle: 'Переименовать пространство',
+        delete: 'Удалить',
+        assignLabel: 'Рабочее пространство'
     },
 
     divider: {
@@ -388,6 +404,8 @@ module.exports = {
         mute: 'Отключить уведомления',
         unmute: 'Включить уведомления',
         muteIcon: 'Уведомления отключены',
+        soundOff: 'Выключить звук уведомлений',
+        soundOn: 'Включить звук уведомлений',
         statusOnline: 'В сети',
         statusBusy: 'Занят',
         appNotif: 'Уведомления',
@@ -861,6 +879,7 @@ module.exports = {
         darkmode:   { title: 'Тёмная тема',  desc: 'Правый клик — тёмная тема для любого сервиса' },
         split:      { title: 'Сплит-экран',  desc: 'Открывайте два сервиса рядом в одном окне' },
         notes:      { title: 'Заметки',       desc: 'Заметки и списки покупок, синхронизируются между устройствами' },
+        workspaces: { title: 'Рабочие пространства', desc: 'Группируйте папки по пространствам и переключайтесь между ними' },
         translateExt: { title: 'Google Переводчик', desc: 'Официальное расширение Google для перевода страниц и текста' },
         languageToolExt: { title: 'LanguageTool', desc: 'Проверка грамматики и орфографии прямо в мессенджерах' },
         install: 'Установить',

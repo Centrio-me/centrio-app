@@ -184,7 +184,8 @@ function createCloudApi({
                 'api-sync-push',
                 payload.messengers,
                 payload.folders,
-                payload.settings
+                payload.settings,
+                payload.workspaces
             )
 
             if (result.success) {

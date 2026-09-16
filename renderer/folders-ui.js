@@ -127,6 +127,19 @@ function createFoldersUiApi({
         document.getElementById('folderPanelName').textContent = folder.name
         renderFolderPanel(folderId)
         folderPanel.classList.add('open')
+        // BUGFIX (2026-09-16, "Названия при открытии папки тоже нет" — live
+        // user report): folderPanel is portalled straight into document.body
+        // (see renderer.js where it's created), not nested under #activityBar
+        // — a CSS descendant selector off #activityBar.sidebar-expanded can
+        // never reach it, so its narrow 70px icon-only layout
+        // (.folder-panel-content .messenger-name { display:none !important })
+        // applied even when the main sidebar was fully expanded and showing
+        // every other messenger's name right next to its icon. Mirrors the
+        // isExpanded check renderer/workspaces-ui.js uses for the same
+        // structural reason — computed fresh on each open, since the user
+        // can toggle the sidebar while the panel is closed.
+        const isExpanded = !!document.getElementById('activityBar')?.classList.contains('sidebar-expanded')
+        folderPanel.classList.toggle('folder-panel-wide', isExpanded)
         document.querySelector('.main-container').classList.add('folder-panel-open')
         updateFolderPanelPosition()
     }

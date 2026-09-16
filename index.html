@@ -58,7 +58,7 @@
         </div>
 
         <div class="startup-brand">
-            <div class="startup-title">Centrio</div>
+            <div class="startup-title">Centrio<span class="brand-period"></span></div>
             <div class="startup-subtitle" data-i18n="startup.subtitle"></div>
         </div>
 
@@ -84,7 +84,7 @@
 <div class="titlebar">
     <div class="titlebar-left">
         <img class="app-logo" alt="Centrio" style="height:20px;width:auto;">
-        <span class="app-name">Centrio</span>
+        <span class="app-name">Centrio<span class="brand-period"></span></span>
     </div>
 
     <div class="titlebar-menu" id="titlebarMenu">
@@ -548,6 +548,27 @@
                             <line x1="2" y1="2" x2="22" y2="22" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
                         </svg>
                     </button>
+                    <!-- FEATURE (2026-09-14, live-запрос "Добавь ещё - убрать
+                         звук рядом кнопочку. Чтобы уведомления приходили, но
+                         без звука"): отдельная от appNotifMuteToggle кнопка —
+                         та полностью отключает уведомления (тихо И не
+                         показывает), эта только глушит звук, уведомления
+                         продолжают приходить и отображаться как обычно.
+                         Переключает существующую settings.notifSound (тот же
+                         флаг, что и тумблер "Звук уведомлений" в Настройках)
+                         — просто быстрый доступ отсюда, без похода в
+                         Настройки. -->
+                    <button id="appNotifSoundToggle" class="app-notif-mute-btn" title="Выключить звук уведомлений">
+                        <svg class="sound-icon-normal" width="15" height="15" viewBox="0 0 24 24" fill="none">
+                            <polygon points="4,9 8,9 13,4 13,20 8,15 4,15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M17 8a5 5 0 0 1 0 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                            <path d="M19.5 5.5a9 9 0 0 1 0 13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                        </svg>
+                        <svg class="sound-icon-muted" width="15" height="15" viewBox="0 0 24 24" fill="none" style="display:none;">
+                            <polygon points="4,9 8,9 13,4 13,20 8,15 4,15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                            <line x1="2" y1="2" x2="22" y2="22" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                        </svg>
+                    </button>
                     <button id="appNotifMarkAllRead" class="app-notif-clear-btn" data-i18n="notifications.markAllRead"></button>
                     <button id="appNotifDeleteAll" class="app-notif-delete-btn" title="Удалить все уведомления из панели">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
@@ -988,6 +1009,19 @@
     </div>
     <div class="changelog-popup-body">
         <div class="changelog-entry">
+            <div class="changelog-version">v2.8.0</div>
+            <ul class="changelog-list">
+                <li>Новое: «Рабочие пространства» (Pro, расширение) — сгруппируйте свои папки по пространствам (например, для разных филиалов или проектов) и переключайтесь между ними одним кликом, не теряя из виду ничего лишнего. Включается в Настройки → Расширения, работает вместе с обычными папками — папка может как входить в пространство, так и оставаться вне их (тогда она видна всегда)</li>
+                <li>Новое: перемещение отдельных мессенджеров между рабочими пространствами — рядом с кнопкой «В папку» появилась кнопка «В пространство»</li>
+                <li>Новое: в уведомлениях добавлена отдельная кнопка «Без звука» — уведомления продолжают приходить, но без звукового сигнала</li>
+                <li>Исправлено: мини-плеер мог со временем перестать замечать, что музыка играет, при длительном прослушивании</li>
+                <li>Исправлено: переименование мессенджера или папки не обновляло название сразу в сайдбаре</li>
+                <li>Исправлено: названия папок не показывались ни в развёрнутом сайдбаре, ни при открытии самой папки — только иконки</li>
+                <li>Улучшено: обновлён основной шрифт приложения (Golos Text) и добавлена фирменная точка в логотипе — единый стиль с сайтом centrio.me</li>
+                <li>Улучшено: переключатель рабочих пространств — иконка кнопки показывает иконку активного пространства, список открывается прямо под кнопкой (раздвигая остальные иконки), название пространства подсказывается сбоку при наведении, как у любого мессенджера</li>
+            </ul>
+        </div>
+        <div class="changelog-entry">
             <div class="changelog-version">v2.7.2</div>
             <ul class="changelog-list">
                 <li>Исправлено: заметки — клик по заметке сразу после открытия панели иногда не срабатывал</li>
@@ -1291,6 +1325,22 @@
         </svg>
         <span data-i18n="ctx.removeFromFolder"></span>
     </div>
+    <!-- FEATURE (2026-09-14, live-запрос "Рядом с кнопкой 'в папку' -
+         также организовать перемещение между пространствами"): быстрый
+         пикер, симметричный ctxMoveToFolder выше — не открывает модалку
+         переименования, сразу список пространств. Показывается/скрывается
+         в showContextMenu() (renderer/context-menus.js), только когда
+         плагин включён, есть хотя бы одно пространство, и мессенджер вне
+         папки (внутри папки видимость решает сама папка). -->
+    <div class="context-item" id="ctxMoveToWorkspace" style="display:none;">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="7" height="7" rx="1.5"/>
+            <rect x="14" y="3" width="7" height="7" rx="1.5"/>
+            <rect x="3" y="14" width="7" height="7" rx="1.5"/>
+            <rect x="14" y="14" width="7" height="7" rx="1.5"/>
+        </svg>
+        <span data-i18n="ctx.moveToWorkspace"></span>
+    </div>
     <div class="context-divider"></div>
     <div class="context-item" id="ctxChangeIcon">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
@@ -1348,6 +1398,11 @@
     </div>
     <div id="folderPickList"></div>
 </div>
+
+<!-- Выбор пространства для мессенджера (2026-09-14) — тот же паттерн, что
+     и #folderPickMenu выше: пустой контейнер, содержимое строится
+     динамически в renderer/context-actions-bind.js's ctxMoveToWorkspace. -->
+<div id="workspaceMoveMenu" class="context-menu"></div>
 
 <!-- Контекстное меню сайдбара -->
 <div id="sidebarContextMenu" class="context-menu">
@@ -1534,6 +1589,16 @@
             <div id="iconPickerWrap" style="display:none;">
                 <div class="modal-section-label" data-i18n="modal.iconLabel"></div>
                 <div id="iconPicker" class="icon-picker"></div>
+            </div>
+            <!-- Рабочие пространства как плагин (2026-09-14, второй пересмотр —
+                 см. renderer/workspaces-ui.js): показывается только при открытой
+                 модалке папки И включённом плагине "Рабочие пространства" в
+                 Расширениях. Папка попадает максимум в одно пространство
+                 (workspaceId), поэтому select, а не чекбоксы, как раньше у
+                 мессенджеров. -->
+            <div id="folderWorkspaceWrap" style="display:none;">
+                <div class="modal-section-label" data-i18n="workspaces.assignLabel"></div>
+                <select id="editFolderWorkspace" class="vsc-input"></select>
             </div>
             <button id="saveEditBtn" class="vsc-btn" data-i18n="modal.saveBtn"></button>
         </div>
@@ -2503,7 +2568,7 @@
                                 <img src="assets/logo.png" alt="Centrio" class="about-logo-img">
                             </div>
 
-                            <div class="about-name">Centrio</div>
+                            <div class="about-name">Centrio<span class="brand-period"></span></div>
 
                             <div class="about-version-row">
                                 <span class="about-version-badge" id="appVersionText">v1.3.3</span>

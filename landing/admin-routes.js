@@ -96,7 +96,7 @@ const USER_SELECT = {
     lastSeenAt: true, createdAt: true, autoRenew: true,
     googleId: true, yandexId: true, githubId: true,
     telegramId: true, vkId: true, mailId: true, passwordHash: true,
-    _count: { select: { messengers: true, folders: true, sessions: true } }
+    _count: { select: { messengers: true, folders: true, workspaces: true, sessions: true } }
 }
 
 function mapUserRow(u) {
@@ -111,6 +111,7 @@ function mapUserRow(u) {
         provider:   detectProvider(u),
         messengers: u._count.messengers,
         folders:    u._count.folders,
+        workspaces: u._count.workspaces,
         sessions:   u._count.sessions
     }
 }
@@ -219,7 +220,7 @@ router.get('/users/:id', async (req, res) => {
                 lastSeenAt: true, createdAt: true,
                 googleId: true, yandexId: true, githubId: true,
                 telegramId: true, vkId: true, mailId: true, passwordHash: true,
-                _count: { select: { messengers: true, folders: true, sessions: true } }
+                _count: { select: { messengers: true, folders: true, workspaces: true, sessions: true } }
             }
         })
         if (!user) return res.status(404).json({ error: 'Пользователь не найден' })
@@ -233,6 +234,7 @@ router.get('/users/:id', async (req, res) => {
             provider:   detectProvider(user),
             messengers: _count.messengers,
             folders:    _count.folders,
+            workspaces: _count.workspaces,
             sessions:   _count.sessions
         })
     } catch (err) {
@@ -297,7 +299,7 @@ router.delete('/users/:id', async (req, res) => {
         res.json({ ok: true })
     } catch (err) {
         if (err.code === 'P2025') return res.status(404).json({ error: 'Пользователь не найден' })
-        // FK constraint: user still owns messengers/folders/sessions/payments
+        // FK constraint: user still owns messengers/folders/workspaces/sessions/payments
         // that aren't set to cascade-delete at the schema level.
         if (err.code === 'P2003') {
             return res.status(409).json({ error: 'Нельзя удалить: у пользователя есть связанные данные (мессенджеры, платежи, сессии)' })
