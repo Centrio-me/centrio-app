@@ -20,15 +20,20 @@ async function _tryRestoreVpn(win) {
         const st = vpnMgr.getStatus()
         if (st.active) return  // уже подключён
 
-        const binPath = vpnMgr.getSingboxPath()
-        if (!fs2.existsSync(binPath)) return
-
         if (link.startsWith('http://') || link.startsWith('https://')) return  // подписки не восстанавливаем
 
         let parsed
         try { parsed = vpnMgr.parseVpnLink(link) } catch { return }
 
-        console.info('[VPN] auto-restore: starting sing-box...')
+        // Движок (Xray-core или sing-box) зависит от протокола ссылки — см.
+        // engineForOutbound в vpn-manager.js. Если нужный движок ещё не
+        // скачан, просто не восстанавливаем автосвязь — пользователь
+        // подключится вручную и увидит обычный needsDownload-флоу.
+        const engine  = vpnMgr.engineForOutbound(parsed.outbound)
+        const binPath = engine === 'xray' ? vpnMgr.getXrayPath() : vpnMgr.getSingboxPath()
+        if (!fs2.existsSync(binPath)) return
+
+        console.info(`[VPN] auto-restore: starting ${engine === 'xray' ? 'Xray-core' : 'sing-box'}...`)
         await vpnMgr.startProxy(parsed, (line) => {
             if (win && !win.isDestroyed()) win.webContents.send('vpn-log', line)
         })

@@ -31,6 +31,9 @@ jobs:
 
       - run: npm ci
 
+      - name: Download VPN engines (Xray-core + sing-box, bundled into installer)
+        run: node scripts/download-engines.js
+
       - name: Build Windows
         run: node build-renderer.js && npx electron-builder --win --publish never
         env:
@@ -72,6 +75,9 @@ jobs:
 
       - name: Resize icon to 512x512 (macOS requirement)
         run: sips -z 512 512 assets/icon.png --out assets/icon.png
+
+      - name: Download VPN engines (Xray-core + sing-box, bundled into installer)
+        run: node scripts/download-engines.js
 
       - name: Build macOS (unsigned)
         run: node build-renderer.js && npx electron-builder --mac --publish never
@@ -122,6 +128,9 @@ jobs:
 
       - name: Resize icon to 512x512 (Linux requirement)
         run: convert assets/icon.png -resize 512x512 assets/icon.png
+
+      - name: Download VPN engines (Xray-core + sing-box, bundled into installer)
+        run: node scripts/download-engines.js
 
       - name: Build Linux
         run: node build-renderer.js && npx electron-builder --linux AppImage deb --x64 --publish never

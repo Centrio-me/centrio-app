@@ -211,6 +211,11 @@ function bindVpnUi ({ invokeIpc, tGet, ipcRenderer, onVpnStatusChange, state }) 
     }).catch(() => { pings[id] = null; reorderConfigRows() })
   }
 
+  // ── Репинг всех сохранённых конфигов сразу (кнопка "Обновить пинг") ──
+  function repingAll () {
+    for (const c of (status.configs || [])) repingOne(c.id)
+  }
+
   // ── Рендер панели ─────────────────────────────────────────────────
   function render () {
     const body = panel.querySelector('.vpn-panel-body')
@@ -228,6 +233,26 @@ function bindVpnUi ({ invokeIpc, tGet, ipcRenderer, onVpnStatusChange, state }) 
     const isActive = status.active
 
     // ─── Статусная строка + главная кнопка ───────────────────────
+    // Кнопки «Обновить пинг» / «Обновить» — доступны независимо от того,
+    // подключён ли VPN сейчас (по запросу: раньше показывались только при
+    // активном подключении, но обновить пинг серверов или список из
+    // подписки полезно и заранее, до выбора/подключения).
+    const topActionsHtml = `
+        <div class="vpn-top-actions">
+          <button class="vpn-top-action-btn" id="vpnRepingAllBtn" title="${esc(tGet('network.vpnRefreshPing'))}">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+            </svg>
+            <span>${esc(tGet('network.vpnRefreshPing'))}</span>
+          </button>
+          <button class="vpn-top-action-btn" id="vpnRefreshServersBtn" title="${esc(tGet('network.vpnRefresh'))}">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/>
+            </svg>
+            <span>${esc(tGet('network.vpnRefresh'))}</span>
+          </button>
+        </div>`
+
     let topHtml
     if (isActive) {
       const timerStr = connectedAt ? formatDuration(Date.now() - connectedAt) : '00:00'
@@ -244,7 +269,8 @@ function bindVpnUi ({ invokeIpc, tGet, ipcRenderer, onVpnStatusChange, state }) 
             <rect x="3" y="3" width="18" height="18" rx="3"/>
           </svg>
           ${esc(tGet('network.vpnDisconnect'))}
-        </button>`
+        </button>
+        ${topActionsHtml}`
     } else if (selConf) {
       topHtml = `
         <div class="vpn-status-block disconnected">
@@ -259,7 +285,8 @@ function bindVpnUi ({ invokeIpc, tGet, ipcRenderer, onVpnStatusChange, state }) 
             <polygon points="5,3 19,12 5,21"/>
           </svg>
           ${esc(tGet('network.vpnConnect'))}
-        </button>`
+        </button>
+        ${topActionsHtml}`
     } else {
       topHtml = `
         <div class="vpn-status-block disconnected">
@@ -386,6 +413,16 @@ function bindVpnUi ({ invokeIpc, tGet, ipcRenderer, onVpnStatusChange, state }) 
 
     // Кнопка «Обновить список» из подписки
     document.getElementById('vpnSubRefreshBtn')?.addEventListener('click', (e) => {
+      e.stopPropagation()
+      refreshSubscription()
+    })
+
+    // Кнопки сверху под активным VPN: «Обновить пинг» / «Обновить сервера по ссылке»
+    document.getElementById('vpnRepingAllBtn')?.addEventListener('click', (e) => {
+      e.stopPropagation()
+      repingAll()
+    })
+    document.getElementById('vpnRefreshServersBtn')?.addEventListener('click', (e) => {
       e.stopPropagation()
       refreshSubscription()
     })
@@ -701,16 +738,30 @@ function bindVpnUi ({ invokeIpc, tGet, ipcRenderer, onVpnStatusChange, state }) 
   // changing mid-session (WhatsApp Web's IndexedDB-backed multi-device
   // session apparently doesn't) needs a clean reload against the new proxy
   // rather than being left to somehow self-heal in place.
+  //
+  // BUGFIX (2026-09-16, live report right after: "ещё быстрее — никаких
+  // перезагрузок любых вкладок при подключении и отключении ВПН"): reloading
+  // every affected tab immediately (even the already-scoped list from the
+  // previous fix) was still visibly disruptive — every background tab
+  // flashed at once. Only the tab the user is actually LOOKING AT right now
+  // needs an immediate reload (it has to keep working without the user doing
+  // anything); every other affected tab is instead just flagged via
+  // data-pending-proxy-reload and reloads lazily the next time the user
+  // switches to it (see switchTab() in renderer/messengers.js) — by then the
+  // reload is invisible, since the tab wasn't rendered yet anyway.
   ipcRenderer?.on('vpn-proxy-changed', (payload) => {
     if (!state || !Array.isArray(state.activeMessengers)) return
-    const targetId = payload?.messengerId || null
-    const messengers = targetId
-      ? state.activeMessengers.filter(m => m.id === targetId)
-      : state.activeMessengers
+    const ids = payload?.messengerIds
+    const messengers = Array.isArray(ids)
+      ? state.activeMessengers.filter(m => ids.includes(m.id))
+      : state.activeMessengers   // null/undefined — редкий полный сброс (см. main/ipc/vpn.js)
     messengers.forEach((m) => {
       const wv = document.getElementById(`webview-${m.id}`)
-      if (wv && typeof wv.reload === 'function' && typeof wv.getURL === 'function' && wv.getURL()) {
+      if (!wv || typeof wv.reload !== 'function' || typeof wv.getURL !== 'function' || !wv.getURL()) return
+      if (m.id === state.activeTabId) {
         try { wv.reload() } catch {}
+      } else {
+        wv.dataset.pendingProxyReload = '1'
       }
     })
   })

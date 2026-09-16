@@ -1,7 +1,21 @@
 // VPN Manager — main process
-// Управляет sing-box как прокси-процессом.
-// Поддерживает vmess://, vless://, trojan://, ss://, hysteria2://, https:// (подписка)
-
+// Управляет ДВУМЯ прокси-движками (2026-09-16, "давай ставить реально
+// другой движок. Чтобы HAPP работал 1 в 1 как Centrio" — live user
+// request, после того как выяснилось что XHTTP-серверы у пользователя
+// вообще не подключались через sing-box):
+//   - Xray-core — основной движок для vmess/vless/trojan/shadowsocks
+//     (включая XHTTP/Reality/gRPC/WS/HTTPUpgrade транспорты) — тот же
+//     движок, что использует Happ (подтверждено независимо несколькими
+//     источниками, включая декомпилированный APK Happ на Android), гарантия
+//     "1 в 1" совместимости с тем, что уже работает у пользователя там.
+//   - sing-box — оставлен ТОЛЬКО для hysteria2:// ссылок, потому что
+//     Xray-core в принципе не реализует протокол Hysteria2 (проверено
+//     напрямую: `xray run -test` на конфиге с "protocol": "hysteria2" даёт
+//     "unknown config id: hysteria2"), а терять уже рабочую поддержку
+//     Hysteria2-ссылок при переходе на Xray-core не хотим.
+// Выбор движка на ссылку — ENGINE_FOR_OUTBOUND_TYPE ниже; оба слушают один
+// и тот же локальный SOCKS5-порт PROXY_PORT, но никогда не запущены
+// одновременно (startProxy() сначала останавливает то, что уже работает).
 const { app, shell } = require('electron')
 const path  = require('path')
 const fs    = require('fs')
@@ -10,10 +24,12 @@ const http  = require('http')
 const net   = require('net')
 const crypto = require('crypto')
 const { spawn, execFile } = require('child_process')
+const AdmZip = require('adm-zip')
 const store = require('./main/services/store')
 const { encryptValue, decryptValue } = require('./main/services/secureStore')
-const PROXY_PORT = 7890   // local SOCKS5 port sing-box будет слушать
+const PROXY_PORT = 7890   // local SOCKS5 port — общий для обоих движков
 const SING_BOX_VERSION = '1.11.4'
+const XRAY_VERSION = '26.3.27'
 
 // sing-box не публикует checksums.txt/подписи для релиза, поэтому хэши
 // пинуются вручную (посчитаны из официальных ассетов GitHub-релиза v1.11.4).
@@ -25,17 +41,28 @@ const SING_BOX_CHECKSUMS = {
   'sing-box-1.11.4-linux-amd64.tar.gz':  '0bb762ef286b36c2016d9107fc1f089be7a75f6d579b33f067d31e696c05927e'
 }
 
-function verifyChecksum (filePath, filename) {
-  const expected = SING_BOX_CHECKSUMS[filename]
+// Xray-core, в отличие от sing-box, публикует официальные SHA2-256 .dgst
+// файлы на каждый ассет релиза — хэши ниже переписаны из них напрямую
+// (https://github.com/XTLS/Xray-core/releases/download/v26.3.27/<file>.dgst),
+// не пересчитаны вручную, но подход тот же — пин от подмены бинарника.
+const XRAY_CHECKSUMS = {
+  'Xray-windows-64.zip':    'd004c39288ce9ada487c6f398c7c545f7d749e44bdfdd59dbc9f865afba4e1ad',
+  'Xray-macos-64.zip':      'f5b0471d3459eff1b82e48af0aeac186abcc3298210070afbbbd8437a4e8b203',
+  'Xray-macos-arm64-v8a.zip': '2e93a67e8aa1936ecefb307e120830fcbd4c643ab9b1c46a2d0838d5f8409eaf',
+  'Xray-linux-64.zip':      '23cd9af937744d97776ee35ecad4972cf4b2109d1e0fe6be9930467608f7c8ae'
+}
+
+function verifyChecksum (filePath, filename, checksums) {
+  const expected = checksums[filename]
   if (!expected) throw new Error(`Нет доверенной контрольной суммы для ${filename} — отменяю установку`)
   const data = fs.readFileSync(filePath)
   const actual = crypto.createHash('sha256').update(data).digest('hex')
   if (actual !== expected) {
-    throw new Error(`Контрольная сумма sing-box не совпадает (ожидалось ${expected}, получено ${actual}) — файл мог быть подменён`)
+    throw new Error(`Контрольная сумма не совпадает (ожидалось ${expected}, получено ${actual}) — файл мог быть подменён`)
   }
 }
 
-let singboxProcess = null
+let engineProcess = null
 let currentConfig  = null  // { name, link, outbound }
 let proxyActive    = false
 
@@ -66,41 +93,99 @@ let onUnexpectedExit = null
 function setUnexpectedExitHandler (fn) { onUnexpectedExit = fn }
 
 // ── Путь к бинарнику ──────────────────────────────────────────────
+// BUGFIX (2026-09-16, "нельзя его один раз скачать и поместить сразу в
+// приложение?" — прямой запрос после отчёта "с 10 раза скачалось и
+// заработало"): scripts/download-engines.js скачивает оба движка ОДИН РАЗ
+// на этапе сборки (CI/машина разработчика) и вшивает их в установщик через
+// "extraResources" (package.json) — установщик кладёт их в
+// process.resourcesPath/engines/<xray|singbox>/. Если такой готовый
+// бинарник уже есть — просто копируем его в userData один раз при первом
+// обращении, и сетевое скачивание на машине клиента вообще не понадобится.
+// downloadXray()/downloadSingbox() остаются как fallback — для dev-режима
+// (app.isPackaged === false, ресурсов нет) и на случай, если по какой-то
+// причине extraResources не попал в конкретную сборку.
+function ensureBundledEngine (binPath, subdir, binName) {
+  if (fs.existsSync(binPath)) return binPath
+  if (!app.isPackaged) return binPath
+  const bundled = path.join(process.resourcesPath, 'engines', subdir, binName)
+  if (fs.existsSync(bundled)) {
+    try {
+      fs.copyFileSync(bundled, binPath)
+      if (process.platform !== 'win32') fs.chmodSync(binPath, '755')
+    } catch (e) {
+      console.error(`[VPN] failed to copy bundled ${subdir} binary:`, e.message)
+    }
+  }
+  return binPath
+}
+
 function getSingboxPath () {
   const userData = app.getPath('userData')
   const dir = path.join(userData, 'singbox')
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
   const bin = process.platform === 'win32' ? 'sing-box.exe' : 'sing-box'
-  return path.join(dir, bin)
+  return ensureBundledEngine(path.join(dir, bin), 'singbox', bin)
 }
 
-// ── Скачивание sing-box ───────────────────────────────────────────
-function downloadSingbox (onProgress) {
+function getXrayPath () {
+  const userData = app.getPath('userData')
+  const dir = path.join(userData, 'xray')
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
+  const bin = process.platform === 'win32' ? 'xray.exe' : 'xray'
+  return ensureBundledEngine(path.join(dir, bin), 'xray', bin)
+}
+
+// ── Скачивание движка (sing-box ИЛИ Xray-core) ──────────────────────
+// Общая логика вынесена в один генерик (2026-09-16, при добавлении
+// Xray-core вторым движком) — было бы 90 строк дублирования иначе, один
+// таймаут/прогресс/проверка-целостности/распаковка на оба движка.
+//
+// BUGFIX (2026-09-16, живой отчёт: "с 10 раза скачалось и заработало"):
+// GitHub Releases (и его CDN objects.githubusercontent.com, куда ведёт
+// редирект) нередко рвёт/тормозит соединение именно в тех сетях, где сам
+// VPN и нужен — до этой правки КАЖДЫЙ обрыв сразу улетал наверх как ошибка
+// в UI (see main/ipc/vpn.js), и пользователю приходилось вручную жать
+// «Подключить» заново и заново. Теперь до 3 попыток скачивания делаются
+// автоматически внутри одного вызова, с растущей паузой между ними —
+// наружу уходит ошибка только если не получилось совсем.
+const DOWNLOAD_MAX_ATTEMPTS = 3
+const DOWNLOAD_RETRY_DELAYS_MS = [1000, 3000]
+
+function downloadEngineBinary ({ binPath, filename, url, checksums, engineLabel, onProgress }) {
+  if (fs.existsSync(binPath)) return Promise.resolve(binPath)
+
+  async function attempt (n) {
+    try {
+      return await downloadEngineBinaryOnce({ binPath, filename, url, checksums, engineLabel, onProgress })
+    } catch (err) {
+      if (n >= DOWNLOAD_MAX_ATTEMPTS) throw err
+      const delay = DOWNLOAD_RETRY_DELAYS_MS[n - 1] || 3000
+      onProgress && onProgress({ stage: 'download', percent: 0, msg: `Повтор попытки скачивания ${engineLabel} (${n + 1}/${DOWNLOAD_MAX_ATTEMPTS})...` })
+      await new Promise(r => setTimeout(r, delay))
+      return attempt(n + 1)
+    }
+  }
+
+  return attempt(1)
+}
+
+function downloadEngineBinaryOnce ({ binPath, filename, url, checksums, engineLabel, onProgress }) {
   return new Promise((resolve, reject) => {
-    const binPath = getSingboxPath()
     if (fs.existsSync(binPath)) { resolve(binPath); return }
 
-    const ver = SING_BOX_VERSION
-    let filename, extractDir
-
-    if (process.platform === 'win32') {
-      filename   = `sing-box-${ver}-windows-amd64.zip`
-      extractDir = 'win32'
-    } else if (process.platform === 'darwin') {
-      const arch = process.arch === 'arm64' ? 'arm64' : 'amd64'
-      filename   = `sing-box-${ver}-darwin-${arch}.tar.gz`
-      extractDir = 'darwin'
-    } else {
-      filename   = `sing-box-${ver}-linux-amd64.tar.gz`
-      extractDir = 'linux'
-    }
-
-    const url = `https://github.com/SagerNet/sing-box/releases/download/v${ver}/${filename}`
     const tmpFile = path.join(app.getPath('temp'), filename)
-
-    onProgress && onProgress({ stage: 'download', percent: 0, msg: 'Скачивание sing-box...' })
+    onProgress && onProgress({ stage: 'download', percent: 0, msg: `Скачивание ${engineLabel}...` })
 
     const dlFile = fs.createWriteStream(tmpFile)
+
+    // Закрываем файловый поток и подчищаем недокачанный файл перед reject —
+    // иначе повторная попытка (см. downloadEngineBinary выше) может упереться
+    // в файл, ещё занятый предыдущим (оборванным) потоком на Windows.
+    function failWith (err) {
+      dlFile.destroy()
+      fs.unlink(tmpFile, () => {})
+      reject(err)
+    }
 
     // Без таймаута зависший/недоступный GitHub (частый случай именно в тех
     // сетях, где VPN и нужен) вешал скачивание навсегда — ни ошибки, ни
@@ -129,10 +214,9 @@ function downloadSingbox (onProgress) {
           dlFile.end(() => {
             try {
               onProgress && onProgress({ stage: 'verify', percent: 82, msg: 'Проверка целостности...' })
-              verifyChecksum(tmpFile, filename)
+              verifyChecksum(tmpFile, filename, checksums)
             } catch (err) {
-              fs.unlink(tmpFile, () => {})
-              reject(err)
+              failWith(err)
               return
             }
             onProgress && onProgress({ stage: 'extract', percent: 85, msg: 'Распаковка...' })
@@ -143,18 +227,55 @@ function downloadSingbox (onProgress) {
               }
               onProgress && onProgress({ stage: 'done', percent: 100, msg: 'Готово' })
               resolve(binPath)
-            }).catch(reject)
+            }).catch(failWith)
           })
         })
-        res.on('error', reject)
+        res.on('error', failWith)
       })
-      req.on('error', reject)
+      req.on('error', failWith)
       req.setTimeout(DOWNLOAD_IDLE_TIMEOUT_MS, () => {
-        req.destroy(new Error('Таймаут скачивания sing-box — сервер не отвечает'))
+        req.destroy(new Error(`Таймаут скачивания ${engineLabel} — сервер не отвечает`))
       })
     }
 
     doGet(url)
+  })
+}
+
+function downloadSingbox (onProgress) {
+  const ver = SING_BOX_VERSION
+  let filename
+  if (process.platform === 'win32') filename = `sing-box-${ver}-windows-amd64.zip`
+  else if (process.platform === 'darwin') filename = `sing-box-${ver}-darwin-${process.arch === 'arm64' ? 'arm64' : 'amd64'}.tar.gz`
+  else filename = `sing-box-${ver}-linux-amd64.tar.gz`
+
+  return downloadEngineBinary({
+    binPath: getSingboxPath(),
+    filename,
+    url: `https://github.com/SagerNet/sing-box/releases/download/v${ver}/${filename}`,
+    checksums: SING_BOX_CHECKSUMS,
+    engineLabel: 'sing-box',
+    onProgress
+  })
+}
+
+// Xray-core — единственный из двух архивов ВСЕГДА .zip на любой платформе
+// (sing-box использует .zip только на Windows, .tar.gz на macOS/Linux —
+// см. extractBinary()/extractZip() ниже, которая поэтому поддерживает оба).
+function downloadXray (onProgress) {
+  const ver = XRAY_VERSION
+  let filename
+  if (process.platform === 'win32') filename = 'Xray-windows-64.zip'
+  else if (process.platform === 'darwin') filename = process.arch === 'arm64' ? 'Xray-macos-arm64-v8a.zip' : 'Xray-macos-64.zip'
+  else filename = 'Xray-linux-64.zip'
+
+  return downloadEngineBinary({
+    binPath: getXrayPath(),
+    filename,
+    url: `https://github.com/XTLS/Xray-core/releases/download/v${ver}/${filename}`,
+    checksums: XRAY_CHECKSUMS,
+    engineLabel: 'Xray-core',
+    onProgress
   })
 }
 
@@ -180,30 +301,42 @@ function extractBinary (archivePath, destBin, filename) {
     const binName = path.basename(safeDestBin)
 
     if (filename.endsWith('.zip')) {
-      // Windows — используем PowerShell для разархивации
+      // BUGFIX (2026-09-16, добавление Xray-core вторым движком): раньше
+      // .zip распаковывался только через PowerShell Expand-Archive — верно
+      // для sing-box (единственный движок, где .zip встречается ТОЛЬКО на
+      // Windows), но Xray-core публикует .zip на ВСЕХ платформах (macOS и
+      // Linux тоже), а PowerShell там просто нет. adm-zip (уже зависимость
+      // проекта, см. main/services/extensions.js) — чистый JS, работает
+      // одинаково везде, заодно убирает shell-вызов PowerShell с
+      // экранированием путей как класс риска.
       const tmpOut = sanitizePath(path.join(destDir, '_tmp_extract'))
       if (!fs.existsSync(tmpOut)) fs.mkdirSync(tmpOut, { recursive: true })
-      // Pass paths as separate array args (NOT via shell interpolation) to avoid injection
-      execFile('powershell', [
-        '-NoProfile', '-NonInteractive', '-Command',
-        `Expand-Archive -LiteralPath '${safeArchive.replace(/'/g, "''")}' -DestinationPath '${tmpOut.replace(/'/g, "''")}' -Force`
-      ], (err) => {
-        if (err) { reject(err); return }
-        // Ищем sing-box.exe в подпапках
+      try {
+        const zip = new AdmZip(safeArchive)
+        zip.extractAllTo(tmpOut, true)
         const found = findFile(tmpOut, binName)
-        if (!found) { reject(new Error('sing-box.exe not found in archive')); return }
+        if (!found) { reject(new Error(`${binName} not found in archive`)); return }
         fs.copyFileSync(found, destBin)
         fs.rmSync(tmpOut, { recursive: true, force: true })
         resolve()
-      })
+      } catch (err) {
+        reject(err)
+      }
     } else {
-      // macOS / Linux — tar.gz
+      // macOS / Linux — tar.gz (только sing-box; Xray-core сюда никогда не
+      // попадает, у него везде .zip, см. ветку выше).
+      // BUGFIX (2026-09-16): findFile() ниже искала жёстко зашитое имя
+      // 'sing-box', игнорируя переданный параметр destBin/binName — раньше
+      // сходило с рук, потому что единственным вызывающим кодом был сам
+      // sing-box, для которого 'sing-box' и есть правильное имя. Теперь,
+      // когда extractBinary() — общая функция на оба движка, эта ветка
+      // должна искать РЕАЛЬНОЕ целевое имя файла, а не константу.
       const tmpOut = path.join(destDir, '_tmp_extract')
       if (!fs.existsSync(tmpOut)) fs.mkdirSync(tmpOut, { recursive: true })
       execFile('tar', ['-xzf', archivePath, '-C', tmpOut], (err) => {
         if (err) { reject(err); return }
-        const found = findFile(tmpOut, 'sing-box')
-        if (!found) { reject(new Error('sing-box not found in archive')); return }
+        const found = findFile(tmpOut, binName)
+        if (!found) { reject(new Error(`${binName} not found in archive`)); return }
         fs.copyFileSync(found, destBin)
         fs.rmSync(tmpOut, { recursive: true, force: true })
         resolve()
@@ -431,30 +564,27 @@ function buildTransportFromParams (params) {
     return { type: 'http', host: host ? [host] : [], path: params.get('path') || '/' }
   }
 
-  // BUGFIX (2026-09-16, "жмёшь подключить и ноль эффекта... в отдельном
-  // Happ он же включается" — live user report): this used to happily
-  // generate a { type: 'xhttp', ... } transport object and hand it to
-  // sing-box, which has NEVER actually supported that type — confirmed by
-  // running sing-box.exe (1.11.4, the version this app ships, 1.14.1
-  // latest stable, and 1.15.0-alpha.5 latest prerelease) directly against
-  // a config using it: every single one fails immediately with "unknown
-  // transport type: xhttp". Checked upstream: the PR that would have added
-  // it (SagerNet/sing-box#4326) was closed WITHOUT being merged — this
-  // isn't a version-pinning gap that a sing-box upgrade could fix, XHTTP
-  // support was proposed and rejected, full stop. Happ (and most other
-  // VPN clients) use Xray-core, where XHTTP originated and is native — the
-  // exact same server config works there while being fundamentally
-  // impossible through this app's sing-box engine. Previously this
-  // silently produced a config sing-box would reject at startup with a
-  // FATAL log line the app's own crash-detection *should* catch — but
-  // whatever the exact reason, users only saw an unresponsive "Подключить"
-  // button. Failing fast with a clear, specific error here (instead of ever
-  // reaching sing-box at all) guarantees the user is told the real reason
-  // instead of everything downstream just quietly not working.
+  // FEATURE (2026-09-16, "давай ставить реально другой движок. Чтобы HAPP
+  // работал 1 в 1 как Centrio" — live user request): this briefly threw
+  // VPN_UNSUPPORTED_TRANSPORT here (2.8.2) after confirming sing-box has
+  // never supported XHTTP (upstream PR SagerNet/sing-box#4326 was closed
+  // without merging). Now that startProxy() routes vmess/vless/trojan/
+  // shadowsocks links through Xray-core instead (see ENGINE_FOR_PROTOCOL /
+  // buildXrayOutboundFromSingbox below) — the same engine Happ itself uses,
+  // where XHTTP originated and is natively supported — this transport
+  // object is real output again, just consumed by a different engine than
+  // it used to be. sing-box is now only ever reached for hysteria2://
+  // links (Xray-core doesn't implement that protocol at all), which never
+  // use this function.
   if (type === 'xhttp' || type === 'splithttp') {
-    const err = new Error('Этот сервер использует транспорт XHTTP, который наш VPN-движок (sing-box) не поддерживает — эта функция была предложена разработчикам sing-box, но отклонена. Попробуйте сервер с другим транспортом (WebSocket, gRPC, TCP)')
-    err.code = 'VPN_UNSUPPORTED_TRANSPORT'
-    throw err
+    const t = { type: 'xhttp', path: params.get('path') || '/' }
+    const mode = params.get('mode')
+    if (mode && mode !== 'auto') t.method = mode
+    try {
+      const extra = params.get('extra')
+      if (extra) t.extra = JSON.parse(extra)
+    } catch (e) { /* ignore malformed extra */ }
+    return t
   }
 
   if (type === 'httpupgrade') {
@@ -579,6 +709,100 @@ function buildSingboxConfig (outbound) {
   }
 }
 
+// ── Генерация конфига Xray-core ─────────────────────────────────────
+// FEATURE (2026-09-16, замена движка — см. комментарий над XRAY_VERSION
+// вверху файла): а не переписывать parseVmess/parseVless/parseTrojan/
+// parseShadowsocks с нуля под схему Xray-core (риск сломать уже
+// проверенный, живой код разбора самих ссылок) — этот адаптер берёт УЖЕ
+// собранный sing-box-style `outbound` (те функции не трогали вообще) и
+// переводит его в эквивалентный объект схемы Xray-core. hysteria2 сюда
+// никогда не попадает — для него отдельная ветка в startProxy() ниже,
+// которая продолжает идти через buildSingboxConfig() как раньше.
+function buildXrayOutboundFromSingbox (outbound) {
+  const protocol = outbound.type // 'vless' | 'vmess' | 'trojan' | 'shadowsocks'
+  let settings
+
+  if (protocol === 'vless' || protocol === 'vmess') {
+    const user = protocol === 'vless'
+      ? { id: outbound.uuid, encryption: 'none', ...(outbound.flow ? { flow: outbound.flow } : {}) }
+      : { id: outbound.uuid, alterId: outbound.alter_id || 0, security: outbound.security || 'auto' }
+    settings = { vnext: [{ address: outbound.server, port: outbound.server_port, users: [user] }] }
+  } else if (protocol === 'trojan') {
+    settings = { servers: [{ address: outbound.server, port: outbound.server_port, password: outbound.password }] }
+  } else if (protocol === 'shadowsocks') {
+    settings = { servers: [{ address: outbound.server, port: outbound.server_port, method: outbound.method, password: outbound.password }] }
+  } else {
+    throw new Error(`buildXrayOutboundFromSingbox: unsupported protocol "${protocol}"`)
+  }
+
+  const streamSettings = { network: 'tcp' }
+  const t = outbound.transport
+  if (t) {
+    if (t.type === 'ws') {
+      streamSettings.network = 'ws'
+      streamSettings.wsSettings = { path: t.path, ...(t.headers ? { headers: t.headers } : {}) }
+    } else if (t.type === 'grpc') {
+      streamSettings.network = 'grpc'
+      streamSettings.grpcSettings = { serviceName: t.service_name }
+    } else if (t.type === 'http') {
+      // sing-box's buildTransport()/buildTransportFromParams() use 'http'
+      // for both h2 (vmess ?net=h2) and vless ?type=http — Xray-core's own
+      // schema splits these differently ('http' network IS h2-based in
+      // Xray too, same underlying protocol), so a straight pass-through is
+      // correct here, not a bug to reconcile.
+      streamSettings.network = 'http'
+      streamSettings.httpSettings = { path: t.path, ...(t.host?.length ? { host: t.host } : {}) }
+    } else if (t.type === 'xhttp') {
+      streamSettings.network = 'xhttp'
+      streamSettings.xhttpSettings = {
+        path: t.path,
+        ...(t.method ? { mode: t.method } : {}),
+        ...(t.extra ? { extra: t.extra } : {})
+      }
+    } else if (t.type === 'httpupgrade') {
+      streamSettings.network = 'httpupgrade'
+      streamSettings.httpupgradeSettings = { path: t.path, ...(t.host ? { host: t.host } : {}) }
+    }
+  }
+
+  if (outbound.tls?.enabled) {
+    if (outbound.tls.reality?.enabled) {
+      streamSettings.security = 'reality'
+      streamSettings.realitySettings = {
+        serverName: outbound.tls.server_name,
+        fingerprint: outbound.tls.utls?.fingerprint || 'chrome',
+        publicKey: outbound.tls.reality.public_key,
+        shortId: outbound.tls.reality.short_id ?? ''
+      }
+    } else {
+      streamSettings.security = 'tls'
+      streamSettings.tlsSettings = {
+        serverName: outbound.tls.server_name,
+        allowInsecure: !!outbound.tls.insecure
+      }
+    }
+  }
+
+  return { tag: 'proxy', protocol, settings, streamSettings }
+}
+
+function buildXrayConfig (outbound) {
+  return {
+    log: { loglevel: 'warning' },
+    inbounds: [{
+      tag: 'socks-in',
+      listen: '127.0.0.1',
+      port: PROXY_PORT,
+      protocol: 'socks',
+      settings: { auth: 'noauth', udp: true }
+    }],
+    outbounds: [
+      buildXrayOutboundFromSingbox(outbound),
+      { tag: 'direct', protocol: 'freedom' }
+    ]
+  }
+}
+
 // ── Проверка: слушает ли порт ─────────────────────────────────────
 function checkPortListening (port) {
   return new Promise(resolve => {
@@ -593,9 +817,9 @@ function checkPortListening (port) {
 
 // BUGFIX (2026-09-09, live user reports — "даже когда я вручную переключаю
 // — они всё равно не подключаются... после перезапуска программы начинает
-// работать"): `singboxProcess` (the in-memory child-process handle) is our
+// работать"): `engineProcess` (the in-memory child-process handle) is our
 // ONLY source of truth for "is something already on port 7890" — the
-// 'if (singboxProcess) await stopProxy()' guard below does nothing if that
+// 'if (engineProcess) await stopProxy()' guard below does nothing if that
 // variable is already null, which is exactly what happens after the crash
 // this file's other 2026-09-09 fix targets, OR if `proc.kill()` in
 // stopProxy() didn't actually terminate the OS process (e.g. it was already
@@ -642,23 +866,36 @@ async function killStrayProcessOnPort (port) {
 }
 
 // ── Запуск / остановка прокси ─────────────────────────────────────
+// FEATURE (2026-09-16, второй движок): единственное место, где решается,
+// КАКОЙ движок обслуживает ссылку. hysteria2 — единственный протокол, для
+// которого Xray-core в принципе не реализует outbound (проверено
+// напрямую), всё остальное (vless/vmess/trojan/shadowsocks, включая
+// XHTTP/Reality/gRPC/WS/HTTPUpgrade транспорты) идёт через Xray-core —
+// тот же движок, что и Happ.
+function engineForOutbound (outbound) {
+  return outbound.type === 'hysteria2' ? 'singbox' : 'xray'
+}
+
 async function startProxy (parsed, onLog) {
-  if (singboxProcess) await stopProxy()
+  if (engineProcess) await stopProxy()
   await killStrayProcessOnPort(PROXY_PORT)
 
-  const binPath = getSingboxPath()
+  const engine  = engineForOutbound(parsed.outbound)
+  const binPath = engine === 'xray' ? getXrayPath() : getSingboxPath()
   if (!fs.existsSync(binPath)) {
-    const err = new Error('sing-box не установлен')
+    const err = new Error(engine === 'xray' ? 'Xray-core не установлен' : 'sing-box не установлен')
     err.code = 'VPN_NOT_INSTALLED'
+    err.engine = engine
     throw err
   }
 
-  const config = buildSingboxConfig(parsed.outbound)
-  const cfgPath = path.join(app.getPath('userData'), 'singbox', 'config.json')
+  const config  = engine === 'xray' ? buildXrayConfig(parsed.outbound) : buildSingboxConfig(parsed.outbound)
+  const cfgDir  = path.join(app.getPath('userData'), engine === 'xray' ? 'xray' : 'singbox')
+  const cfgPath = path.join(cfgDir, engine === 'xray' ? 'xray-config.json' : 'config.json')
   fs.writeFileSync(cfgPath, JSON.stringify(config, null, 2), 'utf8')
 
   return new Promise((resolve, reject) => {
-    singboxProcess = spawn(binPath, ['run', '-c', cfgPath], {
+    engineProcess = spawn(binPath, ['run', '-c', cfgPath], {
       detached: false,
       stdio:    ['ignore', 'pipe', 'pipe']
     })
@@ -671,7 +908,7 @@ async function startProxy (parsed, onLog) {
     const timeout = setTimeout(() => {
       if (!started) {
         clearInterval(portPoller)
-        const err = new Error('sing-box не запустился за 20 секунд')
+        const err = new Error((engine === 'xray' ? 'Xray-core' : 'sing-box') + ' не запустился за 20 секунд')
         err.code = 'VPN_START_TIMEOUT'
         reject(err)
       }
@@ -710,34 +947,39 @@ async function startProxy (parsed, onLog) {
       // generic 20-second VPN_START_TIMEOUT instead of surfacing the actual
       // reason. Case-insensitive now so any future config regression fails
       // fast with a real error message instead of a silent timeout.
+      //
+      // Xray-core doesn't print "fatal"/"panic" on a config error — it prints
+      // "Failed to start: ..." (confirmed via direct binary testing), so that
+      // phrase is checked too. sing-box never emits it, so this is safe for
+      // both engines.
       const lower = line.toLowerCase()
-      if (!started && (lower.includes('panic') || lower.includes('fatal'))) {
+      if (!started && (lower.includes('panic') || lower.includes('fatal') || lower.includes('failed to start'))) {
         clearTimeout(timeout)
         clearInterval(portPoller)
-        const err = new Error('sing-box: ' + line.trim())
+        const err = new Error((engine === 'xray' ? 'Xray-core' : 'sing-box') + ': ' + line.trim())
         err.code = 'VPN_START_CRASHED'
         reject(err)
       }
     }
 
-    singboxProcess.stdout.on('data', d => d.toString().split('\n').forEach(checkLine))
-    singboxProcess.stderr.on('data', d => d.toString().split('\n').forEach(checkLine))
+    engineProcess.stdout.on('data', d => d.toString().split('\n').forEach(checkLine))
+    engineProcess.stderr.on('data', d => d.toString().split('\n').forEach(checkLine))
 
-    singboxProcess.on('error', (err) => {
+    engineProcess.on('error', (err) => {
       clearTimeout(timeout)
       clearInterval(portPoller)
       if (!started) reject(err)
     })
 
-    singboxProcess.on('close', (code) => {
+    engineProcess.on('close', (code) => {
       clearInterval(portPoller)
       const wasActive     = proxyActive
       const wasExpected   = expectingExit
-      singboxProcess = null
+      engineProcess = null
       proxyActive    = false
       currentConfig  = null
       expectingExit  = false
-      onLog && onLog(`[VPN] sing-box exited with code ${code}`)
+      onLog && onLog(`[VPN] ${engine === 'xray' ? 'Xray-core' : 'sing-box'} exited with code ${code}`)
       // See BUGFIX above setUnexpectedExitHandler — only fires for a real
       // crash/kill, not for our own stopProxy()-initiated shutdown.
       if (wasActive && !wasExpected && onUnexpectedExit) {
@@ -748,10 +990,10 @@ async function startProxy (parsed, onLog) {
 }
 
 async function stopProxy () {
-  if (singboxProcess) {
-    const proc = singboxProcess
+  if (engineProcess) {
+    const proc = engineProcess
     expectingExit  = true  // this kill is deliberate — don't treat the resulting 'close' as a crash
-    singboxProcess = null  // обнуляем сразу, чтобы close-обработчик не конфликтовал
+    engineProcess = null  // обнуляем сразу, чтобы close-обработчик не конфликтовал
 
     // Дожидаемся реального завершения процесса (а не просто отправки сигнала),
     // иначе быстрый reconnect может ударить в ещё занятый порт 7890 и молча
@@ -848,12 +1090,15 @@ function pingConfig (link) {
 
 // ── Cleanup on quit ───────────────────────────────────────────────
 app.on('before-quit', () => {
-  if (singboxProcess) singboxProcess.kill('SIGTERM')
+  if (engineProcess) engineProcess.kill('SIGTERM')
 })
 
 module.exports = {
   getSingboxPath,
   downloadSingbox,
+  getXrayPath,
+  downloadXray,
+  engineForOutbound,
   parseVpnLink,
   fetchSubscription,
   startProxy,

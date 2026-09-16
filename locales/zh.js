@@ -263,6 +263,7 @@ module.exports = {
         vpnRefresh:          '刷新',
         vpnRefreshing:       '正在刷新列表...',
         vpnRefreshed:        '列表已更新 ({n})',
+        vpnRefreshPing:      '刷新延迟',
     },
 
     status: {

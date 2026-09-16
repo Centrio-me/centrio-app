@@ -263,6 +263,7 @@ module.exports = {
         vpnRefresh:          'Actualiser',
         vpnRefreshing:       'Actualisation de la liste...',
         vpnRefreshed:        'Liste mise à jour ({n})',
+        vpnRefreshPing:      'Actualiser le ping',
     },
 
     status: {

@@ -285,7 +285,8 @@ module.exports = {
         vpnSubscription:  'Подписка',
         vpnRefresh:       'Обновить',
         vpnRefreshing:    'Обновление списка...',
-        vpnRefreshed:     'Список обновлён ({n})'
+        vpnRefreshed:     'Список обновлён ({n})',
+        vpnRefreshPing:   'Обновить пинг'
     },
 
     status: {

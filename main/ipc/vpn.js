@@ -1,11 +1,13 @@
 // VPN IPC-хендлеры
 // Управляют подключением через sing-box, загрузкой бинарника, подписками.
 // ВАЖНО: не используем wrapIpc — хендлеры сами формируют { success, ... }.
-// applyAllSessionsProxy применяет прокси ко всем сессиям мессенджеров (не только defaultSession).
+// applyVpnToEnabledSessions ниже применяет прокси только к сессиям
+// мессенджеров, у которых VPN реально включён (+ defaultSession) — см.
+// BUGFIX-комментарий у notifyProxyChanged о том, почему НЕ ко всем подряд.
 
 const { ipcMain, session } = require('electron')
 const fs   = require('fs')
-const { applyAllSessionsProxy, applyProxyToSession } = require('../services/proxy')
+const { applyProxyToSession } = require('../services/proxy')
 const store = require('../services/store')
 const { encryptValue, decryptValue } = require('../services/secureStore')
 
@@ -55,12 +57,25 @@ function vpnProxyOff ()     { return { enabled: false } }
 // network path changing mid-session (WhatsApp Web's IndexedDB-backed
 // multi-device session apparently doesn't) is left in a broken state
 // indefinitely. Broadcasts to the renderer (renderer/vpn-bind.js) so it can
-// reload the affected webview(s) — messengerId: null means every session
-// just got a new proxy (global connect/disconnect), a specific id means
-// only that one messenger's session changed (per-app toggle).
-function notifyProxyChanged (getMainWindow, messengerId = null) {
+// reload the affected webview(s).
+//
+// BUGFIX (2026-09-16, live report right after: "нафига мы теперь все ссылки
+// обновляем, когда подключаем... перезагружаются все вкладки мессенджеров"):
+// this used to always broadcast messengerId: null, which renderer/vpn-bind.js
+// treats as "reload literally every open tab" — but applyVpnToEnabledSessions
+// below actually only changes the network context of messengers with VPN
+// mode ENABLED (per-app toggle); apps with VPN disabled never had their
+// session's proxy touched at all, so reloading them too was pure UX cost
+// (lost scroll position/drafts in Mail.ru, VK, etc.) for zero benefit — and
+// got much more visible once the new dual-engine download flow started
+// retrying/reconnecting more. Callers now pass the actual list of affected
+// messenger ids (see applyVpnToEnabledSessions' return value) instead of
+// null; null is reserved for the rare case where literally every session's
+// proxy was just reset (kept for setUnexpectedExitHandler's own safety net,
+// see below — but even that now passes the real affected list too).
+function notifyProxyChanged (getMainWindow, messengerIds = null) {
     const win = getMainWindow()
-    if (win && !win.isDestroyed()) win.webContents.send('vpn-proxy-changed', { messengerId })
+    if (win && !win.isDestroyed()) win.webContents.send('vpn-proxy-changed', { messengerIds })
 }
 
 // Сохраняем ссылку активного конфига — чтобы восстановить после перезапуска.
@@ -84,26 +99,31 @@ function getSubLinks () { return (store.get('vpnSubLinks', []) || []).map(decryp
 function getAppModes ()             { return store.get('vpnAppModes', {}) || {} }
 function setAppMode (id, enabled)   { const m = getAppModes(); m[id] = enabled; store.set('vpnAppModes', m) }
 
-// Apply VPN proxy only to messengers that have it enabled (default = all)
+// Apply VPN proxy only to messengers that have it enabled (default = all).
+// Returns the ids actually touched — apps with VPN mode disabled are left
+// alone entirely (their session never had this proxy applied, so there's
+// nothing to change and no reason to make their webview reload — see the
+// notifyProxyChanged BUGFIX comment above).
 async function applyVpnToEnabledSessions (proxySettings) {
     const modes = getAppModes()
+    const affected = []
     try {
         const messengers = store.get('messengers', [])
         await applyProxyToSession(session.defaultSession, proxySettings)
         const tasks = (messengers || [])
-            .filter(m => m && m.id)
+            .filter(m => m && m.id && modes[m.id] !== false)
             .map(m => {
-                const enabled = modes[m.id] !== false
-                const settings = enabled ? proxySettings : { enabled: false }
+                affected.push(m.id)
                 try {
                     const ses = session.fromPartition(`persist:${m.id}`)
-                    return applyProxyToSession(ses, settings)
+                    return applyProxyToSession(ses, proxySettings)
                 } catch (e) { return Promise.resolve() }
             })
         await Promise.all(tasks)
     } catch (e) {
         console.error('[VPN] applyVpnToEnabledSessions error:', e.message)
     }
+    return affected
 }
 
 function registerVpnIpc ({ getMainWindow }) {
@@ -119,8 +139,8 @@ function registerVpnIpc ({ getMainWindow }) {
     // (if open) refreshes instead of silently showing a stale "connected"
     // state while every tab is actually broken.
     getVpn().setUnexpectedExitHandler(() => {
-        applyAllSessionsProxy(vpnProxyOff()).then(() => {
-            notifyProxyChanged(getMainWindow)
+        applyVpnToEnabledSessions(vpnProxyOff()).then((affected) => {
+            notifyProxyChanged(getMainWindow, affected)
         }).catch((e) => {
             console.error('[VPN] failed to reset sessions after unexpected exit:', e.message)
         })
@@ -138,16 +158,20 @@ function registerVpnIpc ({ getMainWindow }) {
         }
     })
 
+    // Движок определяется протоколом ссылки: hysteria2:// идёт на sing-box
+    // (единственное, чего не умеет Xray-core), всё остальное — на Xray-core
+    // (нужен для XHTTP/Reality — не поддерживались sing-box, см. vpn-manager.js).
+    function binPathForEngine (vpn, engine) {
+        return engine === 'xray' ? vpn.getXrayPath() : vpn.getSingboxPath()
+    }
+    function downloadEngine (vpn, engine, onProgress) {
+        return engine === 'xray' ? vpn.downloadXray(onProgress) : vpn.downloadSingbox(onProgress)
+    }
+
     // ── Подключить (ссылка или URL подписки) ──────────────────────
     ipcMain.handle('vpn-connect', async (event, link) => {
         try {
-            const vpn     = getVpn()
-            const binPath = vpn.getSingboxPath()
-
-            // sing-box ещё не скачан — сообщаем рендереру
-            if (!fs.existsSync(binPath)) {
-                return { success: false, needsDownload: true }
-            }
+            const vpn = getVpn()
 
             // Подписка: только HTTPS → скачать, распарсить, сохранить все, подключить к первому
             if (link.startsWith('http://') || link.startsWith('https://')) {
@@ -158,6 +182,12 @@ function registerVpnIpc ({ getMainWindow }) {
                 if (!items || items.length === 0) {
                     return { success: false, error: 'Configurations not found in subscription' }
                 }
+
+                const engine = vpn.engineForOutbound(items[0].parsed.outbound)
+                if (!fs.existsSync(binPathForEngine(vpn, engine))) {
+                    return { success: false, needsDownload: true, engine }
+                }
+
                 for (const item of items) vpn.saveConfig(item.parsed.name, item.link)
                 saveSubscription(link, items.map(i => i.link))
 
@@ -165,22 +195,27 @@ function registerVpnIpc ({ getMainWindow }) {
                     const win = getMainWindow()
                     if (win) win.webContents.send('vpn-log', line)
                 })
-                await applyVpnToEnabledSessions(vpnProxyOn(vpn.PROXY_PORT))
-                notifyProxyChanged(getMainWindow)
+                const affected = await applyVpnToEnabledSessions(vpnProxyOn(vpn.PROXY_PORT))
+                notifyProxyChanged(getMainWindow, affected)
                 saveActiveLink(items[0].link)
                 return { success: true, status: vpn.getStatus(), imported: items.length }
             }
 
             // Одиночная VPN-ссылка
             const parsed = vpn.parseVpnLink(link)
+            const engine = vpn.engineForOutbound(parsed.outbound)
+            if (!fs.existsSync(binPathForEngine(vpn, engine))) {
+                return { success: false, needsDownload: true, engine }
+            }
+
             vpn.saveConfig(parsed.name, link)
 
             await vpn.startProxy(parsed, (line) => {
                 const win = getMainWindow()
                 if (win) win.webContents.send('vpn-log', line)
             })
-            await applyVpnToEnabledSessions(vpnProxyOn(vpn.PROXY_PORT))
-            notifyProxyChanged(getMainWindow)
+            const affected = await applyVpnToEnabledSessions(vpnProxyOn(vpn.PROXY_PORT))
+            notifyProxyChanged(getMainWindow, affected)
             saveActiveLink(link)
             return { success: true, status: vpn.getStatus() }
 
@@ -189,15 +224,11 @@ function registerVpnIpc ({ getMainWindow }) {
         }
     })
 
-    // ── Скачать sing-box и подключить ─────────────────────────────
+    // ── Скачать движок (Xray-core или sing-box, по ссылке) и подключить ──
     ipcMain.handle('vpn-download-and-connect', async (event, link) => {
         try {
             const vpn = getVpn()
             const win = getMainWindow()
-
-            await vpn.downloadSingbox((progress) => {
-                if (win) win.webContents.send('vpn-download-progress', progress)
-            })
 
             // Подписка: только HTTPS
             if (link.startsWith('http://') || link.startsWith('https://')) {
@@ -208,27 +239,38 @@ function registerVpnIpc ({ getMainWindow }) {
                 if (!items || items.length === 0) {
                     return { success: false, error: 'Configurations not found in subscription' }
                 }
+
+                const engine = vpn.engineForOutbound(items[0].parsed.outbound)
+                await downloadEngine(vpn, engine, (progress) => {
+                    if (win) win.webContents.send('vpn-download-progress', progress)
+                })
+
                 for (const item of items) vpn.saveConfig(item.parsed.name, item.link)
                 saveSubscription(link, items.map(i => i.link))
 
                 await vpn.startProxy(items[0].parsed, (line) => {
                     if (win) win.webContents.send('vpn-log', line)
                 })
-                await applyVpnToEnabledSessions(vpnProxyOn(vpn.PROXY_PORT))
-                notifyProxyChanged(getMainWindow)
+                const affected = await applyVpnToEnabledSessions(vpnProxyOn(vpn.PROXY_PORT))
+                notifyProxyChanged(getMainWindow, affected)
                 saveActiveLink(items[0].link)
                 return { success: true, status: vpn.getStatus(), imported: items.length }
             }
 
             // Одиночная ссылка
             const parsed = vpn.parseVpnLink(link)
+            const engine = vpn.engineForOutbound(parsed.outbound)
+            await downloadEngine(vpn, engine, (progress) => {
+                if (win) win.webContents.send('vpn-download-progress', progress)
+            })
+
             vpn.saveConfig(parsed.name, link)
 
             await vpn.startProxy(parsed, (line) => {
                 if (win) win.webContents.send('vpn-log', line)
             })
-            await applyVpnToEnabledSessions(vpnProxyOn(vpn.PROXY_PORT))
-            notifyProxyChanged(getMainWindow)
+            const affected = await applyVpnToEnabledSessions(vpnProxyOn(vpn.PROXY_PORT))
+            notifyProxyChanged(getMainWindow, affected)
             saveActiveLink(link)
             return { success: true, status: vpn.getStatus() }
 
@@ -241,16 +283,16 @@ function registerVpnIpc ({ getMainWindow }) {
     ipcMain.handle('vpn-connect-saved', async (event, link) => {
         try {
             const vpn     = getVpn()
-            const binPath = vpn.getSingboxPath()
-            if (!fs.existsSync(binPath)) return { success: false, needsDownload: true }
+            const parsed  = vpn.parseVpnLink(link)
+            const engine  = vpn.engineForOutbound(parsed.outbound)
+            if (!fs.existsSync(binPathForEngine(vpn, engine))) return { success: false, needsDownload: true, engine }
 
-            const parsed = vpn.parseVpnLink(link)
             await vpn.startProxy(parsed, (line) => {
                 const win = getMainWindow()
                 if (win) win.webContents.send('vpn-log', line)
             })
-            await applyVpnToEnabledSessions(vpnProxyOn(vpn.PROXY_PORT))
-            notifyProxyChanged(getMainWindow)
+            const affected = await applyVpnToEnabledSessions(vpnProxyOn(vpn.PROXY_PORT))
+            notifyProxyChanged(getMainWindow, affected)
             saveActiveLink(link)
             return { success: true, status: vpn.getStatus() }
         } catch (e) {
@@ -263,8 +305,8 @@ function registerVpnIpc ({ getMainWindow }) {
         try {
             const vpn = getVpn()
             await vpn.stopProxy()
-            await applyAllSessionsProxy(vpnProxyOff())  // disconnect — убираем со всех
-            notifyProxyChanged(getMainWindow)
+            const affected = await applyVpnToEnabledSessions(vpnProxyOff())  // только те, у кого реально был включён VPN
+            notifyProxyChanged(getMainWindow, affected)
             saveActiveLink(null)
             return { success: true, status: vpn.getStatus() }
         } catch (e) {
@@ -346,7 +388,7 @@ function registerVpnIpc ({ getMainWindow }) {
                 const proxy = enabled ? vpnProxyOn(vpn.PROXY_PORT) : vpnProxyOff()
                 const ses = session.fromPartition(`persist:${messengerId}`)
                 await applyProxyToSession(ses, proxy)
-                notifyProxyChanged(getMainWindow, messengerId)
+                notifyProxyChanged(getMainWindow, [messengerId])
             }
             return { success: true }
         } catch (e) {

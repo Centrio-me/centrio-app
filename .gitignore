@@ -5,6 +5,7 @@ node_modules/
 dist/
 dist-v*/
 dist-build/
+vendor-bin/
 *.log
 bundle.js
 bundle.js.map

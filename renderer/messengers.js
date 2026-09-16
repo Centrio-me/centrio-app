@@ -407,6 +407,19 @@ function createMessengersApi({
         if (activeWebview) {
             activeWebview.classList.add('active')
             activeWebview.setZoomFactor(getTabZoomLevel())
+            // BUGFIX (2026-09-16, "никаких перезагрузок любых вкладок при
+            // подключении/отключении VPN" — see renderer/vpn-bind.js's
+            // 'vpn-proxy-changed' handler): a background tab whose proxy
+            // changed while it wasn't visible gets flagged here instead of
+            // reloaded immediately — do the actual reload now, right as the
+            // user switches to it, so it works correctly without ever having
+            // visibly flashed while they weren't looking at it.
+            if (activeWebview.dataset.pendingProxyReload) {
+                delete activeWebview.dataset.pendingProxyReload
+                if (typeof activeWebview.reload === 'function' && typeof activeWebview.getURL === 'function' && activeWebview.getURL()) {
+                    try { activeWebview.reload() } catch {}
+                }
+            }
         }
     }
 

@@ -1,7 +1,7 @@
 {
 	"name": "messengerapp",
 	"productName": "Centrio",
-	"version": "2.8.2",
+	"version": "2.8.3",
 	"description": "All messengers in one app",
 	"author": {
 		"name": "Centrio",
@@ -13,10 +13,10 @@
 		"watch:renderer": "node build-renderer.js --watch",
 		"start": "npm run build:renderer && electron .",
 		"dev": "npm run build:renderer && electron .",
-		"build": "npm run build:renderer && electron-builder",
-		"build:win": "rimraf dist && npm run build:renderer && electron-builder --win",
-		"build:mac": "rimraf dist && npm run build:renderer && electron-builder --mac",
-		"build:linux": "rimraf dist && npm run build:renderer && electron-builder --linux",
+		"build": "npm run build:renderer && node scripts/download-engines.js && electron-builder",
+		"build:win": "rimraf dist && npm run build:renderer && node scripts/download-engines.js && electron-builder --win",
+		"build:mac": "rimraf dist && npm run build:renderer && node scripts/download-engines.js && electron-builder --mac",
+		"build:linux": "rimraf dist && npm run build:renderer && node scripts/download-engines.js && electron-builder --linux",
 		"publish": "npm run build:win && node scripts/publish.js",
 		"lint": "eslint .",
 		"lint:fix": "eslint . --fix",
@@ -151,6 +151,12 @@
 		},
 		"asarUnpack": [
 			"assets/sounds/**/*"
+		],
+		"extraResources": [
+			{
+				"from": "vendor-bin",
+				"to": "engines"
+			}
 		],
 		"publish": {
 			"provider": "generic",
