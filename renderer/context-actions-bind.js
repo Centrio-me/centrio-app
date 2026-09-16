@@ -118,7 +118,12 @@ function bindContextActionsUi({
         // верхний угол окна, а не
         // рядом с реальным пунктом меню, на который кликнул пользователь.
         const btnRect = document.getElementById('ctxMoveToFolder')?.getBoundingClientRect()
-        hideAllMenus()
+        // BUGFIX (2026-09-16) — {keepContextMenu:true}: see the matching
+        // comment on hideAllMenus() in context-menus.js. The first-level
+        // menu (#contextMenu, which #ctxMoveToFolder itself lives inside)
+        // now stays visible while this submenu is open, cascading menu style,
+        // instead of vanishing the instant you click "В папку".
+        hideAllMenus({ keepContextMenu: true })
         if (!messenger) return
 
         const menu = document.getElementById('folderSelectMenu') || document.getElementById('folderPickMenu')
@@ -184,7 +189,10 @@ function bindContextActionsUi({
         // ctxMoveToFolder выше, объяснение там): rect берём ДО hideAllMenus(),
         // иначе кнопка уже display:none и позиция улетает в левый верхний угол.
         const btnRect = document.getElementById('ctxMoveToWorkspace')?.getBoundingClientRect()
-        hideAllMenus()
+        // BUGFIX (2026-09-16, live-репорт коллеги — "снова закрывается
+        // контекстное меню и меню второго уровня висит просто"): see the
+        // matching comment on hideAllMenus() in context-menus.js.
+        hideAllMenus({ keepContextMenu: true })
         if (!messenger) return
 
         const menu = document.getElementById('workspaceMoveMenu')

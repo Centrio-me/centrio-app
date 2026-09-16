@@ -94,7 +94,25 @@ function createWorkspacesUiApi({
         switcherEl?.classList.remove('open')
         if (menuEl) menuEl.style.display = 'none'
     }
-    document.addEventListener('close-all-popups', closeSwitcherMenu)
+
+    // BUGFIX (2026-09-16, third live-report in the same thread — "снова
+    // закрывается список пространств, если нажать на активную вкладку...
+    // Если открыл список пространств, то только ты его можешь свернуть"):
+    // the previous attempt closed the dropdown on any left-click OUTSIDE
+    // #activityBar (the sidebar), on the theory that a click there meant
+    // "moving on to the main content area" — but switchTab() also updates a
+    // SEPARATE `.tab` element (the tab strip in the content header, see
+    // renderer/messengers.js's switchTab) that lives outside #activityBar
+    // entirely, so clicking the already-active tab there still read as an
+    // "outside click" and closed the dropdown. Given two prior fix attempts
+    // still left cases where this closed unexpectedly, the user asked for
+    // the simplest possible rule instead: it does not auto-close on any
+    // click anywhere, full stop — only an explicit action closes it (picking
+    // a workspace, the create button — both already call closeSwitcherMenu()
+    // above — the switcher's own toggle button re-click, or Escape).
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && menuOpen) closeSwitcherMenu()
+    })
 
     function currentWorkspaceLabel() {
         if (!state.activeWorkspaceId) return tGet('workspaces.all') || 'Все'
@@ -173,7 +191,17 @@ function createWorkspacesUiApi({
                 item.addEventListener('contextmenu', (e) => {
                     e.preventDefault()
                     e.stopPropagation()
-                    closeSwitcherMenu()
+                    // BUGFIX (2026-09-16, live-репорт коллеги в Telegram:
+                    // "Развернул блок, в нём есть 2 пространства. Тыкаешь ПКМ
+                    // на одном из них... он тут же сворачивается и меню из 2
+                    // пунктов остаётся 'висеть в воздухе'"): closeSwitcherMenu()
+                    // used to run here BEFORE showTinyMenu(), collapsing the
+                    // whole dropdown (and the sidebar layout under it, in
+                    // inline-expanded mode) an instant before the tiny
+                    // rename/delete menu appeared — leaving it floating with
+                    // no visible anchor. The dropdown now stays open; it
+                    // still closes normally afterward via rename/delete
+                    // picking an action, or a genuine click-away.
                     showTinyMenu(e.clientX, e.clientY, item.dataset.id)
                 })
             }
@@ -324,6 +352,15 @@ function createWorkspacesUiApi({
             e.stopPropagation()
             const opening = !menuOpen
             document.dispatchEvent(new CustomEvent('close-all-popups'))
+            // BUGFIX (2026-09-16, same pass that dropped the mousedown-based
+            // outside-click listener below): closing on re-click used to
+            // happen implicitly, via this button's own close-all-popups
+            // dispatch reaching THIS module's close-all-popups listener —
+            // now that the switcher no longer listens to that shared event
+            // (see the BUGFIX above), re-clicking the button while already
+            // open must close it explicitly here instead, or it would never
+            // close via the button at all.
+            if (!opening) closeSwitcherMenu()
             if (opening) {
                 renderSwitcherMenu()
                 const isExpanded = !!activityTop.closest('#activityBar')?.classList.contains('sidebar-expanded')

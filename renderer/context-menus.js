@@ -13,8 +13,25 @@ function createContextMenusApi({
     updateContextMuteLabel,
     isWorkspacesEnabled
 }) {
-    function hideAllMenus() {
-        contextMenu.classList.remove('show')
+    // BUGFIX (2026-09-16, live-репорт коллеги в Telegram — "когда правой
+    // кнопкой кликаешь на мессенджер и потом 'В пространство', то снова
+    // закрывается контекстное меню и меню второго уровня висит просто.
+    // Нужно сохранять и первое меню, пока не нажмут или не кликнут в другом
+    // месте"): context-actions-bind.js's ctxMoveToFolder/ctxMoveToWorkspace
+    // handlers call this to close any OTHER stray popup before opening their
+    // own second-level submenu (folderPickMenu/workspaceMoveMenu) — but this
+    // always closed #contextMenu too, the very first-level menu the button
+    // being clicked lives inside, so it vanished the instant its own submenu
+    // opened, leaving a lone picker with no visible parent. Pass
+    // {keepContextMenu: true} from those two call sites to keep the
+    // first-level menu visible (looks like a proper cascading submenu);
+    // every other caller (picking an item, clicking away, Escape) still
+    // closes it as before via the default (no-args) case.
+    function hideAllMenus(opts = {}) {
+        if (!opts.keepContextMenu) {
+            contextMenu.classList.remove('show')
+            state.contextTargetId = null
+        }
         folderContextMenu.classList.remove('show')
         folderPickMenu.classList.remove('show')
         sidebarContextMenu.classList.remove('show')
@@ -26,7 +43,6 @@ function createContextMenusApi({
         // через document.getElementById), но должен закрываться вместе со
         // всем остальным по тому же 'close-all-popups'.
         document.getElementById('workspaceMoveMenu')?.classList.remove('show')
-        state.contextTargetId = null
         state.contextTargetFolderId = null
         state.contextTargetDividerId = null
     }
