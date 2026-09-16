@@ -1000,6 +1000,15 @@ body.platform-darwin .titlebar-left  { padding-left: 78px; } /* отступ п�
     transform: scale(1.08);
 }
 
+/* BUGFIX (2026-09-16, "без увеличения шрифта при наведении" — live user
+   report): the scale(1.08) above is a nice icon-pop for the collapsed
+   icon-only dock, but in the expanded sidebar it scales the whole button
+   INCLUDING its visible text label, reading as the label's font growing
+   on hover — jarring in a full-width row, unlike a small centered icon. */
+#activityBar.sidebar-expanded .activity-btn:hover {
+    transform: none;
+}
+
 .activity-btn:active {
     transform: scale(0.95);
 }
@@ -1317,7 +1326,12 @@ body.platform-darwin .titlebar-left  { padding-left: 78px; } /* отступ п�
 #activityBar.sidebar-expanded .activity-btn-label {
     display: inline-block;
     font-size: 13px;
-    font-weight: 600;
+    /* BUGFIX (2026-09-16, "Шрифт вот тут сделай, как у мессенджеров" — live
+       user report, screenshot of Lock/Split/VPN/Downloads/Settings/account
+       row): stayed at 600 when .messenger-name was thinned to 400 earlier
+       this session, so the bottom dock read visibly heavier than every
+       message row above it. */
+    font-weight: 400;
     color: var(--text-bright);
     white-space: nowrap;
     overflow: hidden;
