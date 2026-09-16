@@ -22,7 +22,7 @@ function friendlyVpnError (tGet, result, fallbackKey) {
   return result?.error || tGet(fallbackKey || 'network.vpnError')
 }
 
-function bindVpnUi ({ invokeIpc, tGet, ipcRenderer, onVpnStatusChange }) {
+function bindVpnUi ({ invokeIpc, tGet, ipcRenderer, onVpnStatusChange, state }) {
   const btn   = document.getElementById('vpnBtn')
   const panel = document.getElementById('vpnPanel')
   if (!btn || !panel) return
@@ -685,6 +685,34 @@ function bindVpnUi ({ invokeIpc, tGet, ipcRenderer, onVpnStatusChange }) {
   // state instead of only updating the next time the user reopens the panel.
   ipcRenderer?.on('vpn-unexpected-disconnect', () => {
     invokeIpc('vpn-status').then(s => { status = s; updateBtn(); if (panel.style.display !== 'none') render() }).catch(() => {})
+  })
+
+  // BUGFIX (2026-09-16, "ВПН сломали... визуально включается но ВА и ТГ
+  // сразу отваливаются, не переподключаются" — live user report, reproduced
+  // by dispatching a trivial local SOCKS5 relay — no real VPN tunnel
+  // involved — at an already-loaded WhatsApp Web session: it immediately
+  // showed its own "В браузере произошла ошибка базы данных. Повторите
+  // привязку устройства" and never recovered on its own). main/ipc/vpn.js
+  // now sends 'vpn-proxy-changed' after every proxy application
+  // (connect/disconnect/unexpected-exit-reset/per-app toggle) — main only
+  // has access to Chromium `session` objects, not to the actual <webview>
+  // DOM elements, so it can't reload them itself; that has to happen here.
+  // A page whose own JS doesn't gracefully survive its network context
+  // changing mid-session (WhatsApp Web's IndexedDB-backed multi-device
+  // session apparently doesn't) needs a clean reload against the new proxy
+  // rather than being left to somehow self-heal in place.
+  ipcRenderer?.on('vpn-proxy-changed', (payload) => {
+    if (!state || !Array.isArray(state.activeMessengers)) return
+    const targetId = payload?.messengerId || null
+    const messengers = targetId
+      ? state.activeMessengers.filter(m => m.id === targetId)
+      : state.activeMessengers
+    messengers.forEach((m) => {
+      const wv = document.getElementById(`webview-${m.id}`)
+      if (wv && typeof wv.reload === 'function' && typeof wv.getURL === 'function' && wv.getURL()) {
+        try { wv.reload() } catch {}
+      }
+    })
   })
 }
 

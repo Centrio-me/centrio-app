@@ -43,6 +43,26 @@ function subEmptyError () {
 function vpnProxyOn  (port) { return { enabled: true, type: 'socks5', host: '127.0.0.1', port } }
 function vpnProxyOff ()     { return { enabled: false } }
 
+// BUGFIX (2026-09-16, "ВПН сломали... визуально включается но ВА и ТГ сразу
+// отваливаются, не переподключаются" — live user report): reproduced with a
+// trivial local SOCKS5 relay (direct passthrough, no real VPN node at all)
+// pointed at an already-loaded WhatsApp Web session — it immediately showed
+// its own "В браузере произошла ошибка базы данных. Повторите привязку
+// устройства" and never recovered. session.setProxy() changes a webview's
+// underlying network context in place; nothing here ever told the actual
+// <webview> (which lives in the renderer, main has no DOM access to it) to
+// reload afterward, so a page whose own JS doesn't gracefully handle its
+// network path changing mid-session (WhatsApp Web's IndexedDB-backed
+// multi-device session apparently doesn't) is left in a broken state
+// indefinitely. Broadcasts to the renderer (renderer/vpn-bind.js) so it can
+// reload the affected webview(s) — messengerId: null means every session
+// just got a new proxy (global connect/disconnect), a specific id means
+// only that one messenger's session changed (per-app toggle).
+function notifyProxyChanged (getMainWindow, messengerId = null) {
+    const win = getMainWindow()
+    if (win && !win.isDestroyed()) win.webContents.send('vpn-proxy-changed', { messengerId })
+}
+
 // Сохраняем ссылку активного конфига — чтобы восстановить после перезапуска.
 // Ссылки (vmess/vless/trojan/...) содержат креды в самом URI и подписочные
 // URL нередко несут токен доступа в query — шифруем через safeStorage
@@ -99,7 +119,9 @@ function registerVpnIpc ({ getMainWindow }) {
     // (if open) refreshes instead of silently showing a stale "connected"
     // state while every tab is actually broken.
     getVpn().setUnexpectedExitHandler(() => {
-        applyAllSessionsProxy(vpnProxyOff()).catch((e) => {
+        applyAllSessionsProxy(vpnProxyOff()).then(() => {
+            notifyProxyChanged(getMainWindow)
+        }).catch((e) => {
             console.error('[VPN] failed to reset sessions after unexpected exit:', e.message)
         })
         const win = getMainWindow()
@@ -144,6 +166,7 @@ function registerVpnIpc ({ getMainWindow }) {
                     if (win) win.webContents.send('vpn-log', line)
                 })
                 await applyVpnToEnabledSessions(vpnProxyOn(vpn.PROXY_PORT))
+                notifyProxyChanged(getMainWindow)
                 saveActiveLink(items[0].link)
                 return { success: true, status: vpn.getStatus(), imported: items.length }
             }
@@ -157,6 +180,7 @@ function registerVpnIpc ({ getMainWindow }) {
                 if (win) win.webContents.send('vpn-log', line)
             })
             await applyVpnToEnabledSessions(vpnProxyOn(vpn.PROXY_PORT))
+            notifyProxyChanged(getMainWindow)
             saveActiveLink(link)
             return { success: true, status: vpn.getStatus() }
 
@@ -191,6 +215,7 @@ function registerVpnIpc ({ getMainWindow }) {
                     if (win) win.webContents.send('vpn-log', line)
                 })
                 await applyVpnToEnabledSessions(vpnProxyOn(vpn.PROXY_PORT))
+                notifyProxyChanged(getMainWindow)
                 saveActiveLink(items[0].link)
                 return { success: true, status: vpn.getStatus(), imported: items.length }
             }
@@ -203,6 +228,7 @@ function registerVpnIpc ({ getMainWindow }) {
                 if (win) win.webContents.send('vpn-log', line)
             })
             await applyVpnToEnabledSessions(vpnProxyOn(vpn.PROXY_PORT))
+            notifyProxyChanged(getMainWindow)
             saveActiveLink(link)
             return { success: true, status: vpn.getStatus() }
 
@@ -224,6 +250,7 @@ function registerVpnIpc ({ getMainWindow }) {
                 if (win) win.webContents.send('vpn-log', line)
             })
             await applyVpnToEnabledSessions(vpnProxyOn(vpn.PROXY_PORT))
+            notifyProxyChanged(getMainWindow)
             saveActiveLink(link)
             return { success: true, status: vpn.getStatus() }
         } catch (e) {
@@ -237,6 +264,7 @@ function registerVpnIpc ({ getMainWindow }) {
             const vpn = getVpn()
             await vpn.stopProxy()
             await applyAllSessionsProxy(vpnProxyOff())  // disconnect — убираем со всех
+            notifyProxyChanged(getMainWindow)
             saveActiveLink(null)
             return { success: true, status: vpn.getStatus() }
         } catch (e) {
@@ -318,6 +346,7 @@ function registerVpnIpc ({ getMainWindow }) {
                 const proxy = enabled ? vpnProxyOn(vpn.PROXY_PORT) : vpnProxyOff()
                 const ses = session.fromPartition(`persist:${messengerId}`)
                 await applyProxyToSession(ses, proxy)
+                notifyProxyChanged(getMainWindow, messengerId)
             }
             return { success: true }
         } catch (e) {

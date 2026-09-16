@@ -69,7 +69,19 @@ const validReceiveChannels = new Set([
     // toggle once restore finishes, but it was missing here too — the VPN
     // button could sit on a stale "connecting..." state after launch even
     // though the connection actually came up.
-    'vpn-restored'
+    'vpn-restored',
+    // BUGFIX (2026-09-16, "ВПН сломали... визуально включается но ВА и ТГ
+    // сразу отваливаются, не переподключаются" — live user report,
+    // reproduced with a trivial local SOCKS5 relay with no real VPN
+    // involved: WhatsApp Web itself shows "В браузере произошла ошибка
+    // базы данных. Повторите привязку устройства" the moment
+    // session.setProxy() changes under an already-loaded session — see the
+    // matching comment in main/ipc/vpn.js). main/ipc/vpn.js now sends this
+    // after every proxy application (connect/disconnect/per-app toggle) so
+    // renderer/vpn-bind.js can reload the affected webview(s) instead of
+    // leaving a live page to somehow survive its network context changing
+    // out from under it, which WhatsApp's own code doesn't handle.
+    'vpn-proxy-changed'
 ])
 
 const invokeChannelMap = {

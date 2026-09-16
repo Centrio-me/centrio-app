@@ -42,6 +42,17 @@ function bindAppEvents({
                 closeFindBar()
                 return
             }
+            // BUGFIX (2026-09-16, "и на esc не реагирует при этом (но ожидал
+            // что esc и пропадёт)" — live user report about the workspace
+            // move submenu, but this was never wired for ANY context menu in
+            // the app): Escape only ever handled quickSearch/findBar here —
+            // every context menu (right-click menu, folder/workspace move
+            // pickers, etc, all closed via the shared 'close-all-popups'
+            // event, see renderer/context-menus.js's hideAllMenus) had no
+            // keyboard dismissal at all, only click-outside. Dispatching the
+            // same event Escape already triggers everywhere else covers all
+            // of them for free — no per-menu wiring needed.
+            document.dispatchEvent(new CustomEvent('close-all-popups'))
         }
 
         if (isInput) return

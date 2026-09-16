@@ -431,15 +431,30 @@ function buildTransportFromParams (params) {
     return { type: 'http', host: host ? [host] : [], path: params.get('path') || '/' }
   }
 
+  // BUGFIX (2026-09-16, "жмёшь подключить и ноль эффекта... в отдельном
+  // Happ он же включается" — live user report): this used to happily
+  // generate a { type: 'xhttp', ... } transport object and hand it to
+  // sing-box, which has NEVER actually supported that type — confirmed by
+  // running sing-box.exe (1.11.4, the version this app ships, 1.14.1
+  // latest stable, and 1.15.0-alpha.5 latest prerelease) directly against
+  // a config using it: every single one fails immediately with "unknown
+  // transport type: xhttp". Checked upstream: the PR that would have added
+  // it (SagerNet/sing-box#4326) was closed WITHOUT being merged — this
+  // isn't a version-pinning gap that a sing-box upgrade could fix, XHTTP
+  // support was proposed and rejected, full stop. Happ (and most other
+  // VPN clients) use Xray-core, where XHTTP originated and is native — the
+  // exact same server config works there while being fundamentally
+  // impossible through this app's sing-box engine. Previously this
+  // silently produced a config sing-box would reject at startup with a
+  // FATAL log line the app's own crash-detection *should* catch — but
+  // whatever the exact reason, users only saw an unresponsive "Подключить"
+  // button. Failing fast with a clear, specific error here (instead of ever
+  // reaching sing-box at all) guarantees the user is told the real reason
+  // instead of everything downstream just quietly not working.
   if (type === 'xhttp' || type === 'splithttp') {
-    const t = { type: 'xhttp', path: params.get('path') || '/' }
-    const mode = params.get('mode')
-    if (mode && mode !== 'auto') t.method = mode
-    try {
-      const extra = params.get('extra')
-      if (extra) t.extra = JSON.parse(extra)
-    } catch (e) { /* ignore malformed extra */ }
-    return t
+    const err = new Error('Этот сервер использует транспорт XHTTP, который наш VPN-движок (sing-box) не поддерживает — эта функция была предложена разработчикам sing-box, но отклонена. Попробуйте сервер с другим транспортом (WebSocket, gRPC, TCP)')
+    err.code = 'VPN_UNSUPPORTED_TRANSPORT'
+    throw err
   }
 
   if (type === 'httpupgrade') {

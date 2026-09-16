@@ -445,6 +445,7 @@ function createSplitApi ({
         if (state.splitZoneFocus === zoneIndex) return
         state.splitZoneFocus = zoneIndex
         renderGridZones()
+        _syncActiveIndicatorForGrid(zoneIndex)
     }
 
     function _persistGridSplit () {
@@ -475,6 +476,7 @@ function createSplitApi ({
         hideZonePicker()
         state.splitZoneFocus = zoneIndex
         renderGridZones()
+        _syncActiveIndicatorForGrid(zoneIndex)
         _persistGridSplit()
     }
 
@@ -742,10 +744,24 @@ function createSplitApi ({
     // single choke point every focus transition already runs through (direct
     // webview click via onWebviewFocus, switchSplitTab picking a secondary,
     // enterSplitMode) — move the highlight there so it always matches which
-    // pane is actually focused, for the 2col layout (grid layouts use their
-    // own '.split-zone-tile.focused' frame instead of the sidebar highlight).
-    function _syncActiveIndicatorFor2col (side) {
-        const id = side === 'right' ? state.splitTabId : state.activeTabId
+    // pane is actually focused.
+    // BUGFIX 2 (2026-09-16, "При развёрнутой левой панели всегда выделен
+    // какой то один мессенджер... это при сплит скрине только... тройной
+    // сплит, пишу в максе а выделена телега... в сетке (четвёрном) тоже...
+    // при дйоном сплит скрине — всё ок" — live user report): this used to
+    // be scoped to `if (state.splitLayout === '2col')` only, on the
+    // assumption that grid layouts (triple/quad) have their own
+    // '.split-zone-tile.focused' frame instead, so the sidebar highlight
+    // didn't need to track them. That frame only outlines the SECONDARY
+    // zones though — the sidebar item is still visible and still says
+    // something, and it was simply never updated for grid layouts at all,
+    // permanently stuck on whichever messenger was active before entering
+    // grid mode (or the primary zone) regardless of which tile the user
+    // actually focused. Extracted the DOM-sync body into a shared helper so
+    // both layouts drive the same sidebar/tab highlight instead of only 2col
+    // having it — see setGridZoneFocus()/switchGridZone() below for the grid
+    // side of this.
+    function _syncActiveIndicator (id) {
         if (!id) return
 
         document.querySelectorAll('.messenger-item').forEach(item => item.classList.remove('active'))
@@ -759,6 +775,17 @@ function createSplitApi ({
         document.querySelectorAll('.tab').forEach(tabEl => tabEl.classList.remove('active'))
         const tab = document.getElementById(`tab-${id}`)
         if (tab) tab.classList.add('active')
+    }
+
+    function _syncActiveIndicatorFor2col (side) {
+        _syncActiveIndicator(side === 'right' ? state.splitTabId : state.activeTabId)
+    }
+
+    // Зона 0 — основная вкладка (state.activeTabId), остальные — их
+    // собственный мессенджер из state.splitZoneIds (см. renderGridZones()
+    // выше — та же нумерация зон).
+    function _syncActiveIndicatorForGrid (zoneIndex) {
+        _syncActiveIndicator(zoneIndex === 0 ? state.activeTabId : state.splitZoneIds[zoneIndex])
     }
 
     function setSplitFocus (side) {
@@ -1476,7 +1503,13 @@ function createSplitApi ({
 
         if (state.splitLayout !== '2col') {
             const messengerId = webview.id.replace('webview-', '')
-            const zoneIndex = state.splitZoneIds.indexOf(messengerId)
+            // Зона 0 (основная вкладка) никогда не попадает в splitZoneIds
+            // (см. renderGridZones()/switchGridZone() — тот массив только
+            // для вторичных зон), поэтому indexOf на неё всегда вернёт -1.
+            // Проверяем activeTabId отдельно, иначе клик обратно в основную
+            // зону никогда не вызывал бы setGridZoneFocus(0) и подсветка
+            // сайдбара не обновлялась бы для этого случая тоже.
+            const zoneIndex = messengerId === state.activeTabId ? 0 : state.splitZoneIds.indexOf(messengerId)
             if (zoneIndex !== -1) setGridZoneFocus(zoneIndex)
             return
         }
