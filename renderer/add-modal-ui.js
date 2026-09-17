@@ -22,7 +22,12 @@
 // UPDATE (2026-09-01, "добавь категорию Видеозвонки" — live user request):
 // новая категория 'calls' (Яндекс Телемост/Zoom/Google Meet/Teams и т.д.) —
 // после 'media', та же логика, что и у медиа-апдейта выше.
-const CATEGORY_ORDER = ['top', 'messengers', 'mail', 'productivity', 'ai', 'media', 'calls']
+// UPDATE (2026-09-17, "добавим ещё раздел 'Документы'" — live user request,
+// список согласован заранее): новая категория 'documents' (Google Docs/
+// Sheets/Slides, Яндекс Документы, Word/Excel Online, MEGA/Яндекс Диск/
+// Google Drive — см. renderer/constants.js) — сразу после 'media', та же
+// логика, что и у предыдущих категорий-апдейтов выше.
+const CATEGORY_ORDER = ['top', 'messengers', 'mail', 'productivity', 'ai', 'media', 'documents', 'calls']
 const CATEGORY_LABEL_KEYS = {
     // 'top' переиспользует уже существующий (ранее нигде не подключённый)
     // ключ modal.popular — не заводим дублирующий по смыслу текст.
@@ -32,6 +37,7 @@ const CATEGORY_LABEL_KEYS = {
     productivity: 'modal.categories.productivity',
     ai: 'modal.categories.ai',
     media: 'modal.categories.media',
+    documents: 'modal.categories.documents',
     calls: 'modal.categories.calls'
 }
 // Максимальная задержка ступенчатой анимации — дальше плитки просто не ждут

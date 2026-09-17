@@ -87,12 +87,156 @@
         <span class="app-name">Centrio<span class="brand-period"></span></span>
     </div>
 
-    <div class="titlebar-menu" id="titlebarMenu">
+    <!-- FEATURE (2026-09-17, "Справа от логотипа - делаем вертикальную
+         полоску и пишем после неё - иконка и название вкладки, которая
+         сейчас открыта" — live user request): shows which messenger is
+         currently active without having to look down at the sidebar/tab
+         strip — updated from renderer/messengers.js's switchTab() (same
+         place that already keeps #tqmMute's icon in sync, see the matching
+         BUGFIX comment there). Hidden until the first tab is ever switched
+         to (no messenger added yet / still on the welcome screen). -->
+    <div class="titlebar-active-tab" id="titlebarActiveTab" style="display:none;">
+        <span class="titlebar-active-tab-divider"></span>
+        <img class="titlebar-active-tab-icon" id="titlebarActiveTabIcon" alt="">
+        <span class="titlebar-active-tab-name" id="titlebarActiveTabName"></span>
+    </div>
 
-        <!-- Файл -->
-        <div class="menu-item" id="menuFile">
-            <span class="menu-label" data-i18n="menu.file">Файл</span>
-            <div class="menu-dropdown">
+    <!-- REDESIGN (2026-09-17, "Верхняя шапка нуждается в переделке. Меню
+         теперь будет как 3 палочки слева от кнопок закрытия" + two
+         corrections in the same live thread — user request): the old text
+         menu bar's actual CONTENT (Файл/Правка/Вид/Окно/Справка, same ids:
+         menuSettings/menuQuit/menuUndo/etc) was physically MOVED into the
+         new hamburger dropdown in .titlebar-right below (#tqmDropdown) —
+         "в бургере только то меню, что сейчас у нас выдвигается от
+         логотипа" (the burger should hold exactly that existing menu, not a
+         curated subset). This wrapper div stays in the DOM, empty and
+         hidden, rather than being deleted, because state.menuCollapsed /
+         applyMenuCollapsed() in renderer.js reads #titlebarMenu/#menuToggleBtn
+         unguarded and that flag is also round-tripped through cross-device
+         settings sync (see renderer.js's sync payload building
+         ~line 729/849/2713) — ripping the container out risks breaking that
+         sync path for a purely cosmetic change, so it's left as an inert
+         empty shell instead. -->
+    <!-- Fullscreen/Hide/Close перестали показываться в выпадающем меню (см.
+         BUGFIX у #tqmDropdown ниже — "во весь экран, скрыть и закрыть не
+         нужны там вообще"), но остаются в DOM здесь — их обработчики в
+         renderer/menu-bind.js используют небезопасный
+         getElementById(id).addEventListener(...) без ?., так что элементы
+         должны существовать, даже скрытые. -->
+    <div class="titlebar-menu" id="titlebarMenu" style="display:none;">
+        <div class="menu-drop-item" id="menuFullscreen">
+            <span data-i18n="menu.fullscreen">Во весь экран</span>
+        </div>
+        <div class="menu-drop-item" id="menuHide">
+            <span data-i18n="menu.hide">Скрыть</span>
+        </div>
+        <div class="menu-drop-item" id="menuClose">
+            <span data-i18n="menu.close">Закрыть</span>
+        </div>
+    </div>
+
+
+    <button class="menu-toggle-btn" id="menuToggleBtn" title="Свернуть меню" style="display:none;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" id="menuToggleIcon">
+            <path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+    </button>
+
+    <div class="titlebar-tabs" id="tabsBar"></div>
+    <div class="titlebar-drag"></div>
+    <div class="titlebar-right">
+        <!-- REDESIGN (2026-09-17, "Верхняя шапка нуждается в переделке...
+             Меню теперь будет как 3 палочки слева от кнопок закрытия" +
+             follow-up corrections — live user request, all confirmed live in
+             chat: (1) hamburger = 3 horizontal lines, not "⋮" dots;
+             (2) Reload/Mute/Back/Split are NOT inside the hamburger dropdown
+             — "Иконки, что я написал, должны быть снаружи. Под рукой" (must
+             be OUTSIDE, at hand) — they're standalone icon buttons here in
+             .titlebar-quickmenu-icons; (3) the hamburger dropdown itself
+             contains EXACTLY the old text menu's full content — "в бургере
+             только то меню, что сейчас у нас выдвигается от логотипа" — see
+             #tqmDropdown below, which is the ORIGINAL #titlebarMenu content
+             (same ids: menuSettings/menuQuit/menuUndo/etc — menu-bind.js's
+             existing bindings keep working unchanged, elements just moved),
+             not a new curated subset.
+             #splitBtn (previously a sidebar dock icon, see .activity-top
+             below) is physically MOVED into the icon row (same id, so all of
+             split.js's existing logic — Pro-gated visibility,
+             getBoundingClientRect() positioning for the layout picker popup,
+             .split-active state — keeps working unchanged), not
+             reimplemented. See renderer/titlebar-quickmenu-bind.js for the
+             new Reload/Mute/Back/hamburger-toggle wiring. -->
+        <!-- BUGFIX (2026-09-17, follow-up: "Иконки также по центру. Все.
+             Сделать их толще. Красивее. Ровные" — live user request): all 5
+             icons here (4 in the row + the hamburger) now share the exact
+             same size/stroke-width (17px, 2.2) instead of the slightly
+             mismatched 14px/1.8 vs 15px/2 they had before — reads as one
+             consistent, bolder set instead of oddly-thin, unevenly-sized
+             icons. Vertical centering comes from .window-btn's own
+             height:100%/align-items:center (already correct) — the visual
+             offset before was really the size/weight inconsistency, not
+             actual misalignment. -->
+        <!-- BUGFIX (2026-09-17, "Стрелочка назад одна - смотрится странно.
+             Давай и вперед стрелочка и между ними - перезагрузить" — live
+             user request): Reload used to sit first, separate from Back —
+             now grouped as a proper browser-style nav cluster
+             (Назад/Перезагрузить/Вперёд), matching the mental model the
+             single lone Back arrow was missing half of. -->
+        <div class="titlebar-quickmenu-icons">
+            <button class="window-btn" id="tqmBack" title="Назад">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M19 12H5M12 19l-7-7 7-7"/>
+                </svg>
+            </button>
+            <button class="window-btn" id="tqmReload" title="Перезагрузить">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M23 4v6h-6M1 20v-6h6"/>
+                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+                </svg>
+            </button>
+            <button class="window-btn" id="tqmForward" title="Вперёд">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M5 12h14M12 5l7 7-7 7"/>
+                </svg>
+            </button>
+            <button class="window-btn" id="tqmMute" title="Выключить звук">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M11 5L6 9H2v6h4l5 4V5z"/>
+                    <path id="tqmMuteWave" d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+                    <path id="tqmMuteSlash" d="M23 3L1 21" style="display:none;"/>
+                </svg>
+            </button>
+            <!-- Сплит-экран — физически перенесённый #splitBtn (тот же id,
+                 класс сменён с activity-btn на window-btn, вся логика
+                 Pro-гейта/позиционирования попапа/.split-active в split.js
+                 не тронута — см. REDESIGN-комментарий выше). -->
+            <button id="splitBtn" class="window-btn" title="Сплит-экран" style="display:none;">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="2" y="3" width="20" height="18" rx="2"/>
+                    <line x1="12" y1="3" x2="12" y2="21"/>
+                </svg>
+            </button>
+        </div>
+        <div class="titlebar-quickmenu" id="titlebarQuickMenu">
+            <button class="window-btn" id="tqmToggleBtn" title="Меню">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+                    <line x1="4" y1="7" x2="20" y2="7"/>
+                    <line x1="4" y1="12" x2="20" y2="12"/>
+                    <line x1="4" y1="17" x2="20" y2="17"/>
+                </svg>
+            </button>
+            <!-- BUGFIX (2026-09-17, "Какой ужас ты натворил тут. Расставь
+                 всё по правильности. Выход явно внизу. Непонятно - что к
+                 чему относится вообще" — live user report on the flat,
+                 badly-ordered first pass): reordered into clear functional
+                 groups (Settings alone / Edit actions / Select All / View +
+                 Zoom + Fullscreen / Hide / Info / Close+Quit) instead of the
+                 arbitrary order the 5 old top-level tabs happened to be
+                 concatenated in — Настройки stays first (most-used), Выход
+                 moves to dead last (destructive/exit, standard convention),
+                 Закрыть (window close — distinct from Выход/quit) sits
+                 directly above it since they're both "leaving" actions. -->
+            <div class="menu-dropdown titlebar-quickmenu-dropdown" id="tqmDropdown">
                 <div class="menu-drop-item" id="menuSettings">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
                         <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.8"/>
@@ -102,22 +246,6 @@
                     <span class="menu-drop-shortcut">Ctrl+,</span>
                 </div>
                 <div class="menu-drop-divider"></div>
-                <div class="menu-drop-item menu-drop-danger" id="menuQuit">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
-                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-                        <polyline points="16 17 21 12 16 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-                        <line x1="21" y1="12" x2="9" y2="12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-                    </svg>
-                    <span data-i18n="menu.quit">Выход</span>
-                    <span class="menu-drop-shortcut">Alt+F4</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- Правка -->
-        <div class="menu-item" id="menuEdit">
-            <span class="menu-label" data-i18n="menu.edit">Правка</span>
-            <div class="menu-dropdown">
                 <div class="menu-drop-item" id="menuUndo">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
                         <path d="M3 7v6h6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
@@ -179,13 +307,7 @@
                     <span data-i18n="menu.selectAll">Выделить всё</span>
                     <span class="menu-drop-shortcut">Ctrl+A</span>
                 </div>
-            </div>
-        </div>
-
-        <!-- Вид -->
-        <div class="menu-item" id="menuView">
-            <span class="menu-label" data-i18n="menu.view">Вид</span>
-            <div class="menu-dropdown">
+                <div class="menu-drop-divider"></div>
                 <div class="menu-drop-item menu-has-sub" id="menuAppZoom">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
                         <circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="1.8"/>
@@ -193,8 +315,10 @@
                         <path d="M8 11h6M11 8v6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
                     </svg>
                     <span data-i18n="menu.appZoom">Масштаб приложения</span>
+                    <!-- Стрелка теперь указывает влево — подменю открывается
+                         влево (см. .menu-submenu в styles.css). -->
                     <svg class="menu-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none">
-                        <path d="M9 18l6-6-6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        <path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                     </svg>
                     <div class="menu-submenu">
                         <div class="menu-drop-item" id="menuAppZoomReset">
@@ -245,43 +369,23 @@
                     <span class="menu-drop-shortcut">Ctrl+-</span>
                 </div>
                 <div class="menu-drop-divider"></div>
-                <div class="menu-drop-item" id="menuFullscreen">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
-                        <path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-                    </svg>
-                    <span data-i18n="menu.fullscreen">Во весь экран</span>
-                    <span class="menu-drop-shortcut">F11</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- Окно -->
-        <div class="menu-item" id="menuWindow">
-            <span class="menu-label" data-i18n="menu.window">Окно</span>
-            <div class="menu-dropdown">
-                <div class="menu-drop-item" id="menuHide">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
-                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-                        <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-                        <line x1="1" y1="1" x2="23" y2="23" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-                    </svg>
-                    <span data-i18n="menu.hide">Скрыть</span>
-                    <span class="menu-drop-shortcut">Ctrl+M</span>
-                </div>
-                <div class="menu-drop-item menu-drop-danger" id="menuClose">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
-                        <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-                    </svg>
-                    <span data-i18n="menu.close">Закрыть</span>
-                    <span class="menu-drop-shortcut">Alt+F4</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- Справка -->
-        <div class="menu-item" id="menuHelp">
-            <span class="menu-label" data-i18n="menu.help">Справка</span>
-            <div class="menu-dropdown">
+                <!-- BUGFIX (2026-09-17, "Там вообще не нужны - во весь экран,
+                     скрыть и закрыть" — live user report): #menuFullscreen/
+                     #menuHide/#menuClose removed from view entirely (per
+                     explicit request, not just reordered). #menuHide and
+                     #menuClose were genuinely redundant with the visible
+                     #minimizeBtn/#closeBtn right next to this dropdown
+                     (renderer/window-bind.js sends the exact same
+                     'minimize-window'/'close-window' IPC either way) — no
+                     functionality lost by dropping those two. #menuFullscreen
+                     had no other trigger (no F11 keydown handler anywhere in
+                     the app — confirmed via grep), so removing it does drop
+                     that capability; done anyway per the explicit "не нужны
+                     вообще". All three elements stay in the DOM (moved into
+                     the emptied #titlebarMenu shell below, still hidden) so
+                     menu-bind.js's existing unguarded
+                     getElementById(id).addEventListener(...) calls for them
+                     don't throw on startup. -->
                 <div class="menu-drop-item" id="menuSupport">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
                         <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.8"/>
@@ -298,20 +402,18 @@
                     </svg>
                     <span data-i18n="menu.about">О приложении</span>
                 </div>
+                <div class="menu-drop-divider"></div>
+                <div class="menu-drop-item menu-drop-danger" id="menuQuit">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                        <polyline points="16 17 21 12 16 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                        <line x1="21" y1="12" x2="9" y2="12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                    </svg>
+                    <span data-i18n="menu.quit">Выход</span>
+                    <span class="menu-drop-shortcut">Alt+F4</span>
+                </div>
             </div>
         </div>
-
-    </div>
-
-    <button class="menu-toggle-btn" id="menuToggleBtn" title="Свернуть меню">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" id="menuToggleIcon">
-            <path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-        </svg>
-    </button>
-
-    <div class="titlebar-tabs" id="tabsBar"></div>
-    <div class="titlebar-drag"></div>
-    <div class="titlebar-right">
         <button id="minimizeBtn" class="window-btn" data-i18n-title="window.minimize">
             <svg width="12" height="12" viewBox="0 0 12 12">
                 <rect x="0" y="5.5" width="12" height="1" fill="currentColor"/>
@@ -359,14 +461,8 @@
                 </svg>
                 <span class="activity-btn-label">Скриншот</span>
             </button>
-            <!-- Сплит-экран (скрыт по умолчанию, включается через расширения) -->
-            <button id="splitBtn" class="activity-btn" title="Сплит-экран" style="display:none;">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="2" y="3" width="20" height="18" rx="2"/>
-                    <line x1="12" y1="3" x2="12" y2="21"/>
-                </svg>
-                <span class="activity-btn-label">Сплит-экран</span>
-            </button>
+            <!-- Сплит-экран переехал в шапку — см. #splitBtn внутри
+                 #tqmDropdown (titlebar-quickmenu), REDESIGN-комментарий там. -->
             <!-- VPN кнопка (активна = SVG зеленеет через .vpn-active) -->
             <button id="vpnBtn" class="activity-btn vpn-btn" title="VPN">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -911,6 +1007,9 @@
         </span>
         <div id="statusSubSep" class="status-divider" style="display:none"></div>
         <span class="status-item status-sub" id="statusSub" style="display:none">
+            <span class="status-sub-progress" id="statusSubProgress" title="">
+                <span class="status-sub-progress-fill" id="statusSubProgressFill"></span>
+            </span>
             <span id="statusSubText"></span>
             <a href="#" id="statusSubRenew" class="status-sub-renew" data-i18n="cloud.extend"></a>
         </span>
@@ -1008,6 +1107,18 @@
         <button class="changelog-popup-close" id="changelogPopupClose">✕</button>
     </div>
     <div class="changelog-popup-body">
+        <div class="changelog-entry">
+            <div class="changelog-version">v2.8.5</div>
+            <ul class="changelog-list">
+                <li>Новое: раздел «Документы» в окне добавления сервиса — Google Docs, Sheets, Slides, Яндекс Документы, Word/Excel Online, MEGA, Яндекс Диск, Google Drive</li>
+                <li>Новое: статус подписки в статус-баре — цветной прогресс-бар вместо простого текста, зелёный → оранжевый → красный по мере приближения окончания периода</li>
+                <li>Новое: полностью переработана верхняя шапка приложения — старое текстовое меню (Файл/Правка/Вид/Окно/Справка) заменено компактной кнопкой-«гамбургером» слева от кнопок окна, со всеми теми же пунктами, но логично сгруппированными</li>
+                <li>Новое: рядом с гамбургером — всегда видимые иконки Назад/Перезагрузить/Вперёд/Звук, сплит-экран переехал сюда же из бокового меню</li>
+                <li>Новое: справа от логотипа — иконка и название открытой сейчас вкладки</li>
+                <li>Улучшено: иконки шапки приведены к единому размеру, подсветка кнопок убрана — только мягкое посветление при наведении</li>
+                <li>Исправлено: окно выбора раскладки сплит-экрана могло уезжать за край экрана; рамка активной панели сплита могла перекрывать меню шапки; подменю «Масштаб приложения» не помещалось на экране</li>
+            </ul>
+        </div>
         <div class="changelog-entry">
             <div class="changelog-version">v2.8.4</div>
             <ul class="changelog-list">

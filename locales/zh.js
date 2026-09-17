@@ -45,6 +45,7 @@ module.exports = {
             productivity: '效率工具',
             ai: 'AI 对话',
             media: '媒体',
+            documents: '文档',
             calls: '视频通话'
         },
         syntaxPromo: {
@@ -610,7 +611,8 @@ module.exports = {
         expand: '展开侧边栏',
         trialDaysLeft: '免费试用',
         proDaysLeft: 'Pro 订阅',
-        daysShort: '天'
+        daysShort: '天',
+        daysLeftTooltip: '剩余'
     },
 
     rightbar: {

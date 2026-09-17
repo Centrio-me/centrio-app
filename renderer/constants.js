@@ -153,6 +153,23 @@ const popularMessengers = [
     { name: 'Okko',             url: 'https://okko.tv',                     icon: 'assets/logomessenger/okko.ico',          color: '#00B8FF', category: 'media' },
     { name: 'РадиоРекорд',      url: 'https://www.radiorecord.ru',          icon: 'assets/logomessenger/radiorecord.png',   color: '#E30613', category: 'media' },
     { name: 'SoundCloud',       url: 'https://soundcloud.com',              icon: 'assets/logomessenger/soundcloud.svg',    color: '#FF5500', category: 'media' },
+    // ── Документы (2026-09-17, live user request — новая категория:
+    // облачные офисные редакторы и файловые хранилища, список согласован
+    // заранее в чате). SVG-иконки для Google/Microsoft/MEGA скачаны с
+    // официального CDN simple-icons (тот же источник, что spotify.svg/
+    // tiktok.svg выше), цвета — официальные брендовые hex. Yandex 360
+    // Документы/Диск — apple-touch-icon напрямую с их доменов (у Google
+    // favicons-прокси оба отдавали один и тот же общий значок yandex.ru).
+    // ────────────────────────────────────────────────────────────────────
+    { name: 'Google Docs',      url: 'https://docs.google.com',             icon: 'assets/logomessenger/googledocs.svg',    color: '#4285F4', category: 'documents' },
+    { name: 'Google Sheets',    url: 'https://sheets.google.com',           icon: 'assets/logomessenger/googlesheets.svg',  color: '#34A853', category: 'documents' },
+    { name: 'Google Slides',    url: 'https://slides.google.com',           icon: 'assets/logomessenger/googleslides.svg',  color: '#FBBC04', category: 'documents' },
+    { name: 'Яндекс Документы', url: 'https://360.yandex.ru/docs',          icon: 'assets/logomessenger/yandex360docs.png', color: '#FF3333', category: 'documents' },
+    { name: 'Word Online',      url: 'https://word.office.com',             icon: 'assets/logomessenger/microsoftword.svg', color: '#2B579A', category: 'documents' },
+    { name: 'Excel Online',     url: 'https://excel.office.com',            icon: 'assets/logomessenger/microsoftexcel.svg', color: '#217346', category: 'documents' },
+    { name: 'MEGA',             url: 'https://mega.nz',                     icon: 'assets/logomessenger/mega.svg',          color: '#D9272E', category: 'documents' },
+    { name: 'Яндекс Диск',      url: 'https://disk.yandex.ru',              icon: 'assets/logomessenger/yandexdisk.png',    color: '#4A4AFF', category: 'documents' },
+    { name: 'Google Drive',     url: 'https://drive.google.com',            icon: 'assets/logomessenger/googledrive.svg',   color: '#4285F4', category: 'documents' },
 ]
 
 // SyntaxAI — партнёрская (реферальная) промо-плитка в разделе "Нейросети"

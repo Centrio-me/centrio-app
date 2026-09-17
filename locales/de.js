@@ -45,6 +45,7 @@ module.exports = {
             productivity: 'Produktivität',
             ai: 'KI-Chats',
             media: 'Medien',
+            documents: 'Dokumente',
             calls: 'Videoanrufe'
         },
         syntaxPromo: {
@@ -610,7 +611,8 @@ module.exports = {
         expand: 'Seitenleiste ausklappen',
         trialDaysLeft: 'Testphase',
         proDaysLeft: 'Pro-Abo',
-        daysShort: 'T.'
+        daysShort: 'T.',
+        daysLeftTooltip: 'Verbleibend'
     },
 
     rightbar: {

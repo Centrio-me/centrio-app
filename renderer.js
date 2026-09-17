@@ -48,6 +48,7 @@ const { bindLockUi } = require('./renderer/lock-bind')
 const { bindCloudUi } = require('./renderer/cloud-bind')
 const { bindOnboardingScreen } = require('./renderer/onboarding-auth')
 const { bindMenuUi } = require('./renderer/menu-bind')
+const { bindTitlebarQuickMenuUi } = require('./renderer/titlebar-quickmenu-bind')
 const { bindWindowUi } = require('./renderer/window-bind')
 const { bindAppEvents } = require('./renderer/app-events-bind')
 const { bindEditModalUi } = require('./renderer/edit-modal-bind')
@@ -1527,6 +1528,37 @@ function switchTab(id) {
     const activeWebview = document.getElementById(`webview-${id}`)
     const activeMessenger = state.activeMessengers.find(m => m.id === id)
 
+    // REDESIGN (2026-09-17, titlebar quick-menu — see
+    // renderer/titlebar-quickmenu-bind.js): #tqmMute's icon reflects
+    // whichever tab is now active, not just the tab that was toggled.
+    // BUGFIX: this was first added to renderer/messengers.js's OWN
+    // switchTab() — that entire module is never require()'d by renderer.js
+    // (confirmed via grep — dead code, presumably a leftover from an earlier
+    // refactor), so it silently never ran. THIS function (top-level in
+    // renderer.js) is the real one every tab click actually goes through.
+    document.getElementById('tqmMute')?.classList.toggle('muted', isMessengerMuted(id))
+
+    // FEATURE (2026-09-17, "Справа от логотипа - делаем вертикальную полоску
+    // и пишем после неё - иконка и название вкладки, которая сейчас
+    // открыта" — live user request): #titlebarActiveTab mirrors whatever
+    // messenger just became active. Same dead-code caveat as above — lives
+    // here now, not in renderer/messengers.js.
+    const activeTabIndicator = document.getElementById('titlebarActiveTab')
+    if (activeTabIndicator && activeMessenger) {
+        activeTabIndicator.style.display = 'flex'
+        const iconEl = document.getElementById('titlebarActiveTabIcon')
+        if (iconEl) {
+            iconEl.style.display = ''
+            // CSP-safe onerror (script-src 'self' blocks inline onerror="...") —
+            // .onerror assignment, not addEventListener, so it doesn't stack a
+            // new listener on every switch.
+            iconEl.onerror = () => { iconEl.style.display = 'none' }
+            iconEl.src = activeMessenger.icon || ''
+        }
+        const nameEl = document.getElementById('titlebarActiveTabName')
+        if (nameEl) nameEl.textContent = activeMessenger.name || ''
+    }
+
     if (activeMessenger) {
         state.tabZoomLevel = typeof activeMessenger.zoomLevel === 'number'
             ? activeMessenger.zoomLevel
@@ -1842,8 +1874,41 @@ function applyTabZoom(level) {
         btn.classList.toggle('add-btn-locked', atLimit)
     }
 
+    // FEATURE (2026-09-17, "может как-нибудь поинтереснее обыграть? Какой-нить
+    // прогресс-бар. С дня оплаты 100% до последнего дня 0%. Зеленый, в центре
+    // если - оранжевый, к концу подходит - красный" — live user request):
+    // #statusSubProgress's fill width/color for the compact subscription
+    // caption below. Mixes the theme's OWN --success/--warning/--danger CSS
+    // vars (read via getComputedStyle, not hardcoded hex) so the bar looks
+    // right in every theme (dark/light/glass/dock/embedded), not just the
+    // one it was designed in. Two linear segments — 100%→50% blends
+    // success→warning, 50%→0% blends warning→danger — matching "green...
+    // orange in the middle... red toward the end" exactly rather than a
+    // straight green-to-red interpolation (which would pass through yellow,
+    // not orange, at the midpoint).
+    function hexToRgb (hex) {
+        const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex.trim())
+        if (!m) return { r: 0, g: 0, b: 0 }
+        return { r: parseInt(m[1], 16), g: parseInt(m[2], 16), b: parseInt(m[3], 16) }
+    }
+    function mixHex (hexA, hexB, t) {
+        const a = hexToRgb(hexA), b = hexToRgb(hexB)
+        const r = Math.round(a.r + (b.r - a.r) * t)
+        const g = Math.round(a.g + (b.g - a.g) * t)
+        const bl = Math.round(a.b + (b.b - a.b) * t)
+        return `rgb(${r}, ${g}, ${bl})`
+    }
+    function progressColorForPercent (percent) {
+        const css = getComputedStyle(document.documentElement)
+        const success = css.getPropertyValue('--success').trim() || '#22c55e'
+        const warning = css.getPropertyValue('--warning').trim() || '#f59e0b'
+        const danger  = css.getPropertyValue('--danger').trim()  || '#ef4444'
+        if (percent >= 50) return mixHex(warning, success, (percent - 50) / 50)
+        return mixHex(danger, warning, percent / 50)
+    }
+
     // Компактная подпись подписки в нижнем статус-баре, справа от счётчика
-    // непрочитанных: "с 19 авг — осталось 92 дн." + ссылка "Продлить".
+    // непрочитанных: прогресс-бар + "осталось 92 дн." + ссылка "Продлить".
     // Скрыта, если план FREE без активного локального триала (нечего
     // показывать).
     function updateTrialStatusBar() {
@@ -1851,7 +1916,9 @@ function applyTabZoom(level) {
         const item   = document.getElementById('statusSub')
         const text   = document.getElementById('statusSubText')
         const renew  = document.getElementById('statusSubRenew')
-        if (!sep || !item || !text || !renew) return
+        const bar    = document.getElementById('statusSubProgress')
+        const fill   = document.getElementById('statusSubProgressFill')
+        if (!sep || !item || !text || !renew || !bar || !fill) return
 
         const user = cloudStore.getUser()
         const plan = (user?.plan || 'FREE').toUpperCase()
@@ -1862,6 +1929,13 @@ function applyTabZoom(level) {
             return Math.max(1, Math.ceil(msLeft / 86400000))
         }
         const fmtShortDate = (iso) => new Date(iso).toLocaleDateString(getCurrentLanguage() || 'ru', { day: 'numeric', month: 'short' })
+        // totalDays: сколько дней длится весь период — знаменатель для %.
+        // Без даты начала (paid-план иногда её не присылает) берём 30 —
+        // типичный биллинг-цикл, лучше разумного дефолта тут взять неоткуда.
+        const percentLeft = (left, totalDays) => {
+            const total = totalDays > 0 ? totalDays : 30
+            return Math.max(0, Math.min(100, Math.round((left / total) * 100)))
+        }
 
         let info = null
         if (plan !== 'FREE') {
@@ -1870,11 +1944,13 @@ function applyTabZoom(level) {
                 const left = daysLeft(expiry)
                 if (left > 0) {
                     const started = user?.planStartedAt || null
+                    const totalDays = started ? Math.round((new Date(expiry) - new Date(started)) / 86400000) : 30
                     info = {
                         text: started
                             ? `${fmtShortDate(started)} — ${left} ${tGet('sidebar.daysShort') || 'дн.'}`
                             : `${left} ${tGet('sidebar.daysShort') || 'дн.'}`,
-                        showRenew: true
+                        showRenew: true,
+                        percent: percentLeft(left, totalDays)
                     }
                 }
             }
@@ -1887,7 +1963,8 @@ function applyTabZoom(level) {
                     started.setDate(started.getDate() - 14)
                     info = {
                         text: `${tGet('sidebar.trialDaysLeft') || 'Триал'}: ${fmtShortDate(started.toISOString())} — ${left} ${tGet('sidebar.daysShort') || 'дн.'}`,
-                        showRenew: false
+                        showRenew: false,
+                        percent: percentLeft(left, 14)
                     }
                 }
             }
@@ -1899,6 +1976,9 @@ function applyTabZoom(level) {
 
         text.textContent = info.text
         renew.style.display = info.showRenew ? '' : 'none'
+        fill.style.setProperty('--fill-w', `${info.percent}%`)
+        fill.style.background = progressColorForPercent(info.percent)
+        bar.title = `${tGet('sidebar.daysLeftTooltip') || 'Осталось'}: ${info.percent}%`
     }
 
     document.getElementById('statusSubRenew')?.addEventListener('click', (e) => {
@@ -2040,6 +2120,8 @@ function applyTabZoom(level) {
         if (toDisable.includes('split')) {
             const btn = document.getElementById('splitBtn')
             if (btn) btn.style.display = 'none'
+            const divider = document.getElementById('tqmSplitDivider')
+            if (divider) divider.style.display = 'none'
             if (state.splitMode) splitApi?.exitSplitMode?.()
         }
         if (toDisable.includes('adblock')) {
@@ -2489,6 +2571,8 @@ function applyTabZoom(level) {
         if (extId === 'split') {
             const btn = document.getElementById('splitBtn')
             if (btn) btn.style.display = isEnabled ? 'flex' : 'none'
+            const divider = document.getElementById('tqmSplitDivider')
+            if (divider) divider.style.display = isEnabled ? '' : 'none'
             if (!isEnabled && state.splitMode) splitApi?.exitSplitMode?.()
         }
         if (extId === 'workspaces') {
@@ -2551,6 +2635,8 @@ function applyTabZoom(level) {
     if (initialExtState.split === true) {
         const btn = document.getElementById('splitBtn')
         if (btn) btn.style.display = 'flex'
+        const divider = document.getElementById('tqmSplitDivider')
+        if (divider) divider.style.display = ''
     }
 
     // ==============================
@@ -2937,6 +3023,13 @@ function applyTabZoom(level) {
         applyAppZoom,
         applyTabZoom,
         openSettings
+    })
+
+    bindTitlebarQuickMenuUi({
+        state,
+        isMessengerMuted,
+        updateMuteIcon,
+        saveData
     })
 
     bindWindowUi({

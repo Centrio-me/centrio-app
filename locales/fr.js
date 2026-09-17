@@ -45,6 +45,7 @@ module.exports = {
             productivity: 'Productivité',
             ai: 'IA conversationnelle',
             media: 'Médias',
+            documents: 'Documents',
             calls: 'Appels vidéo'
         },
         syntaxPromo: {
@@ -610,7 +611,8 @@ module.exports = {
         expand: 'Développer la barre latérale',
         trialDaysLeft: 'Essai gratuit',
         proDaysLeft: 'Abonnement Pro',
-        daysShort: 'j'
+        daysShort: 'j',
+        daysLeftTooltip: 'Restant'
     },
 
     rightbar: {

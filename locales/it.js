@@ -45,6 +45,7 @@ module.exports = {
             productivity: 'Produttività',
             ai: 'Chat IA',
             media: 'Media',
+            documents: 'Documenti',
             calls: 'Videochiamate'
         },
         syntaxPromo: {
@@ -610,7 +611,8 @@ module.exports = {
         expand: 'Espandi barra laterale',
         trialDaysLeft: 'Prova gratuita',
         proDaysLeft: 'Abbonamento Pro',
-        daysShort: 'g'
+        daysShort: 'g',
+        daysLeftTooltip: 'Rimanenti'
     },
 
     rightbar: {

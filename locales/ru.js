@@ -62,6 +62,7 @@ module.exports = {
             productivity: 'Продуктивность',
             ai: 'Нейросети',
             media: 'Медиа',
+            documents: 'Документы',
             calls: 'Видеозвонки'
         },
         syntaxPromo: {
@@ -654,7 +655,8 @@ module.exports = {
         expand: 'Развернуть панель',
         trialDaysLeft: 'Пробный период',
         proDaysLeft: 'Pro-подписка',
-        daysShort: 'дн.'
+        daysShort: 'дн.',
+        daysLeftTooltip: 'Осталось'
     },
 
     rightbar: {

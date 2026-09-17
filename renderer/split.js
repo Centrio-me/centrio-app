@@ -563,33 +563,33 @@ function createSplitApi ({
             optionBtn.classList.toggle('is-current', state.splitMode && optionBtn.dataset.layout === state.splitLayout)
         })
 
+        // BUGFIX (2026-09-17, titlebar redesign — "Сплит вообще окно не
+        // видно. Уезжает за экран" — live user report): #splitBtn used to
+        // live at the BOTTOM of the LEFT sidebar icon rail, so opening the
+        // picker to its right (`rect.right + 10`) had the whole width of the
+        // window to work with, and the old contentArea padding-push (below,
+        // now removed) existed only because that left-side popup would
+        // otherwise sit directly on top of the leftmost chat pane. Now that
+        // #splitBtn lives in the TOP-RIGHT titlebar (see index.html), the
+        // exact same `rect.right + 10` math placed the popup almost entirely
+        // off the right edge of the screen — there's rarely 300+px of room
+        // to the button's right up there. Anchoring to the button's RIGHT
+        // edge instead (opening leftward/downward, same pattern as
+        // #tqmDropdown) keeps it on-screen from a top-right anchor exactly
+        // like the hamburger dropdown does.
         const rect = splitBtn.getBoundingClientRect()
         splitLayoutPicker.style.display = 'block'
-        splitLayoutPicker.style.left = `${rect.right + 10}px`
-        splitLayoutPicker.style.top  = '0px'
+        splitLayoutPicker.style.left  = 'auto'
+        splitLayoutPicker.style.right = `${Math.max(10, window.innerWidth - rect.right)}px`
+        splitLayoutPicker.style.top   = `${rect.bottom + 8}px`
 
         requestAnimationFrame(() => {
             const pRect = splitLayoutPicker.getBoundingClientRect()
-            let top = rect.bottom - pRect.height
-            if (top < 10) top = 10
-            if (top + pRect.height > window.innerHeight - 10) top = window.innerHeight - pRect.height - 10
-            splitLayoutPicker.style.top = `${Math.max(10, top)}px`
-
-            // BUGFIX ("всё равно перекрывает окно сплита"): a fixed-position
-            // popup anchored next to splitBtn (bottom of the icon rail) has no
-            // way to avoid covering chat content underneath — the rail sits
-            // flush against contentArea, so any reasonably sized popup opening
-            // there necessarily overlaps the leftmost pane's message list.
-            // Instead of overlaying on top, push the actual split content out
-            // of the way: pad #contentArea on the left by the picker's own
-            // width, so its percentage-based webview layout (inset:0 / 100%
-            // width, see .tabs-content / webview rules in styles.css) reflows
-            // into the narrower remaining space and the picker renders in the
-            // freed gap instead of on top of anything. Reverted in
-            // hideLayoutPicker() below, which is also the single handler for
-            // 'close-all-popups' so every dismissal path restores full width.
-            if (contentArea) {
-                contentArea.style.paddingLeft = `${pRect.width + 20}px`
+            if (pRect.bottom > window.innerHeight - 10) {
+                splitLayoutPicker.style.top = `${Math.max(10, window.innerHeight - pRect.height - 10)}px`
+            }
+            if (pRect.left < 10) {
+                splitLayoutPicker.style.right = `${window.innerWidth - pRect.width - 10}px`
             }
         })
 
@@ -598,7 +598,6 @@ function createSplitApi ({
 
     function hideLayoutPicker () {
         if (splitLayoutPicker) splitLayoutPicker.style.display = 'none'
-        if (contentArea) contentArea.style.paddingLeft = ''
     }
 
     document.addEventListener('close-all-popups', hideLayoutPicker)

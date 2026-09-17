@@ -709,6 +709,44 @@ body {
     letter-spacing: -0.2px;
 }
 
+/* FEATURE (2026-09-17, "Справа от логотипа - делаем вертикальную полоску и
+   пишем после неё - иконка и название вкладки, которая сейчас открыта" —
+   live user request): current-messenger indicator next to the logo. */
+.titlebar-active-tab {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 10px 0 2px;
+    min-width: 0;
+    flex-shrink: 1;
+    overflow: hidden;
+}
+
+.titlebar-active-tab-divider {
+    width: 1px;
+    height: 16px;
+    background: var(--border);
+    flex-shrink: 0;
+    margin-right: 6px;
+}
+
+.titlebar-active-tab-icon {
+    width: 16px;
+    height: 16px;
+    border-radius: 4px;
+    flex-shrink: 0;
+    object-fit: cover;
+}
+
+.titlebar-active-tab-name {
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
 .titlebar-tabs {
     display: flex;
     align-items: flex-end;
@@ -3672,6 +3710,33 @@ body:has(.modal.show) .split-handle { display: none !important; }
 
 /* Компактная подпись подписки в статус-баре ("с 19 авг — осталось 92 дн.")
    + ссылка "Продлить" рядом с ней. */
+
+/* FEATURE (2026-09-17, "может как-нибудь поинтереснее обыграть? Какой-нить
+   прогресс-бар. С дня оплаты 100% до последнего дня 0%. Зеленый, в центре
+   если - оранжевый, к концу подходит - красный" — live user request):
+   маленькая полоска перед текстом, залитая часть уменьшается по мере
+   истечения подписки/триала, цвет плавно переходит зелёный → оранжевый →
+   красный (JS в renderer.js's updateTrialStatusBar задаёт --fill-w и
+   background инлайном, смешивая var(--success)/var(--warning)/var(--danger)
+   самой темы — так полоска остаётся уместной и в тёмной, и в светлой теме). */
+.status-sub-progress {
+    width: 30px;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--bg-active);
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.status-sub-progress-fill {
+    display: block;
+    height: 100%;
+    border-radius: 2px;
+    width: var(--fill-w, 100%);
+    background: var(--success);
+    transition: width 0.4s ease, background-color 0.4s ease;
+}
+
 .status-sub-renew {
     color: var(--accent);
     text-decoration: none;
@@ -5814,10 +5879,20 @@ body:has(.modal.show) .split-handle { display: none !important; }
     flex-shrink: 0;
 }
 
+/* BUGFIX (2026-09-17, "Второй уровень меню (Наведение на масштаб приложения)
+   - не влезает в экран" — live user report): this used to open to the RIGHT
+   (`left:100%`) of its parent item, which was fine back when the menu bar
+   sat wherever a click landed — now that #tqmDropdown (the only place this
+   is used — see index.html's single #menuAppZoom) is anchored flush against
+   the right edge of the window (see renderer/titlebar-quickmenu-bind.js),
+   there's rarely 200px+ of room to open further right into. Opens LEFTWARD
+   instead — mirrors the "bridge" pseudo-element and its own top-left
+   scaleIn transform-origin to match. */
 .menu-submenu {
     display: none;
     position: absolute;
-    left: 100%;
+    right: 100%;
+    left: auto;
     top: 0;
     background: var(--bg-secondary);
     border: 1px solid var(--border-light);
@@ -5827,7 +5902,7 @@ body:has(.modal.show) .split-handle { display: none !important; }
     z-index: 10000;
     box-shadow: var(--shadow-lg);
     animation: scaleIn 0.15s ease;
-    margin-left: 4px;
+    margin-right: 4px;
     -webkit-app-region: no-drag !important;
     z-index: 999999 !important;
 }
@@ -5840,12 +5915,14 @@ body:has(.modal.show) .split-handle { display: none !important; }
 }
 
 /* Невидимый «мост» закрывает зазор между пунктом и подменю,
-   чтобы курсор по диагонали не терял :hover и подменю не закрывалось */
+   чтобы курсор по диагонали не терял :hover и подменю не закрывалось —
+   на правой стороне теперь (подменю открывается влево, см. BUGFIX выше). */
 .menu-submenu::before {
     content: '';
     position: absolute;
     top: -6px;
-    left: -14px;
+    right: -14px;
+    left: auto;
     width: 18px;
     bottom: -6px;
     background: transparent;
@@ -5887,6 +5964,77 @@ body:has(.modal.show) .split-handle { display: none !important; }
     background: var(--bg-active);
     color: var(--text-bright);
 }
+
+/* REDESIGN (2026-09-17, "Верхняя шапка нуждается в переделке... Меню теперь
+   будет как 3 палочки слева от кнопок закрытия" — live user request):
+   compact hamburger quick-menu replacing the old text menu bar. Reuses
+   .menu-dropdown/.menu-drop-item/.menu-drop-divider (already themed for
+   light/dock/glass above) for the panel/rows — only the trigger + anchoring
+   are new, since this opens from ONE button instead of ONE-OF-FIVE
+   `.menu-item.open > .menu-dropdown`. */
+/* BUGFIX (2026-09-17, "Иконка бургер остаётся на месте, а остальные иконки
+   слева - на чуть большем расстоянии. Расстояние между оставшимися иконками
+   поменьше" — live user request): tightened the gap BETWEEN the 5 icons
+   themselves (2px -> 0px, they read as one cohesive group now) while pushing
+   the whole group further away from the hamburger (margin-right 4px -> 18px)
+   — the hamburger's own position doesn't move (it's still the last item
+   before minimize/maximize/close), this just gives it visible breathing room
+   instead of nearly touching #tqmSplit/#tqmMute. */
+.titlebar-quickmenu-icons {
+    display: flex;
+    align-items: center;
+    gap: 0px;
+    margin-right: 18px;
+}
+
+/* BUGFIX (2026-09-17, "Подсветки у кнопок не должно быть. Светлее
+   становиться должна при наведении" — live user request): .window-btn's
+   own :hover fills a background box (var(--bg-hover)) — fine for the
+   window-control buttons it was designed for, but reads as a persistent
+   "highlight" once there are 5 of these in a row. These 5 buttons opt out
+   of that box and just brighten the icon itself on hover instead — no
+   background at all, not even on hover. #tqmToggleBtn.open (kept the
+   hamburger visibly "stuck on" the whole time its dropdown was open) is
+   removed for the same reason — the dropdown being open is already obvious
+   from the dropdown itself being visible. */
+.titlebar-quickmenu-icons .window-btn,
+#tqmToggleBtn {
+    background: transparent !important;
+    opacity: 0.68;
+}
+.titlebar-quickmenu-icons .window-btn:hover,
+#tqmToggleBtn:hover {
+    background: transparent !important;
+    opacity: 1;
+    color: var(--text-bright);
+}
+#tqmMute.muted { opacity: 1; color: var(--danger); }
+
+/* Иконка "звук выключен" — показываем диагональную черту поверх динамика,
+   вместо второй SVG/смены path целиком (проще синхронизировать состояние). */
+#tqmMute.muted #tqmMuteWave { display: none; }
+#tqmMute.muted #tqmMuteSlash { display: block; }
+
+.titlebar-quickmenu {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.titlebar-quickmenu-dropdown {
+    /* .menu-dropdown's own `left:0` would push this off the right edge of
+       the window — this button sits right next to minimize/maximize/close,
+       so the panel has to hang off its RIGHT edge instead, opening
+       leftward/downward. */
+    left: auto;
+    right: 0;
+}
+
+.titlebar-quickmenu-dropdown.show {
+    display: block;
+}
+
+
 .vsc-btn-secondary {
     background: var(--bg-tertiary);
     border: 1px solid var(--border-light);
@@ -10505,20 +10653,45 @@ button:active {
    dialed back to 18px, a modest bump over the original 16px rather than
    the +6px jump that made it "очень большая". .app-name's font-size stays
    untouched per "Шрифт оставь таким" — only the icon and the dot (see
-   .app-name .brand-period below) shrink. */
+   .app-name .brand-period below) shrink.
+   BUGFIX 3 (2026-09-17, titlebar redesign round, "Логотип сделать побольше.
+   И по высоте по центру верхнего бара" — live user request): bumped again,
+   this time to 22px (the exact size that read as too big in isolation back
+   in BUGFIX 2, but the titlebar now carries more toolbar weight overall —
+   icon row + hamburger — so the same size reads proportionate rather than
+   oversized here). display:block + vertical-align removes the image's
+   default inline baseline gap, which was pushing it a couple px below true
+   center inside the flex-centered .titlebar-left despite align-items:center
+   already being set there. */
+/* BUGFIX (2026-09-17, "Последние штрихи... Лого и надпись Centrio всё-таки
+   немножко поменьше. На пару пикселей" — live user request, immediate
+   follow-up to the previous bump): dialed back 22px -> 20px. */
 .app-logo {
-    height: 18px !important;
+    height: 20px !important;
     width: auto;
+    display: block;
+    vertical-align: middle;
     opacity: 0.96;
     filter: none;
 }
 
+/* BUGFIX (2026-09-17, follow-up to BUGFIX 3 above: "И надпись логотипа нужно
+   было увеличить. И чуть ниже опустить" — live user request): bumped
+   15px -> 18px to actually read as bigger alongside the enlarged .app-logo,
+   and nudged down 2px via position:relative/top (doesn't affect layout flow
+   the way margin-top would, so .titlebar-left's own flex centering stays
+   correct — this just visually offsets the text within its own box).
+   BUGFIX 2 (same day, "немножко поменьше. На пару пикселей" — immediate
+   follow-up): dialed back 18px -> 16px, same "a couple pixels" adjustment as
+   the logo above. */
 .app-name {
-    font-size: 15px;
+    font-size: 16px;
     font-weight: 660;
     letter-spacing: -0.05em;
     color: var(--text-primary);
     white-space: nowrap;
+    position: relative;
+    top: 2px;
 }
 
 /* BUGFIX (2026-09-16, same report — the global .brand-period min-width/

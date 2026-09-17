@@ -45,6 +45,7 @@ module.exports = {
             productivity: 'Productivity',
             ai: 'AI chat',
             media: 'Media',
+            documents: 'Documents',
             calls: 'Video calls'
         },
         syntaxPromo: {
@@ -635,7 +636,8 @@ module.exports = {
         expand: 'Expand sidebar',
         trialDaysLeft: 'Free trial',
         proDaysLeft: 'Pro subscription',
-        daysShort: 'd'
+        daysShort: 'd',
+        daysLeftTooltip: 'Remaining'
     },
 
     rightbar: {
