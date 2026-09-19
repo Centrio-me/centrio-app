@@ -62,6 +62,14 @@ function createContextMenusApi({
         document.getElementById('ctxRemoveFromFolder').style.display =
             (messenger && messenger.folderId) ? 'flex' : 'none'
 
+        // FEATURE (2026-09-17, live request — "убрать те, что там
+        // по-умолчанию, он не может"): owner-assigned messengers can't be
+        // removed by the employee — hide the option instead of letting them
+        // click it and see nothing happen (removeMessenger() also guards
+        // this, but a visible-but-broken button is worse UX than no button).
+        const ctxRemove = document.getElementById('ctxRemove')
+        if (ctxRemove) ctxRemove.style.display = (messenger && messenger.orgAssigned) ? 'none' : 'flex'
+
         // FEATURE (2026-09-14, live-запрос) — пункт "в пространство"
         // показывается только когда плагин включён, пространства есть, и
         // мессенджер вне папки (внутри папки видимость решает сама папка —

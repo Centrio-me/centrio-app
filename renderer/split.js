@@ -774,6 +774,34 @@ function createSplitApi ({
         document.querySelectorAll('.tab').forEach(tabEl => tabEl.classList.remove('active'))
         const tab = document.getElementById(`tab-${id}`)
         if (tab) tab.classList.add('active')
+
+        // BUGFIX (2026-09-18, live report — "Неправильно понимает активную
+        // вкладку в СПЛИТ-экране": screenshot showed the MAX pane focused
+        // and highlighted in the sidebar/tabs, but the titlebar's
+        // icon+name indicator next to the logo still read "Telegram").
+        // #titlebarActiveTab is only ever updated inside renderer.js's
+        // top-level switchTab() — but every split-focus path (clicking a
+        // grid zone directly via onWebviewFocus -> setGridZoneFocus, or
+        // clicking a non-primary zone via switchGridZone) calls THIS
+        // function instead, either never reaching switchTab() at all or
+        // (for a sidebar click while split) reaching it only after it has
+        // already returned early to reroute into splitApi.switchGridZone.
+        // Mirroring the same DOM update here — the one choke point every
+        // split-focus path actually shares — keeps the titlebar indicator
+        // truthful for 2col, grid, AND single-tab mode alike.
+        const indicatorMessenger = state.activeMessengers?.find(m => m.id === id)
+        const indicator = document.getElementById('titlebarActiveTab')
+        if (indicator && indicatorMessenger) {
+            indicator.style.display = 'flex'
+            const iconEl = document.getElementById('titlebarActiveTabIcon')
+            if (iconEl) {
+                iconEl.style.display = ''
+                iconEl.onerror = () => { iconEl.style.display = 'none' }
+                iconEl.src = indicatorMessenger.icon || ''
+            }
+            const nameEl = document.getElementById('titlebarActiveTabName')
+            if (nameEl) nameEl.textContent = indicatorMessenger.name || ''
+        }
     }
 
     function _syncActiveIndicatorFor2col (side) {

@@ -18,7 +18,8 @@ function createOrgTeamApi({
     applyTheme,
     addOrgAssignedMessenger,
     removeOrgAssignedMessenger,
-    refreshAllVpnBadges = () => {} // (active) => void — keeps the sidebar VPN badges/state.vpnActive in sync, see renderer.js
+    refreshAllVpnBadges = () => {}, // (active) => void — keeps the sidebar VPN badges/state.vpnActive in sync, see renderer.js
+    setCanAddOwnMessengers = () => {} // (allowed: boolean) => void — gates the "+" add-messenger button, see renderer.js/add-modal-bind.js
 }) {
     const POLL_INTERVAL_MS = 5 * 60 * 1000
     let pollTimer = null
@@ -89,6 +90,25 @@ function createOrgTeamApi({
     // VPN is currently active, so it never interrupts a member who's
     // already connected to something (their own personal VPN, or this same
     // team VPN from a prior poll).
+    // FEATURE (2026-09-17, live request — "Даже галка нужна - может
+    // добавлять свои или нет"): reads THIS member's own
+    // canAddOwnMessengers flag off the org's member list (GET .../members
+    // is MEMBER-permitted server-side already) and gates the desktop app's
+    // "+" add-messenger button accordingly. Defaults to allowed (true) if
+    // the record can't be found — a transient read failure should never
+    // silently lock someone out of their own app.
+    async function syncMemberPermission(orgId) {
+        try {
+            const userId = cloudStore.getUser()?.id
+            if (!userId) return
+            const result = await authorizedInvoke('api-org-get-members', orgId)
+            const list = unwrap(result)
+            if (!Array.isArray(list)) return
+            const self = list.find(m => m.userId === userId)
+            setCanAddOwnMessengers(self ? self.canAddOwnMessengers !== false : true)
+        } catch {}
+    }
+
     async function syncSharedVpn(orgId) {
         if (state.vpnActive) return
         try {
@@ -131,6 +151,7 @@ function createOrgTeamApi({
         await Promise.allSettled([
             syncForcedSettings(orgId),
             syncAssignments(orgId),
+            syncMemberPermission(orgId),
             syncSharedVpn(orgId),
             pushStats(orgId)
         ])
@@ -139,6 +160,28 @@ function createOrgTeamApi({
     function start() {
         if (pollTimer) return
         tick()
+
+        // BUGFIX (2026-09-19, live report — "Мессенджеры почему-то через
+        // раз загружает в приложении... не открывает даже Макс. Нужно
+        // полностью настроить правильно синхронизацию"): orgTeamApi.start()
+        // is called very early in renderer.js's boot sequence (before
+        // loadData()/cloud-user hydration has necessarily settled), so this
+        // very first tick() can lose that race and no-op — getOrgId() reads
+        // null, or the assignments request itself fails on a cold
+        // connection. Every sync* function above swallows its own errors
+        // (by design — a transient sync hiccup must never surface as a user
+        // -facing error), so there's no failure signal to react to here,
+        // and the ONLY other scheduled attempt used to be POLL_INTERVAL_MS
+        // (5 minutes) later — matching "через раз" exactly: whichever
+        // restart happened to win that early race synced correctly, the
+        // rest didn't, for a full 5 minutes. Every operation tick() runs is
+        // idempotent (addOrgAssignedMessenger skips an already-injected
+        // slot, syncForcedSettings only reapplies on an actual theme
+        // change, etc.), so a few extra calls in quick succession right
+        // after start() are cheap and harmless — this just closes that gap
+        // instead of leaving it to chance.
+        ;[3000, 8000, 15000].forEach(ms => setTimeout(tick, ms))
+
         pollTimer = setInterval(tick, POLL_INTERVAL_MS)
     }
 

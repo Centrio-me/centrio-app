@@ -125,6 +125,7 @@ const validInvokeChannels = new Set([
     'api-notes-list',
     'api-notes-reorder',
     'api-notes-update',
+    'api-org-get-members',
     'api-org-get-messenger-assignments',
     'api-org-get-settings',
     'api-org-get-vpn',

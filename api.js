@@ -255,6 +255,15 @@ module.exports = {
         return request('GET', `/api/org/${orgId}/messenger-assignments`, null, token)
     },
 
+    // FEATURE (2026-09-17, live request — "Даже галка нужна - может
+    // добавлять свои или нет"): reused just to read this member's own
+    // canAddOwnMessengers flag (see org-team.js's syncMemberPermission) —
+    // GET /:orgId/members is already MEMBER-permitted server-side, no new
+    // route needed.
+    orgGetMembers(token, orgId) {
+        return request('GET', `/api/org/${orgId}/members`, null, token)
+    },
+
     orgPushMessengerStats(token, orgId, stats) {
         return request('POST', `/api/org/${orgId}/messenger-stats`, { stats }, token)
     },

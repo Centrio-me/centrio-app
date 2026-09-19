@@ -1,6 +1,6 @@
 module.exports = {
     appName: 'Centrio',
-    addMessenger: 'Aggiungi messenger',
+    addMessenger: 'Aggiungi servizio',
 
     ctx: {
         reload:              'Ricarica',

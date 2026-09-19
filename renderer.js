@@ -1647,6 +1647,13 @@ function applyTabZoom(level) {
     // ==============================
     function removeMessenger(id) {
         const messenger = state.activeMessengers.find(m => m.id === id)
+        // FEATURE (2026-09-17, live request — "Он может ещё добавлять, но
+        // убрать те, что там по-умолчанию, он не может"): owner-assigned
+        // slots (see addOrgAssignedMessenger) can't be removed from the
+        // employee side at all — context-menus.js already hides the
+        // "Удалить" menu item for these, this is defense-in-depth for any
+        // other call site.
+        if (messenger?.orgAssigned) return
         const folderId = messenger?.folderId
         if (isChatWidgetMessenger(messenger)) destroyChatWidgetPane(id)
 
@@ -1871,7 +1878,14 @@ function applyTabZoom(level) {
         const btn = document.getElementById('addMessengerBtn')
         if (!btn) return
         const atLimit = !hasEffectivePro() && state.activeMessengers.length >= FREE_MESSENGER_LIMIT
-        btn.classList.toggle('add-btn-locked', atLimit)
+        // FEATURE (2026-09-17, live request — "может добавлять свои или
+        // нет"): owner-controlled lock, independent of the Pro/free-limit
+        // lock above — state.orgCanAddOwnMessengers is synced from the
+        // server by renderer/org-team.js and defaults to true (undefined)
+        // until that first sync completes, so it never locks the button
+        // out before the org check has even run.
+        const orgLocked = state.orgCanAddOwnMessengers === false
+        btn.classList.toggle('add-btn-locked', atLimit || orgLocked)
     }
 
     // FEATURE (2026-09-17, "может как-нибудь поинтереснее обыграть? Какой-нить
@@ -2669,9 +2683,25 @@ function applyTabZoom(level) {
     // застревает на fake-creep потолке 91%. Стартовый пул не обязан ждать
     // полный сетевой таймаут: если он не успел за BOOT_CLOUD_PULL_TIMEOUT_MS,
     // грузимся с локальными данными (они и так самые свежие, что видело это
-    // устройство) — сам запрос не отменяется и тихо доедает в фоне, но его
-    // результат для загрузки уже не нужен.
-    const BOOT_CLOUD_PULL_TIMEOUT_MS = 6000
+    // устройство) — сам запрос не отменяется и тихо доедает в фоне.
+    //
+    // BUGFIX (2026-09-19, live report — "Мессенджеры почему-то через раз
+    // загружает в приложении. Перезашла, поменялась тема со светлой на
+    // стандартную, и не открывает даже Макс"): "тихо доедает в фоне" used
+    // to mean exactly that — its result, once it finally landed, was just
+    // discarded. On any launch slower than the timeout, the app would run
+    // that ENTIRE session on a stale local snapshot (old theme, missing
+    // messengers added elsewhere) with zero chance of correcting itself —
+    // purely a coin flip repeated on every restart, matching "через раз"
+    // exactly. Raised the timeout (6s was too tight — plenty of ordinary
+    // launches are slower than that, not just broken ones) AND, more
+    // importantly, kept listening for the real pull even after the race
+    // times out: once it lands late, it's still applied — persisted to
+    // store so next restart is correct even if this one wasn't, and the
+    // theme (the one piece safe to reapply live without touching already-
+    // rendered tabs/webviews) is re-applied immediately so this session
+    // self-corrects too instead of needing yet another restart.
+    const BOOT_CLOUD_PULL_TIMEOUT_MS = 15000
 
     function raceWithTimeout(promise, ms, fallback) {
         return new Promise((resolve) => {
@@ -2683,6 +2713,81 @@ function applyTabZoom(level) {
         })
     }
 
+    function applyCloudBootData(cloudData) {
+        if (!(cloudData?.messengers?.length > 0)) return
+
+        store.set('messengers', cloudData.messengers.map(m => ({
+            id: m.id,
+            name: m.name,
+            url: m.url,
+            icon: m.icon || null,
+            color: m.color || null,
+            folderId: m.folderId || null,
+            workspaceId: m.workspaceId || null,
+            notifSound: m.notifSound || '__default__',
+            zoomLevel: typeof m.zoomLevel === 'number' ? m.zoomLevel : 1
+        })))
+
+        store.set('folders', cloudData.folders || [])
+        // BUGFIX (2026-09-14, обнаружено при добавлении прямой
+        // привязки мессенджер→пространство): этот отдельный
+        // fast-path загрузки при старте (см. postLoginReload
+        // ветку выше) никогда не писал 'workspaces' вообще —
+        // пропущено при первой версии плагина, из-за чего
+        // пространства могли не переживать обычный (не
+        // пост-логин) перезапуск приложения при облачном логине.
+        store.set('workspaces', cloudData.workspaces || [])
+
+        if (cloudData.settings) {
+            const currentSettings = store.get('settings', {}) || {}
+            const { extra, ...baseSettings } = cloudData.settings
+            // Language is device-local — never let cloud overwrite it
+            const merged = { ...currentSettings, ...baseSettings }
+            if (currentSettings.language) merged.language = currentSettings.language
+            store.set('settings', merged)
+            // Restore extra settings (PIN, zoom, last active tab)
+            if (extra) {
+                // Блокировка: пишем в 'security' (именно там читает lock.js),
+                // а не в мёртвые верхнеуровневые ключи pinEnabled/pinHash
+                if (extra.pinEnabled !== undefined || extra.pinHash !== undefined || extra.lockOnHide !== undefined) {
+                    const sec = store.get('security', {})
+                    store.set('security', {
+                        ...sec,
+                        enabled:    extra.pinEnabled  !== undefined ? extra.pinEnabled  : sec.enabled,
+                        hash:       extra.pinHash     !== undefined ? extra.pinHash     : sec.hash,
+                        lockOnHide: extra.lockOnHide  !== undefined ? extra.lockOnHide   : sec.lockOnHide
+                    })
+                }
+                if (extra.lockOnStartup !== undefined) store.set('lockOnStartup', extra.lockOnStartup)
+                if (extra.tabZoomLevel !== undefined) {
+                    const s = store.get('settings', {}) || {}
+                    store.set('settings', { ...s, tabZoomLevel: extra.tabZoomLevel })
+                }
+                if (extra.globalProxy !== undefined) {
+                    const curProxy = store.get('globalProxy', {}) || {}
+                    store.set('globalProxy', { ...curProxy, ...extra.globalProxy })
+                }
+                if (extra.sidebarOrder !== undefined) store.set('sidebarOrder', extra.sidebarOrder)
+                if (extra.menuCollapsed !== undefined) store.set('menuCollapsed', extra.menuCollapsed)
+                if (extra.appZoomLevel !== undefined) store.set('appZoomLevel', extra.appZoomLevel)
+                if (extra.vpnAppModes !== undefined) store.set('vpnAppModes', extra.vpnAppModes)
+                if (extra.extensionsState !== undefined) store.set('extensionsState', extra.extensionsState)
+                if (extra.splitLeftPctPref !== undefined) store.set('splitLeftPctPref', extra.splitLeftPctPref)
+                if (extra.splitPresets !== undefined) store.set('splitPresets', extra.splitPresets)
+                // BUGFIX ("не сохраняется выбранный мессенджер"): restore
+                // last-active tab from cloud too, mirroring every other
+                // extra.* field here — see switchTab()/loadData() above.
+                if (extra.activeTabId !== undefined) store.set('activeTabId', extra.activeTabId)
+            }
+        }
+
+        const muted = {}
+        cloudData.messengers.forEach(m => {
+            if (m.isMuted) muted[m.id] = true
+        })
+        store.set('mutedMessengers', muted)
+    }
+
     async function loadData() {
         const postLoginReload = sessionStorage.getItem('_centrio_post_login_reload')
         if (postLoginReload) {
@@ -2692,80 +2797,27 @@ function applyTabZoom(level) {
             // Пишем данные, только что стянутые ИЗ облака — не планировать
             // автопуш этих же данных обратно (см. notifySyncedStoreWrite).
             suppressAutoCloudSync = true
+            const cloudPullPromise = cloudSyncPull()
             try {
-                const cloudData = await raceWithTimeout(cloudSyncPull(), BOOT_CLOUD_PULL_TIMEOUT_MS, null)
+                const cloudData = await raceWithTimeout(cloudPullPromise, BOOT_CLOUD_PULL_TIMEOUT_MS, null)
 
                 if (cloudData?.messengers?.length > 0) {
-                    store.set('messengers', cloudData.messengers.map(m => ({
-                        id: m.id,
-                        name: m.name,
-                        url: m.url,
-                        icon: m.icon || null,
-                        color: m.color || null,
-                        folderId: m.folderId || null,
-                        workspaceId: m.workspaceId || null,
-                        notifSound: m.notifSound || '__default__',
-                        zoomLevel: typeof m.zoomLevel === 'number' ? m.zoomLevel : 1
-                    })))
-
-                    store.set('folders', cloudData.folders || [])
-                    // BUGFIX (2026-09-14, обнаружено при добавлении прямой
-                    // привязки мессенджер→пространство): этот отдельный
-                    // fast-path загрузки при старте (см. postLoginReload
-                    // ветку выше) никогда не писал 'workspaces' вообще —
-                    // пропущено при первой версии плагина, из-за чего
-                    // пространства могли не переживать обычный (не
-                    // пост-логин) перезапуск приложения при облачном логине.
-                    store.set('workspaces', cloudData.workspaces || [])
-
-                    if (cloudData.settings) {
-                        const currentSettings = store.get('settings', {}) || {}
-                        const { extra, ...baseSettings } = cloudData.settings
-                        // Language is device-local — never let cloud overwrite it
-                        const merged = { ...currentSettings, ...baseSettings }
-                        if (currentSettings.language) merged.language = currentSettings.language
-                        store.set('settings', merged)
-                        // Restore extra settings (PIN, zoom, last active tab)
-                        if (extra) {
-                            // Блокировка: пишем в 'security' (именно там читает lock.js),
-                            // а не в мёртвые верхнеуровневые ключи pinEnabled/pinHash
-                            if (extra.pinEnabled !== undefined || extra.pinHash !== undefined || extra.lockOnHide !== undefined) {
-                                const sec = store.get('security', {})
-                                store.set('security', {
-                                    ...sec,
-                                    enabled:    extra.pinEnabled  !== undefined ? extra.pinEnabled  : sec.enabled,
-                                    hash:       extra.pinHash     !== undefined ? extra.pinHash     : sec.hash,
-                                    lockOnHide: extra.lockOnHide  !== undefined ? extra.lockOnHide   : sec.lockOnHide
-                                })
-                            }
-                            if (extra.lockOnStartup !== undefined) store.set('lockOnStartup', extra.lockOnStartup)
-                            if (extra.tabZoomLevel !== undefined) {
-                                const s = store.get('settings', {}) || {}
-                                store.set('settings', { ...s, tabZoomLevel: extra.tabZoomLevel })
-                            }
-                            if (extra.globalProxy !== undefined) {
-                                const curProxy = store.get('globalProxy', {}) || {}
-                                store.set('globalProxy', { ...curProxy, ...extra.globalProxy })
-                            }
-                            if (extra.sidebarOrder !== undefined) store.set('sidebarOrder', extra.sidebarOrder)
-                            if (extra.menuCollapsed !== undefined) store.set('menuCollapsed', extra.menuCollapsed)
-                            if (extra.appZoomLevel !== undefined) store.set('appZoomLevel', extra.appZoomLevel)
-                            if (extra.vpnAppModes !== undefined) store.set('vpnAppModes', extra.vpnAppModes)
-                            if (extra.extensionsState !== undefined) store.set('extensionsState', extra.extensionsState)
-                            if (extra.splitLeftPctPref !== undefined) store.set('splitLeftPctPref', extra.splitLeftPctPref)
-                            if (extra.splitPresets !== undefined) store.set('splitPresets', extra.splitPresets)
-                            // BUGFIX ("не сохраняется выбранный мессенджер"): restore
-                            // last-active tab from cloud too, mirroring every other
-                            // extra.* field here — see switchTab()/loadData() above.
-                            if (extra.activeTabId !== undefined) store.set('activeTabId', extra.activeTabId)
-                        }
-                    }
-
-                    const muted = {}
-                    cloudData.messengers.forEach(m => {
-                        if (m.isMuted) muted[m.id] = true
-                    })
-                    store.set('mutedMessengers', muted)
+                    applyCloudBootData(cloudData)
+                } else {
+                    // The timeout won the race — don't let the eventual real
+                    // result just vanish (see the big comment above
+                    // BOOT_CLOUD_PULL_TIMEOUT_MS). suppressAutoCloudSync is
+                    // already back to false by the time this fires (the
+                    // `finally` below runs first), which is correct: this
+                    // data genuinely came from the cloud, but store.set()'s
+                    // normal auto-push-back is harmless either way since
+                    // it'd just be pushing the cloud's own data back to itself.
+                    cloudPullPromise.then((lateData) => {
+                        if (!(lateData?.messengers?.length > 0)) return
+                        applyCloudBootData(lateData)
+                        const lateTheme = lateData.settings?.theme
+                        if (lateTheme && typeof applyTheme === 'function') applyTheme(lateTheme)
+                    }).catch(() => {})
                 }
             } catch (error) {
                 console.error('Cloud load error:', error)
@@ -3441,7 +3493,11 @@ function applyTabZoom(level) {
         applyTheme,
         addOrgAssignedMessenger,
         removeOrgAssignedMessenger,
-        refreshAllVpnBadges
+        refreshAllVpnBadges,
+        setCanAddOwnMessengers: (allowed) => {
+            state.orgCanAddOwnMessengers = allowed
+            updateAddButtonState()
+        }
     })
     orgTeamApi.start()
     bindVpnSettings({

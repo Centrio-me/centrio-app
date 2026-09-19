@@ -198,6 +198,10 @@ function registerApiIpc() {
         return wrapApi(() => api.orgGetMessengerAssignments(token, orgId))
     })
 
+    ipcMain.handle('api-org-get-members', async (event, token, orgId) => {
+        return wrapApi(() => api.orgGetMembers(token, orgId))
+    })
+
     ipcMain.handle('api-org-push-messenger-stats', async (event, token, orgId, stats) => {
         return wrapApi(() => api.orgPushMessengerStats(token, orgId, stats))
     })

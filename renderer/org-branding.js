@@ -27,7 +27,25 @@ function applyOrgLogo(user) {
         }
 
         if (orgLogoUrl) {
-            if (el.src !== orgLogoUrl) el.src = orgLogoUrl
+            // BUGFIX (2026-09-17, live report — "Лого теперь видно в ЛК ТИМ, а
+            // вот в приложении ломается"): the old `if (el.src !== orgLogoUrl)`
+            // guard was a no-op optimization that became a real bug once the
+            // server started rejecting this exact URL with a
+            // Cross-Origin-Resource-Policy: same-origin header (fixed
+            // server-side the same day, see centrio-api's index.js) — once
+            // el.src had already been set to orgLogoUrl during a FAILED
+            // attempt, this comparison was true (same string) and the element
+            // was never told to load again, even after the server-side fix
+            // went live and a fresh request would have succeeded. Assigning
+            // unconditionally forces a real (re)load attempt every time this
+            // runs; onerror falls back to the bundled default logo instead of
+            // leaving a permanently broken image if the URL is ever genuinely
+            // unreachable (deleted org logo file, offline, etc).
+            el.onerror = () => {
+                const defaultSrc = el.getAttribute(DEFAULT_SRC_ATTR)
+                if (defaultSrc) el.src = defaultSrc
+            }
+            el.src = orgLogoUrl
         } else {
             const defaultSrc = el.getAttribute(DEFAULT_SRC_ATTR)
             if (defaultSrc && el.getAttribute('src') !== defaultSrc) el.src = defaultSrc

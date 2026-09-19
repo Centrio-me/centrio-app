@@ -16,11 +16,23 @@ function bindAddModalUi({
     // addMessenger() — пользователь открывал модалку выбора сервиса, выбирал
     // что-то, и только тогда узнавал что уперся в лимит. Теперь плюсик сам
     // не открывает модалку при достижении лимита, показывает апгрейд сразу.
+    // FEATURE (2026-09-17, live request — "Даже галка нужна - может
+    // добавлять свои или нет"): owner-controlled lock, synced into
+    // state.orgCanAddOwnMessengers by renderer/org-team.js. Checked before
+    // the modal opens at all (same pattern as the Pro/free-limit check
+    // right below it) rather than inside addMessenger(), since the modal
+    // itself has nothing to gate once it's already open.
+    const orgAddLocked = () => state.orgCanAddOwnMessengers === false
+
     document.getElementById('addMessengerBtn')?.addEventListener('click', () => {
+        if (orgAddLocked()) return
         if (state.activeMessengers.length >= freeMessengerLimit && !requirePro('messengerLimit')) return
         openModal()
     })
-    document.getElementById('welcomeAddBtn')?.addEventListener('click', () => openModal())
+    document.getElementById('welcomeAddBtn')?.addEventListener('click', () => {
+        if (orgAddLocked()) return
+        openModal()
+    })
     document.getElementById('closeModalBtn')?.addEventListener('click', () => closeModal())
 
     // REDESIGN (2026-08-24) — раньше здесь колесо мыши перехватывалось
