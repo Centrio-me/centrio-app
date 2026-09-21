@@ -184,8 +184,12 @@ router.post('/login', async (req, res) => {
     if (!user.isActive) return res.status(403).json({ error: 'Аккаунт заблокирован' })
     const isValid = await bcrypt.compare(password, user.passwordHash)
     if (!isValid) return res.status(401).json({ error: 'Неверный email или пароль' })
+    // Мобильное приложение шлёт этот заголовок на login — см. AuthRepository
+    // в мобильном репозитории. Веб/десктоп его не отправляют, поэтому их
+    // поведение не меняется (isMobile остаётся false).
+    const isMobile = req.headers['x-client-platform'] === 'mobile'
     const accessToken  = generateAccessToken(user.id)
-    const refreshToken = await generateRefreshToken(user.id, req.headers['user-agent'], req.ip)
+    const refreshToken = await generateRefreshToken(user.id, req.headers['user-agent'], req.ip, isMobile)
     recordLoginEvent(user.id, 'password', req)
     const orgSummary = await getOrgSummaryForUser(user.id).catch(e => { console.error('[org] summary lookup failed:', e.message); return null })
     res.json({
@@ -371,6 +375,40 @@ router.post('/google/electron-code', async (req, res) => {
   }
 })
 
+// ===== GOOGLE (mobile) =====
+// Flutter's google_sign_in plugin, configured with serverClientId =
+// GOOGLE_CLIENT_ID (the same "Web" OAuth client the browser flow above
+// already uses), returns an idToken audienced to that client directly — no
+// authorization-code exchange needed, unlike the desktop's
+// /google/electron-code flow above. Requires the Android app's SHA-1
+// fingerprint to be registered against this OAuth client in Google Cloud
+// Console (a one-time console step, not code — see the mobile app's own
+// setup docs).
+router.post('/google/mobile', async (req, res) => {
+  try {
+    const { idToken } = req.body
+    if (!idToken) return res.status(400).json({ error: 'idToken обязателен' })
+    const ticket = await googleWebClient.verifyIdToken({ idToken, audience: process.env.GOOGLE_CLIENT_ID })
+    const payload = ticket.getPayload()
+    const { sub: googleId, email, name, picture } = payload
+    let user = await prisma.user.findFirst({ where: { OR: [{ googleId }, { email }] } })
+    if (!user) {
+      user = await prisma.user.create({ data: { email, name, avatar: picture, googleId, emailVerified: true } })
+      sendWelcomeEmail(user).catch(e => console.error('[email] welcome send failed:', e.message))
+    } else if (!user.googleId) {
+      user = await prisma.user.update({ where: { id: user.id }, data: { googleId, avatar: picture } })
+    }
+    const accessToken  = generateAccessToken(user.id)
+    const refreshToken = await generateRefreshToken(user.id, req.headers['user-agent'], req.ip, true)
+    recordLoginEvent(user.id, 'google', req)
+    const orgSummary = await getOrgSummaryForUser(user.id).catch(e => { console.error('[org] summary lookup failed:', e.message); return null })
+    res.json({ user: { id: user.id, email: user.email, name: user.name, avatar: user.avatar, plan: user.plan, orgSummary }, accessToken, refreshToken })
+  } catch (err) {
+    console.error('Google mobile error:', err)
+    res.status(401).json({ error: 'Ошибка Google авторизации' })
+  }
+})
+
 // ===== YANDEX =====
 router.get('/yandex', (req, res) => {
   const from = req.query.from || ''
@@ -440,6 +478,39 @@ router.post('/yandex/electron', async (req, res) => {
     res.json({ user: { id: user.id, email: user.email, name: user.name, avatar: user.avatar, plan: user.plan, orgSummary }, accessToken, refreshToken })
   } catch (err) {
     console.error('Yandex electron error:', err)
+    res.status(401).json({ error: 'Ошибка Яндекс авторизации' })
+  }
+})
+
+// ===== YANDEX (mobile) =====
+// Mirrors /yandex/electron exactly: the Flutter app runs Yandex's implicit
+// grant flow itself (system browser via flutter_web_auth_2, hitting
+// oauth.yandex.ru/authorize?response_type=token with the mobile app's own
+// registered redirect URI — a Yandex OAuth console setting, not code) and
+// hands the resulting Yandex accessToken here for verification.
+router.post('/yandex/mobile', async (req, res) => {
+  try {
+    const { accessToken: yandexToken } = req.body
+    if (!yandexToken) return res.status(400).json({ error: 'accessToken обязателен' })
+    const userRes = await axios.get('https://login.yandex.ru/info', {
+      headers: { Authorization: `OAuth ${yandexToken}` }, params: { format: 'json' }
+    })
+    const { id: yandexId, default_email: email, real_name: name, default_avatar_id } = userRes.data
+    const avatar = default_avatar_id ? `https://avatars.yandex.net/get-yapic/${default_avatar_id}/islands-200` : null
+    let user = await prisma.user.findFirst({ where: { OR: [{ yandexId }, { email }] } })
+    if (!user) {
+      user = await prisma.user.create({ data: { email, name, avatar, yandexId, emailVerified: true } })
+      sendWelcomeEmail(user).catch(e => console.error('[email] welcome send failed:', e.message))
+    } else if (!user.yandexId) {
+      user = await prisma.user.update({ where: { id: user.id }, data: { yandexId, avatar } })
+    }
+    const accessToken  = generateAccessToken(user.id)
+    const refreshToken = await generateRefreshToken(user.id, req.headers['user-agent'], req.ip, true)
+    recordLoginEvent(user.id, 'yandex', req)
+    const orgSummary = await getOrgSummaryForUser(user.id).catch(e => { console.error('[org] summary lookup failed:', e.message); return null })
+    res.json({ user: { id: user.id, email: user.email, name: user.name, avatar: user.avatar, plan: user.plan, orgSummary }, accessToken, refreshToken })
+  } catch (err) {
+    console.error('Yandex mobile error:', err)
     res.status(401).json({ error: 'Ошибка Яндекс авторизации' })
   }
 })
