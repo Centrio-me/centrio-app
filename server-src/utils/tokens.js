@@ -24,38 +24,58 @@ const generateAccessToken = (userId) => {
   )
 }
 
-// Лимит активных устройств (сессий) по плану
+// Лимит активных устройств (сессий) по плану — применяется только к
+// НЕ-мобильным сессиям (desktop/web). Мобильный компаньон получает
+// отдельный, фиксированный слот (MOBILE_DEVICE_LIMIT) независимо от
+// тарифа — вход в мобильное приложение не должен вытеснять единственную
+// разрешённую FREE-пользователю десктопную сессию, и наоборот.
 const MAX_DEVICES = { FREE: 1, PRO: 5, TEAM: 5 }
+const MOBILE_DEVICE_LIMIT = 1
 
 // Генерация refresh токена (30 дней)
-const generateRefreshToken = async (userId, deviceInfo, ipAddress) => {
+const generateRefreshToken = async (userId, deviceInfo, ipAddress, isMobile = false) => {
   const token = uuidv4()
   const expiresAt = new Date()
   expiresAt.setDate(expiresAt.getDate() + 30)
 
-  // Удаляем предыдущие сессии с таким же deviceInfo (одно устройство — одна сессия)
+  // Удаляем предыдущие сессии с таким же deviceInfo И тем же типом
+  // устройства (одно устройство — одна сессия того же типа)
   if (deviceInfo) {
     await prisma.session.deleteMany({
-      where: { userId, deviceInfo }
+      where: { userId, deviceInfo, isMobile }
     })
   }
 
-  // Ограничение по количеству устройств в зависимости от плана.
-  // При превышении лимита освобождаем место, удаляя самые старые сессии
-  // (пользователь просто "перелогинивается" на новом устройстве, старое отваливается).
-  const user = await prisma.user.findUnique({ where: { id: userId }, select: { plan: true } })
-  const limit = MAX_DEVICES[user?.plan] || MAX_DEVICES.FREE
+  if (isMobile) {
+    const activeMobileSessions = await prisma.session.findMany({
+      where: { userId, isMobile: true },
+      orderBy: { createdAt: 'asc' },
+      select: { id: true }
+    })
 
-  const activeSessions = await prisma.session.findMany({
-    where: { userId },
-    orderBy: { createdAt: 'asc' },
-    select: { id: true }
-  })
+    if (activeMobileSessions.length >= MOBILE_DEVICE_LIMIT) {
+      const excess = activeMobileSessions.length - MOBILE_DEVICE_LIMIT + 1
+      const toRemove = activeMobileSessions.slice(0, excess).map(s => s.id)
+      await prisma.session.deleteMany({ where: { id: { in: toRemove } } })
+    }
+  } else {
+    // Ограничение по количеству устройств в зависимости от плана.
+    // При превышении лимита освобождаем место, удаляя самые старые сессии
+    // (пользователь просто "перелогинивается" на новом устройстве, старое отваливается).
+    const user = await prisma.user.findUnique({ where: { id: userId }, select: { plan: true } })
+    const limit = MAX_DEVICES[user?.plan] || MAX_DEVICES.FREE
 
-  if (activeSessions.length >= limit) {
-    const excess = activeSessions.length - limit + 1
-    const toRemove = activeSessions.slice(0, excess).map(s => s.id)
-    await prisma.session.deleteMany({ where: { id: { in: toRemove } } })
+    const activeSessions = await prisma.session.findMany({
+      where: { userId, isMobile: false },
+      orderBy: { createdAt: 'asc' },
+      select: { id: true }
+    })
+
+    if (activeSessions.length >= limit) {
+      const excess = activeSessions.length - limit + 1
+      const toRemove = activeSessions.slice(0, excess).map(s => s.id)
+      await prisma.session.deleteMany({ where: { id: { in: toRemove } } })
+    }
   }
 
   await prisma.session.create({
@@ -64,6 +84,7 @@ const generateRefreshToken = async (userId, deviceInfo, ipAddress) => {
       refreshToken: token,
       deviceInfo,
       ipAddress,
+      isMobile,
       expiresAt
     }
   })
@@ -94,9 +115,12 @@ const refreshTokens = async (refreshToken, deviceInfo, ipAddress) => {
   // Удаляем старую сессию
   await prisma.session.delete({ where: { id: session.id } })
 
-  // Создаём новые токены
+  // Создаём новые токены — сохраняем тип устройства исходной сессии
+  // (мобильная сессия остаётся мобильной при обновлении токена, и
+  // наоборот), иначе refresh со стороны мобильного приложения начал бы
+  // конкурировать за десктопный лимит устройств.
   const newAccessToken = generateAccessToken(session.userId)
-  const newRefreshToken = await generateRefreshToken(session.userId, deviceInfo, ipAddress)
+  const newRefreshToken = await generateRefreshToken(session.userId, deviceInfo, ipAddress, session.isMobile)
 
   return {
     accessToken: newAccessToken,
