@@ -24,6 +24,7 @@ const { createTooltipsApi } = require('./renderer/tooltips')
 const { createUnreadApi } = require('./renderer/unread')
 const { createLockApi } = require('./renderer/lock')
 const { createCloudUiApi } = require('./renderer/cloud-ui')
+const { bindSupportTicketsUi } = require('./renderer/support-tickets-ui')
 const { applyOrgLogo } = require('./renderer/org-branding')
 const { createOrgTeamApi } = require('./renderer/org-team')
 const { createContextMenusApi } = require('./renderer/context-menus')
@@ -1223,7 +1224,11 @@ async function bootstrap() {
             const result = await authorizedInvoke('api-get-stats')
             return result?.success ? result.data : null
         },
-        applyOrgLogo
+        applyOrgLogo,
+        getAutoRenewStatus: async () => {
+            const result = await authorizedInvoke('api-payments-auto-renew-status')
+            return result?.success ? result.data : null
+        }
     })
 
     const {
@@ -1233,6 +1238,9 @@ async function bootstrap() {
         openCloudProfile,
         renderLocalStats
     } = cloudUiApi
+
+    // Поддержка/тикеты прямо из приложения (Pro) — см. renderer/support-tickets-ui.js
+    bindSupportTicketsUi({ authorizedInvoke, tGet })
 
     // ==============================
     // ПЕРЕМЕЩЕНИЕ МЕССЕНДЖЕРА В ПАПКУ
@@ -1741,7 +1749,11 @@ function applyTabZoom(level) {
         // instead of a <webview> for messenger.native === 'chat-widget'.
         authorizedInvoke,
         hasEffectivePro,
-        updateUnreadCount
+        updateUnreadCount,
+        // Same forward-reference pattern as openSettings just above — splitApi
+        // is assigned a few lines below this call, so a getter is passed
+        // instead of the (still-null) value itself.
+        getSplitApi: () => splitApi
     })
 
     const {
@@ -3039,7 +3051,8 @@ function applyTabZoom(level) {
         openCloudProfile,
         updateAvatarInModal,
         renderLocalStats,
-        openUrl: (url) => window.electronAPI?.openExternal?.(url)
+        openUrl: (url) => window.electronAPI?.openExternal?.(url),
+        renewNow: () => authorizedInvoke('api-payments-renew-now')
     })
 
     bindOnboardingScreen({
@@ -3105,7 +3118,8 @@ function applyTabZoom(level) {
         switchTab,
         applyAppZoom,
         applyTabZoom,
-        openSettings
+        openSettings,
+        splitApi
     })
 
     bindEditModalUi({
@@ -3460,7 +3474,17 @@ function applyTabZoom(level) {
         getRecentNotifications: appNotifApi?.getRecentNotifications,
         searchRecentNotifications: appNotifApi?.searchRecentNotifications,
         applySettings,
-        mediaPlayerApi: mediaPlayerUiApi
+        mediaPlayerApi: mediaPlayerUiApi,
+        // FEATURE (2026-09-21, "научить нашу нейросеть новым функциям" —
+        // live request): split presets + subscription/TEAM status — see
+        // list_split_presets/apply_split_preset/get_subscription_status in
+        // assistant-tools.js. getSplitApi is a getter for the same
+        // forward-reference reason as elsewhere in this file (splitApi is
+        // assigned well before this call, but the pattern is kept
+        // consistent with webviewTabsApi's identical need above).
+        getSplitApi: () => splitApi,
+        cloudStore,
+        hasEffectivePro
     })
 
     bindAssistantUi({

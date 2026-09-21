@@ -1105,6 +1105,13 @@ function bindKeyboardForwarding() {
 
         if (!e.shiftKey && !e.altKey && e.code >= 'Digit1' && e.code <= 'Digit9') {
             shortcut = `ctrl+${e.code.replace('Digit', '')}`
+        } else if (e.shiftKey && !e.altKey && e.code >= 'Digit1' && e.code <= 'Digit9') {
+            // FEATURE (2026-09-21, "хоткеи для сохранённых экранов Сплит"):
+            // mirrors the plain Ctrl+1..9 "switch tab" forwarding right
+            // above — apply the Nth saved split preset, see
+            // renderer/app-events-bind.js for the host-side handler.
+            shortcut = `ctrl+shift+${e.code.replace('Digit', '')}`
+            e.preventDefault()
         } else if (!e.shiftKey && e.code === 'Tab') {
             shortcut = 'ctrl+tab'
             e.preventDefault()

@@ -7213,6 +7213,8 @@ body:has(.modal.show) .split-handle { display: none !important; }
     flex-direction: column;
     align-items: center;
     gap: 4px;
+    /* "Время чуть ниже опусти" — live user request (2026-09-21). */
+    margin-top: 20px;
     -webkit-app-region: no-drag;
     animation: lockAppear 0.4s cubic-bezier(0.34,1.56,0.64,1);
 }
@@ -7395,7 +7397,9 @@ body:has(.modal.show) .split-handle { display: none !important; }
     flex-direction: column;
     align-items: center;
     gap: 18px;
-    padding: 48px 56px 42px;
+    /* Left/right trimmed to match the narrower .lock-key width above — same
+       proportions, smaller card overall instead of extra empty side margin. */
+    padding: 48px 44px 42px;
     /* Стекло: полупрозрачная подложка + сильный blur вместо сплошной заливки.
        color-mix — тот же паттерн, что и [data-theme="dock"] .activity-bar,
        работает поверх переменных темы, а не хардкодит rgba(). */
@@ -7407,7 +7411,10 @@ body:has(.modal.show) .split-handle { display: none !important; }
     box-shadow: 0 32px 100px rgba(0,0,0,0.55),
                 0 0 0 1px color-mix(in srgb, var(--border) 70%, transparent),
                 inset 0 1px 0 color-mix(in srgb, #fff 8%, transparent);
-    min-width: 380px;
+    /* Lowered alongside the narrower .lock-key/.lock-box padding above —
+       380px was sized for the old 82px-wide keys and no longer reflects the
+       card's actual (now smaller) natural content width. */
+    min-width: 320px;
     animation: lockAppear 0.35s cubic-bezier(0.34,1.56,0.64,1);
     -webkit-app-region: no-drag;
 }
@@ -7536,7 +7543,12 @@ body:has(.modal.show) .split-handle { display: none !important; }
 }
 
 .lock-key {
-    width: 82px;
+    /* BUGFIX (2026-09-21, "Окошко с цифрами поуже сделай" — live user
+       report): 82px x3 + 12px gaps came out to 270px, wider than felt
+       necessary for a 4-digit PIN pad — narrowed the keys themselves
+       (padding on .lock-box below trimmed to match, so the whole card
+       shrinks proportionally instead of just leaving extra side margin). */
+    width: 68px;
     height: 58px;
     border-radius: 12px;
     /* Цифры и SVG-иконки (⌫/→) центрируются одной и той же flex-логикой
@@ -7546,6 +7558,15 @@ body:has(.modal.show) .split-handle { display: none !important; }
     background: var(--bg-tertiary);
     border: 1px solid var(--border);
     color: var(--text-primary);
+    /* BUGFIX (2026-09-21, "проверь шрифт. Он как везде? Новый шрифт" — live
+       user report): <button> is NOT among the elements the CSS spec makes
+       inherit font-family by default — its UA-stylesheet initial value is
+       the OS system font, regardless of what body declares. Every other
+       piece of text on this screen (clock, title, subtitle — all plain
+       div/h2/p) already inherited Golos Text automatically; only these
+       digit/icon buttons were silently stuck on the system font since the
+       2026-09-16 app-wide switch away from Inter/Manrope. */
+    font-family: inherit;
     font-size: 20px;
     font-weight: 600;
     cursor: pointer;
@@ -8988,6 +9009,228 @@ button:active {
     font-weight: 700;
 }
 
+/* ── PRO: поддержка/тикеты прямо из приложения (2026-09-21) ──
+   See renderer/support-tickets-ui.js — same Ticket/TicketMessage data as
+   the website's own dashboard (src/routes/tickets.js), no separate sync. */
+.cp-support-section {
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+}
+.cp-section-label-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+.cp-support-new-btn {
+    background: var(--accent-dim);
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    border-radius: var(--radius-sm);
+    padding: 5px 11px;
+    font-size: 11.5px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 0.15s;
+}
+.cp-support-new-btn:hover { background: var(--accent); color: #fff; }
+
+/* FEATURE (2026-09-21, "не хватает статус-бейджа 'есть новый ответ'" —
+   approved for 2.9): count of ANSWERED tickets (admin replied, awaiting
+   the user) — see support-tickets-ui.js. */
+.cp-support-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    border-radius: 8px;
+    background: var(--danger);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 800;
+    line-height: 1;
+}
+
+.cp-support-new-form {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 12px;
+    padding: 12px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+}
+.cp-support-textarea {
+    resize: vertical;
+    min-height: 64px;
+}
+.cp-support-new-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+}
+.cp-support-cancel-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    border-radius: var(--radius-sm);
+    padding: 7px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+}
+.cp-support-submit-btn {
+    background: var(--accent);
+    border: none;
+    color: #fff;
+    border-radius: var(--radius-sm);
+    padding: 7px 14px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
+}
+.cp-support-submit-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+.cp-support-error {
+    color: var(--danger);
+    font-size: 11.5px;
+}
+.cp-support-loading, .cp-support-empty {
+    color: var(--text-secondary);
+    font-size: 12.5px;
+    padding: 8px 0;
+}
+.cp-support-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.cp-ticket-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px 12px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: border-color 0.15s;
+}
+.cp-ticket-row:hover { border-color: var(--accent); }
+.cp-ticket-main { min-width: 0; }
+.cp-ticket-subject {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.cp-ticket-meta {
+    font-size: 10.5px;
+    color: var(--text-secondary);
+    margin-top: 2px;
+}
+.cp-ticket-status-pill {
+    flex-shrink: 0;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 20px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+.cp-ticket-status-open     { background: color-mix(in srgb, var(--warning) 18%, transparent); color: var(--warning); }
+.cp-ticket-status-answered { background: color-mix(in srgb, var(--success) 18%, transparent); color: var(--success); }
+.cp-ticket-status-closed   { background: var(--bg-hover); color: var(--text-secondary); }
+
+/* ── Тред обращения (ticketThreadView) ── */
+.cp-thread-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+}
+.cp-thread-back-btn {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+.cp-thread-back-btn:hover { border-color: var(--accent); color: var(--accent); }
+.cp-thread-title-wrap {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+.cp-thread-subject {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.cp-thread-messages {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 16px 20px;
+}
+.cp-thread-msg { display: flex; flex-direction: column; max-width: 78%; }
+.cp-thread-msg.is-user  { align-self: flex-end; align-items: flex-end; }
+.cp-thread-msg.is-admin { align-self: flex-start; align-items: flex-start; }
+.cp-thread-bubble {
+    padding: 9px 13px;
+    border-radius: 14px;
+    font-size: 13px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+.cp-thread-msg.is-user .cp-thread-bubble {
+    background: var(--accent);
+    color: #fff;
+    border-bottom-right-radius: 4px;
+}
+.cp-thread-msg.is-admin .cp-thread-bubble {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    border-bottom-left-radius: 4px;
+}
+.cp-thread-msg-time {
+    font-size: 10px;
+    color: var(--text-secondary);
+    margin-top: 3px;
+}
+.cp-thread-reply {
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+    padding: 14px 20px;
+    border-top: 1px solid var(--border);
+}
+.cp-thread-reply .cp-support-textarea { min-height: 44px; }
+
 /* ── PRO: разбивка активности по мессенджерам ── */
 .cp-services-breakdown {
     margin-top: 14px;
@@ -9003,6 +9246,16 @@ button:active {
     align-items: center;
     gap: 10px;
 }
+/* FEATURE (2026-09-21, "не список полосок, а просто топ-3 без графика" —
+   approved for 2.9): compact variant — name + time only, no bar track. */
+.cp-service-item-compact {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    font-size: 12px;
+}
+.cp-service-item-compact .cp-service-name { width: auto; flex: 1; }
 .cp-service-name {
     font-size: 12px;
     font-weight: 600;
@@ -9374,6 +9627,13 @@ button:active {
 }
 .cp-sync-btn:hover { opacity: 0.85; transform: scale(1.02); }
 .cp-sync-btn:disabled { opacity: 0.5; transform: none; }
+/* FEATURE (2026-09-21, "крутилка при синке, зелёная галочка после" — live
+   user idea, approved for 2.9): the existing circular-arrows icon just sat
+   static before — now actually spins while syncing, then the button
+   briefly flashes green with a checkmark on success. */
+.cp-sync-btn.is-syncing svg { animation: cpSyncSpin 0.8s linear infinite; }
+.cp-sync-btn.is-synced { background: var(--success); box-shadow: 0 4px 14px color-mix(in srgb, var(--success) 45%, transparent); }
+@keyframes cpSyncSpin { to { transform: rotate(360deg); } }
 
 .cp-logout-btn {
     display: flex;

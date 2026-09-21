@@ -1108,6 +1108,24 @@
     </div>
     <div class="changelog-popup-body">
         <div class="changelog-entry">
+            <div class="changelog-version">v2.9.0</div>
+            <ul class="changelog-list">
+                <li>Новое: личный кабинет в приложении — поддержка и обращения прямо в Centrio (PRO). Список обращений, переписка и ответы синхронизированы с сайтом, включая старые обращения; на кнопке «Поддержка» — значок с числом новых ответов</li>
+                <li>Новое: продление подписки в один клик — если карта уже привязана, кнопка «Продлить» сразу списывает оплату без перехода на сайт</li>
+                <li>Новое: горячие клавиши сплит-экрана — Ctrl+Shift+1…9 мгновенно открывает нужный сохранённый экран из панели пресетов</li>
+                <li>Новое: ассистент теперь умеет открывать сохранённые экраны сплита по названию и отвечать про статус подписки (тариф, сколько дней осталось, место в команде TEAM)</li>
+                <li>Улучшено: кнопка синхронизации с облаком — иконка по-настоящему крутится во время синхронизации и на секунду показывает зелёную галочку по завершении</li>
+                <li>Улучшено: разбивка активности по мессенджерам в личном кабинете стала компактнее — топ-3 сервиса без громоздкого графика</li>
+                <li>Исправлено: мессенджеры и тема оформления при запуске иногда подгружались с устаревшими данными — увеличен таймаут облачной синхронизации, её результат больше не теряется</li>
+                <li>Исправлено (Centrio TEAM): назначенные владельцем мессенджеры иногда не появлялись сразу после запуска — добавлены быстрые повторные попытки синхронизации; их больше нельзя удалить со стороны сотрудника; владелец может запретить сотруднику добавлять свои</li>
+                <li>Исправлено (Centrio TEAM): логотип организации иногда не отображался в приложении даже после успешной загрузки на сайте</li>
+                <li>Исправлено: индикатор активной вкладки в шапке при сплит-экране иногда показывал не ту вкладку, что реально в фокусе</li>
+                <li>Исправлено: горячие клавиши масштаба вкладки (Ctrl+ / Ctrl−) иногда не срабатывали в зависимости от фокуса и типа клавиатуры</li>
+                <li>Исправлено: экран блокировки — ровная иконка удаления символа PIN-кода, более узкая панель цифр, часы чуть ниже, единый шрифт кнопок PIN-пада</li>
+                <li>Переименовано: кнопка «+» в сайдбаре теперь называется «Добавить сервис» (была «Добавить мессенджер»)</li>
+            </ul>
+        </div>
+        <div class="changelog-entry">
             <div class="changelog-version">v2.8.6</div>
             <ul class="changelog-list">
                 <li>Переименовано: кнопка «+» в сайдбаре теперь называется «Добавить сервис» (была «Добавить мессенджер»)</li>
@@ -2322,6 +2340,21 @@
                         </div>
                     </div>
                     <div class="settings-group">
+                        <div class="settings-group-title" data-i18n="shortcuts.splitTitle"></div>
+                        <div class="shortcut-list">
+                            <div class="shortcut-row">
+                                <span class="shortcut-label" data-i18n="shortcuts.splitPreset"></span>
+                                <div class="shortcut-keys">
+                                    <span class="shortcut-key">Ctrl</span>
+                                    <span class="shortcut-sep">+</span>
+                                    <span class="shortcut-key">Shift</span>
+                                    <span class="shortcut-sep">+</span>
+                                    <span class="shortcut-key">1 — 9</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="settings-group">
                         <div class="settings-group-title" data-i18n="shortcuts.searchTitle"></div>
                         <div class="shortcut-list">
                             <div class="shortcut-row">
@@ -2825,11 +2858,18 @@
             <button class="lock-key" data-digit="7">7</button>
             <button class="lock-key" data-digit="8">8</button>
             <button class="lock-key" data-digit="9">9</button>
+            <!-- BUGFIX (2026-09-21, "иконка удалить символ из пин кода - кривая.
+                 Нужно сделать ровную" — live user report): the old backspace-key
+                 shape (a pointed-left outline) with an X drawn inside it read as
+                 lopsided at this size — the outline itself isn't symmetric left
+                 -to-right, so it never looks "even" no matter the stroke tuning.
+                 Swapped for the same plain, perfectly symmetric X already used
+                 for "remove" elsewhere in the app (see context-menus.js's
+                 folder-pick "remove from folder" icon) — unambiguous as "clear"
+                 and trivially centered. -->
             <button class="lock-key lock-key-clear" id="lockClearBtn">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                    <path d="M20 5H9L2 12l7 7h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-                    <line x1="15" y1="9" x2="9" y2="15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-                    <line x1="9" y1="9" x2="15" y2="15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                    <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                 </svg>
             </button>
             <button class="lock-key" data-digit="0">0</button>
@@ -3028,9 +3068,7 @@
             <button class="lock-key" data-disable-digit="9">9</button>
             <button class="lock-key lock-key-clear" id="disableClearBtn">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                    <path d="M20 5H9L2 12l7 7h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-                    <line x1="15" y1="9" x2="9" y2="15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-                    <line x1="9" y1="9" x2="15" y2="15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                    <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                 </svg>
             </button>
             <button class="lock-key" data-disable-digit="0">0</button>
@@ -3446,6 +3484,33 @@
                 </div>
             </div>
 
+            <!-- FEATURE (2026-09-21, "для PRO поддержка и тикеты доступны
+                 прямо из приложения. Синхронизируются с ЛК. Даже старые" —
+                 live user request): same Ticket/TicketMessage data the
+                 website's dashboard reads/writes (src/routes/tickets.js) —
+                 no separate sync, same account. See renderer/support-tickets-ui.js. -->
+            <div id="cpSupportSection" class="cp-support-section" style="display:none;">
+                <div class="cp-section-label-row">
+                    <div class="cp-section-label" data-i18n="cloud.supportSection"></div>
+                    <button class="cp-support-new-btn" id="supportNewTicketBtn" data-i18n="cloud.supportNewTicket"></button>
+                </div>
+
+                <!-- Форма нового обращения — свёрнута по умолчанию -->
+                <div id="supportNewTicketForm" class="cp-support-new-form" style="display:none;">
+                    <input type="text" id="supportNewSubject" class="vsc-input" data-i18n-placeholder="cloud.supportSubjectPh" maxlength="200">
+                    <textarea id="supportNewBody" class="vsc-input cp-support-textarea" data-i18n-placeholder="cloud.supportBodyPh" maxlength="5000"></textarea>
+                    <div class="cp-support-new-actions">
+                        <button id="supportNewCancelBtn" class="cp-support-cancel-btn" data-i18n="cloud.supportCancel"></button>
+                        <button id="supportNewSubmitBtn" class="cp-support-submit-btn" data-i18n="cloud.supportSend"></button>
+                    </div>
+                    <div id="supportNewError" class="cp-support-error" style="display:none;"></div>
+                </div>
+
+                <div id="supportTicketsLoading" class="cp-support-loading" data-i18n="cloud.supportLoading" style="display:none;"></div>
+                <div id="supportTicketsEmpty" class="cp-support-empty" data-i18n="cloud.supportEmpty" style="display:none;"></div>
+                <div id="supportTicketsList" class="cp-support-list"></div>
+            </div>
+
             <!-- Тарифы (скрыты если PRO активен) -->
             <div class="cp-plans-section">
                 <div class="cp-section-label" data-i18n="cloud.plansSection"></div>
@@ -3545,6 +3610,10 @@
                         <circle cx="12" cy="17" r="0.9" fill="currentColor"/>
                     </svg>
                     <span data-i18n="cloud.support"></span>
+                    <!-- FEATURE (2026-09-21, "не хватает статус-бейджа
+                         'есть новый ответ'" — approved for 2.9): count of
+                         ANSWERED tickets, see support-tickets-ui.js. -->
+                    <span id="cloudSupportBadge" class="cp-support-badge" style="display:none;"></span>
                 </button>
                 <button id="cloudSyncNowBtn" class="cp-sync-btn">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
@@ -3562,6 +3631,27 @@
                     <span data-i18n="cloud.logout"></span>
                 </button>
             </div>
+        </div>
+
+        <!-- Тред обращения в поддержку — та же схема переключения видов,
+             что и cloudLoginView/cloudProfileView выше (see cloud-ui.js's
+             openCloudProfile/openCloudLogin for the pattern this mirrors). -->
+        <div id="ticketThreadView" class="modal-body" style="display:none;">
+            <div class="cp-thread-header">
+                <button id="ticketThreadBackBtn" class="cp-thread-back-btn">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M19 12H5M12 19l-7-7 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+                <div class="cp-thread-title-wrap">
+                    <div id="ticketThreadSubject" class="cp-thread-subject">—</div>
+                    <span id="ticketThreadStatus" class="cp-ticket-status-pill">—</span>
+                </div>
+            </div>
+            <div id="ticketThreadMessages" class="cp-thread-messages"></div>
+            <div class="cp-thread-reply">
+                <textarea id="ticketReplyInput" class="vsc-input cp-support-textarea" data-i18n-placeholder="cloud.supportReplyPh" maxlength="5000"></textarea>
+                <button id="ticketReplySendBtn" class="cp-support-submit-btn" data-i18n="cloud.supportSend"></button>
+            </div>
+            <div id="ticketReplyError" class="cp-support-error" style="display:none;"></div>
         </div>
 
     </div>

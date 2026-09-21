@@ -8,7 +8,9 @@ function bindCloudUi({
     openCloudProfile,
     updateAvatarInModal,
     renderLocalStats,
-    openUrl
+    openUrl,
+    // FEATURE (2026-09-21, one-click renew, approved for 2.9): () => Promise<{success, data|error}>
+    renewNow = async () => ({ success: false })
 }) {
     document.getElementById('cloudBtn').addEventListener('click', async () => {
         if (cloudStore.isLoggedIn()) {
@@ -230,11 +232,35 @@ function bindCloudUi({
     document.getElementById('cloudSyncNowBtn').addEventListener('click', async () => {
         const btn = document.getElementById('cloudSyncNowBtn')
         const spanEl = btn.querySelector('span')
+        const svgEl = btn.querySelector('svg')
+        const originalSvg = svgEl ? svgEl.innerHTML : null
 
+        // FEATURE (2026-09-21, "было бы приятнее живой статус (крутилка при
+        // синке, зелёная галочка после)" — live user idea, approved for
+        // 2.9): the icon already existed (the circular-arrows svg below) but
+        // just sat there unanimated — only the button's TEXT changed to
+        // "Синхронизация...". Spins it for real via CSS (.is-syncing, see
+        // styles.css), then swaps to a checkmark for a beat on success
+        // before reverting, instead of just going straight back to idle.
         if (spanEl) spanEl.textContent = tGet('cloud.syncing')
+        btn.classList.add('is-syncing')
         btn.disabled = true
-        await cloudSyncPush()
-        if (spanEl) spanEl.textContent = tGet('cloud.sync')
+        const ok = await cloudSyncPush().then(() => true).catch(() => false)
+        btn.classList.remove('is-syncing')
+
+        if (ok && svgEl) {
+            svgEl.innerHTML = '<path d="M20 6L9 17L4 12" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>'
+            btn.classList.add('is-synced')
+            if (spanEl) spanEl.textContent = tGet('cloud.synced')
+            setTimeout(() => {
+                if (svgEl && originalSvg) svgEl.innerHTML = originalSvg
+                btn.classList.remove('is-synced')
+                if (spanEl) spanEl.textContent = tGet('cloud.sync')
+            }, 1400)
+        } else if (spanEl) {
+            spanEl.textContent = tGet('cloud.sync')
+        }
+
         btn.disabled = false
         // Обновить время синхронизации после завершения
         if (renderLocalStats) renderLocalStats()
@@ -261,6 +287,18 @@ function bindCloudUi({
     })
 
     document.getElementById('cloudSupportBtn')?.addEventListener('click', () => {
+        // BUGFIX/FEATURE (2026-09-21, "для PRO поддержка и тикеты доступны
+        // прямо из приложения" — live user request): this used to always
+        // bounce out to the website regardless of plan. #cpSupportSection
+        // (renderer/support-tickets-ui.js) is only ever shown for Pro users
+        // in the first place (see its 'cloud-profile-opened' listener), so
+        // "is it currently visible" doubles as the Pro check here without
+        // needing this file to import a separate hasEffectivePro().
+        const section = document.getElementById('cpSupportSection')
+        if (section && section.style.display !== 'none') {
+            section.scrollIntoView({ behavior: 'smooth', block: 'start' })
+            return
+        }
         _doOpenUrl(`${DASHBOARD_URL}?tab=support`)
     })
 
@@ -268,8 +306,36 @@ function bindCloudUi({
         _doOpenUrl(DASHBOARD_URL)
     })
 
-    document.getElementById('proExtendBtn')?.addEventListener('click', () => {
-        _doOpenUrl(DASHBOARD_URL)
+    document.getElementById('proExtendBtn')?.addEventListener('click', async (e) => {
+        const btn = e.currentTarget
+        if (btn.dataset.canRenewNow !== 'true') {
+            _doOpenUrl(DASHBOARD_URL)
+            return
+        }
+
+        // FEATURE (2026-09-21, "продлевать прямо в приложении в один клик"
+        // — approved for 2.9): btn.dataset.canRenewNow is only ever 'true'
+        // when cloud-ui.js's _renderProSection confirmed a saved card
+        // (api-payments-auto-renew-status). Charges that same saved
+        // YooKassa payment method immediately instead of bouncing to the
+        // website.
+        const originalText = btn.textContent
+        btn.disabled = true
+        btn.textContent = tGet('cloud.renewing')
+
+        const result = await renewNow().catch(() => ({ success: false, error: tGet('cloud.renewFailed') }))
+
+        if (result?.success && !result.data?.pending) {
+            btn.textContent = tGet('cloud.renewed')
+            cloudApi.refreshUser().then(() => openCloudProfile())
+            setTimeout(() => { btn.disabled = false }, 1500)
+        } else if (result?.success && result.data?.pending) {
+            btn.textContent = tGet('cloud.renewPending')
+            setTimeout(() => { btn.textContent = originalText; btn.disabled = false }, 2500)
+        } else {
+            btn.textContent = result?.error || tGet('cloud.renewFailed')
+            setTimeout(() => { btn.textContent = originalText; btn.disabled = false }, 2500)
+        }
     })
 
 }

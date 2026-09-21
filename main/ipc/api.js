@@ -206,6 +206,31 @@ function registerApiIpc() {
         return wrapApi(() => api.orgPushMessengerStats(token, orgId, stats))
     })
 
+    // FEATURE (2026-09-21, поддержка/тикеты прямо из приложения — Pro)
+    ipcMain.handle('api-tickets-list', async (event, token) => {
+        return wrapApi(() => api.ticketsList(token))
+    })
+
+    ipcMain.handle('api-tickets-get', async (event, token, id) => {
+        return wrapApi(() => api.ticketsGet(token, id))
+    })
+
+    ipcMain.handle('api-tickets-create', async (event, token, subject, body) => {
+        return wrapApi(() => api.ticketsCreate(token, subject, body))
+    })
+
+    ipcMain.handle('api-tickets-reply', async (event, token, id, body) => {
+        return wrapApi(() => api.ticketsReply(token, id, body))
+    })
+
+    ipcMain.handle('api-payments-auto-renew-status', async (event, token) => {
+        return wrapApi(() => api.paymentsAutoRenewStatus(token))
+    })
+
+    ipcMain.handle('api-payments-renew-now', async (event, token) => {
+        return wrapApi(() => api.paymentsRenewNow(token))
+    })
+
     // FEATURE (2026-09-11, встроенный чат-виджет — Pro)
     ipcMain.handle('api-chat-site-get', async (event, token) => {
         return wrapApi(() => api.chatSiteGet(token))

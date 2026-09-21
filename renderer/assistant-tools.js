@@ -94,7 +94,7 @@ function summarizeNote(n) {
     }
 }
 
-function bindAssistantTools({ state, store, tGet, switchTab, openSettings, invokeIpc, authorizedInvoke, getRecentNotifications, searchRecentNotifications, applySettings, mediaPlayerApi }) {
+function bindAssistantTools({ state, store, tGet, switchTab, openSettings, invokeIpc, authorizedInvoke, getRecentNotifications, searchRecentNotifications, applySettings, mediaPlayerApi, getSplitApi, cloudStore, hasEffectivePro }) {
     function getTodosData() {
         const data = store.get('todos', null)
         if (!data || Array.isArray(data) || !Array.isArray(data.lists)) {
@@ -126,6 +126,33 @@ function bindAssistantTools({ state, store, tGet, switchTab, openSettings, invok
             if (!messenger) return { error: 'messenger_not_found', id }
             if (typeof switchTab === 'function') switchTab(messenger.id)
             return { success: true, id: messenger.id, name: messenger.name }
+        },
+
+        // FEATURE (2026-09-21, "научить нашу нейросеть новым функциям" —
+        // live request): split-screen presets (renderer/split.js) — the
+        // assistant previously had no idea this feature existed at all.
+        list_split_presets() {
+            const split = typeof getSplitApi === 'function' ? getSplitApi() : null
+            const presets = split?.getPresets?.() || []
+            const byId = new Map((state.activeMessengers || []).map(m => [m.id, m.name]))
+            return {
+                presets: presets.map(p => ({
+                    id: p.id,
+                    name: p.name,
+                    layout: p.layout,
+                    messengers: (p.memberIds || []).map(id => byId.get(id) || id)
+                }))
+            }
+        },
+
+        apply_split_preset({ id } = {}) {
+            const split = typeof getSplitApi === 'function' ? getSplitApi() : null
+            if (!split) return { error: 'split_unavailable' }
+            const preset = (split.getPresets?.() || []).find(p => String(p.id) === String(id))
+            if (!preset) return { error: 'preset_not_found', id }
+            const applied = split.applyPreset(preset.id)
+            if (!applied) return { error: 'preset_apply_failed', id }
+            return { success: true, id: preset.id, name: preset.name }
         },
 
         list_todos({ list } = {}) {
@@ -248,6 +275,35 @@ function bindAssistantTools({ state, store, tGet, switchTab, openSettings, invok
             return result?.success ? { success: true } : { error: 'vpn_disconnect_failed' }
         },
 
+        // FEATURE (2026-09-21, "научить нашу нейросеть новым функциям"):
+        // mirrors the sidebar's own subscription progress bar
+        // (renderer.js's updateTrialStatusBar) so the assistant can answer
+        // "сколько дней подписки осталось" / "я в команде?" directly instead
+        // of telling the user to go look. Never exposes payment details —
+        // plan tier, expiry, and (if in a TEAM org) role/seat counts only.
+        get_subscription_status() {
+            const user = typeof cloudStore?.getUser === 'function' ? cloudStore.getUser() : null
+            const plan = (user?.plan || 'FREE').toUpperCase()
+            const expiresAt = user?.planExpiresAt || null
+            const daysLeft = expiresAt
+                ? Math.max(0, Math.ceil((new Date(expiresAt).getTime() - Date.now()) / 86400000))
+                : null
+            const org = user?.orgSummary || null
+            return {
+                plan,
+                isPro: typeof hasEffectivePro === 'function' ? !!hasEffectivePro() : plan !== 'FREE',
+                expiresAt,
+                daysLeft,
+                team: org ? {
+                    orgName: org.orgName,
+                    role: org.orgRole,
+                    seatsUsed: org.orgSeatsUsed,
+                    seatLimit: org.orgSeatLimit,
+                    seatsExpiresAt: org.orgSeatsExpiresAt || null
+                } : null
+            }
+        },
+
         get_app_settings() {
             const settings = store.get('settings', {}) || {}
             const result = {}
@@ -366,6 +422,20 @@ function bindAssistantTools({ state, store, tGet, switchTab, openSettings, invok
             }
         },
         {
+            name: 'list_split_presets',
+            description: 'Вернуть сохранённые пользователем экраны сплит-режима (раскладка + список мессенджеров в каждом). Соответствуют панели выбора пресетов в приложении.',
+            parameters: { type: 'object', properties: {}, required: [] }
+        },
+        {
+            name: 'apply_split_preset',
+            description: 'Открыть сохранённый экран сплит-режима по его id из list_split_presets.',
+            parameters: {
+                type: 'object',
+                properties: { id: { type: 'string', description: 'id пресета из list_split_presets' } },
+                required: ['id']
+            }
+        },
+        {
             name: 'list_todos',
             description: 'Вернуть задачи пользователя из планировщика, опционально по id списка.',
             parameters: {
@@ -435,6 +505,11 @@ function bindAssistantTools({ state, store, tGet, switchTab, openSettings, invok
         {
             name: 'disconnect_vpn',
             description: 'Отключить VPN, если он сейчас активен.',
+            parameters: { type: 'object', properties: {}, required: [] }
+        },
+        {
+            name: 'get_subscription_status',
+            description: 'Вернуть тариф пользователя (FREE/PRO), дату и число оставшихся дней подписки, и — если пользователь состоит в организации Centrio TEAM — её название, роль пользователя и число занятых/доступных мест.',
             parameters: { type: 'object', properties: {}, required: [] }
         },
         {

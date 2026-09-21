@@ -339,7 +339,15 @@ function createWebviewTabsApi({
     showContextMenu,
     authorizedInvoke,
     hasEffectivePro,
-    updateUnreadCount
+    updateUnreadCount,
+    // renderer/split.js's API, used for the forwarded Ctrl+Shift+1..9
+    // split-preset shortcut below. A GETTER, not the value itself — at the
+    // point this function is called (renderer.js), splitApi is still `let
+    // splitApi = null` (createSplitApi() itself runs later and reassigns
+    // that outer binding) — capturing the value directly here would freeze
+    // this closure's copy at null forever, since a destructured parameter
+    // doesn't track later reassignment of the caller's variable.
+    getSplitApi = () => null
 }) {
     if (webviewContextMenu && webviewContextMenu.parentElement !== document.body) {
         document.body.appendChild(webviewContextMenu)
@@ -951,6 +959,18 @@ function createWebviewTabsApi({
                 if (numMatch) {
                     const idx = parseInt(numMatch[1]) - 1
                     if (state.activeMessengers[idx]) switchTab(state.activeMessengers[idx].id)
+                    return
+                }
+
+                // FEATURE (2026-09-21, "хоткеи для сохранённых экранов Сплит"):
+                // forwarded counterpart of app-events-bind.js's host-side
+                // Ctrl+Shift+1..9 handler — same presets, same order.
+                const presetMatch = shortcut.match(/^ctrl\+shift\+(\d)$/)
+                if (presetMatch) {
+                    const split = getSplitApi()
+                    const presets = split?.getPresets?.() || []
+                    const idx = parseInt(presetMatch[1]) - 1
+                    if (split && presets[idx]) split.applyPreset(presets[idx].id)
                     return
                 }
 

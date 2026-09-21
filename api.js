@@ -301,6 +301,41 @@ module.exports = {
         return request('PATCH', `/api/chat-sites/${siteId}/conversations/${conversationId}`, { status }, token)
     },
 
+    // FEATURE (2026-09-21, "для PRO поддержка и тикеты доступны прямо из
+    // приложения. Синхронизируются с ЛК. Даже старые" — live user request):
+    // the API side (src/routes/tickets.js) already existed for the website's
+    // own dashboard — same auth, same Ticket/TicketMessage rows, so tickets
+    // created on centrio.me show up here automatically and vice versa,
+    // with no separate sync step needed. Pro-gating happens in the
+    // renderer UI (same posture as every other Pro feature here), not the
+    // API — the endpoints themselves are auth-only, matching the website.
+    ticketsList(token) {
+        return request('GET', '/api/tickets', null, token)
+    },
+
+    ticketsGet(token, id) {
+        return request('GET', `/api/tickets/${id}`, null, token)
+    },
+
+    ticketsCreate(token, subject, body) {
+        return request('POST', '/api/tickets', { subject, body }, token)
+    },
+
+    ticketsReply(token, id, body) {
+        return request('POST', `/api/tickets/${id}/messages`, { body }, token)
+    },
+
+    // FEATURE (2026-09-21, "для PRO-пользователя, у которого уже привязана
+    // карта, можно продлевать прямо в приложении в один клик" — live user
+    // idea, approved for 2.9).
+    paymentsAutoRenewStatus(token) {
+        return request('GET', '/api/payments/auto-renew', null, token)
+    },
+
+    paymentsRenewNow(token) {
+        return request('POST', '/api/payments/renew-now', null, token)
+    },
+
     // FEATURE (2026-09-11, custom widget logo). File upload doesn't fit the
     // JSON-only request() helper above (multipart body) — uses the global
     // fetch/FormData/Blob Electron's bundled Node already provides, same as

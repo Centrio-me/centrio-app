@@ -4,7 +4,11 @@ function createCloudUiApi({
     getUserInitial,
     getLocalStats,  // () => { messengers, folders, lastSyncAt }
     getCloudStats,  // async () => api-get-stats response data, or null on failure
-    applyOrgLogo = () => {} // (user) => void — swaps app logo images for the org's custom one, see renderer/org-branding.js
+    applyOrgLogo = () => {}, // (user) => void — swaps app logo images for the org's custom one, see renderer/org-branding.js
+    // FEATURE (2026-09-21, "для PRO-пользователя, у которого уже привязана
+    // карта, можно продлевать прямо в приложении в один клик" — live user
+    // idea, approved for 2.9): () => { autoRenew, hasMethod, expiresAt } | null
+    getAutoRenewStatus = async () => null
 }) {
     const PRO_PLANS = new Set(['PRO', 'PRO_YEAR', 'TEAM'])
 
@@ -251,46 +255,44 @@ function createCloudUiApi({
     }
 
     // ── Разбивка активности по мессенджерам ──────────────────────
+    // BUGFIX/FEATURE (2026-09-21): "По мессенджерами статистика слишком
+    // много места занимает. Убери её" (turned it fully off) → then, same
+    // conversation, "разбивку по мессенджерам ... можно вернуть компактнее
+    // — не список полосок, а просто топ-3 без графика" (approved for 2.9).
+    // Same section, same element ids — just top 3 by time, plain
+    // name+duration rows, no bar-chart visualization (the width-scaled
+    // .cp-service-bar-track/-fill markup from before this is gone).
     function _renderServicesBreakdown(services) {
         const section = document.getElementById('cpServicesBreakdown')
         const list    = document.getElementById('cpServicesList')
         if (!section || !list) return
 
-        const items = (Array.isArray(services) ? services : []).filter(s => s.name)
-        if (items.length === 0) {
+        const top3 = (Array.isArray(services) ? services : [])
+            .filter(s => s.name && (s.minutes || 0) > 0)
+            .sort((a, b) => (b.minutes || 0) - (a.minutes || 0))
+            .slice(0, 3)
+
+        if (top3.length === 0) {
             section.style.display = 'none'
             return
         }
 
         section.style.display = ''
-        const maxMinutes = Math.max(1, ...items.map(s => s.minutes || 0))
-
         list.textContent = ''
-        items.forEach(s => {
-            const minutes = s.minutes || 0
-            const widthPc = Math.max(2, Math.round((minutes / maxMinutes) * 100))
-
+        top3.forEach(s => {
             const row = document.createElement('div')
-            row.className = 'cp-service-item'
+            row.className = 'cp-service-item-compact'
 
             const name = document.createElement('span')
             name.className = 'cp-service-name'
             name.textContent = s.name
             name.title = s.name
 
-            const track = document.createElement('div')
-            track.className = 'cp-service-bar-track'
-            const fill = document.createElement('div')
-            fill.className = 'cp-service-bar-fill'
-            fill.style.width = widthPc + '%'
-            track.appendChild(fill)
-
             const time = document.createElement('span')
             time.className = 'cp-service-time'
-            time.textContent = _formatDuration(minutes * 60)
+            time.textContent = _formatDuration((s.minutes || 0) * 60)
 
             row.appendChild(name)
-            row.appendChild(track)
             row.appendChild(time)
             list.appendChild(row)
         })
@@ -391,6 +393,23 @@ function createCloudUiApi({
                 const formatted = _formatPlanExpiry(expiry)
                 expiryEl.textContent = formatted || (tGet('cloud.subNoExpiry') || '—')
             }
+
+            // FEATURE (2026-09-21, one-click renew — see param doc above):
+            // fire-and-forget, doesn't block the rest of the profile from
+            // rendering. Defaults the button back to "go to website" (the
+            // pre-existing behavior) unless/until this resolves with a
+            // saved card on file.
+            const extendBtn = document.getElementById('proExtendBtn')
+            if (extendBtn) {
+                extendBtn.dataset.canRenewNow = 'false'
+                extendBtn.textContent = tGet('cloud.extend')
+                getAutoRenewStatus().then((status) => {
+                    if (status?.hasMethod) {
+                        extendBtn.dataset.canRenewNow = 'true'
+                        extendBtn.textContent = tGet('cloud.renewNow')
+                    }
+                }).catch(() => {})
+            }
         } else {
             // FREE: скрываем статистику и PRO-блок, показываем тарифы
             if (statsRow)    statsRow.style.display    = 'none'
@@ -432,6 +451,14 @@ function createCloudUiApi({
         _updatePlanCards(plan)
         _renderProSection(user, plan, isPro)
         _renderLocalStats()
+
+        // FEATURE (2026-09-21, "для PRO поддержка и тикеты доступны прямо
+        // из приложения"): decoupled from this module on purpose —
+        // renderer/support-tickets-ui.js listens for this instead of
+        // threading a callback through createCloudUiApi()'s params, same
+        // reasoning as the existing DOM events this file already relies on
+        // elsewhere (e.g. 'close-all-popups').
+        document.dispatchEvent(new CustomEvent('cloud-profile-opened', { detail: { isPro } }))
     }
 
     return {
