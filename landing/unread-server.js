@@ -1,6 +1,13 @@
 const router = require('express').Router()
 const authMiddleware = require('../middleware/auth')
 const prisma = require('../utils/prisma')
+const { rateLimit } = require('../middleware/rateLimit')
+
+// Generous per-account limit — this endpoint is designed for frequent pushes
+// (desktop fires on every unread-count change), so it needs its own budget
+// separate from the shared global /api/ IP limiter, which a busy TEAM office
+// behind one NAT IP could otherwise exhaust for everyone at that address.
+const unreadPushLimiter = rateLimit({ name: 'unread-summary-push', windowMs: 5 * 60 * 1000, max: 60 })
 
 // POST /api/unread-summary — Electron pushes the user's own personal
 // unread summary (see renderer/assistant-tools.js get_unread_summary() for
@@ -10,10 +17,10 @@ const prisma = require('../utils/prisma')
 // constantly-changing counter onto that would mean either re-syncing config
 // on every unread change, or always sending full config alongside a highly
 // frequent counter push. One row per user, upserted.
-router.post('/', authMiddleware, async (req, res) => {
+router.post('/', unreadPushLimiter, authMiddleware, async (req, res) => {
   try {
     const { total, byMessenger } = req.body || {}
-    if (typeof total !== 'number' || !Array.isArray(byMessenger)) {
+    if (typeof total !== 'number' || !Number.isFinite(total) || total > 2147483647 || !Array.isArray(byMessenger)) {
       return res.status(400).json({ error: 'total (number) и byMessenger (array) обязательны' })
     }
 

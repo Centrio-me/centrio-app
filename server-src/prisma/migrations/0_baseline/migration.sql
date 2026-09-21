@@ -1,3 +1,11 @@
+-- This is a one-time baseline, not a normal migration. Generated via
+-- `prisma migrate diff --from-empty` against the live database on
+-- 2026-09-21, then marked applied on the live database via
+-- `prisma migrate resolve --applied 0_baseline` (never actually run against
+-- data — the schema it describes already existed live). See
+-- ../../migrations_archive/README.md for the pre-baseline history this
+-- replaces and why those folders must stay out of this directory.
+
 -- CreateEnum
 CREATE TYPE "Plan" AS ENUM ('FREE', 'PRO', 'TEAM');
 
