@@ -46,6 +46,7 @@ const UPLOADS = [
     { local: path.join(__dirname, '..', 'landing', 'admin-routes.js'),           remote: `${REMOTE_BASE}/src/routes/admin.js` },
     { local: path.join(__dirname, '..', 'landing', 'visitor-route.js'),          remote: `${REMOTE_BASE}/src/routes/visitors.js` },
     { local: path.join(__dirname, '..', 'landing', 'stats-route.js'),           remote: `${REMOTE_BASE}/src/routes/stats.js` },
+    { local: path.join(__dirname, '..', 'landing', 'unread-server.js'),        remote: `${REMOTE_BASE}/src/routes/unread.js` },
     { local: path.join(__dirname, '..', 'landing', 'auto-renew-cron.js'),        remote: `${REMOTE_BASE}/src/cron/autoRenew.js` },
     // Confirmed live via `test -f` before adding, same as the entries above.
     { local: path.join(__dirname, '..', 'server-src', 'utils', 'tokens.js'),     remote: `${REMOTE_BASE}/src/utils/tokens.js` },
