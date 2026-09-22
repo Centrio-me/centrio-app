@@ -1,7 +1,7 @@
 {
 	"name": "messengerapp",
 	"productName": "Centrio",
-	"version": "2.9.1",
+	"version": "2.9.2",
 	"description": "All messengers in one app",
 	"author": {
 		"name": "Centrio",
@@ -147,7 +147,7 @@
 			"createDesktopShortcut": true,
 			"createStartMenuShortcut": true,
 			"shortcutName": "Centrio",
-			"perMachine": true
+			"perMachine": false
 		},
 		"asarUnpack": [
 			"assets/sounds/**/*"
