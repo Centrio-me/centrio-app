@@ -1,0 +1,579 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                        String                   @id @default(uuid())
+  email                     String                   @unique
+  name                      String?
+  avatar                    String?
+  passwordHash              String?
+  googleId                  String?                  @unique
+  yandexId                  String?                  @unique
+  vkId                      String?                  @unique
+  mailId                    String?                  @unique
+  plan                      Plan                     @default(FREE)
+  planExpiresAt             DateTime?
+  isActive                  Boolean                  @default(true)
+  emailVerified             Boolean                  @default(false)
+  createdAt                 DateTime                 @default(now())
+  updatedAt                 DateTime                 @updatedAt
+  githubId                  String?                  @unique
+  telegramId                String?                  @unique
+  isAdmin                   Boolean                  @default(false)
+  lastSeenAt                DateTime?
+  autoRenew                 Boolean                  @default(false)
+  autoRenewPayMethodId      String?
+  emailVerifyTokenExpiresAt DateTime?
+  emailVerifyTokenHash      String?
+  referralBonusGranted      Boolean                  @default(false)
+  referredById              String?
+  planStartedAt             DateTime?
+  aiUsage                   AiUsage[]
+  chatSite                  ChatSite?
+  folders                   Folder[]
+  loginEvents               LoginEvent[]
+  messengers                Messenger[]
+  notes                     Note[]
+  orgMemberships            OrgMember[]
+  orgMessengerAssignments   OrgMessengerAssignment[]
+  orgMessengerStats         OrgMessengerStat[]
+  ownedOrganizations        Organization[]           @relation("OrgOwner")
+  payments                  Payment[]
+  promoRedemptions          PromoRedemption[]
+  sessions                  Session[]
+  syncSettings              SyncSettings?
+  tickets                   Ticket[]
+  unreadSummary             UnreadSummary?
+  usageStats                UsageStat[]
+  referredBy                User?                    @relation("Referrals", fields: [referredById], references: [id])
+  referrals                 User[]                   @relation("Referrals")
+  workspaces                Workspace[]
+}
+
+model Session {
+  id           String   @id @default(uuid())
+  userId       String
+  refreshToken String   @unique
+  deviceInfo   String?
+  ipAddress    String?
+  // Mobile companion app sessions get their own device-count slot (see
+  // utils/tokens.js MOBILE_DEVICE_LIMIT), independent of the existing
+  // plan-based desktop/web MAX_DEVICES limit — logging into the mobile app
+  // must never evict a FREE-plan user's only desktop session, or vice versa.
+  isMobile     Boolean  @default(false)
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Workspace {
+  id        String   @id @default(uuid())
+  userId    String
+  name      String
+  color     String?
+  position  Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  folders   Folder[]
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Folder {
+  id          String     @id @default(uuid())
+  userId      String
+  workspaceId String?
+  name        String
+  icon        String?    @default("folder")
+  position    Int        @default(0)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace   Workspace? @relation(fields: [workspaceId], references: [id])
+}
+
+model Messenger {
+  id          String   @id @default(uuid())
+  userId      String
+  name        String
+  url         String
+  icon        String?
+  color       String?
+  isMuted     Boolean  @default(false)
+  position    Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  notifSound  String   @default("__default__")
+  zoomLevel   Float    @default(1)
+  folderId    String?
+  workspaceId String?
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model SyncSettings {
+  id                String   @id @default(uuid())
+  userId            String   @unique
+  theme             String   @default("dark")
+  accentColor       String   @default("#0078d4")
+  density           String   @default("comfortable")
+  language          String   @default("ru")
+  sidebarPosition   String   @default("left")
+  showTabs          Boolean  @default(true)
+  notifications     Boolean  @default(true)
+  notifSound        Boolean  @default(true)
+  globalMuteAll     Boolean  @default(false)
+  updatedAt         DateTime @updatedAt
+  extra             Json?
+  workspacesEnabled Boolean  @default(false)
+  foldersEnabled    Boolean  @default(true)
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// Personal unread-summary snapshot for the mobile companion app's Feed
+// screen. Deliberately separate from the sync.js Messenger/Folder tables
+// (those are deleteMany+recreated wholesale on every structural sync;
+// unread counts change far more often and independently of messenger
+// config). One row per user, upserted by the desktop app whenever its own
+// local unread state changes — see renderer/unread.js updateUnreadCount().
+// Modeled on OrgMessengerStat below, minus the org scoping.
+model UnreadSummary {
+  id          String   @id @default(uuid())
+  userId      String   @unique
+  total       Int      @default(0)
+  byMessenger Json     @default("[]")
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Payment {
+  id            String        @id @default(uuid())
+  userId        String
+  amount        Float
+  currency      String        @default("RUB")
+  status        PaymentStatus @default(PENDING)
+  provider      String
+  providerPayId String?       @unique
+  plan          Plan
+  months        Int           @default(1)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  days          Int?
+  orgId         String?
+  seats         Int?
+  invoice       Invoice?
+  organization  Organization? @relation(fields: [orgId], references: [id])
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Invoice {
+  id               String       @id @default(uuid())
+  number           Int          @unique @default(autoincrement())
+  paymentId        String       @unique
+  orgId            String
+  amount           Float
+  currency         String       @default("RUB")
+  seats            Int
+  months           Int
+  issuedAt         DateTime     @default(now())
+  paidAt           DateTime?
+  confirmedByAdmin String?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  cancelledAt      DateTime?
+  cancelledBy      String?
+  customerAddress  String?
+  customerEmail    String?
+  customerInn      String?
+  customerKpp      String?
+  customerName     String?
+  organization     Organization @relation(fields: [orgId], references: [id])
+  payment          Payment      @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+}
+
+model Organization {
+  id                   String                   @id @default(uuid())
+  name                 String
+  slug                 String                   @unique
+  ownerId              String
+  tier                 OrgTier                  @default(START)
+  seatLimit            Int                      @default(5)
+  billingEmail         String?
+  seatsExpiresAt       DateTime?
+  autoRenewSeats       Boolean                  @default(false)
+  autoRenewPayMethodId String?
+  createdAt            DateTime                 @default(now())
+  updatedAt            DateTime                 @updatedAt
+  billingAddress       String?
+  billingInn           String?
+  billingKpp           String?
+  billingLegalName     String?
+  forcedSettingsJson   Json?
+  logoUrl              String?
+  vpnConfigName        String?
+  vpnConfigLink        String?
+  invoices             Invoice[]
+  auditLogs            OrgAuditLog[]
+  invites              OrgInvite[]
+  members              OrgMember[]
+  messengerAssignments OrgMessengerAssignment[]
+  messengerStats       OrgMessengerStat[]
+  owner                User                     @relation("OrgOwner", fields: [ownerId], references: [id])
+  payments             Payment[]
+}
+
+model OrgMember {
+  id                  String          @id @default(uuid())
+  orgId               String
+  userId              String
+  role                OrgRole         @default(MEMBER)
+  status              OrgMemberStatus @default(ACTIVE)
+  joinedAt            DateTime        @default(now())
+  canAddOwnMessengers Boolean         @default(true)
+  organization        Organization    @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  user                User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([orgId, userId])
+}
+
+model OrgInvite {
+  id           String       @id @default(uuid())
+  orgId        String
+  email        String
+  role         OrgRole      @default(MEMBER)
+  tokenHash    String       @unique
+  invitedById  String
+  expiresAt    DateTime
+  acceptedAt   DateTime?
+  createdAt    DateTime     @default(now())
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@index([orgId])
+}
+
+model OrgAuditLog {
+  id           String       @id @default(uuid())
+  orgId        String
+  actorUserId  String
+  action       String
+  metaJson     Json?
+  createdAt    DateTime     @default(now())
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@index([orgId, createdAt])
+}
+
+model OrgMessengerAssignment {
+  id           String       @id @default(uuid())
+  orgId        String
+  userId       String
+  name         String
+  url          String
+  icon         String?
+  color        String?
+  sortOrder    Int          @default(0)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([orgId, userId])
+}
+
+model OrgMessengerStat {
+  id            String       @id @default(uuid())
+  orgId         String
+  userId        String
+  messengerKey  String
+  messengerName String
+  unreadCount   Int          @default(0)
+  lastReadAt    DateTime?
+  lastMessageAt DateTime?
+  updatedAt     DateTime     @updatedAt
+  organization  Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([orgId, userId, messengerKey])
+  @@index([orgId])
+}
+
+model UsageStat {
+  id          String   @id @default(uuid())
+  userId      String
+  date        DateTime @default(now())
+  service     String?
+  appTime     Int      @default(0)
+  serviceTime Int      @default(0)
+  notifCount  Int      @default(0)
+  msgSent     Int      @default(0)
+  msgReceived Int      @default(0)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, date])
+}
+
+model AppNotification {
+  id          String                @id @default(uuid())
+  title       String
+  body        String
+  createdAt   DateTime              @default(now())
+  imageUrl    String?
+  actionLabel String?
+  actionUrl   String?
+  reads       AppNotificationRead[]
+}
+
+model AppNotificationRead {
+  id             String          @id @default(uuid())
+  notificationId String
+  userId         String
+  createdAt      DateTime        @default(now())
+  notification   AppNotification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+
+  @@unique([notificationId, userId])
+  @@index([userId])
+}
+
+model AutoRenewLog {
+  id        String   @id @default(uuid())
+  userId    String
+  paymentId String?
+  status    String
+  error     String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model Visitor {
+  id              String   @id @default(uuid())
+  visitorId       String   @unique
+  platform        String?
+  appVersion      String?
+  firstSeenAt     DateTime @default(now())
+  lastSeenAt      DateTime @default(now())
+  sessions        Int      @default(1)
+  messengersCount Int      @default(0)
+
+  @@index([lastSeenAt])
+}
+
+model LoginEvent {
+  id        String   @id @default(uuid())
+  userId    String
+  provider  String
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+}
+
+model PromoCode {
+  id          String            @id @default(uuid())
+  code        String            @unique
+  months      Int?
+  maxUses     Int?
+  usesCount   Int               @default(0)
+  isActive    Boolean           @default(true)
+  expiresAt   DateTime?
+  createdAt   DateTime          @default(now())
+  days        Int?
+  redemptions PromoRedemption[]
+}
+
+model PromoRedemption {
+  id          String    @id @default(uuid())
+  promoCodeId String
+  userId      String
+  createdAt   DateTime  @default(now())
+  promoCode   PromoCode @relation(fields: [promoCodeId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([promoCodeId, userId])
+}
+
+model DeviceTrial {
+  id         String   @id @default(uuid())
+  hardwareId String   @unique
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+}
+
+model Ticket {
+  id              String          @id @default(uuid())
+  userId          String
+  subject         String
+  status          TicketStatus    @default(OPEN)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  telegramTopicId Int?
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages        TicketMessage[]
+
+  @@index([userId])
+  @@index([status])
+}
+
+model TicketMessage {
+  id        String   @id @default(uuid())
+  ticketId  String
+  isAdmin   Boolean  @default(false)
+  body      String
+  createdAt DateTime @default(now())
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@index([ticketId])
+}
+
+model NewsPost {
+  id                String   @id @default(uuid())
+  slug              String?  @unique
+  title             String
+  telegramMessageId Int?
+  createdAt         DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+model Broadcast {
+  id          String    @id @default(uuid())
+  subject     String
+  bodyText    String
+  audience    String    @default("ALL")
+  status      String    @default("SENDING")
+  totalCount  Int       @default(0)
+  sentCount   Int       @default(0)
+  failedCount Int       @default(0)
+  createdAt   DateTime  @default(now())
+  finishedAt  DateTime?
+  createdBy   String?
+
+  @@index([createdAt])
+}
+
+model AiUsage {
+  id           String   @id @default(uuid())
+  userId       String
+  month        String
+  messagesUsed Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, month])
+  @@index([userId])
+}
+
+model Note {
+  id        String   @id @default(uuid())
+  userId    String
+  type      String   @default("NOTE")
+  title     String   @default("")
+  body      String?
+  items     Json?
+  pinned    Boolean  @default(false)
+  position  Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  color     String?
+  archived  Boolean  @default(false)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, position])
+}
+
+model ChatSite {
+  id            String             @id @default(uuid())
+  userId        String             @unique
+  domain        String
+  widgetToken   String             @unique @default(uuid())
+  name          String             @default("Мой сайт")
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  widgetColor   String             @default("#5AA9FF")
+  widgetLogoUrl String?
+  conversations ChatConversation[]
+  user          User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([widgetToken])
+}
+
+model ChatConversation {
+  id             String        @id @default(uuid())
+  siteId         String
+  visitorId      String
+  visitorName    String?
+  visitorContact String?
+  status         String        @default("OPEN")
+  lastMessageAt  DateTime      @default(now())
+  createdAt      DateTime      @default(now())
+  site           ChatSite      @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  messages       ChatMessage[]
+
+  @@index([siteId, lastMessageAt])
+  @@index([siteId, visitorId])
+}
+
+model ChatMessage {
+  id             String           @id @default(uuid())
+  conversationId String
+  fromVisitor    Boolean          @default(true)
+  body           String
+  createdAt      DateTime         @default(now())
+  conversation   ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+}
+
+model DownloadStat {
+  id        String   @id @default(uuid())
+  platform  String   @unique
+  count     Int      @default(0)
+  updatedAt DateTime @updatedAt
+}
+
+enum Plan {
+  FREE
+  PRO
+  TEAM
+}
+
+enum OrgTier {
+  START
+  BUSINESS
+}
+
+enum OrgRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum OrgMemberStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+  REFUNDED
+}
+
+enum TicketStatus {
+  OPEN
+  ANSWERED
+  CLOSED
+}
