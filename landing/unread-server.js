@@ -7,7 +7,15 @@ const { rateLimit } = require('../middleware/rateLimit')
 // (desktop fires on every unread-count change), so it needs its own budget
 // separate from the shared global /api/ IP limiter, which a busy TEAM office
 // behind one NAT IP could otherwise exhaust for everyone at that address.
-const unreadPushLimiter = rateLimit({ name: 'unread-summary-push', windowMs: 5 * 60 * 1000, max: 60 })
+// Keyed on req.user.id (populated by authMiddleware, which runs first on the
+// route below) so accounts sharing an office IP each get their own budget;
+// falls back to req.ip only if req.user is somehow unavailable.
+const unreadPushLimiter = rateLimit({
+  name: 'unread-summary-push',
+  windowMs: 5 * 60 * 1000,
+  max: 60,
+  keyGenerator: (req) => req.user?.id || req.ip
+})
 
 // POST /api/unread-summary — Electron pushes the user's own personal
 // unread summary (see renderer/assistant-tools.js get_unread_summary() for
@@ -17,7 +25,7 @@ const unreadPushLimiter = rateLimit({ name: 'unread-summary-push', windowMs: 5 *
 // constantly-changing counter onto that would mean either re-syncing config
 // on every unread change, or always sending full config alongside a highly
 // frequent counter push. One row per user, upserted.
-router.post('/', unreadPushLimiter, authMiddleware, async (req, res) => {
+router.post('/', authMiddleware, unreadPushLimiter, async (req, res) => {
   try {
     const { total, byMessenger } = req.body || {}
     if (typeof total !== 'number' || !Number.isFinite(total) || total > 2147483647 || !Array.isArray(byMessenger)) {
