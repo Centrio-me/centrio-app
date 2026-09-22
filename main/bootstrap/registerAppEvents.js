@@ -3,6 +3,7 @@ const { fileURLToPath } = require('url')
 const path = require('path')
 const tracker = require('../services/tracker')
 const store = require('../services/store')
+const orgAssignedPartitions = require('../services/orgAssignedPartitions')
 const { getWebviewPreloadPath, waitForPendingSyncPush } = require('../ipc/api')
 const { wireSessionDownloads } = require('../ipc/downloads')
 const { attachServiceWorkerNotifBridge } = require('../services/swNotifPatcher')
@@ -1835,7 +1836,14 @@ function registerAppEvents({
             try {
                 const partition = params.partition || webPreferences.partition || ''
                 const messengers = store.get('messengers', []) || []
-                const isKnownPartition = messengers.some((m) => m && m.id && `persist:${m.id}` === partition)
+                // BUGFIX (2026-09-21, "Сайты у сотрудников то открываются,
+                // то белое окно показывает всегда" — see
+                // main/services/orgAssignedPartitions.js for the full
+                // explanation): org-assigned (Centrio TEAM) messengers live
+                // in a separate, deliberately non-persisted registry, not
+                // in store.get('messengers') — check both.
+                const isKnownPartition = messengers.some((m) => m && m.id && `persist:${m.id}` === partition) ||
+                    orgAssignedPartitions.isRegisteredPartition(partition)
 
                 let expectedPreload = null
                 try { expectedPreload = getWebviewPreloadPath() } catch (err) {

@@ -4,6 +4,7 @@ const pinHash = require('../services/pinHash')
 const { grantSecurityChange } = require('../services/pinGrant')
 const store = require('../services/store')
 const { isOAuthProviderUrl, isYandexInternalSsoHost } = require('../services/oauthProviders')
+const orgAssignedPartitions = require('../services/orgAssignedPartitions')
 
 let log
 try { log = require('electron-log') } catch { log = console }
@@ -1067,6 +1068,16 @@ async function createPopupWindow(url, opts = {}, getMainWindow) {
 function registerWindowIpc({ getMainWindow, isQuittingRef }) {
     // expose getMainWindow for popup-window handler
     const _getMainWindow = getMainWindow
+
+    // BUGFIX (2026-09-21, "Сайты у сотрудников то открываются, то белое
+    // окно показывает всегда" — see main/services/orgAssignedPartitions.js
+    // for the full explanation). Renderer awaits this BEFORE creating an
+    // org-assigned messenger's <webview> — same ordering fix as the
+    // existing saveData()-before-addWebview() race for personal messengers.
+    ipcMain.handle('org-assigned-partition-register', (event, id) => {
+        orgAssignedPartitions.register(id)
+        return { success: true }
+    })
     safeOn('minimize-window', (event) => {
         const win = BrowserWindow.fromWebContents(event.sender) || getMainWindow()
         if (win && !win.isDestroyed()) {

@@ -2405,8 +2405,43 @@ function applyTabZoom(level) {
         state.activeMessengers.push(newMessenger)
         addToSidebar(newMessenger)
         addTab(newMessenger)
+
+        // BUGFIX (2026-09-21, live report — "Сайты у сотрудников то
+        // открываются, то белое окно показывает всегда"): main process's
+        // will-attach-webview security check only ever allowed a partition
+        // matching an id in store.get('messengers') — the user's OWN
+        // locally-persisted list, which org-assigned messengers are
+        // deliberately never written into (see main/services/
+        // orgAssignedPartitions.js for the full explanation). Every org-
+        // assigned webview's first attach was silently blocked, leaving a
+        // permanently blank tab. Same ordering fix as addMessenger()'s
+        // existing saveData()-before-addWebview() race below: register
+        // this id with main FIRST and await it, so the security check
+        // already knows about it before the <webview> ever asks to attach.
+        await invokeIpc('org-assigned-partition-register', newMessenger.id).catch(() => {})
+
         addWebview(newMessenger)
-        invokeIpc('vpn-set-app-vpn', newMessenger.id, true).catch(() => {})
+
+        // BUGFIX (2026-09-21, live report — "На team сотрудниках зачем-то
+        // включает VPN на всех мессенджерах каждый раз. Не сохраняет
+        // статус, если мессенджер не нуждается в vpn"): org-assigned
+        // messengers are never persisted to the local store (see the
+        // architecture note at the top of this feature — they're re-
+        // injected fresh from the server on every sync tick instead), so
+        // this function runs again from scratch on every single app
+        // restart for the SAME assignment. The old unconditional
+        // `vpn-set-app-vpn(id, true)` call fired every one of those times,
+        // silently overwriting whatever the employee had actually toggled
+        // it to (e.g. off, for a messenger that doesn't need the VPN) back
+        // to "on" — the toggle looked like it never saved. VPN mode itself
+        // DOES persist correctly (vpnAppModes in the store) — the bug was
+        // writing over it, not failing to read it. Only default a
+        // genuinely new id to "on" (mirrors the identical
+        // already-tracked-vs-fresh check for unreadCounts right below).
+        const vpnModes = store.get('vpnAppModes', {}) || {}
+        if (vpnModes[newMessenger.id] === undefined) {
+            invokeIpc('vpn-set-app-vpn', newMessenger.id, true).catch(() => {})
+        }
 
         if (state.unreadCounts[newMessenger.id] === undefined) {
             state.rawUnreadCounts[newMessenger.id] = 0

@@ -179,6 +179,7 @@ const validInvokeChannels = new Set([
     'oauth-google',
     'oauth-yandex',
     'open-popup-window',
+    'org-assigned-partition-register',
     'screenshot:capture',
     'security:hash-pin',
     'security:verify-pin',
