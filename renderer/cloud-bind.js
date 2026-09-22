@@ -118,6 +118,12 @@ function bindCloudUi({
             return
         }
 
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            errorEl.textContent = tGet('cloud.invalidEmail')
+            errorEl.style.display = 'block'
+            return
+        }
+
         const result = await cloudApi.register(email, password, email.split('@')[0])
         if (!result.success) {
             errorEl.textContent = result.error
@@ -284,6 +290,11 @@ function bindCloudUi({
 
     document.getElementById('planBuyProBtn')?.addEventListener('click', () => {
         _doOpenUrl(DASHBOARD_URL)
+    })
+
+    document.getElementById('cloudForgotPasswordLink')?.addEventListener('click', (e) => {
+        e.preventDefault()
+        _doOpenUrl('https://centrio.me/auth/forgot-password')
     })
 
     document.getElementById('cloudSupportBtn')?.addEventListener('click', () => {
