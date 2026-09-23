@@ -779,7 +779,7 @@ const MEDIA_STATE_POLL_MS = 2000
 // not-media (no popup at all) rather than defaulting to "yes, poll it".
 function startMediaStatePolling(contents, getMainWindow) {
     const messenger = findMessengerRecordForSession(contents.session)
-    if (!isMediaMessenger(messenger)) return
+    if (!isMediaMessenger(messenger)) return false
     const messengerId = messenger.id
 
     let inFlight = false
@@ -847,6 +847,7 @@ function startMediaStatePolling(contents, getMainWindow) {
         const win = getMainWindow()
         if (win && !win.isDestroyed()) win.webContents.send('media-state', messengerId, { playing: false, title: '', hasNext: false, hasPrev: false })
     })
+    return true
 }
 
 // BUGFIX ("настройка звука уведомлений (и в целом любая настройка) не
@@ -1121,9 +1122,20 @@ function registerAppEvents({
                 // запускаем один раз на contents.
                 contents.executeJavaScript(MEDIA_CONTROL_PATCH_SCRIPT).catch(() => {})
 
+                // BUGFIX ("плеер не показывается часто" — live report):
+                // startMediaStatePolling() used to be called under this same
+                // "only once" latch, but the latch was set BEFORE knowing
+                // whether polling actually started — findMessengerRecordForSession()
+                // depends on store.get('messengers') already containing this
+                // tab, which can race a just-added or just-cloud-synced media
+                // messenger's very first dom-ready. When that race lost, the
+                // flag was permanently true anyway, so no later dom-ready
+                // (reload, SPA navigation) ever got a second chance to start
+                // polling for that webview's whole lifetime — exactly the
+                // intermittent "works sometimes" symptom reported. Now the
+                // latch only sticks once polling has actually begun.
                 if (!mediaStatePollingStarted) {
-                    mediaStatePollingStarted = true
-                    startMediaStatePolling(contents, getMainWindow)
+                    mediaStatePollingStarted = startMediaStatePolling(contents, getMainWindow) === true
                 }
 
                 // Патч window.Notification/SW showNotification нужно ставить
