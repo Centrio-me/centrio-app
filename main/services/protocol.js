@@ -1,4 +1,5 @@
 const { app } = require('electron')
+const path = require('path')
 const { APP_PROTOCOL, SUPPORTED_PROTOCOLS, IPC_CHANNELS } = require('../config/constants')
 const { t } = require('./i18n')
 const { safeSendToWindow } = require('../utils/window')
@@ -17,7 +18,19 @@ function registerProtocol() {
         try {
             if (process.defaultApp) {
                 if (process.argv.length >= 2) {
-                    app.setAsDefaultProtocolClient(protocol, process.execPath, [process.argv[1]])
+                    // BUGFIX (2026-09-30, live repro: "Через Яндекс и гугл
+                    // попросту не входит" — OAuth callback deep-link
+                    // failed with "Unable to find Electron app at
+                    // C:\WINDOWS\system32"): the raw argv[1] ('.') is only
+                    // valid relative to THIS process's cwd. Windows does not
+                    // preserve that cwd when it later invokes the
+                    // registered protocol handler from the registry — it
+                    // runs with its own default cwd (System32), so the
+                    // relative '.' resolved to the wrong place and Electron
+                    // couldn't find an app to load. Resolve to an absolute
+                    // path once, at registration time, so the registry
+                    // entry is self-contained.
+                    app.setAsDefaultProtocolClient(protocol, process.execPath, [path.resolve(process.argv[1])])
                 }
             } else {
                 app.setAsDefaultProtocolClient(protocol)

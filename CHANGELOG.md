@@ -10,6 +10,10 @@ The format is based on Keep a Changelog. This project does not currently follow 
 
 _No unreleased changes yet — add entries here as they land, then move them under a new version heading at release time._
 
+## [2.9.7]
+
+- Убрано: «Чат для сайта» больше не предлагается при первом запуске и в окне выбора мессенджера — уже подключённые продолжают работать как раньше
+
 ## [2.9.6]
 
 - Новое: у поддержки теперь своё отдельное окно вместо вкладки внутри профиля — и оно открывается сразу на созданном обращении, без лишнего клика

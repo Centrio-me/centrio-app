@@ -19,27 +19,6 @@
 // как основная группировка. Одна и та же запись показывается дважды
 // (в "Популярные" и в своей теме) — так и задумано.
 const popularMessengers = [
-    // FEATURE (2026-09-11, "Онлайн чат должен добавляться как мессенджер...
-    // поставить его в самый верх в популярных и в мессенджерах с нашим
-    // логотипом" — live user request): Centrio's own embedded chat widget
-    // (Pro), added exactly like any other messenger but with `native:
-    // 'chat-widget'` instead of a real destination — renderer.js's
-    // addWebview()/addMessenger() special-case that marker to render a
-    // custom in-app pane (renderer/chat-widget-pane.js) instead of a
-    // <webview>, since there's no real external site to load.
-    //
-    // UPDATE (same day, follow-up request): "в мессенджерах поставь его в
-    // конец. А в популярных оставь первым" — first in "Популярные" but LAST
-    // within the "Мессенджеры" category. Both sections derive their order
-    // from this array's order (add-modal-ui.js just filters/groups, never
-    // re-sorts) — one array position can't satisfy both. Split into two
-    // entries sharing the same `native: 'chat-widget'` id instead: this one
-    // is `hidden: true` (add-modal-ui.js's category grouping skips it, so
-    // it exists ONLY for the "Популярные" filter, which doesn't check
-    // `hidden`) and stays first; the real, clickable 'messengers'-category
-    // tile is appended at the end of that category's block below (search
-    // "Чат для сайта" further down this file).
-    { name: 'Чат для сайта', url: 'centrio://chat-widget', native: 'chat-widget', icon: 'assets/logo.png', color: '#5AA9FF', category: 'messengers', popular: true, hidden: true },
     // ── Топ-8 (также помечены popular: true — см. коммент выше) ────────
     { name: 'Telegram',         url: 'https://web.telegram.org/k/',         icon: 'assets/logomessenger/telegram.png',      color: '#2AABEE', category: 'messengers', popular: true },
     { name: 'WhatsApp',         url: 'https://web.whatsapp.com',            icon: 'assets/logomessenger/whatsapp.png',      color: '#25D366', category: 'messengers', popular: true },
@@ -71,9 +50,6 @@ const popularMessengers = [
     { name: 'GroupMe',          url: 'https://web.groupme.com',             icon: 'assets/logomessenger/groupme.png',       color: '#00AEEF', category: 'messengers' },
     { name: 'Threads',          url: 'https://www.threads.net',             icon: 'assets/logomessenger/threads.png',       color: '#000000', category: 'messengers' },
     { name: 'Snapchat',         url: 'https://web.snapchat.com',            icon: 'assets/logomessenger/snapchat.png',      color: '#FFFC00', category: 'messengers' },
-    // Чат для сайта — real, clickable tile (see the `hidden: true` popular-only
-    // decoy at the top of this file for why there are two entries).
-    { name: 'Чат для сайта',   url: 'centrio://chat-widget',               native: 'chat-widget',                            color: '#5AA9FF', icon: 'assets/logo.png', category: 'messengers' },
     // ── Почта ─────────────────────────────────────────────────────────
     { name: 'Gmail',            url: 'https://mail.google.com',             icon: 'assets/logomessenger/gmail.png',         color: '#EA4335', category: 'mail' },
     { name: 'Outlook',          url: 'https://outlook.live.com',            icon: 'assets/logomessenger/outlook.png',       color: '#0078D4', category: 'mail' },
@@ -218,6 +194,18 @@ const folderIcons = {
 
 const PAGE_SIZE = 8
 
+// FEATURE-HIDE (2026-09-30, "Чат для сайта нужно убрать из 'Подключи свои
+// сервисы'. И из окна выбора мессенджера. Пока это не актуально" — live
+// user request): both `popularMessengers` catalog entries removed, so new
+// users no longer see it in onboarding or the add-messenger picker.
+// Checked production DB first — zero users have it in their `Messenger`
+// table, and the only `ChatSite` row (the feature's own config) belongs to
+// the account owner's own test setup from 2026-09-11, not a real
+// customer — safe to hide with no migration/backfill needed. The
+// underlying feature (this file's CHAT_WIDGET_URL/isChatWidgetMessenger,
+// renderer/chat-widget-pane.js, the server's ChatSite/ChatConversation
+// models) is left completely intact — just not discoverable for new users.
+//
 // BUGFIX (2026-09-13, "каждый запуск нужно заново добавлять чат для
 // сайта... при запуске чёрный экран" — live user report): the chat-widget
 // messenger was identified purely by its `native: 'chat-widget'` property
