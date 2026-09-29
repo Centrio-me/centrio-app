@@ -6336,8 +6336,13 @@ body:has(.modal.show) .split-handle { display: none !important; }
 }
 
 #cloudModal.modal .modal-content.profile-open {
-    width: min(620px, 92vw) !important;
-    max-width: min(620px, 92vw) !important;
+    /* REDESIGN (2026-09-30, "Личный кабинет — очень некрасивое. Полностью
+       переделать" — live request, approved mockup): widened from 620px so
+       the redesigned sections (icon stat cards, 4-up activity grid, plan
+       rows) get real breathing room instead of squeezing three plan
+       columns into a narrow card. */
+    width: min(660px, 92vw) !important;
+    max-width: min(660px, 92vw) !important;
     border-radius: 20px !important;
     overflow: hidden !important;
     padding: 0 !important;
@@ -8678,12 +8683,19 @@ button:active {
    раньше скроллился только .cp-plans-section, из-за чего PRO-контент
    (у которого .cp-plans-section скрыт) мог обрезаться родительским
    overflow:hidden при добавлении графика/разбивки по сервисам. */
+/* REDESIGN (2026-09-30, "Личный кабинет — очень некрасивое. Полностью
+   переделать" — live request, approved mockup): one consistent outer
+   padding + inter-section gap here, instead of each section carrying its
+   own ad-hoc horizontal padding — the uneven rhythm between sections was
+   a big part of why the popup read as cramped/unplanned. */
 .cp-scroll-area {
     flex: 1 !important;
     overflow-y: auto !important;
     min-height: 0 !important;
     display: flex;
     flex-direction: column;
+    padding: 22px 24px 10px;
+    gap: 24px;
 }
 
 .cp-footer {
@@ -8722,12 +8734,20 @@ button:active {
 ══════════════════════════════════════ */
 
 /* ── ШАПКА ── */
+/* REDESIGN (2026-09-30, "Личный кабинет — очень некрасивое. Полностью
+   переделать" — live request, approved mockup): radial accent glow behind
+   the avatar (same --accent-glow token already used for the buy buttons'
+   shadow elsewhere in this file) instead of a flat diagonal gradient, more
+   breathing room. */
 .cp-header {
+    position: relative;
     display: flex;
     align-items: center;
-    gap: 14px;
-    padding: 20px 20px 16px;
-    background: linear-gradient(160deg, var(--bg-tertiary) 0%, var(--bg-secondary) 100%);
+    gap: 18px;
+    padding: 26px 26px 22px;
+    background:
+        radial-gradient(ellipse 420px 200px at 14% 0%, var(--accent-glow), transparent 65%),
+        var(--bg-primary);
     border-bottom: 1px solid var(--border);
 }
 
@@ -8761,14 +8781,14 @@ button:active {
 
 /* Аватарка */
 .cloud-avatar-wrap {
-    width: 64px;
-    height: 64px;
+    width: 72px;
+    height: 72px;
     border-radius: 50%;
     background: var(--accent-dim);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 24px;
+    font-size: 27px;
     font-weight: 800;
     color: var(--accent);
     cursor: pointer;
@@ -8817,38 +8837,54 @@ button:active {
     gap: 6px;
 }
 .cp-name {
-    font-size: 16px;
+    /* BUGFIX (2026-09-30, "имя не влезает. Сделай его поменьше" — live
+       feedback on the redesign): 19px plus the widened Pro-status box next
+       to it didn't leave enough room for a real name — even after the
+       shortened expiry date. Back down near the original size. */
+    font-size: 15px;
     font-weight: 800;
     color: var(--text-bright);
     letter-spacing: -0.3px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 220px;
+    max-width: 260px;
 }
 .cp-email {
-    font-size: 12px;
+    font-size: 12.5px;
     color: var(--text-secondary);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    margin-top: 1px;
 }
 
 /* Бейдж плана */
 .cp-plan-badge {
     display: inline-flex;
+    align-items: center;
+    gap: 5px;
     width: fit-content;
     align-self: flex-start;
-    font-size: 9px;
+    font-size: 10px;
     font-weight: 800;
-    letter-spacing: 1px;
+    letter-spacing: 0.8px;
     text-transform: uppercase;
-    padding: 2px 8px;
+    padding: 3px 9px;
     border-radius: 20px;
-    margin-top: 2px;
+    margin-top: 7px;
     color: var(--text-secondary);
     background: var(--bg-active);
     border: 1px solid var(--border);
+}
+.cp-plan-badge::before {
+    content: '';
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: currentColor;
+    opacity: 0.7;
+    flex-shrink: 0;
 }
 .cp-plan-badge.is-pro {
     color: #0ea5e9;
@@ -8864,64 +8900,81 @@ button:active {
 }
 
 /* ── СТРОКА СТАТИСТИКИ ── */
+/* REDESIGN (2026-09-30, "Личный кабинет — очень некрасивое. Полностью
+   переделать" — live request, approved mockup): was a flush bar with just
+   a bottom border — now its own card, each stat gets an icon chip so the
+   row scans at a glance instead of reading as three bare numbers. */
 .cp-stats-row {
     display: flex;
-    align-items: center;
-    justify-content: space-around;
-    padding: 12px 16px;
-    background: var(--bg-secondary);
-    border-bottom: 1px solid var(--border);
-    gap: 0;
+    align-items: stretch;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
 }
 .cp-stat {
     display: flex;
-    flex-direction: column;
     align-items: center;
-    gap: 2px;
+    gap: 11px;
+    padding: 14px 16px;
     flex: 1;
+    min-width: 0;
 }
+.cp-stat-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 9px;
+    background: var(--bg-active);
+    color: var(--accent-hover, var(--accent));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.cp-stat-icon svg { width: 15px; height: 15px; }
+.cp-stat-text { min-width: 0; display: flex; flex-direction: column; }
 .cp-stat-val {
     font-size: 17px;
     font-weight: 800;
     color: var(--text-bright);
     letter-spacing: -0.5px;
-    line-height: 1;
+    line-height: 1.2;
 }
 .cp-stat-lbl {
-    font-size: 10px;
+    font-size: 10.5px;
     color: var(--text-secondary);
-    text-align: center;
     line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 .cp-stat-sep {
     width: 1px;
-    height: 28px;
     background: var(--border);
     flex-shrink: 0;
-    margin: 0 4px;
 }
 
 /* ── PRO: активность (время в приложении / сообщения / streak) ── */
 .cp-usage-stats {
-    padding: 12px 16px;
-    background: var(--bg-secondary);
-    border-bottom: 1px solid var(--border);
+    padding: 0;
+    background: transparent;
+    border-bottom: none;
 }
 .cp-usage-grid {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: 8px;
-    margin-top: 8px;
+    gap: 10px;
+    margin-top: 12px;
 }
 .cp-usage-item {
     display: flex;
     flex-direction: column;
-    align-items: center;
-    gap: 3px;
-    padding: 10px 4px 8px;
+    align-items: flex-start;
+    gap: 7px;
+    padding: 13px 12px;
     background: var(--bg-tertiary);
     border: 1px solid var(--border);
-    border-radius: 10px;
+    border-radius: 12px;
     transition: border-color 0.15s, transform 0.15s;
 }
 .cp-usage-item:hover {
@@ -8929,18 +8982,24 @@ button:active {
     transform: translateY(-1px);
 }
 .cp-usage-icon {
-    width: 22px;
-    height: 22px;
-    border-radius: 7px;
+    width: 26px;
+    height: 26px;
+    border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-bottom: 2px;
     flex-shrink: 0;
 }
 .cp-usage-icon--time {
     background: rgba(99,102,241,0.15);
     color: #818cf8;
+}
+/* REDESIGN (2026-09-30, approved mockup): distinct color for the "За
+   неделю" tile — it used to share --time's indigo with "Сегодня", so the
+   4-tile grid read as 3 colors + one accidental repeat. */
+.cp-usage-icon--week {
+    background: rgba(34,197,94,0.15);
+    color: #22c55e;
 }
 .cp-usage-icon--streak {
     background: rgba(245,158,11,0.15);
@@ -8951,73 +9010,104 @@ button:active {
     color: #10b981;
 }
 .cp-usage-val {
-    font-size: 15px;
+    font-size: 18px;
     font-weight: 800;
     color: var(--text-bright);
     letter-spacing: -0.3px;
     line-height: 1;
+    font-variant-numeric: tabular-nums;
 }
 .cp-usage-lbl {
-    font-size: 9px;
+    font-size: 11px;
     color: var(--text-secondary);
-    text-align: center;
     line-height: 1.2;
 }
 
 /* ── PRO: график активности за 7 дней ── */
+/* REDESIGN (2026-09-30, approved mockup): the bars used to sit bare in the
+   flow — now a proper card, matching the activity metrics tiles above and
+   the messenger breakdown below, so the whole "Активность" section reads
+   as one consistent family of cards instead of three unrelated blocks. */
 .cp-week-chart {
-    margin-top: 14px;
-}
-.cp-chart-bars {
-    display: flex;
-    align-items: flex-end;
-    gap: 8px;
-    height: 88px;
-    margin-top: 10px;
-    padding: 0 2px;
-}
-.cp-chart-col {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
-    height: 100%;
-    justify-content: flex-end;
-}
-.cp-chart-track {
-    width: 100%;
-    max-width: 26px;
-    flex: 1;
-    display: flex;
-    align-items: flex-end;
+    margin-top: 12px;
     background: var(--bg-tertiary);
     border: 1px solid var(--border);
-    border-radius: 6px;
-    overflow: hidden;
+    border-radius: 14px;
+    padding: 15px 16px 13px;
 }
-.cp-chart-fill {
+/* REDESIGN (2026-09-30, "не нравится график за 7 дней. Сделай его кривой
+   по дням. И при наведении видно — сколько в день" — live feedback):
+   switched from a bar chart with always-visible numbers to a smoothed
+   line/area chart (built in cloud-ui.js's _renderWeekChart via inline SVG
+   — no charting library in this project) — the per-day value now only
+   shows in a tooltip on hover instead of sitting on screen permanently. */
+.cp-chart-bars {
+    margin-top: 10px;
+}
+.cp-chart-wrap {
+    position: relative;
+}
+.cp-chart-svg {
+    display: block;
     width: 100%;
-    min-height: 3px;
-    border-radius: 5px 5px 0 0;
-    background: linear-gradient(180deg, #818cf8 0%, #6366f1 100%);
-    transition: height 0.3s ease;
+    height: 76px;
+    overflow: visible;
 }
-.cp-chart-col.is-today .cp-chart-fill {
-    background: linear-gradient(180deg, #34d399 0%, #10b981 100%);
+.cp-chart-line {
+    stroke: var(--accent-hover, #818cf8);
+    stroke-width: 2.5px;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+.cp-chart-dot {
+    fill: var(--bg-tertiary);
+    stroke: var(--accent-hover, #818cf8);
+    stroke-width: 2px;
+    transition: r 0.15s;
+}
+.cp-chart-dot.is-today {
+    fill: #10b981;
+    stroke: #10b981;
+}
+.cp-chart-dot.is-active {
+    r: 5px;
+}
+.cp-chart-hit {
+    fill: transparent;
+    cursor: pointer;
+}
+.cp-chart-tooltip {
+    position: absolute;
+    transform: translate(-50%, -100%);
+    margin-top: -8px;
+    background: var(--bg-active);
+    border: 1px solid var(--border-light);
+    border-radius: 8px;
+    padding: 5px 10px;
+    font-size: 11.5px;
+    font-weight: 700;
+    color: var(--text-bright);
+    white-space: nowrap;
+    pointer-events: none;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.45);
+    z-index: 5;
+}
+.cp-chart-tooltip.align-start { transform: translate(0, -100%); }
+.cp-chart-tooltip.align-end { transform: translate(-100%, -100%); }
+.cp-chart-days {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 9px;
+    padding: 0 1px;
 }
 .cp-chart-day {
-    font-size: 9px;
+    font-size: 10px;
     color: var(--text-secondary);
     text-transform: capitalize;
+    font-weight: 600;
 }
-.cp-chart-col.is-today .cp-chart-day {
+.cp-chart-day.is-today {
     color: var(--text-bright);
-    font-weight: 700;
-}
-.cp-chart-minutes {
-    font-size: 9px;
-    color: var(--text-secondary);
     font-weight: 700;
 }
 
@@ -9025,9 +9115,10 @@ button:active {
    See renderer/support-tickets-ui.js — same Ticket/TicketMessage data as
    the website's own dashboard (src/routes/tickets.js), no separate sync. */
 .cp-support-section {
-    margin-top: 14px;
-    padding-top: 14px;
-    border-top: 1px solid var(--border);
+    /* FEATURE (2026-09-30): no longer a nested sub-section inside the
+       account popup (see .support-modal-content above) — the separator
+       this used to need against the surrounding profile content is gone,
+       the modal-header's own border already does that job. */
 }
 .cp-section-label-row {
     display: flex;
@@ -9040,12 +9131,14 @@ button:active {
     border: 1px solid var(--accent);
     color: var(--accent);
     border-radius: var(--radius-sm);
-    padding: 5px 11px;
-    font-size: 11.5px;
+    padding: 7px 14px;
+    font-size: 12.5px;
     font-weight: 700;
     cursor: pointer;
     font-family: inherit;
     transition: background 0.15s;
+    align-self: flex-start;
+    margin-bottom: 4px;
 }
 .cp-support-new-btn:hover { background: var(--accent); color: #fff; }
 
@@ -9240,32 +9333,112 @@ button:active {
     align-items: flex-end;
     padding: 14px 20px;
     border-top: 1px solid var(--border);
+    flex-shrink: 0;
 }
 .cp-thread-reply .cp-support-textarea { min-height: 44px; }
 
+/* ── Своё окно поддержки (2026-09-30, "у поддержки должен быть своё
+   всплывающее окно, а не окно профиля") — #supportModal, отдельно от
+   #cloudModal. Выше и уже, чем обычные диалоговые модалки: список
+   обращений и переписка нуждаются в вертикальном пространстве для
+   прокрутки, а не только под форму в один экран. ── */
+.support-modal-content {
+    width: 440px;
+    height: min(680px, 82vh);
+    max-height: min(680px, 82vh);
+}
+#supportListView,
+#ticketThreadView {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+}
+#supportListView .modal-body.cp-support-section {
+    flex: 1;
+    overflow-y: auto;
+}
+.cp-thread-body {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding: 0;
+}
+.cp-thread-body .cp-thread-messages { flex: 1; }
+.cp-thread-header .modal-close { margin-left: auto; }
+
+/* "Печатает…" (2026-09-30, "желательно с троеточием, типа — набор текста
+   мною или ботом") — та же форма пузыря, что у входящих сообщений
+   (.is-admin), без текста внутри, просто три прыгающие точки + подпись
+   ("Бот печатает…" / "Поддержка печатает…"). */
+.cp-typing-indicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 20px 12px;
+    color: var(--text-secondary);
+    font-size: 12px;
+}
+.cp-typing-dots {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 8px 11px;
+    border-radius: 14px;
+    border-bottom-left-radius: 4px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+}
+.cp-typing-dots i {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--text-secondary);
+    display: inline-block;
+    animation: cpTypingBounce 1.2s infinite ease-in-out;
+}
+.cp-typing-dots i:nth-child(2) { animation-delay: 0.15s; }
+.cp-typing-dots i:nth-child(3) { animation-delay: 0.3s; }
+@keyframes cpTypingBounce {
+    0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
+    30% { transform: translateY(-3px); opacity: 1; }
+}
+
 /* ── PRO: разбивка активности по мессенджерам ── */
+/* REDESIGN (2026-09-30, approved mockup): card-wrapped like the metrics
+   tiles and the chart above it, so "Активность" reads as one family of
+   cards. Deliberately did NOT bring back a per-item bar/percentage or
+   colored icon here even though the approved mockup had one — this list
+   was already simplified away from a bar-chart look on 2026-09-21 per
+   direct feedback ("не список полосок, а просто топ-3 без графика"); the
+   card treatment below is the mockup's polish applied on top of that
+   still-standing decision, not a reversal of it. */
 .cp-services-breakdown {
-    margin-top: 14px;
+    margin-top: 12px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px 16px;
 }
 .cp-services-list {
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    margin-top: 10px;
+    gap: 10px;
+    margin-top: 12px;
 }
 .cp-service-item {
     display: flex;
     align-items: center;
     gap: 10px;
 }
-/* FEATURE (2026-09-21, "не список полосок, а просто топ-3 без графика" —
-   approved for 2.9): compact variant — name + time only, no bar track. */
 .cp-service-item-compact {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 10px;
-    font-size: 12px;
+    font-size: 12.5px;
 }
 .cp-service-item-compact .cp-service-name { width: auto; flex: 1; }
 .cp-service-name {
@@ -9293,13 +9466,19 @@ button:active {
     background: linear-gradient(90deg, #6366f1 0%, #818cf8 100%);
     transition: width 0.3s ease;
 }
+/* BUGFIX (2026-09-30): a fixed 44px column wrapped "752ч 26м"-style
+   values onto two stacked lines for any user with a real multi-hundred-
+   hour history — no white-space:nowrap, and 44px only ever fit values up
+   to about "9ч 59м". Auto width + nowrap fits whatever the real number is. */
 .cp-service-time {
     font-size: 11px;
     font-weight: 700;
     color: var(--text-secondary);
-    width: 44px;
+    width: auto;
+    min-width: 44px;
     flex-shrink: 0;
     text-align: right;
+    white-space: nowrap;
 }
 .cp-services-empty {
     font-size: 12px;
@@ -9311,8 +9490,8 @@ button:active {
 .cp-pro-section {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 9px 12px;
+    gap: 12px;
+    padding: 11px 14px;
     background: linear-gradient(135deg, rgba(99,102,241,0.14) 0%, rgba(139,92,246,0.09) 100%);
     border: 1px solid rgba(99,102,241,0.25);
     border-radius: 14px;
@@ -9378,45 +9557,38 @@ button:active {
     color: #c7d2fe;
 }
 
-/* ── Сетка тарифов (горизонтальный ряд) ── */
+/* ── Сетка тарифов ── */
+/* REDESIGN (2026-09-30, "Личный кабинет — очень некрасивое. Полностью
+   переделать" — live request, approved mockup): three side-by-side
+   columns is what made this section feel cramped — each card had to
+   stack its own name/features/price/button vertically inside a narrow
+   column, wrapping text and squeezing the feature list. Switched to a
+   single-column stack of full-width rows (the base .cp-plan-row layout —
+   label+features on the left, price+button on the right — already
+   supports this with no override needed, so the old forced-column rules
+   are just gone rather than replaced). */
 .cp-plans-grid {
     display: flex;
+    flex-direction: column;
     gap: 10px;
-}
-.cp-plans-grid .cp-plan-row {
-    flex: 1;
-    flex-direction: column !important;
-    align-items: flex-start !important;
-    min-width: 0;
-}
-.cp-plans-grid .cp-plan-right {
-    min-width: unset !important;
-    width: 100%;
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-    margin-top: 10px;
-}
-.cp-plans-grid .cp-price-block {
-    text-align: left;
 }
 
 /* ── СЕКЦИЯ ТАРИФОВ ── */
 .cp-plans-section {
-    padding: 14px 16px 8px;
-    background: var(--bg-secondary);
+    padding: 0;
+    background: transparent;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 12px;
 }
 
 /* Промокод */
 .cp-promo-section {
-    padding: 4px 16px 14px;
-    background: var(--bg-secondary);
+    padding: 0;
+    background: transparent;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 10px;
 }
 .cp-promo-row {
     display: flex;
@@ -9448,24 +9620,36 @@ button:active {
 }
 .cp-promo-msg.is-ok  { color: var(--success, #22c55e); }
 .cp-promo-msg.is-err { color: var(--danger); }
+/* REDESIGN (2026-09-30, approved mockup): section labels now carry a small
+   icon — `data-i18n` moved onto a nested <span> (i18n.js sets textContent
+   on the element it's attached to, which would otherwise wipe the icon;
+   see index.html) so translations keep working unmodified. */
 .cp-section-label {
-    font-size: 10px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 11px;
     font-weight: 700;
-    letter-spacing: 0.9px;
+    letter-spacing: 0.7px;
     text-transform: uppercase;
     color: var(--text-secondary);
-    margin-bottom: 2px;
+}
+.cp-section-label svg {
+    width: 13px;
+    height: 13px;
+    color: var(--text-muted, var(--text-secondary));
+    flex-shrink: 0;
 }
 
 /* Горизонтальная карточка тарифа */
 .cp-plan-row {
     display: flex;
     align-items: center;
-    gap: 0;
+    gap: 16px;
     background: var(--bg-tertiary);
     border: 1.5px solid var(--border);
-    border-radius: 12px;
-    padding: 12px 14px;
+    border-radius: 14px;
+    padding: 16px 18px;
     position: relative;
     transition: border-color 0.2s, box-shadow 0.2s;
     overflow: hidden;
@@ -9508,7 +9692,7 @@ button:active {
     gap: 6px;
 }
 .cp-plan-name {
-    font-size: 13px;
+    font-size: 14.5px;
     font-weight: 800;
     color: var(--text-bright);
 }
@@ -9520,14 +9704,14 @@ button:active {
     padding: 0; margin: 0;
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 4px;
 }
 .cp-plan-feats li {
-    font-size: 11.5px;
+    font-size: 12px;
     color: var(--text-secondary);
-    padding-left: 13px;
+    padding-left: 15px;
     position: relative;
-    line-height: 1.35;
+    line-height: 1.4;
 }
 .cp-plan-feats li::before {
     content: '✓';
@@ -9543,21 +9727,21 @@ button:active {
     display: flex;
     flex-direction: column;
     align-items: flex-end;
-    gap: 6px;
+    gap: 9px;
     flex-shrink: 0;
-    margin-left: 12px;
-    min-width: 90px;
+    margin-left: 0;
+    min-width: 118px;
 }
 .cp-price-block {
     text-align: right;
 }
 .cp-price {
     display: block;
-    font-size: 16px;
+    font-size: 21px;
     font-weight: 800;
     color: var(--text-bright);
     letter-spacing: -0.5px;
-    line-height: 1.1;
+    line-height: 1.15;
 }
 .cp-price--year { color: #f59e0b; }
 .cp-plan-row--pro .cp-price { color: #818cf8; }
@@ -9613,9 +9797,9 @@ button:active {
 /* ── ПОДВАЛ ── */
 .cp-footer {
     display: flex;
-    gap: 8px;
-    padding: 12px 16px 14px;
-    background: var(--bg-secondary);
+    gap: 10px;
+    padding: 14px 24px;
+    background: var(--bg-primary);
     border-top: 1px solid var(--border);
 }
 .cp-sync-btn {
@@ -9623,14 +9807,14 @@ button:active {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 5px;
+    gap: 6px;
     background: var(--accent);
     border: none;
-    border-radius: 8px;
-    padding: 7px 10px;
+    border-radius: 9px;
+    padding: 9px 12px;
     color: white;
-    font-size: 11px;
-    font-weight: 600;
+    font-size: 12px;
+    font-weight: 700;
     font-family: inherit;
     cursor: pointer;
     transition: opacity 0.15s, transform 0.12s;
@@ -9647,18 +9831,22 @@ button:active {
 .cp-sync-btn.is-synced { background: var(--success); box-shadow: 0 4px 14px color-mix(in srgb, var(--success) 45%, transparent); }
 @keyframes cpSyncSpin { to { transform: rotate(360deg); } }
 
+/* REDESIGN (2026-09-30, approved mockup): quieter by default — a red
+   outline sitting permanently next to the primary sync button read as
+   alarming for a routine, low-risk action. Now plain text until hovered,
+   same as any other secondary action; the red only shows up on intent. */
 .cp-logout-btn {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 5px;
+    gap: 6px;
     background: transparent;
-    border: 1.5px solid rgba(239,68,68,0.45);
-    border-radius: 8px;
-    padding: 7px 10px;
-    color: rgba(239,68,68,0.8);
-    font-size: 11px;
-    font-weight: 600;
+    border: 1.5px solid transparent;
+    border-radius: 9px;
+    padding: 9px 12px;
+    color: var(--text-muted, var(--text-secondary));
+    font-size: 12px;
+    font-weight: 700;
     font-family: inherit;
     cursor: pointer;
     transition: all 0.18s;
@@ -12523,6 +12711,20 @@ body.startup-locked #contentArea {
     overflow: hidden;
     border: 2px solid var(--bg-sidebar);
     pointer-events: none;
+}
+
+/* Тихий синий кружок для новых ответов поддержки (2026-09-30, live
+   request: "на иконке поддержки справа сверху синий кружочек маленький")
+   — сознательно без числа внутри (JS оставляет textContent пустым), в
+   отличие от обычного красного счётчика — сама просьба "чтобы не
+   отвлекала" была про эту иконку изначально, число сделало бы её заметнее,
+   чем нужно. */
+.sidebar-notif-badge--dot {
+    background: var(--primary, #437cff);
+    width: 9px;
+    height: 9px;
+    top: 4px;
+    right: 4px;
 }
 
 /* ═══════════════════════════════════════════════════════════════

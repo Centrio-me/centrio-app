@@ -2,7 +2,7 @@
 
 Centrio is an Electron desktop app that bundles web-based messengers (Telegram Web, WhatsApp Web, Discord, etc.) into a single window, each as an isolated `<webview>` tab. This document maps the codebase for a new contributor: process split, messenger/session model, renderer module pattern, IPC boundary, extensions system, i18n, and the build/publish pipeline.
 
-All file:line references below were read directly from the repository at the time of writing (package.json version `1.8.0`).
+All file:line references below were read directly from the repository at the time of writing (package.json version `1.8.0` at the time; current shipped version as of 2026-09-28 is `2.9.4` — this document's line numbers and file inventory have drifted since and should not be trusted verbatim; see the fuller, re-verified inventory in the Obsidian vault, "Приложение — Electron (main и renderer).md").
 
 ## 1. Process split
 
@@ -19,7 +19,7 @@ Electron has two processes here, plus a preload bridge between them:
 `main.js` wires together the pieces in `main/bootstrap/`:
 
 - `main/bootstrap/initApp.js` — waits for `app.whenReady()`, then creates the window/tray, calls `registerIpc(...)`, starts the usage tracker (`main/services/tracker.js`) and anonymous visitor tracker (`main/services/visitor-tracker.js`), initializes the auto-updater (`main/services/updater.js`), applies adblock to all sessions, and schedules periodic update checks (first check after a random 10-20s delay, then every 12h).
-- `main/bootstrap/registerIpc.js` — a flat list of `register*Ipc()` calls, one per `main/ipc/*.js` file (window, badge, notifications, downloads, autoLaunch, api, oauth, proxy, updater, sound, vpn, screenshot, settingsPortability, extensions). This is the single place that wires all IPC handlers into `ipcMain`.
+- `main/bootstrap/registerIpc.js` — a flat list of `register*Ipc()` calls, one per `main/ipc/*.js` file (window, badge, notifications, downloads, autoLaunch, api, oauth, proxy, updater, sound, vpn, screenshot, extensions). This is the single place that wires all IPC handlers into `ipcMain`.
 - `main/bootstrap/registerAppEvents.js` — top-level Electron `app` event handlers (`open-url` for protocol links, `before-quit` with a timeout-guarded tracker flush, external link handling via `setWindowOpenHandler`).
 - `main/window.js` — creates the `BrowserWindow`, wires VPN auto-restore on startup (re-applies proxy settings per messenger session partition), crash logging.
 - `main/config/constants.js` — central constants: app name/protocol/API URL, default window size, all `IPC_CHANNELS` name constants, OAuth provider config (Google/GitHub/Yandex ports and URLs), and `PATHS` (assets, preload, index.html) resolved from `ROOT_DIR`.
@@ -92,7 +92,7 @@ function safeHandle(channel, handler) {
 
 `safeHandle` removes any previously-registered handler for the same channel before re-registering — defensive against hot-reload/duplicate-registration in dev mode. Handlers return `{ success: true, ... }` / `{ success: false, error }` shaped responses (see `main/utils/ipc.js`'s `ok()`/`fail()`/`wrapIpc()` helpers), matching what `preload.js`'s renderer-side `invoke()` wrapper expects.
 
-Files in `main/ipc/`: `window.js`, `badge.js`, `notifications.js`, `downloads.js`, `autoLaunch.js`, `api.js`, `oauth.js`, `proxy.js`, `updater.js`, `sound.js`, `vpn.js`, `screenshot.js`, `settingsPortability.js`, `extensions.js`.
+Files in `main/ipc/`: `window.js`, `badge.js`, `notifications.js`, `downloads.js`, `autoLaunch.js`, `api.js`, `oauth.js`, `proxy.js`, `updater.js`, `sound.js`, `vpn.js`, `screenshot.js`, `extensions.js`.
 
 Every channel a handler in this directory exposes must also appear in `preload.js`'s `validInvokeChannels` set (grouped by source file in comments, e.g. `// main/ipc/vpn.js` above `'vpn-status', 'vpn-connect', ...`) or the renderer cannot reach it — this is the enforcement point described in section 1.
 

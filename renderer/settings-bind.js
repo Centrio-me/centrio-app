@@ -438,51 +438,6 @@ function bindSettingsUi({
         })
     }
 
-    const exportSettingsBtn = document.getElementById('exportSettingsBtn')
-    if (exportSettingsBtn) {
-        exportSettingsBtn.addEventListener('click', async () => {
-            const status = document.getElementById('settingsStatus')
-            exportSettingsBtn.disabled = true
-            try {
-                const result = await ipcRenderer.invoke('settings:export')
-                if (status && result && result.success) {
-                    status.textContent = tGet('settings.applied') || 'OK'
-                    status.classList.add('success')
-                    setTimeout(() => {
-                        status.textContent = ''
-                        status.classList.remove('success')
-                    }, 3000)
-                }
-            } catch (e) {
-                console.error('[settings] export error:', e)
-            } finally {
-                exportSettingsBtn.disabled = false
-            }
-        })
-    }
-
-    const importSettingsBtn = document.getElementById('importSettingsBtn')
-    if (importSettingsBtn) {
-        importSettingsBtn.addEventListener('click', async () => {
-            importSettingsBtn.disabled = true
-            try {
-                const result = await ipcRenderer.invoke('settings:import')
-                if (result && result.success) {
-                    // Настройки применены в главном процессе (electron-store) —
-                    // перезагружаем окно, чтобы UI подхватил их так же, как при
-                    // смене языка в applySettingsBtn выше.
-                    window.location.reload()
-                } else if (result && !result.canceled) {
-                    console.warn('[settings] import failed:', result?.error)
-                }
-            } catch (e) {
-                console.error('[settings] import error:', e)
-            } finally {
-                importSettingsBtn.disabled = false
-            }
-        })
-    }
-
     if (resetAllBtn) {
         resetAllBtn.addEventListener('click', async () => {
             if (!confirm(tGet('settings.resetConfirm'))) return

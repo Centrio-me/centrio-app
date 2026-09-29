@@ -297,21 +297,12 @@ function bindCloudUi({
         _doOpenUrl('https://centrio.me/auth/forgot-password')
     })
 
-    document.getElementById('cloudSupportBtn')?.addEventListener('click', () => {
-        // BUGFIX/FEATURE (2026-09-21, "для PRO поддержка и тикеты доступны
-        // прямо из приложения" — live user request): this used to always
-        // bounce out to the website regardless of plan. #cpSupportSection
-        // (renderer/support-tickets-ui.js) is only ever shown for Pro users
-        // in the first place (see its 'cloud-profile-opened' listener), so
-        // "is it currently visible" doubles as the Pro check here without
-        // needing this file to import a separate hasEffectivePro().
-        const section = document.getElementById('cpSupportSection')
-        if (section && section.style.display !== 'none') {
-            section.scrollIntoView({ behavior: 'smooth', block: 'start' })
-            return
-        }
-        _doOpenUrl(`${DASHBOARD_URL}?tab=support`)
-    })
+    // MOVED (2026-09-30, item 1 — "у поддержки должен быть своё
+    // всплывающее окно, а не окно профиля"): #supportSidebarBtn's click
+    // handler now lives in renderer/support-tickets-ui.js, which opens the
+    // standalone #supportModal directly instead of routing through
+    // openCloudProfile(). Kept out of this file since it no longer touches
+    // anything cloud-profile-related.
 
     document.getElementById('planBuyProYearBtn')?.addEventListener('click', () => {
         _doOpenUrl(DASHBOARD_URL)

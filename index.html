@@ -487,6 +487,24 @@
                 </svg>
                 <span class="activity-btn-label" data-i18n="settings.title"></span>
             </button>
+            <!-- Поддержка/тикеты — своя иконка в сайдбаре (2026-09-29, live
+                 request: "саппорт спрятан внутри всплывающего окна профиля
+                 — там ему не место... отдельная иконка «Поддержка», всегда
+                 на виду, с тихим бейджем... точно так же, как уже
+                 показываются непрочитанные у каждого мессенджера"). Тот же
+                 значок и та же панель (#cpSupportSection), что раньше были
+                 доступны только через кнопку в подвале профиля — просто
+                 второй, более заметный вход к ней же. См. cloud-bind.js
+                 (клик) и support-tickets-ui.js (бейдж непрочитанных). -->
+            <button id="supportSidebarBtn" class="activity-btn" data-i18n-title="cloud.support" style="position:relative;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                    <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12c0 1.82.487 3.53 1.338 5L2 22l5-1.338A9.955 9.955 0 0 0 12 22z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M9.5 9.5a2.5 2.5 0 0 1 4.9.8c0 1.7-2.4 2-2.4 3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                    <circle cx="12" cy="17" r="0.9" fill="currentColor"/>
+                </svg>
+                <span class="activity-btn-label" data-i18n="cloud.support"></span>
+                <span id="supportSidebarBadge" class="sidebar-notif-badge sidebar-notif-badge--dot" style="display:none;"></span>
+            </button>
             <button id="cloudBtn" class="activity-btn" data-i18n-title="cloud.accountBtn">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
                     <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
@@ -1107,6 +1125,23 @@
         <button class="changelog-popup-close" id="changelogPopupClose">✕</button>
     </div>
     <div class="changelog-popup-body">
+        <div class="changelog-entry">
+            <div class="changelog-version">v2.9.6</div>
+            <ul class="changelog-list">
+                <li>Новое: у поддержки теперь своё отдельное окно вместо вкладки внутри профиля — и оно открывается сразу на созданном обращении, без лишнего клика</li>
+                <li>Новое: переписка с поддержкой в реальном времени — новые сообщения появляются сами, без переоткрытия чата, с индикатором «печатает…» (видно, отвечает ли живой человек или бот)</li>
+                <li>Новое: полноценные уведомления об ответах поддержки — в центре уведомлений, синий значок на иконке поддержки и звук (если звуки включены)</li>
+                <li>Улучшено: бот поддержки больше не оставляет вопрос без ответа — если сразу ответить не может, сначала уточняет детали (что не работает, как воспроизвести), и только потом передаёт живому специалисту вместо тишины</li>
+                <li>Улучшено: личный кабинет полностью переработан — более просторная вёрстка, статистика и активность в виде карточек с иконками, график активности за 7 дней теперь плавная кривая с подсказкой значения при наведении</li>
+            </ul>
+        </div>
+        <div class="changelog-entry">
+            <div class="changelog-version">v2.9.5</div>
+            <ul class="changelog-list">
+                <li>Новое: у поддержки теперь своя иконка в сайдбаре (рядом с VPN, загрузками и настройками) — с тихим значком, если пришёл новый ответ. Больше не нужно открывать профиль, чтобы её найти</li>
+                <li>Новое: простые вопросы в поддержку (цены, что входит в тариф, как оформить возврат и т.п.) теперь может закрыть автоматический ответ — сразу, без ожидания. Всё, что сложнее или касается конкретно вашего аккаунта, по-прежнему передаётся живому человеку</li>
+            </ul>
+        </div>
         <div class="changelog-entry">
             <div class="changelog-version">v2.9.4</div>
             <ul class="changelog-list">
@@ -2022,23 +2057,6 @@
                                 <input type="checkbox" id="settingAskDownload" checked>
                                 <span class="toggle-slider"></span>
                             </label>
-                        </div>
-                    </div>
-                    <div class="settings-group">
-                        <div class="settings-group-title" data-i18n="settings.dataPortability"></div>
-                        <div class="settings-row">
-                            <div class="settings-label">
-                                <span data-i18n="settings.exportSettings"></span>
-                                <span class="settings-hint" data-i18n="settings.exportSettingsHint"></span>
-                            </div>
-                            <button class="vsc-btn-secondary" id="exportSettingsBtn" data-i18n="settings.exportSettingsBtn"></button>
-                        </div>
-                        <div class="settings-row">
-                            <div class="settings-label">
-                                <span data-i18n="settings.importSettings"></span>
-                                <span class="settings-hint" data-i18n="settings.importSettingsHint"></span>
-                            </div>
-                            <button class="vsc-btn-secondary" id="importSettingsBtn" data-i18n="settings.importSettingsBtn"></button>
                         </div>
                     </div>
                 </div>
@@ -3447,26 +3465,50 @@
             <div class="cp-scroll-area" id="cpScrollArea">
 
             <!-- Инфо-строки (мессенджеры / папки / последняя синхронизация) — только для PRO -->
+            <!-- REDESIGN (2026-09-30, "Личный кабинет — очень некрасивое.
+                 Полностью переделать" — live request, approved mockup): each
+                 stat gets an icon chip now instead of being bare number+label
+                 — JS (cloud-ui.js's _renderLocalStats) still only ever
+                 touches #statMessengers/#statFolders/#statLastSync's
+                 textContent, so this wrapping is purely additive. -->
             <div class="cp-stats-row" id="cpStatsRow">
                 <div class="cp-stat">
-                    <span class="cp-stat-val" id="statMessengers">—</span>
-                    <span class="cp-stat-lbl" data-i18n="cloud.statMessengers"></span>
+                    <div class="cp-stat-icon">
+                        <svg viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="2"/><rect x="14" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="2"/><rect x="3" y="14" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="2"/><rect x="14" y="14" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="2"/></svg>
+                    </div>
+                    <div class="cp-stat-text">
+                        <span class="cp-stat-val" id="statMessengers">—</span>
+                        <span class="cp-stat-lbl" data-i18n="cloud.statMessengers"></span>
+                    </div>
                 </div>
                 <div class="cp-stat-sep"></div>
                 <div class="cp-stat">
-                    <span class="cp-stat-val" id="statFolders">—</span>
-                    <span class="cp-stat-lbl" data-i18n="cloud.statFolders"></span>
+                    <div class="cp-stat-icon">
+                        <svg viewBox="0 0 24 24" fill="none"><path d="M3 7a2 2 0 0 1 2-2h4l2 2.5h8a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+                    </div>
+                    <div class="cp-stat-text">
+                        <span class="cp-stat-val" id="statFolders">—</span>
+                        <span class="cp-stat-lbl" data-i18n="cloud.statFolders"></span>
+                    </div>
                 </div>
                 <div class="cp-stat-sep"></div>
                 <div class="cp-stat">
-                    <span class="cp-stat-val" id="statLastSync">—</span>
-                    <span class="cp-stat-lbl" data-i18n="cloud.statLastSync"></span>
+                    <div class="cp-stat-icon">
+                        <svg viewBox="0 0 24 24" fill="none"><path d="M1 4v6h6M23 20v-6h-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10M23 14l-4.64 4.36A9 9 0 0 1 3.51 15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </div>
+                    <div class="cp-stat-text">
+                        <span class="cp-stat-val" id="statLastSync">—</span>
+                        <span class="cp-stat-lbl" data-i18n="cloud.statLastSync"></span>
+                    </div>
                 </div>
             </div>
 
             <!-- PRO: активность (время в приложении, сообщения, streak) -->
             <div id="cpUsageStats" class="cp-usage-stats" style="display:none;">
-                <div class="cp-section-label" data-i18n="cloud.usageSection"></div>
+                <div class="cp-section-label">
+                    <svg viewBox="0 0 24 24" fill="none"><path d="M3 3v18h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M7 15l4-5 3 3 5-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <span data-i18n="cloud.usageSection"></span>
+                </div>
                 <div class="cp-usage-grid">
                     <div class="cp-usage-item">
                         <div class="cp-usage-icon cp-usage-icon--time">
@@ -3476,7 +3518,7 @@
                         <span class="cp-usage-lbl" data-i18n="cloud.usageToday"></span>
                     </div>
                     <div class="cp-usage-item">
-                        <div class="cp-usage-icon cp-usage-icon--time">
+                        <div class="cp-usage-icon cp-usage-icon--week">
                             <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="17" rx="2" stroke="currentColor" stroke-width="2"/><path d="M3 9h18M8 2v4M16 2v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
                         </div>
                         <span class="cp-usage-val" id="usageWeekTime">—</span>
@@ -3500,13 +3542,19 @@
 
                 <!-- PRO: график активности за 7 дней -->
                 <div class="cp-week-chart" id="cpWeekChart" style="display:none;">
-                    <div class="cp-section-label" data-i18n="cloud.chartSection"></div>
+                    <div class="cp-section-label">
+                        <svg viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="17" rx="2" stroke="currentColor" stroke-width="2"/><path d="M3 9h18M8 2v4M16 2v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                        <span data-i18n="cloud.chartSection"></span>
+                    </div>
                     <div class="cp-chart-bars" id="cpChartBars"></div>
                 </div>
 
                 <!-- PRO: разбивка по мессенджерам -->
                 <div class="cp-services-breakdown" id="cpServicesBreakdown" style="display:none;">
-                    <div class="cp-section-label" data-i18n="cloud.servicesSection"></div>
+                    <div class="cp-section-label">
+                        <svg viewBox="0 0 24 24" fill="none"><path d="M21 11.5a8.5 8.5 0 0 1-11.2 8.05L4 21l1.45-5.8A8.5 8.5 0 1 1 21 11.5z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+                        <span data-i18n="cloud.servicesSection"></span>
+                    </div>
                     <div class="cp-services-list" id="cpServicesList"></div>
                 </div>
             </div>
@@ -3516,31 +3564,17 @@
                  live user request): same Ticket/TicketMessage data the
                  website's dashboard reads/writes (src/routes/tickets.js) —
                  no separate sync, same account. See renderer/support-tickets-ui.js. -->
-            <div id="cpSupportSection" class="cp-support-section" style="display:none;">
-                <div class="cp-section-label-row">
-                    <div class="cp-section-label" data-i18n="cloud.supportSection"></div>
-                    <button class="cp-support-new-btn" id="supportNewTicketBtn" data-i18n="cloud.supportNewTicket"></button>
-                </div>
-
-                <!-- Форма нового обращения — свёрнута по умолчанию -->
-                <div id="supportNewTicketForm" class="cp-support-new-form" style="display:none;">
-                    <input type="text" id="supportNewSubject" class="vsc-input" data-i18n-placeholder="cloud.supportSubjectPh" maxlength="200">
-                    <textarea id="supportNewBody" class="vsc-input cp-support-textarea" data-i18n-placeholder="cloud.supportBodyPh" maxlength="5000"></textarea>
-                    <div class="cp-support-new-actions">
-                        <button id="supportNewCancelBtn" class="cp-support-cancel-btn" data-i18n="cloud.supportCancel"></button>
-                        <button id="supportNewSubmitBtn" class="cp-support-submit-btn" data-i18n="cloud.supportSend"></button>
-                    </div>
-                    <div id="supportNewError" class="cp-support-error" style="display:none;"></div>
-                </div>
-
-                <div id="supportTicketsLoading" class="cp-support-loading" data-i18n="cloud.supportLoading" style="display:none;"></div>
-                <div id="supportTicketsEmpty" class="cp-support-empty" data-i18n="cloud.supportEmpty" style="display:none;"></div>
-                <div id="supportTicketsList" class="cp-support-list"></div>
-            </div>
+            <!-- REMOVED (2026-09-30, "у поддержки должен быть своё
+                 всплывающее окно, а не окно профиля" — live request):
+                 support moved to its own #supportModal below cloudModal —
+                 see support-tickets-ui.js. -->
 
             <!-- Тарифы (скрыты если PRO активен) -->
             <div class="cp-plans-section">
-                <div class="cp-section-label" data-i18n="cloud.plansSection"></div>
+                <div class="cp-section-label">
+                    <svg viewBox="0 0 24 24" fill="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+                    <span data-i18n="cloud.plansSection"></span>
+                </div>
 
                 <div class="cp-plans-grid">
 
@@ -3618,7 +3652,10 @@
 
             <!-- Промокод -->
             <div class="cp-promo-section" id="cpPromoSection">
-                <div class="cp-section-label" data-i18n="cloud.promoSection"></div>
+                <div class="cp-section-label">
+                    <svg viewBox="0 0 24 24" fill="none"><path d="M20.59 13.41L11 3.83A2 2 0 0 0 9.59 3.24L4 3a1 1 0 0 0-1 1l.24 5.59a2 2 0 0 0 .59 1.41l9.58 9.58a2 2 0 0 0 2.83 0l4.35-4.35a2 2 0 0 0 0-2.82z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="7.5" cy="7.5" r="1" fill="currentColor"/></svg>
+                    <span data-i18n="cloud.promoSection"></span>
+                </div>
                 <div class="cp-promo-row">
                     <input type="text" id="cloudPromoInput" class="vsc-input cp-promo-input" data-i18n-placeholder="cloud.promoPh" maxlength="32" autocomplete="off">
                     <button id="cloudPromoBtn" class="cp-promo-btn" data-i18n="cloud.promoApply"></button>
@@ -3630,18 +3667,14 @@
 
             <!-- Действия -->
             <div class="cp-footer">
-                <button id="cloudSupportBtn" class="cp-support-btn">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
-                        <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12c0 1.82.487 3.53 1.338 5L2 22l5-1.338A9.955 9.955 0 0 0 12 22z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-                        <path d="M9.5 9.5a2.5 2.5 0 0 1 4.9.8c0 1.7-2.4 2-2.4 3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-                        <circle cx="12" cy="17" r="0.9" fill="currentColor"/>
-                    </svg>
-                    <span data-i18n="cloud.support"></span>
-                    <!-- FEATURE (2026-09-21, "не хватает статус-бейджа
-                         'есть новый ответ'" — approved for 2.9): count of
-                         ANSWERED tickets, see support-tickets-ui.js. -->
-                    <span id="cloudSupportBadge" class="cp-support-badge" style="display:none;"></span>
-                </button>
+                <!-- REMOVED (2026-09-29, "отовсюду теперь убери поддержку,
+                     кроме этой кнопки" — live request): this footer button
+                     duplicated the new sidebar icon (#supportSidebarBtn,
+                     see index.html's .activity-bottom row). Support now has
+                     exactly one entry point. The panel it used to
+                     scroll to (#cpSupportSection below) is unchanged —
+                     the sidebar button opens the same profile popup and
+                     scrolls to it, see cloud-bind.js. -->
                 <button id="cloudSyncNowBtn" class="cp-sync-btn">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
                         <path d="M1 4v6h6M23 20v-6h-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -3660,11 +3693,47 @@
             </div>
         </div>
 
-        <!-- Тред обращения в поддержку — та же схема переключения видов,
-             что и cloudLoginView/cloudProfileView выше (see cloud-ui.js's
-             openCloudProfile/openCloudLogin for the pattern this mirrors). -->
-        <div id="ticketThreadView" class="modal-body" style="display:none;">
-            <div class="cp-thread-header">
+    </div>
+</div>
+
+<!-- Поддержка — своё всплывающее окно (2026-09-30, live request: "у
+     поддержки должен быть своё всплывающее окно, а не окно профиля").
+     Та же схема переключения видов (список <-> тред), что раньше жила
+     внутри #cloudModal — просто в собственном модале вместо чужого.
+     См. support-tickets-ui.js. -->
+<div id="supportModal" class="modal">
+    <div class="modal-content support-modal-content">
+        <div id="supportListView">
+            <div class="modal-header">
+                <h3 data-i18n="cloud.supportSection"></h3>
+                <button id="closeSupportModalBtn" class="modal-close">✕</button>
+            </div>
+            <div class="modal-body cp-support-section">
+                <button class="cp-support-new-btn" id="supportNewTicketBtn" data-i18n="cloud.supportNewTicket"></button>
+
+                <!-- Форма нового обращения — свёрнута по умолчанию -->
+                <div id="supportNewTicketForm" class="cp-support-new-form" style="display:none;">
+                    <input type="text" id="supportNewSubject" class="vsc-input" data-i18n-placeholder="cloud.supportSubjectPh" maxlength="200">
+                    <textarea id="supportNewBody" class="vsc-input cp-support-textarea" data-i18n-placeholder="cloud.supportBodyPh" maxlength="5000"></textarea>
+                    <div class="cp-support-new-actions">
+                        <button id="supportNewCancelBtn" class="cp-support-cancel-btn" data-i18n="cloud.supportCancel"></button>
+                        <button id="supportNewSubmitBtn" class="cp-support-submit-btn" data-i18n="cloud.supportSend"></button>
+                    </div>
+                    <div id="supportNewError" class="cp-support-error" style="display:none;"></div>
+                </div>
+
+                <div id="supportTicketsLoading" class="cp-support-loading" data-i18n="cloud.supportLoading" style="display:none;"></div>
+                <div id="supportTicketsEmpty" class="cp-support-empty" data-i18n="cloud.supportEmpty" style="display:none;"></div>
+                <div id="supportTicketsList" class="cp-support-list"></div>
+            </div>
+        </div>
+
+        <!-- Тред обращения — то же переключение видов, что раньше
+             (openThread/closeThread в support-tickets-ui.js), теперь
+             между supportListView и этим блоком вместо
+             cloudProfileView/ticketThreadView. -->
+        <div id="ticketThreadView" style="display:none;">
+            <div class="modal-header cp-thread-header">
                 <button id="ticketThreadBackBtn" class="cp-thread-back-btn">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M19 12H5M12 19l-7-7 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
                 </button>
@@ -3672,15 +3741,28 @@
                     <div id="ticketThreadSubject" class="cp-thread-subject">—</div>
                     <span id="ticketThreadStatus" class="cp-ticket-status-pill">—</span>
                 </div>
+                <button id="closeSupportModalBtn2" class="modal-close">✕</button>
             </div>
-            <div id="ticketThreadMessages" class="cp-thread-messages"></div>
+            <div class="modal-body cp-thread-body">
+                <div id="ticketThreadMessages" class="cp-thread-messages"></div>
+                <!-- "Печатает…" (2026-09-30, live request: "желательно с
+                     троеточием, типа — набор текста мною или ботом") —
+                     показывается/скрывается из support-tickets-ui.js:
+                     реально — пока идёт вызов LLM у бота (см.
+                     lib/support-bot.js) или пока админ печатает ответ в
+                     CentrioAdmin (см. admin-typing IPC ниже), а не
+                     фейковая анимация без повода. -->
+                <div id="ticketTypingIndicator" class="cp-typing-indicator" style="display:none;">
+                    <span class="cp-typing-dots"><i></i><i></i><i></i></span>
+                    <span id="ticketTypingLabel"></span>
+                </div>
+            </div>
             <div class="cp-thread-reply">
                 <textarea id="ticketReplyInput" class="vsc-input cp-support-textarea" data-i18n-placeholder="cloud.supportReplyPh" maxlength="5000"></textarea>
                 <button id="ticketReplySendBtn" class="cp-support-submit-btn" data-i18n="cloud.supportSend"></button>
             </div>
             <div id="ticketReplyError" class="cp-support-error" style="display:none;"></div>
         </div>
-
     </div>
 </div>
 

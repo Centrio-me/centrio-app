@@ -124,11 +124,20 @@ function createOrgTeamApi({
         } catch {}
     }
 
+    // BUGFIX (2026-09-28, live report: TEAM owner's unread/engagement
+    // numbers didn't match reality): this used to map over EVERY active
+    // messenger, personal ones included, and push their unread counts to
+    // the org — an employee's own WhatsApp/Telegram unread count silently
+    // counted into the org's totals and was visible to the owner/admin.
+    // Only org-assigned messengers should ever be reported here. The
+    // backend (POST /:orgId/messenger-stats) now also validates messengerKey
+    // against real assignments server-side, but filtering here too means we
+    // stop sending private data over the wire at all, not just storing it.
     function buildStatsPayload() {
-        return state.activeMessengers.map(m => {
+        return state.activeMessengers.filter(m => m.orgAssigned).map(m => {
             const unreadCount = state.unreadCounts[m.id] || 0
             return {
-                messengerKey: m.orgAssigned ? m.id.replace(/^org:/, '') : m.id,
+                messengerKey: m.id.replace(/^org:/, ''),
                 messengerName: m.name,
                 unreadCount,
                 lastReadAt: unreadCount === 0 ? new Date().toISOString() : undefined,

@@ -1240,7 +1240,28 @@ async function bootstrap() {
     } = cloudUiApi
 
     // Поддержка/тикеты прямо из приложения (Pro) — см. renderer/support-tickets-ui.js
-    bindSupportTicketsUi({ authorizedInvoke, tGet })
+    // hasEffectivePro передан для тихого фонового поллинга бейджа в сайдбаре
+    // (2026-09-29) — без него бейдж обновлялся бы только после открытия
+    // попапа профиля, что убивало бы смысл "видно сразу, не открывая".
+    bindSupportTicketsUi({
+        authorizedInvoke,
+        tGet,
+        hasEffectivePro,
+        ipcRenderer,
+        playNotifSound,
+        openCloudLogin,
+        openUrl: (url) => window.electronAPI?.openExternal?.(url),
+        cloudStore,
+        // Same forward-reference pattern as webviewNotifyApi above (line
+        // ~961) — bindAppNotifUi() (which owns the real implementation)
+        // hasn't run yet at this point in init, so a ref that gets filled
+        // in later is forwarded instead of the function itself.
+        addMessengerNotification: (title, body, name, messengerId, actionUrl) => {
+            if (typeof addMessengerNotifRef === 'function') {
+                addMessengerNotifRef(title, body, name, messengerId, actionUrl)
+            }
+        }
+    })
 
     // ==============================
     // ПЕРЕМЕЩЕНИЕ МЕССЕНДЖЕРА В ПАПКУ

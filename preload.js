@@ -183,8 +183,6 @@ const validInvokeChannels = new Set([
     'screenshot:capture',
     'security:hash-pin',
     'security:verify-pin',
-    'settings:export',
-    'settings:import',
     'store:clear-all',
     'store:delete',
     'store:get',

@@ -208,11 +208,41 @@ function createCloudUiApi({
 
     let _usageStatsRequestId = 0
 
-    // ── График активности за 7 дней ─────────────────────────────
+    // ── График активности за 7 дней (кривая + подсказка при наведении) ──
+    // REDESIGN (2026-09-30, "не нравится график за 7 дней. Сделай его
+    // кривой по дням. И при наведении видно — сколько в день" — live
+    // feedback): was a bar chart with the number always shown above each
+    // bar — now a smoothed line/area chart (plain inline SVG, no charting
+    // library in this project) with the per-day value only revealed on
+    // hover via a tooltip. See styles.css's .cp-chart-* rules.
+    const CHART_W = 640
+    const CHART_H = 76
+    const CHART_TOP_PAD = 14
+
+    // Catmull-Rom → cubic-Bezier smoothing, the standard approach for a
+    // curve that actually passes through every data point (not just an
+    // approximation like a plain quadratic smoothing would give).
+    function _smoothChartPath(points) {
+        if (points.length < 2) return `M ${points[0].x} ${points[0].y}`
+        let d = `M ${points[0].x} ${points[0].y}`
+        for (let i = 0; i < points.length - 1; i++) {
+            const p0 = points[i - 1] || points[i]
+            const p1 = points[i]
+            const p2 = points[i + 1]
+            const p3 = points[i + 2] || p2
+            const c1x = p1.x + (p2.x - p0.x) / 6
+            const c1y = p1.y + (p2.y - p0.y) / 6
+            const c2x = p2.x - (p3.x - p1.x) / 6
+            const c2y = p2.y - (p3.y - p1.y) / 6
+            d += ` C ${c1x},${c1y} ${c2x},${c2y} ${p2.x},${p2.y}`
+        }
+        return d
+    }
+
     function _renderWeekChart(chart) {
         const section = document.getElementById('cpWeekChart')
-        const bars    = document.getElementById('cpChartBars')
-        if (!section || !bars) return
+        const holder  = document.getElementById('cpChartBars')
+        if (!section || !holder) return
 
         if (!Array.isArray(chart) || chart.length === 0) {
             section.style.display = 'none'
@@ -222,36 +252,89 @@ function createCloudUiApi({
         section.style.display = ''
         const maxMinutes = Math.max(1, ...chart.map(d => d.minutes || 0))
         const todayIso   = new Date().toISOString().slice(0, 10)
+        const n = chart.length
 
-        bars.textContent = ''
-        chart.forEach(day => {
-            const minutes  = day.minutes || 0
-            const heightPc = Math.max(4, Math.round((minutes / maxMinutes) * 100))
-            const isToday  = day.date === todayIso
-
-            const col = document.createElement('div')
-            col.className = 'cp-chart-col' + (isToday ? ' is-today' : '')
-
-            const minutesEl = document.createElement('span')
-            minutesEl.className = 'cp-chart-minutes'
-            minutesEl.textContent = minutes > 0 ? String(minutes) : ''
-
-            const track = document.createElement('div')
-            track.className = 'cp-chart-track'
-            const fill = document.createElement('div')
-            fill.className = 'cp-chart-fill'
-            fill.style.height = heightPc + '%'
-            track.appendChild(fill)
-
-            const dayEl = document.createElement('span')
-            dayEl.className = 'cp-chart-day'
-            dayEl.textContent = (day.label || '').replace('.', '')
-
-            col.appendChild(minutesEl)
-            col.appendChild(track)
-            col.appendChild(dayEl)
-            bars.appendChild(col)
+        const points = chart.map((day, i) => {
+            const minutes = day.minutes || 0
+            return {
+                x: n === 1 ? CHART_W / 2 : (i / (n - 1)) * CHART_W,
+                y: CHART_TOP_PAD + (CHART_H - CHART_TOP_PAD) * (1 - minutes / maxMinutes),
+                minutes,
+                isToday: day.date === todayIso,
+                label: (day.label || '').replace('.', '')
+            }
         })
+
+        const linePath = _smoothChartPath(points)
+        const areaPath = `${linePath} L ${points[n - 1].x} ${CHART_H} L ${points[0].x} ${CHART_H} Z`
+        const gradId = 'cpChartGrad' + Math.random().toString(36).slice(2, 8)
+
+        holder.textContent = ''
+
+        const wrap = document.createElement('div')
+        wrap.className = 'cp-chart-wrap'
+
+        const svgNs = 'http://www.w3.org/2000/svg'
+        const svg = document.createElementNS(svgNs, 'svg')
+        svg.setAttribute('class', 'cp-chart-svg')
+        svg.setAttribute('viewBox', `0 0 ${CHART_W} ${CHART_H}`)
+        svg.setAttribute('preserveAspectRatio', 'none')
+        svg.innerHTML =
+            `<defs><linearGradient id="${gradId}" x1="0" y1="0" x2="0" y2="1">` +
+            `<stop offset="0%" stop-color="#818cf8" stop-opacity="0.35"/>` +
+            `<stop offset="100%" stop-color="#818cf8" stop-opacity="0"/>` +
+            `</linearGradient></defs>` +
+            `<path class="cp-chart-area" d="${areaPath}" fill="url(#${gradId})"/>` +
+            `<path class="cp-chart-line" d="${linePath}" fill="none"/>`
+
+        const tooltip = document.createElement('div')
+        tooltip.className = 'cp-chart-tooltip'
+        tooltip.style.display = 'none'
+
+        const dotsG = document.createElementNS(svgNs, 'g')
+        points.forEach((p, i) => {
+            const dot = document.createElementNS(svgNs, 'circle')
+            dot.setAttribute('class', 'cp-chart-dot' + (p.isToday ? ' is-today' : ''))
+            dot.setAttribute('cx', p.x)
+            dot.setAttribute('cy', p.y)
+            dot.setAttribute('r', p.isToday ? 4 : 3)
+            dotsG.appendChild(dot)
+
+            const hit = document.createElementNS(svgNs, 'circle')
+            hit.setAttribute('class', 'cp-chart-hit')
+            hit.setAttribute('cx', p.x)
+            hit.setAttribute('cy', p.y)
+            hit.setAttribute('r', 16)
+            hit.addEventListener('mouseenter', () => {
+                dot.classList.add('is-active')
+                tooltip.textContent = `${p.label}: ${_formatDuration(p.minutes * 60)}`
+                tooltip.style.left = (p.x / CHART_W * 100) + '%'
+                tooltip.style.top  = (p.y / CHART_H * 76) + 'px'
+                tooltip.classList.toggle('align-start', i === 0)
+                tooltip.classList.toggle('align-end', i === n - 1)
+                tooltip.style.display = 'block'
+            })
+            hit.addEventListener('mouseleave', () => {
+                dot.classList.remove('is-active')
+                tooltip.style.display = 'none'
+            })
+            dotsG.appendChild(hit)
+        })
+        svg.appendChild(dotsG)
+
+        wrap.appendChild(svg)
+        wrap.appendChild(tooltip)
+        holder.appendChild(wrap)
+
+        const daysRow = document.createElement('div')
+        daysRow.className = 'cp-chart-days'
+        points.forEach((p) => {
+            const dayEl = document.createElement('span')
+            dayEl.className = 'cp-chart-day' + (p.isToday ? ' is-today' : '')
+            dayEl.textContent = p.label
+            daysRow.appendChild(dayEl)
+        })
+        holder.appendChild(daysRow)
     }
 
     // ── Разбивка активности по мессенджерам ──────────────────────
@@ -358,7 +441,11 @@ function createCloudUiApi({
         try {
             const d = new Date(iso)
             if (isNaN(d.getTime())) return null
-            return d.toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' })
+            // REDESIGN (2026-09-30, approved mockup): shortened from
+            // 'long' — a full month name ("19 ноября 2026 г.") sitting next
+            // to a real user name in the widened header left too little
+            // room for the name before it started truncating hard.
+            return d.toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' })
         } catch { return null }
     }
 
