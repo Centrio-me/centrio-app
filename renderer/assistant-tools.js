@@ -71,14 +71,13 @@ function coerceSettingValue(key, rawValue) {
     return { error: 'invalid_value' }
 }
 
-// Заметки — Pro/Team-плагин (см. renderer/notes-bind.js), не локальный store,
-// а сервер (landing/notes-route.js). Инструменты ниже проверяют тот же
-// тумблер extensionsState.notes, что и сама панель, чтобы модель не пыталась
-// дёргать API у пользователя, который плагин не включил — и получала внятную
-// причину вместо непонятной 403 от сервера.
-function isNotesEnabled(store) {
-    const state = store.get('extensionsState', {}) || {}
-    return state.notes === true
+// Заметки — Pro/Team (renderer/notes-bind.js), хранятся на сервере. С 2.9.8
+// они больше не включаются в Расширениях, а старый тумблер
+// extensionsState.notes включить уже негде — проверка по нему блокировала
+// заметки для всех. Доступ = Pro: его проверяет сервер (403 pro_required), а
+// сам ассистент доступен только в Pro.
+function isNotesEnabled() {
+    return true
 }
 
 function summarizeNote(n) {
@@ -340,7 +339,7 @@ function bindAssistantTools({ state, store, tGet, switchTab, openSettings, invok
 
         // ── Заметки (Pro/Team-плагин, renderer/notes-bind.js) ─────────────
         async list_notes() {
-            if (!isNotesEnabled(store)) return { error: 'notes_disabled', hint: 'Плагин "Заметки" выключен — включить можно в Настройки → Расширения.' }
+            if (!isNotesEnabled(store)) return { error: 'notes_disabled', hint: 'Заметки доступны на плане Pro или Team.' }
             if (typeof authorizedInvoke !== 'function') return { error: 'notes_unavailable' }
             const result = await authorizedInvoke('api-notes-list')
             if (!result?.success) return { error: 'notes_request_failed', message: result?.error || null }
@@ -348,7 +347,7 @@ function bindAssistantTools({ state, store, tGet, switchTab, openSettings, invok
         },
 
         async create_note({ type, title, body, items } = {}) {
-            if (!isNotesEnabled(store)) return { error: 'notes_disabled', hint: 'Плагин "Заметки" выключен — включить можно в Настройки → Расширения.' }
+            if (!isNotesEnabled(store)) return { error: 'notes_disabled', hint: 'Заметки доступны на плане Pro или Team.' }
             if (typeof authorizedInvoke !== 'function') return { error: 'notes_unavailable' }
             const noteType = type === 'CHECKLIST' ? 'CHECKLIST' : 'NOTE'
             const payload = { type: noteType, title: typeof title === 'string' ? title : '' }
