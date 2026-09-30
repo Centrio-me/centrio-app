@@ -661,7 +661,39 @@ module.exports = {
         daysLeftTooltip: 'Remaining'
     },
 
+    quickReplies: {
+        title: "Quick replies",
+        add: "New reply",
+        searchPlaceholder: "Search replies…",
+        titlePlaceholder: "Name, e.g. \"Address\"",
+        textPlaceholder: "Reply text — up to 2000 characters",
+        cancel: "Cancel",
+        save: "Save",
+        clickToCopy: "Click to copy",
+        copied: "Copied",
+        edit: "Edit",
+        delete: "Delete",
+        teamBadge: "from your manager",
+        teamSection: "Team",
+        ownSection: "My replies",
+        nothingFound: "Nothing found",
+        empty: "Save texts you often send to clients: address, opening hours, prices. Then one click copies them.",
+        addFirst: "Add your first reply",
+        hint: "Click a reply to copy it. Paste into a chat: {keys}",
+        deleteTitle: "Delete quick reply?",
+        deleteText: "The reply \"{title}\" will be deleted."
+    },
+
+    orgAlerts: {
+        title: "Clients are waiting for a reply",
+        minutes: "{m} min",
+        hours: "{h} h",
+        hoursMinutes: "{h} h {m} min",
+        waits: "waiting {time}"
+    },
+
     rightbar: {
+        quickReplies: "Quick replies",
         assistant: 'Centrio Assistant',
         assistantSoon: 'Coming soon',
         todos: 'Todos',
@@ -777,6 +809,8 @@ module.exports = {
     },
 
     pro: {
+        quickRepliesTitle: "Quick replies — Pro only",
+        quickRepliesDesc: "Save ready-made texts — address, opening hours, prices — and copy them into any chat with one click. Available on the Pro or Team plan.",
         messengerLimitTitle:  'Pro Required',
         messengerLimitDesc:   'The free plan supports up to {n} messengers. Upgrade to Pro for unlimited.',
         themesTitle:          'Themes — Pro Only',

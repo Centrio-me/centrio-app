@@ -20,10 +20,25 @@ function createOrgTeamApi({
     addOrgAssignedMessenger,
     removeOrgAssignedMessenger,
     refreshAllVpnBadges = () => {}, // (active) => void — keeps the sidebar VPN badges/state.vpnActive in sync, see renderer.js
-    setCanAddOwnMessengers = () => {} // (allowed: boolean) => void — gates the "+" add-messenger button, see renderer.js/add-modal-bind.js
+    setCanAddOwnMessengers = () => {}, // (allowed: boolean) => void — gates the "+" add-messenger button, see renderer.js/add-modal-bind.js
+    setTeamQuickReplies = () => {}, // (replies) => void — renderer/quick-replies-bind.js
+    notifyOwnerAlert = () => {}, // ({ title, body }) => void — OS notification + bell entry for the owner/admin
+    tGet = () => ''
 }) {
     const POLL_INTERVAL_MS = 5 * 60 * 1000
+    // "Клиент ждёт ответа" (2026-09-30): the server stamps how long an
+    // assigned messenger has had unread messages, so it needs fresh data —
+    // pushed shortly after every unread change, plus a heartbeat so the owner
+    // can tell a closed app from "all quiet".
+    const STATS_PUSH_DEBOUNCE_MS = 15 * 1000
+    const STATS_HEARTBEAT_MS = 2 * 60 * 1000
+    const ALERTS_POLL_MS = 60 * 1000
+    const ALERTS_SEEN_KEY = 'centrio-org-alerts-seen-at'
     let pollTimer = null
+    let statsHeartbeatTimer = null
+    let alertsTimer = null
+    let statsPushTimer = null
+    const reportedMessengerIds = new Set()
     let lastForcedTheme = null
 
     function getOrgId() {
@@ -148,9 +163,15 @@ function createOrgTeamApi({
     // backend (POST /:orgId/messenger-stats) now also validates messengerKey
     // against real assignments server-side, but filtering here too means we
     // stop sending private data over the wire at all, not just storing it.
+    // Raw (not mute-adjusted) count: an employee muting an assigned messenger
+    // must not hide waiting clients from the owner — state.unreadCounts is 0
+    // for muted messengers by design (renderer/unread.js).
+    // Only messengers whose page has actually reported a count this session:
+    // right after launch a not-yet-loaded webview reads as 0, and pushing
+    // that would make the server reset how long a client has been waiting.
     function buildStatsPayload() {
-        return state.activeMessengers.filter(m => m.orgAssigned).map(m => {
-            const unreadCount = state.unreadCounts[m.id] || 0
+        return state.activeMessengers.filter(m => m.orgAssigned && reportedMessengerIds.has(m.id)).map(m => {
+            const unreadCount = Math.max(0, Number(state.rawUnreadCounts?.[m.id] ?? state.unreadCounts[m.id]) || 0)
             return {
                 messengerKey: m.id.replace(/^org:/, ''),
                 messengerName: m.name,
@@ -169,6 +190,77 @@ function createOrgTeamApi({
         } catch {}
     }
 
+    async function syncQuickReplies(orgId) {
+        try {
+            const result = await authorizedInvoke('api-org-get-quick-replies', orgId)
+            const replies = unwrap(result)
+            if (Array.isArray(replies)) setTeamQuickReplies(replies)
+        } catch {}
+    }
+
+    function schedulePushStats() {
+        clearTimeout(statsPushTimer)
+        statsPushTimer = setTimeout(() => {
+            const orgId = getOrgId()
+            if (orgId) pushStats(orgId)
+        }, STATS_PUSH_DEBOUNCE_MS)
+    }
+
+    function onUnreadChanged(e) {
+        const id = e?.detail?.messengerId
+        if (id) reportedMessengerIds.add(id)
+        const messenger = id && state.activeMessengers.find(m => m.id === id)
+        if (messenger?.orgAssigned) schedulePushStats()
+    }
+
+    // Registered at creation, not in start(): webviews can report their first
+    // count before start() runs, and those reports must still be recorded.
+    document.addEventListener('unread-count-changed', onUnreadChanged)
+
+    function isOrgManager() {
+        const role = cloudStore.getUser()?.orgSummary?.orgRole
+        return role === 'OWNER' || role === 'ADMIN'
+    }
+
+    function readAlertsSeenAt() {
+        try { return localStorage.getItem(ALERTS_SEEN_KEY) } catch { return null }
+    }
+
+    function writeAlertsSeenAt(iso) {
+        try { localStorage.setItem(ALERTS_SEEN_KEY, iso) } catch {}
+    }
+
+    async function pollAlerts() {
+        const orgId = getOrgId()
+        if (!orgId || !isOrgManager()) return
+        // First run on this device: only alerts from now on, never a backlog.
+        const seenAt = readAlertsSeenAt() || new Date().toISOString()
+        try {
+            const result = await authorizedInvoke('api-org-get-alerts', orgId, seenAt)
+            const feed = unwrap(result)
+            if (!feed || !Array.isArray(feed.items)) return
+            const newest = feed.items.reduce((max, a) => (a.createdAt > max ? a.createdAt : max), seenAt)
+            writeAlertsSeenAt(newest)
+            if (!feed.channelEnabled || feed.items.length === 0) return
+            const lines = feed.items.slice(0, 5).map(a =>
+                `${a.memberName} — ${a.messengerName}: ${formatWaited(a.waitedMinutes)}`)
+            if (feed.items.length > 5) lines.push(`+${feed.items.length - 5}`)
+            notifyOwnerAlert({ title: tGet('orgAlerts.title') || 'Клиенты ждут ответа', body: lines.join('\n') })
+        } catch {}
+    }
+
+    function formatWaited(minutes) {
+        const m = Math.max(1, Number(minutes) || 0)
+        const h = Math.floor(m / 60)
+        const rest = m % 60
+        const duration = m < 60
+            ? (tGet('orgAlerts.minutes', { m }) || `${m} мин`)
+            : rest
+                ? (tGet('orgAlerts.hoursMinutes', { h, m: rest }) || `${h} ч ${rest} мин`)
+                : (tGet('orgAlerts.hours', { h }) || `${h} ч`)
+        return tGet('orgAlerts.waits', { time: duration }) || `ждёт ${duration}`
+    }
+
     async function tick() {
         const orgId = getOrgId()
         if (!orgId) return
@@ -177,6 +269,7 @@ function createOrgTeamApi({
             syncAssignments(orgId),
             syncMemberPermission(orgId),
             syncSharedVpn(orgId),
+            syncQuickReplies(orgId),
             pushStats(orgId)
         ])
     }
@@ -184,6 +277,12 @@ function createOrgTeamApi({
     function start() {
         if (pollTimer) return
         tick()
+        statsHeartbeatTimer = setInterval(() => {
+            const orgId = getOrgId()
+            if (orgId) pushStats(orgId)
+        }, STATS_HEARTBEAT_MS)
+        alertsTimer = setInterval(pollAlerts, ALERTS_POLL_MS)
+        setTimeout(pollAlerts, 10000)
 
         // BUGFIX (2026-09-19, live report — "Мессенджеры почему-то через
         // раз загружает в приложении... не открывает даже Макс. Нужно
@@ -211,7 +310,12 @@ function createOrgTeamApi({
 
     function stop() {
         if (pollTimer) clearInterval(pollTimer)
+        clearInterval(statsHeartbeatTimer)
+        clearInterval(alertsTimer)
+        clearTimeout(statsPushTimer)
         pollTimer = null
+        statsHeartbeatTimer = null
+        alertsTimer = null
     }
 
     return { start, stop, tick }

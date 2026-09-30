@@ -60,6 +60,7 @@ const { bindMessengerSoundUi } = require('./renderer/messenger-sound-bind')
 const { bindSidebarShellUi } = require('./renderer/sidebar-shell-bind')
 const { bindAppNotifUi } = require('./renderer/app-notif-bind')
 const { bindTodosUi } = require('./renderer/todos-bind')
+const { bindQuickRepliesUi } = require('./renderer/quick-replies-bind')
 const { bindNotesUi } = require('./renderer/notes-bind')
 const { bindDownloadsUi } = require('./renderer/downloads-bind')
 const { bindVpnUi, bindVpnSettings } = require('./renderer/vpn-bind')
@@ -88,7 +89,7 @@ const SYNCED_STORE_KEYS = new Set([
     'messengers', 'folders', 'settings', 'security', 'lockOnStartup',
     'globalProxy', 'sidebarOrder', 'menuCollapsed', 'appZoomLevel',
     'vpnAppModes', 'extensionsState', 'splitLeftPctPref', 'splitPresets',
-    'mutedMessengers'
+    'mutedMessengers', 'quickReplies'
 ])
 
 let suppressAutoCloudSync = false
@@ -98,6 +99,18 @@ let autoCloudSyncTimer = null
 function notifySyncedStoreWrite(key) {
     if (!SYNCED_STORE_KEYS.has(key)) return
     if (suppressAutoCloudSync) return
+
+    // BUGFIX (2026-09-30, "всё повываливалось из папок" после принудительного
+    // закрытия — see the matching comment on cloudStore.getPendingLocalChanges
+    // in renderer/cloud.js): mark, on disk, that this device has a local
+    // change the cloud hasn't confirmed receiving yet. Written directly via
+    // electronAPI rather than store.set()/cloudStore (both would re-enter
+    // this function or aren't guaranteed constructed yet this early) — cheap
+    // and safe to fire on every synced write since it's cleared right back
+    // to false the moment a push actually succeeds (renderer/cloud.js).
+    storeCache.set('cloud.pendingLocalChanges', true)
+    if (window.electronAPI?.storeSet) window.electronAPI.storeSet('cloud.pendingLocalChanges', true)
+
     if (typeof scheduleAutoCloudSync !== 'function') return
 
     clearTimeout(autoCloudSyncTimer)
@@ -503,6 +516,7 @@ async function bootstrap() {
         // (empty) no matter what was actually saved on disk.
         ['split.saved', null],
         ['splitPresets', []],
+        ['quickReplies', []],
         ['splitLeftPctPref', 50],
         ['gridRowPctPref', 50],
         ['gridSidePctPref', 50],
@@ -738,7 +752,8 @@ async function bootstrap() {
                         // пользователь получал привычную раскладку сразу на любой машине,
                         // а не подгонял её заново при каждом входе (см. renderer/split.js).
                         splitLeftPctPref: store.get('splitLeftPctPref', 50),
-                        splitPresets:     store.get('splitPresets', []) || []
+                        splitPresets:     store.get('splitPresets', []) || [],
+                        quickReplies:     store.get('quickReplies', []) || []
                     }
                 }
             }
@@ -854,6 +869,7 @@ async function bootstrap() {
                         if (extra.extensionsState !== undefined) await store.setAsync('extensionsState', extra.extensionsState)
                         if (extra.splitLeftPctPref !== undefined) await store.setAsync('splitLeftPctPref', extra.splitLeftPctPref)
                         if (extra.splitPresets !== undefined) await store.setAsync('splitPresets', extra.splitPresets)
+                        if (Array.isArray(extra.quickReplies)) await store.setAsync('quickReplies', extra.quickReplies)
                         if (extra.activeTabId !== undefined) await store.setAsync('activeTabId', extra.activeTabId)
                         if (extra.activeWorkspaceId !== undefined) await store.setAsync('activeWorkspaceId', extra.activeWorkspaceId)
                     }
@@ -2638,10 +2654,11 @@ function applyTabZoom(level) {
     // onExtensionToggle определён раньше этой точки, поэтому используем
     // отложенную ссылку вместо прямого замыкания на notesUiApi.
     let notesUiApiRef = null
+    let quickRepliesApiRef = null
 
     function onExtensionToggle(extId, isEnabled) {
         if (extId === 'notes') {
-            notesUiApiRef?.updateButtonVisibility()
+            notesUiApiRef?.updateButtonVisibility(); quickRepliesApiRef?.updateButtonState()
         }
         if (extId === 'screenshot') {
             const btn = document.getElementById('screenshotBtn')
@@ -2684,7 +2701,7 @@ function applyTabZoom(level) {
             reapplyFolderLocks()
             reapplySoundLocks()
             notesUiApiRef?.invalidate()
-            notesUiApiRef?.updateButtonVisibility()
+            notesUiApiRef?.updateButtonVisibility(); quickRepliesApiRef?.updateButtonState()
         })
     }
 
@@ -2785,6 +2802,25 @@ function applyTabZoom(level) {
     function applyCloudBootData(cloudData) {
         if (!(cloudData?.messengers?.length > 0)) return
 
+        // BUGFIX (2026-09-30, "разложила всё по папкам, закрыла приложение
+        // принудительно, запустила и всё повываливалось из папок"): this
+        // function is what actually overwrites local folders/messengers/
+        // workspaces with the cloud's copy on every boot. If the PREVIOUS
+        // session ended (force-kill, crash, power loss) before its last
+        // local edit was ever confirmed pushed (see
+        // cloudStore.getPendingLocalChanges()), the cloud's copy is stale —
+        // applying it here would silently throw away real, unsynced local
+        // work. Keep local authoritative this boot instead, and push it up
+        // to reconcile the cloud once the app has finished starting, rather
+        // than pulling the stale cloud data down.
+        if (cloudStore.getPendingLocalChanges()) {
+            console.warn('[cloud] Skipped applying cloud boot data — unconfirmed local changes take priority')
+            setTimeout(() => {
+                if (cloudStore.isLoggedIn()) cloudSyncPush().catch(() => {})
+            }, 3000)
+            return
+        }
+
         store.set('messengers', cloudData.messengers.map(m => ({
             id: m.id,
             name: m.name,
@@ -2843,6 +2879,7 @@ function applyTabZoom(level) {
                 if (extra.extensionsState !== undefined) store.set('extensionsState', extra.extensionsState)
                 if (extra.splitLeftPctPref !== undefined) store.set('splitLeftPctPref', extra.splitLeftPctPref)
                 if (extra.splitPresets !== undefined) store.set('splitPresets', extra.splitPresets)
+                if (Array.isArray(extra.quickReplies)) store.set('quickReplies', extra.quickReplies)
                 // BUGFIX ("не сохраняется выбранный мессенджер"): restore
                 // last-active tab from cloud too, mirroring every other
                 // extra.* field here — see switchTab()/loadData() above.
@@ -3435,12 +3472,14 @@ function applyTabZoom(level) {
         assistant: document.getElementById('assistantBtn'),
         todos: document.getElementById('todosBtn'),
         notes: document.getElementById('notesBtn'),
+        quickReplies: document.getElementById('quickRepliesBtn'),
         notifications: document.getElementById('appNotifBtn')
     }
     const rightPanelSections = {
         assistant: document.getElementById('assistantPanel'),
         todos: document.getElementById('todosPanel'),
         notes: document.getElementById('notesPanel'),
+        quickReplies: document.getElementById('quickRepliesPanel'),
         notifications: document.getElementById('appNotifPanel')
     }
     let rightPanelActiveKey = null
@@ -3500,6 +3539,16 @@ function applyTabZoom(level) {
         ipcRenderer,
         openRightPanel: () => toggleRightPanel('todos'),
         closeRightPanel
+    })
+
+    const quickRepliesApi = quickRepliesApiRef = bindQuickRepliesUi({
+        store,
+        tGet,
+        invokeIpc,
+        openRightPanel: () => toggleRightPanel('quickReplies'),
+        closeRightPanel,
+        getUserIsPro: hasEffectivePro,
+        requirePro
     })
 
     notesUiApiRef = bindNotesUi({
@@ -3578,7 +3627,13 @@ function applyTabZoom(level) {
         setCanAddOwnMessengers: (allowed) => {
             state.orgCanAddOwnMessengers = allowed
             updateAddButtonState()
-        }
+        },
+        setTeamQuickReplies: (replies) => quickRepliesApi?.setTeamReplies(replies),
+        notifyOwnerAlert: ({ title, body }) => {
+            addMessengerNotifRef?.(title, body, null, 'org-alert')
+            ipcRenderer.send('show-notification', { title, body, messengerId: 'org-alert' })
+        },
+        tGet
     })
     orgTeamApi.start()
     bindVpnSettings({
@@ -3692,7 +3747,7 @@ function applyTabZoom(level) {
         // пользователь оплатил Pro на сайте, а приложение уже было запущено (или
         // было закрыто и открыто заново без повторного логина), Pro-статус в UI
         // мог оставаться устаревшим сколь угодно долго.
-        cloudApi.refreshUser().then(() => { if (typeof updateCloudBtn === 'function') updateCloudBtn(); updateAddButtonState(); updateTrialStatusBar(); reapplyMessengerLocks(); reapplyExtensionLocks(); reapplySettingsLocks(); reapplyFolderLocks(); reapplySoundLocks(); notesUiApiRef?.invalidate(); notesUiApiRef?.updateButtonVisibility() })
+        cloudApi.refreshUser().then(() => { if (typeof updateCloudBtn === 'function') updateCloudBtn(); updateAddButtonState(); updateTrialStatusBar(); reapplyMessengerLocks(); reapplyExtensionLocks(); reapplySettingsLocks(); reapplyFolderLocks(); reapplySoundLocks(); notesUiApiRef?.invalidate(); notesUiApiRef?.updateButtonVisibility(); quickRepliesApiRef?.updateButtonState() })
     }
 
     // ...и повторяем при каждом возврате фокуса на окно — типичный сценарий:
@@ -3701,7 +3756,7 @@ function applyTabZoom(level) {
     // Тот же паттерн already используется для уведомлений в app-notif-bind.js.
     window.addEventListener('focus', () => {
         if (cloudStore.isLoggedIn()) {
-            cloudApi.refreshUser().then(() => { if (typeof updateCloudBtn === 'function') updateCloudBtn(); updateAddButtonState(); updateTrialStatusBar(); reapplyMessengerLocks(); reapplyExtensionLocks(); reapplySettingsLocks(); reapplyFolderLocks(); reapplySoundLocks(); notesUiApiRef?.invalidate(); notesUiApiRef?.updateButtonVisibility() })
+            cloudApi.refreshUser().then(() => { if (typeof updateCloudBtn === 'function') updateCloudBtn(); updateAddButtonState(); updateTrialStatusBar(); reapplyMessengerLocks(); reapplyExtensionLocks(); reapplySettingsLocks(); reapplyFolderLocks(); reapplySoundLocks(); notesUiApiRef?.invalidate(); notesUiApiRef?.updateButtonVisibility(); quickRepliesApiRef?.updateButtonState() })
         } else {
             // No account — still catch a local (no-login) trial expiring
             // while the app was open. hasEffectivePro() checks
@@ -3730,7 +3785,7 @@ function applyTabZoom(level) {
     const PRO_REVALIDATE_INTERVAL_MS = 30 * 60 * 1000
     setInterval(() => {
         if (cloudStore.isLoggedIn()) {
-            cloudApi.refreshUser().then(() => { if (typeof updateCloudBtn === 'function') updateCloudBtn(); updateAddButtonState(); updateTrialStatusBar(); reapplyMessengerLocks(); reapplyExtensionLocks(); reapplySettingsLocks(); reapplyFolderLocks(); reapplySoundLocks(); notesUiApiRef?.invalidate(); notesUiApiRef?.updateButtonVisibility() })
+            cloudApi.refreshUser().then(() => { if (typeof updateCloudBtn === 'function') updateCloudBtn(); updateAddButtonState(); updateTrialStatusBar(); reapplyMessengerLocks(); reapplyExtensionLocks(); reapplySettingsLocks(); reapplyFolderLocks(); reapplySoundLocks(); notesUiApiRef?.invalidate(); notesUiApiRef?.updateButtonVisibility(); quickRepliesApiRef?.updateButtonState() })
         } else {
             // Same reasoning as the focus listener above: a local trial can
             // expire while the app sits open and unfocused too.

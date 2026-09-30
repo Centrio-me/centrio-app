@@ -119,6 +119,7 @@ function createUnreadApi({
             state.rawUnreadCounts[messengerId] = normalizedRaw
             const effectiveCount = getEffectiveUnreadCount(messengerId)
             state.unreadCounts[messengerId] = effectiveCount
+            document.dispatchEvent(new CustomEvent('unread-count-changed', { detail: { messengerId } }))
 
             const notifyState = state.messengerNotifyState[messengerId]
             if (notifyState && normalizedRaw < notifyState.lastNotifiedCount) {

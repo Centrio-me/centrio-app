@@ -680,7 +680,39 @@ module.exports = {
         daysLeftTooltip: 'Осталось'
     },
 
+    quickReplies: {
+        title: "Быстрые ответы",
+        add: "Новый ответ",
+        searchPlaceholder: "Поиск по ответам…",
+        titlePlaceholder: "Название, например «Адрес»",
+        textPlaceholder: "Текст ответа — до 2000 символов",
+        cancel: "Отмена",
+        save: "Сохранить",
+        clickToCopy: "Нажмите, чтобы скопировать",
+        copied: "Скопировано",
+        edit: "Изменить",
+        delete: "Удалить",
+        teamBadge: "от руководителя",
+        teamSection: "Команда",
+        ownSection: "Мои ответы",
+        nothingFound: "Ничего не найдено",
+        empty: "Сохраните тексты, которые часто пишете клиентам: адрес, часы работы, цены. Потом — один клик, и текст скопирован.",
+        addFirst: "Добавить первый ответ",
+        hint: "Нажмите на ответ — он скопируется. Вставьте в чат: {keys}",
+        deleteTitle: "Удалить быстрый ответ?",
+        deleteText: "Ответ «{title}» будет удалён."
+    },
+
+    orgAlerts: {
+        title: "Клиенты ждут ответа",
+        minutes: "{m} мин",
+        hours: "{h} ч",
+        hoursMinutes: "{h} ч {m} мин",
+        waits: "ждёт {time}"
+    },
+
     rightbar: {
+        quickReplies: "Быстрые ответы",
         assistant: 'Centrio Ассистент',
         assistantSoon: 'Скоро',
         todos: 'Задачи',
@@ -862,6 +894,8 @@ module.exports = {
     },
 
     pro: {
+        quickRepliesTitle: "Быстрые ответы — только в Pro",
+        quickRepliesDesc: "Сохраняйте готовые тексты — адрес, часы работы, цены — и копируйте их в любой чат одним кликом. Доступно на плане Pro или Team.",
         messengerLimitTitle: 'Нужен Pro',
         messengerLimitDesc: 'Бесплатный план поддерживает до {n} мессенджеров. Перейдите на Pro для неограниченного количества.',
         themesTitle: 'Темы — только в Pro',

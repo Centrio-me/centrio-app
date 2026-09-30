@@ -270,6 +270,22 @@
     --glass-border:    rgba(255,255,255,0.06);
 }
 
+/* Aliases for token names that were referenced across styles.css but never
+   declared by any theme — var() without a fallback resolved to nothing, so
+   those borders/backgrounds silently disappeared, and ones with a hardcoded
+   dark fallback (--bg-elevated → #2a2a2e) rendered dark even in the light
+   theme. Declared once here and resolved per theme via the tokens they point
+   at; placed before every theme block so a theme can still override one. */
+:root {
+    --bg:           var(--bg-primary);
+    --text:         var(--text-primary);
+    --hover:        var(--bg-hover);
+    --bg-sidebar:   var(--sidebar-bg);
+    --border-color: var(--border);
+    --border-hover: var(--border-light);
+    --bg-elevated:  #2a2a2e;
+}
+
 /* ===== ТЕМА: MIDNIGHT ===== */
 [data-theme="midnight"] {
     --bg-primary:      #050508;
@@ -349,6 +365,19 @@
     --shadow-glow:     0 0 16px rgba(99,102,241,0.14);
     --glass-bg:        rgba(255,255,255,0.85);
     --glass-border:    rgba(0,0,0,0.06);
+    --bg-elevated:     #ffffff;
+}
+
+[data-theme="light"] .sidebar-tooltip {
+    color: var(--text-primary);
+    box-shadow: 0 6px 20px rgba(20,20,30,0.12), 0 1px 3px rgba(20,20,30,0.08);
+}
+[data-theme="light"] .modal-category-header {
+    background: color-mix(in srgb, #ffffff 90%, transparent);
+}
+[data-theme="light"] .downloads-drag-ghost,
+[data-theme="light"] .cp-chart-tooltip {
+    box-shadow: 0 6px 20px rgba(20,20,30,0.12);
 }
 
 [data-theme="light"] body {
@@ -493,6 +522,16 @@
     background: var(--bg-primary);
     border-color: var(--border);
     color: #1c1c1e;
+}
+/* Inputs embedded in their own styled box (search fields, inline title
+   editors) are transparent by design — the generic rule above painted a
+   white rectangle inside their grey container. */
+[data-theme="light"] input.app-notif-search-input,
+[data-theme="light"] input.todos-list-add-input,
+[data-theme="light"] input.notes-edit-title-input,
+[data-theme="light"] input.quick-search-input,
+[data-theme="light"] input.color-picker-hex {
+    background: transparent;
 }
 [data-theme="light"] .settings-nav-item {
     color: #636366;
@@ -15936,3 +15975,179 @@ body.onb-active #titlebarMenu {
     cursor: pointer;
     white-space: nowrap;
 }
+
+/* ===== БЫСТРЫЕ ОТВЕТЫ (2026-09-30) — renderer/quick-replies-bind.js =====
+   Theme tokens only, so every theme (light included) gets correct contrast
+   without per-theme overrides. */
+.quick-replies-panel .qr-list { padding: 6px 8px 8px; }
+.qr-section + .qr-section { margin-top: 10px; }
+.qr-section-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px 6px;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+}
+.qr-section-badge {
+    padding: 1px 7px;
+    border-radius: 999px;
+    background: var(--accent-dim);
+    color: var(--accent);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0;
+    text-transform: none;
+}
+.qr-item {
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 10px 10px 10px 12px;
+    border-radius: 10px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: background 0.12s, border-color 0.12s;
+    outline: none;
+}
+.qr-item:hover { background: var(--bg-active); }
+.qr-item:focus-visible { border-color: var(--accent); }
+.qr-item:active { transform: scale(0.995); }
+.qr-item-body { flex: 1; min-width: 0; }
+.qr-item-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 3px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.qr-item-text {
+    font-size: 12px;
+    line-height: 1.45;
+    color: var(--text-secondary);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+.qr-item-actions {
+    display: flex;
+    gap: 2px;
+    opacity: 0;
+    transition: opacity 0.12s;
+}
+.qr-item:hover .qr-item-actions,
+.qr-item:focus-within .qr-item-actions { opacity: 1; }
+.qr-item-action {
+    width: 26px;
+    height: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: background 0.12s, color 0.12s;
+}
+.qr-item-action:hover { background: var(--bg-hover); color: var(--text-primary); }
+.qr-item-delete:hover { background: var(--danger-dim); color: var(--danger); }
+.qr-item-copied {
+    position: absolute;
+    top: 50%;
+    right: 10px;
+    transform: translateY(-50%) scale(0.9);
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: var(--success);
+    color: #fff;
+    font-size: 11.5px;
+    font-weight: 600;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s, transform 0.15s;
+}
+.qr-item.copied { border-color: var(--success); }
+.qr-item.copied .qr-item-copied { opacity: 1; transform: translateY(-50%) scale(1); }
+.qr-item.copied .qr-item-actions { opacity: 0; }
+.qr-empty { padding: 28px 18px 14px; line-height: 1.5; }
+.qr-empty-cta {
+    display: block;
+    margin: 0 auto;
+    padding: 8px 16px;
+    border: 1px solid var(--accent);
+    border-radius: 8px;
+    background: var(--accent-dim);
+    color: var(--accent);
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.12s;
+}
+.qr-empty-cta:hover { background: var(--accent-glow); }
+.qr-editor {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin: 8px 10px 0;
+    padding: 10px;
+    border: 1px solid var(--accent);
+    border-radius: 10px;
+    background: var(--bg-secondary);
+    flex-shrink: 0;
+}
+.qr-editor-title,
+.qr-editor-text {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 12.5px;
+    outline: none;
+    transition: border-color 0.15s;
+}
+.qr-editor-title { font-weight: 600; }
+.qr-editor-text { resize: vertical; min-height: 96px; max-height: 320px; line-height: 1.45; }
+.qr-editor-title:focus,
+.qr-editor-text:focus { border-color: var(--accent); }
+.qr-editor-title::placeholder,
+.qr-editor-text::placeholder { color: var(--text-muted); }
+.qr-editor-footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.qr-editor-counter { font-size: 11px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.qr-editor-counter.at-limit { color: var(--warning); }
+.qr-editor-buttons { display: flex; gap: 6px; }
+.qr-btn-primary,
+.qr-btn-ghost {
+    padding: 5px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.12s, background 0.12s;
+}
+.qr-btn-primary { border: none; background: var(--accent); color: #fff; }
+.qr-btn-primary:hover:not(:disabled) { opacity: 0.88; }
+.qr-btn-primary:disabled { opacity: 0.45; cursor: not-allowed; }
+.qr-btn-ghost { border: 1px solid var(--border); background: transparent; color: var(--text-secondary); }
+.qr-btn-ghost:hover { background: var(--bg-hover); color: var(--text-primary); }
+.qr-hint {
+    flex-shrink: 0;
+    padding: 8px 14px 12px;
+    border-top: 1px solid var(--border);
+    font-size: 11.5px;
+    color: var(--text-muted);
+    text-align: center;
+}
+#quickRepliesAddBtn:disabled { opacity: 0.4; cursor: not-allowed; }

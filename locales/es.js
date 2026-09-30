@@ -636,7 +636,39 @@ module.exports = {
         daysLeftTooltip: 'Restante'
     },
 
+    quickReplies: {
+        title: "Respuestas rápidas",
+        add: "Nueva respuesta",
+        searchPlaceholder: "Buscar respuestas…",
+        titlePlaceholder: "Nombre, p. ej. «Dirección»",
+        textPlaceholder: "Texto de la respuesta: hasta 2000 caracteres",
+        cancel: "Cancelar",
+        save: "Guardar",
+        clickToCopy: "Haz clic para copiar",
+        copied: "Copiado",
+        edit: "Editar",
+        delete: "Eliminar",
+        teamBadge: "del responsable",
+        teamSection: "Equipo",
+        ownSection: "Mis respuestas",
+        nothingFound: "No se encontró nada",
+        empty: "Guarda los textos que envías a menudo a tus clientes: dirección, horario, precios. Después, un clic y el texto se copia.",
+        addFirst: "Añadir la primera respuesta",
+        hint: "Haz clic en una respuesta para copiarla. Pégala en el chat: {keys}",
+        deleteTitle: "¿Eliminar la respuesta rápida?",
+        deleteText: "Se eliminará la respuesta «{title}»."
+    },
+
+    orgAlerts: {
+        title: "Hay clientes esperando respuesta",
+        minutes: "{m} min",
+        hours: "{h} h",
+        hoursMinutes: "{h} h {m} min",
+        waits: "espera {time}"
+    },
+
     rightbar: {
+        quickReplies: "Respuestas rápidas",
         assistant: 'Asistente Centrio',
         assistantSoon: 'Próximamente',
         todos: 'Tareas',
@@ -752,6 +784,8 @@ module.exports = {
     },
 
     pro: {
+        quickRepliesTitle: "Respuestas rápidas — solo Pro",
+        quickRepliesDesc: "Guarda textos listos (dirección, horario, precios) y cópialos en cualquier chat con un clic. Disponible en el plan Pro o Team.",
         messengerLimitTitle:  'Se requiere Pro',
         messengerLimitDesc:   'El plan gratuito admite hasta {n} messengers. Actualiza a Pro para ilimitados.',
         themesTitle:          'Temas — solo en Pro',

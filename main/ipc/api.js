@@ -206,6 +206,14 @@ function registerApiIpc() {
         return wrapApi(() => api.orgPushMessengerStats(token, orgId, stats))
     })
 
+    ipcMain.handle('api-org-get-quick-replies', async (event, token, orgId) => {
+        return wrapApi(() => api.orgGetQuickReplies(token, String(orgId || '')))
+    })
+
+    ipcMain.handle('api-org-get-alerts', async (event, token, orgId, afterIso) => {
+        return wrapApi(() => api.orgGetAlerts(token, String(orgId || ''), String(afterIso || '')))
+    })
+
     // FEATURE (2026-09-21, поддержка/тикеты прямо из приложения — Pro)
     ipcMain.handle('api-tickets-list', async (event, token) => {
         return wrapApi(() => api.ticketsList(token))

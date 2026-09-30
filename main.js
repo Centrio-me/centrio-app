@@ -247,6 +247,9 @@ const ALLOWED_STORE_ROOTS = new Set([
     // Todos panel in the right sidebar — renderer/todos-bind.js, purely
     // local, never synced to the server.
     'todos',
+    // Personal quick replies — renderer/quick-replies-bind.js; synced across
+    // devices via settings.extra in the cloud payload.
+    'quickReplies',
     // AI-ассистент — режим инференса, BYOK-ключи (зашифрованы через
     // store:secure-* под assistant.byok.<provider>.keyEnc), адрес Ollama,
     // локальная история чата. См. main/services/aiProviders/index.js и
@@ -322,6 +325,33 @@ safeHandle('store:get', async (_event, key, def) => {
         return def
     }
 })
+
+// Personal quick replies: whatever the renderer (or a hand-edited cloud
+// payload) sends, persist only a bounded array of plain-text entries —
+// mirrors the limits in renderer/quick-replies-bind.js.
+const QUICK_REPLIES_MAX = 100
+const QUICK_REPLY_TITLE_MAX = 80
+const QUICK_REPLY_TEXT_MAX = 2000
+function sanitizeQuickReplyString(value, max) {
+    return String(value ?? '')
+        .replace(/\r\n?/g, '\n')
+        // eslint-disable-next-line no-control-regex
+        .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '')
+        .slice(0, max)
+}
+function sanitizeQuickRepliesForStore(value) {
+    if (!Array.isArray(value)) return []
+    return value
+        .filter(r => r && typeof r === 'object')
+        .slice(0, QUICK_REPLIES_MAX)
+        .map(r => ({
+            id: sanitizeQuickReplyString(r.id, 64),
+            title: sanitizeQuickReplyString(r.title, QUICK_REPLY_TITLE_MAX),
+            text: sanitizeQuickReplyString(r.text, QUICK_REPLY_TEXT_MAX),
+            updatedAt: Number.isFinite(r.updatedAt) ? r.updatedAt : Date.now()
+        }))
+        .filter(r => r.id && r.title && r.text)
+}
 
 safeHandle('store:set', async (_event, key, value) => {
     if (!isValidStoreKey(key)) {
@@ -531,6 +561,16 @@ safeHandle('store:set', async (_event, key, value) => {
                 value = { ...value, ...patch }
                 console.warn(`[store] Reset non-Pro settings fields to free defaults: ${Object.keys(patch).join(', ')}`)
             }
+        }
+    }
+    if (key === 'quickReplies') {
+        value = sanitizeQuickRepliesForStore(value)
+        // Pro-gated like folders — the real gate is quick-replies-bind.js's
+        // requirePro('quickReplies'); this stops a forged direct IPC write.
+        const entitlement = require('./main/services/entitlement')
+        if (!entitlement.isEffectivePro() && value.length > 0) {
+            console.warn(`[store] Blocked store:set('quickReplies', …) — quick replies require Pro`)
+            return { success: false, error: 'pro_required', code: 'quick_replies_require_pro' }
         }
     }
     try {

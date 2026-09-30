@@ -6,6 +6,22 @@ function createCloudStore(store) {
         getLastSyncAt: () => store.get('cloud.lastSyncAt', null),
         getLastSyncError: () => store.get('cloud.lastSyncError', null),
 
+        // BUGFIX (2026-09-30, live report — "разложила всё по папкам,
+        // закрыла приложение принудительно, запустила и всё повываливалось
+        // из папок"): local edits (folders, messenger order, etc.) are
+        // written to disk immediately, but the matching cloud push is async
+        // (debounced + a real network round-trip) and never awaited by any
+        // caller. A hard kill (Task Manager "End Task", not the app's own
+        // Выход) skips before-quit entirely, so that push can simply never
+        // happen. On the NEXT launch, loadData()/applyCloudBootData() pulls
+        // from the cloud and unconditionally overwrites local folders/
+        // messengers/workspaces with whatever the cloud last had — which is
+        // now the stale, pre-reorganization snapshot, silently destroying
+        // the local work that never made it to the server. See usage in
+        // notifySyncedStoreWrite() (renderer.js) and loadData() below.
+        getPendingLocalChanges: () => store.get('cloud.pendingLocalChanges', false),
+        setPendingLocalChanges: (value) => store.set('cloud.pendingLocalChanges', !!value),
+
         setAuth: (user, accessToken, refreshToken) => {
             // SECURITY: 'cloud.user' is a protected, main-process-owned key
             // (see PROTECTED_SET_KEYS in main.js) — main already persisted it
@@ -191,6 +207,10 @@ function createCloudApi({
             if (result.success) {
                 cloudStore.setLastSyncAt(new Date().toISOString())
                 cloudStore.setLastSyncError(null)
+                // The cloud now genuinely has this device's latest local
+                // edit — see getPendingLocalChanges() above for why this
+                // matters on the next boot.
+                cloudStore.setPendingLocalChanges(false)
             } else {
                 cloudStore.setLastSyncError(result.error || 'Sync push failed')
             }

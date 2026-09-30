@@ -636,7 +636,39 @@ module.exports = {
         daysLeftTooltip: 'Restant'
     },
 
+    quickReplies: {
+        title: "Réponses rapides",
+        add: "Nouvelle réponse",
+        searchPlaceholder: "Rechercher des réponses…",
+        titlePlaceholder: "Nom, p. ex. « Adresse »",
+        textPlaceholder: "Texte de la réponse — jusqu’à 2000 caractères",
+        cancel: "Annuler",
+        save: "Enregistrer",
+        clickToCopy: "Cliquer pour copier",
+        copied: "Copié",
+        edit: "Modifier",
+        delete: "Supprimer",
+        teamBadge: "du responsable",
+        teamSection: "Équipe",
+        ownSection: "Mes réponses",
+        nothingFound: "Aucun résultat",
+        empty: "Enregistrez les textes que vous envoyez souvent aux clients : adresse, horaires, tarifs. Ensuite, un clic suffit pour les copier.",
+        addFirst: "Ajouter une première réponse",
+        hint: "Cliquez sur une réponse pour la copier. Collez-la dans le chat : {keys}",
+        deleteTitle: "Supprimer la réponse rapide ?",
+        deleteText: "La réponse « {title} » sera supprimée."
+    },
+
+    orgAlerts: {
+        title: "Des clients attendent une réponse",
+        minutes: "{m} min",
+        hours: "{h} h",
+        hoursMinutes: "{h} h {m} min",
+        waits: "attend depuis {time}"
+    },
+
     rightbar: {
+        quickReplies: "Réponses rapides",
         assistant: 'Assistant Centrio',
         assistantSoon: 'Bientôt disponible',
         todos: 'Tâches',
@@ -752,6 +784,8 @@ module.exports = {
     },
 
     pro: {
+        quickRepliesTitle: "Réponses rapides — Pro uniquement",
+        quickRepliesDesc: "Enregistrez des textes prêts à l’emploi (adresse, horaires, tarifs) et copiez-les dans n’importe quel chat en un clic. Disponible avec le plan Pro ou Team.",
         messengerLimitTitle:  'Pro requis',
         messengerLimitDesc:   'Le plan gratuit prend en charge jusqu\'à {n} messengers. Passez à Pro pour illimité.',
         themesTitle:          'Thèmes — Pro uniquement',

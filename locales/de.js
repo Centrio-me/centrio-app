@@ -636,7 +636,39 @@ module.exports = {
         daysLeftTooltip: 'Verbleibend'
     },
 
+    quickReplies: {
+        title: "Schnellantworten",
+        add: "Neue Antwort",
+        searchPlaceholder: "Antworten durchsuchen…",
+        titlePlaceholder: "Name, z. B. „Adresse“",
+        textPlaceholder: "Antworttext – bis zu 2000 Zeichen",
+        cancel: "Abbrechen",
+        save: "Speichern",
+        clickToCopy: "Zum Kopieren klicken",
+        copied: "Kopiert",
+        edit: "Bearbeiten",
+        delete: "Löschen",
+        teamBadge: "von der Leitung",
+        teamSection: "Team",
+        ownSection: "Meine Antworten",
+        nothingFound: "Nichts gefunden",
+        empty: "Speichern Sie Texte, die Sie Kunden oft schreiben: Adresse, Öffnungszeiten, Preise. Dann genügt ein Klick zum Kopieren.",
+        addFirst: "Erste Antwort hinzufügen",
+        hint: "Auf eine Antwort klicken, um sie zu kopieren. Im Chat einfügen: {keys}",
+        deleteTitle: "Schnellantwort löschen?",
+        deleteText: "Die Antwort „{title}“ wird gelöscht."
+    },
+
+    orgAlerts: {
+        title: "Kunden warten auf Antwort",
+        minutes: "{m} Min.",
+        hours: "{h} Std.",
+        hoursMinutes: "{h} Std. {m} Min.",
+        waits: "wartet {time}"
+    },
+
     rightbar: {
+        quickReplies: "Schnellantworten",
         assistant: 'Centrio Assistent',
         assistantSoon: 'Bald verfügbar',
         todos: 'Aufgaben',
@@ -752,6 +784,8 @@ module.exports = {
     },
 
     pro: {
+        quickRepliesTitle: "Schnellantworten — nur Pro",
+        quickRepliesDesc: "Speichern Sie fertige Texte – Adresse, Öffnungszeiten, Preise – und kopieren Sie sie mit einem Klick in jeden Chat. Verfügbar im Pro- oder Team-Plan.",
         messengerLimitTitle:  'Pro erforderlich',
         messengerLimitDesc:   'Der kostenlose Plan unterstützt bis zu {n} Messenger. Auf Pro upgraden für unbegrenzte Anzahl.',
         themesTitle:          'Themes — nur in Pro',

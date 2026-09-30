@@ -724,6 +724,36 @@
                 <div class="app-notif-empty" data-i18n="todos.empty"></div>
             </div>
         </div>
+        <div id="quickRepliesPanel" class="right-panel-section quick-replies-panel">
+            <div class="app-notif-header">
+                <span data-i18n="quickReplies.title"></span>
+                <div class="app-notif-header-actions">
+                    <button type="button" id="quickRepliesAddBtn" class="app-notif-mute-btn" data-i18n-title="quickReplies.add">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+                    </button>
+                </div>
+            </div>
+            <div class="app-notif-search">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="11" cy="11" r="8"/>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                </svg>
+                <input type="text" id="quickRepliesSearch" class="app-notif-search-input" data-i18n-placeholder="quickReplies.searchPlaceholder" maxlength="80">
+            </div>
+            <div id="quickRepliesEditor" class="qr-editor" style="display:none;">
+                <input type="text" id="quickRepliesTitleInput" class="qr-editor-title" data-i18n-placeholder="quickReplies.titlePlaceholder" maxlength="80">
+                <textarea id="quickRepliesTextInput" class="qr-editor-text" data-i18n-placeholder="quickReplies.textPlaceholder" maxlength="2000" rows="6"></textarea>
+                <div class="qr-editor-footer">
+                    <span id="quickRepliesCounter" class="qr-editor-counter">0 / 2000</span>
+                    <div class="qr-editor-buttons">
+                        <button type="button" id="quickRepliesCancelBtn" class="qr-btn-ghost" data-i18n="quickReplies.cancel"></button>
+                        <button type="button" id="quickRepliesSaveBtn" class="qr-btn-primary" data-i18n="quickReplies.save"></button>
+                    </div>
+                </div>
+            </div>
+            <div id="quickRepliesList" class="app-notif-list qr-list"></div>
+            <div id="quickRepliesHint" class="qr-hint"></div>
+        </div>
         <div id="notesPanel" class="right-panel-section notes-panel">
             <div id="notesListView" class="notes-list-view">
                 <div class="app-notif-header">
@@ -848,7 +878,7 @@
                  the slot reserved in the flex column so siblings never
                  move — see matching change in renderer/notes-bind.js
                  updateButtonVisibility(). -->
-            <button id="notesBtn" class="activity-btn" data-i18n-title="rightbar.notes" style="visibility:hidden;">
+            <button id="notesBtn" class="activity-btn" data-i18n-title="rightbar.notes">
                 <!-- BUGFIX (2026-09-09, "Иконка заметок кривая у тебя" — live
                      user report): the old path closed from (20,9) straight
                      back to (9,3) — a stray diagonal — while the "fold"
@@ -886,6 +916,13 @@
                     <circle cx="18" cy="16" r="3"/>
                 </svg>
                 <span class="activity-btn-label" data-i18n="rightbar.mediaPlayer"></span>
+            </button>
+            <button id="quickRepliesBtn" class="activity-btn" data-i18n-title="rightbar.quickReplies">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                    <path d="M13 6.5l-3 4h4l-3 4"/>
+                </svg>
+                <span class="activity-btn-label" data-i18n="rightbar.quickReplies"></span>
             </button>
         </div>
         <div class="activity-bottom">
@@ -1117,6 +1154,18 @@
         <button class="changelog-popup-close" id="changelogPopupClose">✕</button>
     </div>
     <div class="changelog-popup-body">
+        <div class="changelog-entry">
+            <div class="changelog-version">v2.9.9</div>
+            <ul class="changelog-list">
+                <li>Новое (PRO): быстрые ответы — иконка в правой панели. Сохраните тексты, которые часто пишете клиентам (адрес, часы работы, цены), и копируйте их в любой чат одним кликом. Синхронизируются между устройствами</li>
+                <li>Новое (Centrio TEAM): владелец задаёт быстрые ответы для всей команды на centrio.me/team — они сразу появляются у сотрудников</li>
+                <li>Новое (Centrio TEAM): оповещения «Клиент ждёт ответа» — если сообщение в мессенджере сотрудника долго остаётся непрочитанным, владелец получает уведомление в приложение, на почту или в Telegram. Время ожидания, повторы, рабочие часы и сотрудники настраиваются на centrio.me/team</li>
+                <li>Исправлено: после принудительного закрытия программы мессенджеры могли «выпадать» из папок — несохранённые в облаке изменения больше не перезаписываются старой копией</li>
+                <li>Исправлено (Centrio TEAM): если сотрудник выключал звук у назначенного мессенджера, владелец не видел в нём непрочитанные сообщения</li>
+                <li>Исправлено: светлая тема — тёмные подсказки при наведении на мессенджер, тёмные заголовки в окне добавления мессенджера, белые прямоугольники в полях поиска</li>
+                <li>Улучшено: иконка заметок видна всегда — без Pro при нажатии показывается предложение оформить Pro</li>
+            </ul>
+        </div>
         <div class="changelog-entry">
             <div class="changelog-version">v2.9.8</div>
             <ul class="changelog-list">

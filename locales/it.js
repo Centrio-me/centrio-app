@@ -636,7 +636,39 @@ module.exports = {
         daysLeftTooltip: 'Rimanenti'
     },
 
+    quickReplies: {
+        title: "Risposte rapide",
+        add: "Nuova risposta",
+        searchPlaceholder: "Cerca nelle risposte…",
+        titlePlaceholder: "Nome, ad es. «Indirizzo»",
+        textPlaceholder: "Testo della risposta: fino a 2000 caratteri",
+        cancel: "Annulla",
+        save: "Salva",
+        clickToCopy: "Clicca per copiare",
+        copied: "Copiato",
+        edit: "Modifica",
+        delete: "Elimina",
+        teamBadge: "dal responsabile",
+        teamSection: "Team",
+        ownSection: "Le mie risposte",
+        nothingFound: "Nessun risultato",
+        empty: "Salva i testi che scrivi spesso ai clienti: indirizzo, orari, prezzi. Poi basta un clic per copiarli.",
+        addFirst: "Aggiungi la prima risposta",
+        hint: "Clicca su una risposta per copiarla. Incollala nella chat: {keys}",
+        deleteTitle: "Eliminare la risposta rapida?",
+        deleteText: "La risposta «{title}» verrà eliminata."
+    },
+
+    orgAlerts: {
+        title: "Ci sono clienti in attesa di risposta",
+        minutes: "{m} min",
+        hours: "{h} h",
+        hoursMinutes: "{h} h {m} min",
+        waits: "in attesa da {time}"
+    },
+
     rightbar: {
+        quickReplies: "Risposte rapide",
         assistant: 'Assistente Centrio',
         assistantSoon: 'Presto disponibile',
         todos: 'Attività',
@@ -752,6 +784,8 @@ module.exports = {
     },
 
     pro: {
+        quickRepliesTitle: "Risposte rapide — solo Pro",
+        quickRepliesDesc: "Salva testi pronti (indirizzo, orari, prezzi) e copiali in qualsiasi chat con un clic. Disponibile con il piano Pro o Team.",
         messengerLimitTitle:  'Pro richiesto',
         messengerLimitDesc:   'Il piano gratuito supporta fino a {n} messenger. Passa a Pro per illimitati.',
         themesTitle:          'Temi — solo in Pro',

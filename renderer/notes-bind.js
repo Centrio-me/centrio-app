@@ -76,15 +76,16 @@ function bindNotesUi({ store, tGet, authorizedInvoke, openRightPanel, closeRight
     // приложение проверяет заново (не доверяя локальному store) на каждый
     // реальный запрос к серверу через 403 pro_required, см. handleAuthError
     // ниже.
+    function hasAccess() {
+        return typeof getUserIsPro === 'function' ? getUserIsPro() : true
+    }
+
+    // The button is always visible (no gap in the right icon column); without
+    // Pro a click shows the standard Pro upsell instead of the panel.
     function updateButtonVisibility() {
-        const visible = typeof getUserIsPro === 'function' ? getUserIsPro() : true
-        // BUGFIX (2026-09-09, "иконка медиа прыгает с места на место") —
-        // visibility:hidden instead of display:none keeps this button's slot
-        // reserved in the shared .activity-top flex column, so mediaPlayerBtn
-        // (rendered right after it in index.html) doesn't shift position
-        // every time Notes gets enabled/disabled or re-checked for Pro.
-        btn.style.visibility = visible ? '' : 'hidden'
-        if (!visible && panel.classList.contains('active')) closeRightPanel?.()
+        btn.style.visibility = ''
+        btn.classList.toggle('pro-locked', !hasAccess())
+        if (!hasAccess() && panel.classList.contains('active')) closeRightPanel?.()
     }
 
     function previewText(note) {
@@ -673,6 +674,10 @@ function bindNotesUi({ store, tGet, authorizedInvoke, openRightPanel, closeRight
 
     btn.addEventListener('click', (e) => {
         e.stopPropagation()
+        if (!hasAccess()) {
+            requirePro?.('notes')
+            return
+        }
         openPanel()
     })
 

@@ -636,7 +636,39 @@ module.exports = {
         daysLeftTooltip: '剩余'
     },
 
+    quickReplies: {
+        title: "快捷回复",
+        add: "新建回复",
+        searchPlaceholder: "搜索回复…",
+        titlePlaceholder: "名称，例如“地址”",
+        textPlaceholder: "回复内容，最多 2000 个字符",
+        cancel: "取消",
+        save: "保存",
+        clickToCopy: "点击复制",
+        copied: "已复制",
+        edit: "编辑",
+        delete: "删除",
+        teamBadge: "来自负责人",
+        teamSection: "团队",
+        ownSection: "我的回复",
+        nothingFound: "未找到结果",
+        empty: "保存常发给客户的文字：地址、营业时间、价格。之后一键即可复制。",
+        addFirst: "添加第一条回复",
+        hint: "点击回复即可复制，然后粘贴到聊天中：{keys}",
+        deleteTitle: "删除快捷回复？",
+        deleteText: "回复“{title}”将被删除。"
+    },
+
+    orgAlerts: {
+        title: "有客户在等待回复",
+        minutes: "{m} 分钟",
+        hours: "{h} 小时",
+        hoursMinutes: "{h} 小时 {m} 分钟",
+        waits: "已等待 {time}"
+    },
+
     rightbar: {
+        quickReplies: "快捷回复",
         assistant: 'Centrio 助手',
         assistantSoon: '即将推出',
         todos: '任务',
@@ -752,6 +784,8 @@ module.exports = {
     },
 
     pro: {
+        quickRepliesTitle: "快捷回复 — 仅限 Pro",
+        quickRepliesDesc: "保存常用文字（地址、营业时间、价格），一键复制到任意聊天。Pro 或 Team 计划可用。",
         messengerLimitTitle:  '需要 Pro',
         messengerLimitDesc:   '免费计划最多支持 {n} 个应用。升级到 Pro 可无限添加。',
         themesTitle:          '主题 — 仅 Pro 版',

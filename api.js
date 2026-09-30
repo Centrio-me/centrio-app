@@ -268,6 +268,16 @@ module.exports = {
         return request('POST', `/api/org/${orgId}/messenger-stats`, { stats }, token)
     },
 
+    orgGetQuickReplies(token, orgId) {
+        return request('GET', `/api/org/${encodeURIComponent(orgId)}/quick-replies`, null, token)
+    },
+
+    // OWNER/ADMIN only server-side — "Клиент ждёт ответа" alerts created
+    // after `afterIso`, for the "В приложение Centrio" delivery channel.
+    orgGetAlerts(token, orgId, afterIso) {
+        return request('GET', `/api/org/${encodeURIComponent(orgId)}/alerts?after=${encodeURIComponent(afterIso)}`, null, token)
+    },
+
     // FEATURE (2026-09-11, встроенный чат-виджет — Pro). Desktop-side
     // (authenticated) API for managing the site + reading/replying to
     // conversations. The public, unauthenticated widget-facing side never
