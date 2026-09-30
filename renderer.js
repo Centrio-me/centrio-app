@@ -2618,6 +2618,7 @@ function applyTabZoom(level) {
         resetPinSetup,
         setActivePinBlock,
         getActiveWebview,
+        state,
     })
 
     const {
@@ -3142,7 +3143,6 @@ function applyTabZoom(level) {
         menuToggleBtn,
         applyMenuCollapsed,
         applyAppZoom,
-        applyTabZoom,
         openSettings
     })
 
@@ -3570,6 +3570,7 @@ function applyTabZoom(level) {
         invokeIpc,
         cloudStore,
         state,
+        store,
         applyTheme,
         addOrgAssignedMessenger,
         removeOrgAssignedMessenger,

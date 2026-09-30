@@ -186,6 +186,12 @@ function createSettingsUiApi({
     resetPinSetup,
     setActivePinBlock,
     getActiveWebview,
+    // FEATURE (2026-09-30, live bug report — "тема не меняется у сотрудников
+    // команды, если менять на главном акке"): shared with
+    // renderer/org-team.js via the same `state` object — see applyTheme()
+    // below for why this needs to live here instead of just being handled
+    // entirely inside org-team.js.
+    state = {},
 }) {
     function getSettings() {
         return store.get('settings', {}) || {}
@@ -215,16 +221,32 @@ function createSettingsUiApi({
         }
     }
 
+    // BUGFIX (2026-09-30, live report: "тема не меняет если с главного акка
+    // меняю. Должен же и у подопечных меняться"): the org's forced theme
+    // (renderer/org-team.js's syncForcedSettings, polled every 5 min) was
+    // getting silently reverted back to the member's own personal theme by
+    // ANY of several unrelated code paths that also call applyTheme()/
+    // applySettings() with the personal `settings.theme` value — initSettings()
+    // at boot, the cloud-sync "late data arrived" handler in renderer.js's
+    // loadData(), and the retroactive Pro-lock reapplication. None of them
+    // knew an org-forced theme was in effect; whichever one last happened to
+    // run won the DOM, with no consistent ordering guarantee against
+    // org-team.js's own poll. Fixed at the root instead of chasing every call
+    // site: applyTheme() itself now checks state.orgForcedTheme (set by
+    // org-team.js) and, when present, ALWAYS wins over whatever theme it was
+    // asked to apply — every caller above keeps working unmodified, they just
+    // stop being able to override an active org policy.
     function applyTheme(theme) {
+        const effectiveTheme = state.orgForcedTheme || theme
         const root = document.documentElement
-        _adaptiveActive = (theme === 'adaptive')
+        _adaptiveActive = (effectiveTheme === 'adaptive')
         if (!_adaptiveActive) {
             _clearAdaptiveVars()
         }
-        root.setAttribute('data-theme', theme)
+        root.setAttribute('data-theme', effectiveTheme)
 
         const settings = getSettings()
-        if (settings.accentColor && theme !== 'adaptive') {
+        if (settings.accentColor && effectiveTheme !== 'adaptive') {
             root.style.setProperty('--accent', settings.accentColor)
             root.style.setProperty('--accent-hover', settings.accentColor)
         }

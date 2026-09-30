@@ -9229,7 +9229,35 @@ button:active {
     transition: border-color 0.15s;
 }
 .cp-ticket-row:hover { border-color: var(--accent); }
-.cp-ticket-main { min-width: 0; }
+.cp-ticket-main { min-width: 0; flex: 1; }
+/* FEATURE (2026-09-30, item 3 — «справа от тикета крестик»): groups the
+   status pill and the delete button together on the right, independent of
+   .cp-ticket-row's own justify-content:space-between (which otherwise
+   would spread 3 direct children apart evenly instead of keeping these two
+   snug together, subject/date on the far left). */
+.cp-ticket-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+.cp-ticket-delete-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 6px;
+    border: none;
+    background: transparent;
+    color: var(--text-muted, var(--text-secondary));
+    cursor: pointer;
+    flex-shrink: 0;
+    opacity: 0;
+    transition: opacity 0.15s, background 0.15s, color 0.15s;
+}
+.cp-ticket-row:hover .cp-ticket-delete-btn { opacity: 1; }
+.cp-ticket-delete-btn:hover { background: rgba(239,68,68,0.12); color: var(--danger); }
 .cp-ticket-subject {
     font-size: 12.5px;
     font-weight: 600;

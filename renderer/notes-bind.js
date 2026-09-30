@@ -64,17 +64,20 @@ function bindNotesUi({ store, tGet, authorizedInvoke, openRightPanel, closeRight
         return div.innerHTML
     }
 
-    function isEnabled() {
-        const state = store.get('extensionsState', {}) || {}
-        return state.notes === true
-    }
-
-    // Показываем кнопку только если плагин включён в Настройках И план это
-    // позволяет — то же самое приложение проверяет заново (не доверяя
-    // локальному store) на каждый реальный запрос к серверу через 403
-    // pro_required, см. handleAuthError ниже.
+    // REDESIGN (2026-09-30, "Заметки - теперь по-умолчанию внутри программы.
+    // Убираем её из расширений... Пусть всегда доступна будет для PRO" —
+    // live request): no longer gated behind Settings → Расширения — used to
+    // require `store.get('extensionsState', {}).notes === true` in addition
+    // to being Pro, so a Pro user who'd never opened Extensions and flipped
+    // the toggle simply never saw the notes button. Now visible purely off
+    // Pro status, same as any other core Pro feature.
+    //
+    // Показываем кнопку только если план это позволяет — то же самое
+    // приложение проверяет заново (не доверяя локальному store) на каждый
+    // реальный запрос к серверу через 403 pro_required, см. handleAuthError
+    // ниже.
     function updateButtonVisibility() {
-        const visible = isEnabled() && (typeof getUserIsPro === 'function' ? getUserIsPro() : true)
+        const visible = typeof getUserIsPro === 'function' ? getUserIsPro() : true
         // BUGFIX (2026-09-09, "иконка медиа прыгает с места на место") —
         // visibility:hidden instead of display:none keeps this button's slot
         // reserved in the shared .activity-top flex column, so mediaPlayerBtn

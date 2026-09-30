@@ -246,66 +246,71 @@
                     <span class="menu-drop-shortcut">Ctrl+,</span>
                 </div>
                 <div class="menu-drop-divider"></div>
-                <div class="menu-drop-item" id="menuUndo">
+                <!-- REDESIGN (2026-09-30, "убираем - отменить и повторить,
+                     делаем ещё один выпадающий список - правка" — live
+                     request): Undo/Redo dropped entirely (per explicit
+                     "убираем", not relocated). Cut/Copy/Paste/Delete/Select
+                     all moved from flat top-level rows into their own
+                     submenu, same .menu-has-sub/.menu-submenu pattern
+                     #menuAppZoom already used below — opens leftward
+                     automatically (see that CSS), no new positioning logic
+                     needed. IDs unchanged, so menu-bind.js's existing
+                     handlers keep working without modification. -->
+                <div class="menu-drop-item menu-has-sub" id="menuEdit">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
-                        <path d="M3 7v6h6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-                        <path d="M3 13a9 9 0 1 0 2.64-6.36L3 9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
                     </svg>
-                    <span data-i18n="menu.undo">Отменить</span>
-                    <span class="menu-drop-shortcut">Ctrl+Z</span>
-                </div>
-                <div class="menu-drop-item" id="menuRedo">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
-                        <path d="M21 7v6h-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-                        <path d="M21 13a9 9 0 1 1-2.64-6.36L21 9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                    <span data-i18n="menu.edit">Правка</span>
+                    <svg class="menu-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none">
+                        <path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                     </svg>
-                    <span data-i18n="menu.redo">Повторить</span>
-                    <span class="menu-drop-shortcut">Ctrl+Y</span>
-                </div>
-                <div class="menu-drop-divider"></div>
-                <div class="menu-drop-item" id="menuCut">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
-                        <circle cx="6" cy="20" r="2" stroke="currentColor" stroke-width="1.8"/>
-                        <circle cx="6" cy="4" r="2" stroke="currentColor" stroke-width="1.8"/>
-                        <line x1="8.12" y1="5.17" x2="19" y2="15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-                        <line x1="8.12" y1="18.83" x2="19" y2="9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-                        <line x1="19" y1="15" x2="19" y2="9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-                    </svg>
-                    <span data-i18n="menu.cut">Вырезать</span>
-                    <span class="menu-drop-shortcut">Ctrl+X</span>
-                </div>
-                <div class="menu-drop-item" id="menuCopy">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
-                        <rect x="9" y="9" width="13" height="13" rx="2" stroke="currentColor" stroke-width="1.8"/>
-                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-                    </svg>
-                    <span data-i18n="menu.copy">Копировать</span>
-                    <span class="menu-drop-shortcut">Ctrl+C</span>
-                </div>
-                <div class="menu-drop-item" id="menuPaste">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
-                        <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-                        <rect x="8" y="2" width="8" height="4" rx="1" stroke="currentColor" stroke-width="1.8"/>
-                    </svg>
-                    <span data-i18n="menu.paste">Вставить</span>
-                    <span class="menu-drop-shortcut">Ctrl+V</span>
-                </div>
-                <div class="menu-drop-item" id="menuDelete">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
-                        <polyline points="3 6 5 6 21 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-                        <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-                    </svg>
-                    <span data-i18n="menu.delete">Удалить</span>
-                    <span class="menu-drop-shortcut">Del</span>
-                </div>
-                <div class="menu-drop-divider"></div>
-                <div class="menu-drop-item" id="menuSelectAll">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
-                        <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" stroke-width="1.8"/>
-                        <path d="M9 9h6v6H9z" stroke="currentColor" stroke-width="1.8"/>
-                    </svg>
-                    <span data-i18n="menu.selectAll">Выделить всё</span>
-                    <span class="menu-drop-shortcut">Ctrl+A</span>
+                    <div class="menu-submenu">
+                        <div class="menu-drop-item" id="menuCut">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                                <circle cx="6" cy="20" r="2" stroke="currentColor" stroke-width="1.8"/>
+                                <circle cx="6" cy="4" r="2" stroke="currentColor" stroke-width="1.8"/>
+                                <line x1="8.12" y1="5.17" x2="19" y2="15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                                <line x1="8.12" y1="18.83" x2="19" y2="9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                                <line x1="19" y1="15" x2="19" y2="9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                            </svg>
+                            <span data-i18n="menu.cut">Вырезать</span>
+                            <span class="menu-drop-shortcut">Ctrl+X</span>
+                        </div>
+                        <div class="menu-drop-item" id="menuCopy">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                                <rect x="9" y="9" width="13" height="13" rx="2" stroke="currentColor" stroke-width="1.8"/>
+                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                            </svg>
+                            <span data-i18n="menu.copy">Копировать</span>
+                            <span class="menu-drop-shortcut">Ctrl+C</span>
+                        </div>
+                        <div class="menu-drop-item" id="menuPaste">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                                <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                                <rect x="8" y="2" width="8" height="4" rx="1" stroke="currentColor" stroke-width="1.8"/>
+                            </svg>
+                            <span data-i18n="menu.paste">Вставить</span>
+                            <span class="menu-drop-shortcut">Ctrl+V</span>
+                        </div>
+                        <div class="menu-drop-item" id="menuDelete">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                                <polyline points="3 6 5 6 21 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                            </svg>
+                            <span data-i18n="menu.delete">Удалить</span>
+                            <span class="menu-drop-shortcut">Del</span>
+                        </div>
+                        <div class="menu-drop-divider"></div>
+                        <div class="menu-drop-item" id="menuSelectAll">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                                <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" stroke-width="1.8"/>
+                                <path d="M9 9h6v6H9z" stroke="currentColor" stroke-width="1.8"/>
+                            </svg>
+                            <span data-i18n="menu.selectAll">Выделить всё</span>
+                            <span class="menu-drop-shortcut">Ctrl+A</span>
+                        </div>
+                    </div>
                 </div>
                 <div class="menu-drop-divider"></div>
                 <div class="menu-drop-item menu-has-sub" id="menuAppZoom">
@@ -349,25 +354,14 @@
                         </div>
                     </div>
                 </div>
-                <div class="menu-drop-divider"></div>
-                <div class="menu-drop-item" id="menuZoomIn">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
-                        <circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="1.8"/>
-                        <path d="M21 21l-4.35-4.35" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-                        <path d="M8 11h6M11 8v6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-                    </svg>
-                    <span data-i18n="menu.tabZoomIn">Увеличить вкладку</span>
-                    <span class="menu-drop-shortcut">Ctrl+=</span>
-                </div>
-                <div class="menu-drop-item" id="menuZoomOut">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
-                        <circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="1.8"/>
-                        <path d="M21 21l-4.35-4.35" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-                        <path d="M8 11h6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-                    </svg>
-                    <span data-i18n="menu.tabZoomOut">Уменьшить вкладку</span>
-                    <span class="menu-drop-shortcut">Ctrl+-</span>
-                </div>
+                <!-- REDESIGN (2026-09-30, "так оно станет компактным" — live
+                     request): tab-content zoom (#menuZoomIn/#menuZoomOut)
+                     dropped from this menu — keeps working via its
+                     Ctrl+=/Ctrl+- shortcuts, just not listed here anymore.
+                     Also removed from menu-bind.js's unguarded
+                     getElementById(...).addEventListener(...) calls, which
+                     would otherwise throw on startup now that the elements
+                     are gone. -->
                 <div class="menu-drop-divider"></div>
                 <!-- BUGFIX (2026-09-17, "Там вообще не нужны - во весь экран,
                      скрыть и закрыть" — live user report): #menuFullscreen/
@@ -386,14 +380,12 @@
                      menu-bind.js's existing unguarded
                      getElementById(id).addEventListener(...) calls for them
                      don't throw on startup. -->
-                <div class="menu-drop-item" id="menuSupport">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
-                        <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.8"/>
-                        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-                        <line x1="12" y1="17" x2="12.01" y2="17" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                    </svg>
-                    <span data-i18n="menu.support">Поддержка</span>
-                </div>
+                <!-- REDESIGN (2026-09-30, "убираем - поддержка" — live
+                     request, "так оно станет компактным"): #menuSupport
+                     dropped — support has its own dedicated sidebar icon now
+                     (support-tickets-ui.js), no need for a second entry
+                     point here. Also removed from menu-bind.js's unguarded
+                     getElementById('menuSupport').addEventListener(...). -->
                 <div class="menu-drop-item" id="menuAbout">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
                         <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.8"/>
@@ -1125,6 +1117,16 @@
         <button class="changelog-popup-close" id="changelogPopupClose">✕</button>
     </div>
     <div class="changelog-popup-body">
+        <div class="changelog-entry">
+            <div class="changelog-version">v2.9.8</div>
+            <ul class="changelog-list">
+                <li>Исправлено (Centrio TEAM): тема оформления, принудительно заданная владельцем команды, могла тут же откатываться обратно на личную тему сотрудника — теперь применяется и держится надёжно у всех участников команды</li>
+                <li>Исправлено (Centrio TEAM): заметки у некоторых участников команды не открывались (иконка нажималась, панель тут же закрывалась) — причина в проверке доступа, не учитывавшей Pro через оплаченное место в команде</li>
+                <li>Новое: заметки (PRO) теперь доступны сразу, без необходимости включать их в Настройки → Расширения</li>
+                <li>Новое: обращения в поддержку можно скрыть из своего списка (крестик рядом с обращением) — если поддержка ответит по нему снова, оно появится опять</li>
+                <li>Улучшено: главное меню (три палочки) стало компактнее — «Отменить»/«Повторить» убраны, «Вырезать/Копировать/Вставить/Удалить/Выделить всё» собраны в подпункт «Правка»</li>
+            </ul>
+        </div>
         <div class="changelog-entry">
             <div class="changelog-version">v2.9.7</div>
             <ul class="changelog-list">

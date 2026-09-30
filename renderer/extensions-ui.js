@@ -55,22 +55,12 @@ function createExtensionsUiApi({
             titleKey: 'extensions.split.title',
             descKey: 'extensions.split.desc'
         },
-        {
-            id: 'notes',
-            // BUGFIX (2026-09-09, "Иконка заметок кривая" — live user
-            // report): see matching fix + explanation in index.html notesBtn.
-            icon: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                <path d="M14 2v6h6"/>
-                <line x1="8" y1="13" x2="16" y2="13"/>
-                <line x1="8" y1="17" x2="13" y2="17"/>
-            </svg>`,
-            color: '#fbbf24',
-            bg: 'rgba(251,191,36,.13)',
-            border: 'rgba(251,191,36,.28)',
-            titleKey: 'extensions.notes.title',
-            descKey: 'extensions.notes.desc'
-        },
+        // REMOVED (2026-09-30, "Заметки - теперь по-умолчанию внутри
+        // программы. Убираем её из расширений. Не нужна она там. Не нужно
+        // её специально включать. Пусть всегда доступна будет для PRO" —
+        // live request): 'notes' dropped from this list — no longer a
+        // toggleable extension, always visible for Pro (see
+        // renderer/notes-bind.js's updateButtonVisibility()).
         {
             // Рабочие пространства (2026-09-14, второй пересмотр) — плагин по
             // прямому запросу пользователя: "Папки нужно вернуть... Папки и

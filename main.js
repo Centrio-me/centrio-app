@@ -292,7 +292,10 @@ const PROTECTED_SET_KEYS = new Set(['cloud', 'cloud.user', 'localProTrialExpires
 // renderer/extensions-ui.js) — kept here so the store:set backstop below and
 // any future main-process check can share one source of truth instead of
 // duplicating the id list.
-const NATIVE_EXTENSION_IDS = ['adblock', 'screenshot', 'darkmode', 'split', 'notes', 'workspaces']
+// 'notes' removed (2026-09-30, "убираем её из расширений... пусть всегда
+// доступна будет для PRO") — no longer a toggleable native extension, see
+// renderer/notes-bind.js.
+const NATIVE_EXTENSION_IDS = ['adblock', 'screenshot', 'darkmode', 'split', 'workspaces']
 
 // SECURITY: free-plan defaults for the Pro-gated theme/accent-color settings
 // (settings-bind.js's requirePro('themes')/requirePro('accent') gates the

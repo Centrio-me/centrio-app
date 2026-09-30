@@ -95,6 +95,50 @@ function bindSupportTicketsUi({
         try { localStorage.setItem(SEEN_COUNTS_KEY, JSON.stringify(map)) } catch {}
     }
 
+    // FEATURE (2026-09-30, item 3 — "Тикеты можно удалять. Закрытый тикет
+    // не должен постоянно висеть у клиента... Они в поддержке не удаляются.
+    // Если я снова туда напишу - оно появится у клиента"): a purely
+    // client-side "hide" — nothing is deleted server-side (no DELETE
+    // endpoint call at all), so the admin/Telegram side is completely
+    // unaffected. Stores the message COUNT at the moment of dismissal
+    // (`{ [ticketId]: countThen }`), same pattern as SEEN_COUNTS_KEY above —
+    // a ticket stays hidden only as long as its current message count is
+    // still <= what it was when dismissed; a genuinely new admin/bot reply
+    // bumps the count and the ticket reappears on its own next poll.
+    const DISMISSED_TICKETS_KEY = 'centrio-support-dismissed-tickets'
+    function getDismissed() {
+        try { return JSON.parse(localStorage.getItem(DISMISSED_TICKETS_KEY) || '{}') }
+        catch { return {} }
+    }
+    function setDismissed(map) {
+        try { localStorage.setItem(DISMISSED_TICKETS_KEY, JSON.stringify(map)) } catch {}
+    }
+    function dismissTicket(ticketId, messageCount) {
+        const dismissed = getDismissed()
+        dismissed[ticketId] = messageCount
+        setDismissed(dismissed)
+    }
+    // Filters out hidden tickets AND cleans up any dismissed-entry that no
+    // longer applies (message count moved past it) — keeps localStorage
+    // from accumulating stale entries for tickets that already came back.
+    function filterDismissed(tickets) {
+        const dismissed = getDismissed()
+        let changed = false
+        const visible = tickets.filter((t) => {
+            const dismissedAt = dismissed[t.id]
+            if (dismissedAt === undefined) return true
+            const count = t._count?.messages || 0
+            if (count > dismissedAt) {
+                delete dismissed[t.id]
+                changed = true
+                return true
+            }
+            return false
+        })
+        if (changed) setDismissed(dismissed)
+        return visible
+    }
+
     function updateBadge(hasUnnotified) {
         if (!sidebarBadgeEl) return
         sidebarBadgeEl.style.display = hasUnnotified ? '' : 'none'
@@ -170,10 +214,14 @@ function bindSupportTicketsUi({
         const result = await authorizedInvoke('api-tickets-list').catch(() => null)
         loadingEl.style.display = 'none'
 
-        const tickets = result?.success ? (result.data?.tickets || []) : []
-        const hasUnnotified = await checkForNewReplies(tickets, { seedOnly })
+        const allTickets = result?.success ? (result.data?.tickets || []) : []
+        // checkForNewReplies runs against the FULL list (not the
+        // dismissed-filtered one below) — a ticket the user hid still needs
+        // to notify + reappear the moment support genuinely replies to it.
+        const hasUnnotified = await checkForNewReplies(allTickets, { seedOnly })
         if (!hasUnnotified) updateBadge(false)
 
+        const tickets = filterDismissed(allTickets)
         if (tickets.length === 0) {
             emptyEl.style.display = ''
             return
@@ -198,8 +246,34 @@ function bindSupportTicketsUi({
             pill.className = `cp-ticket-status-pill cp-ticket-status-${(t.status || '').toLowerCase()}`
             pill.textContent = statusLabel(t.status)
 
+            // FEATURE (2026-09-30, item 3 — «справа от тикета крестик»):
+            // stopPropagation so this doesn't also trigger the row's own
+            // openThread() click handler below.
+            const delBtn = document.createElement('button')
+            delBtn.className = 'cp-ticket-delete-btn'
+            delBtn.setAttribute('aria-label', tGet('cloud.supportDeleteBtn') || 'Удалить обращение')
+            delBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>'
+            delBtn.addEventListener('click', async (e) => {
+                e.stopPropagation()
+                const ok = await window.showConfirmModal?.({
+                    title: tGet('cloud.supportDeleteTitle') || 'Удалить обращение?',
+                    message: (tGet('cloud.supportDeleteText') || 'Обращение «{subject}» пропадёт из списка. Если поддержка снова ответит по нему — оно появится опять.').replace('{subject}', t.subject),
+                    confirmText: tGet('cloud.supportDelete') || 'Удалить',
+                    cancelText: tGet('cloud.supportCancel') || 'Отмена',
+                    danger: true
+                })
+                if (!ok) return
+                dismissTicket(t.id, t._count?.messages || 0)
+                loadTickets()
+            })
+
+            const right = document.createElement('div')
+            right.className = 'cp-ticket-right'
+            right.appendChild(pill)
+            right.appendChild(delBtn)
+
             row.appendChild(main)
-            row.appendChild(pill)
+            row.appendChild(right)
             row.addEventListener('click', () => openThread(t.id))
             listEl.appendChild(row)
         })

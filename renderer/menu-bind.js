@@ -5,7 +5,6 @@ function bindMenuUi({
     menuToggleBtn,
     applyMenuCollapsed,
     applyAppZoom,
-    applyTabZoom,
     openSettings
 }) {
     document.querySelectorAll('.menu-item').forEach(item => {
@@ -40,10 +39,12 @@ function bindMenuUi({
         ipcRenderer.send('quit-app', false)
     })
 
-    ;['menuUndo', 'menuRedo', 'menuCut', 'menuCopy', 'menuPaste', 'menuDelete', 'menuSelectAll'].forEach(id => {
+    // REDESIGN (2026-09-30, "убираем - отменить и повторить" — live
+    // request): menuUndo/menuRedo dropped from this list along with their
+    // elements in index.html — they're not relocated into #menuEdit, just
+    // removed entirely.
+    ;['menuCut', 'menuCopy', 'menuPaste', 'menuDelete', 'menuSelectAll'].forEach(id => {
         const cmds = {
-            menuUndo: 'undo',
-            menuRedo: 'redo',
             menuCut: 'cut',
             menuCopy: 'copy',
             menuPaste: 'paste',
@@ -72,16 +73,6 @@ function bindMenuUi({
         document.querySelectorAll('.menu-item').forEach(i => i.classList.remove('open'))
     })
 
-    document.getElementById('menuZoomIn').addEventListener('click', () => {
-        applyTabZoom(state.tabZoomLevel + 0.25)
-        document.querySelectorAll('.menu-item').forEach(i => i.classList.remove('open'))
-    })
-
-    document.getElementById('menuZoomOut').addEventListener('click', () => {
-        applyTabZoom(state.tabZoomLevel - 0.25)
-        document.querySelectorAll('.menu-item').forEach(i => i.classList.remove('open'))
-    })
-
     document.getElementById('menuFullscreen').addEventListener('click', () => {
         ipcRenderer.send('toggle-fullscreen')
         document.querySelectorAll('.menu-item').forEach(i => i.classList.remove('open'))
@@ -94,11 +85,6 @@ function bindMenuUi({
 
     document.getElementById('menuClose').addEventListener('click', () => {
         ipcRenderer.send('close-window')
-        document.querySelectorAll('.menu-item').forEach(i => i.classList.remove('open'))
-    })
-
-    document.getElementById('menuSupport').addEventListener('click', () => {
-        ipcRenderer.send('open-url', 'https://centrio.me/faq')
         document.querySelectorAll('.menu-item').forEach(i => i.classList.remove('open'))
     })
 

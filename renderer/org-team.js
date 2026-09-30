@@ -15,6 +15,7 @@ function createOrgTeamApi({
     invokeIpc,
     cloudStore,
     state,
+    store,
     applyTheme,
     addOrgAssignedMessenger,
     removeOrgAssignedMessenger,
@@ -45,10 +46,24 @@ function createOrgTeamApi({
         try {
             const result = await authorizedInvoke('api-org-get-settings', orgId)
             const forced = unwrap(result)
-            if (forced && typeof forced.theme === 'string' && forced.theme !== lastForcedTheme) {
-                lastForcedTheme = forced.theme
-                applyTheme(forced.theme)
-            }
+            const theme = forced && typeof forced.theme === 'string' ? forced.theme : null
+            if (theme === lastForcedTheme) return
+            lastForcedTheme = theme
+
+            // BUGFIX (2026-09-30, "тема не меняет если с главного акка меняю"):
+            // state.orgForcedTheme is the actual enforcement mechanism now —
+            // settings-ui.js's applyTheme() checks it and overrides ANY theme
+            // it's asked to apply while it's set (see that file's big comment).
+            // Set it BEFORE calling applyTheme() below so this call and every
+            // other applyTheme()/applySettings() call anywhere in the app
+            // (initSettings, cloud-sync boot data, Pro-lock reapplication)
+            // consistently respects it from this point on, not just this one
+            // call. When the owner turns the forced theme off (theme is now
+            // null), fall back to the member's own personal theme instead of
+            // some hardcoded default.
+            state.orgForcedTheme = theme
+            const fallback = (store && store.get('settings', {})?.theme) || 'embedded'
+            applyTheme(theme || fallback)
         } catch {}
     }
 
