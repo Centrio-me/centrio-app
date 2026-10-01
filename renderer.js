@@ -802,10 +802,16 @@ async function bootstrap() {
 
     // После входа на новом устройстве: тянем облако → применяем → перезагружаем
     // Если облако пустое — пушим локальные данные
+    // Filled once the team poller exists (it is created further down). Called
+    // right after sign-in so assigned messengers, shared VPN, forced theme and
+    // tasks appear immediately instead of at the next scheduled poll.
+    let orgTeamTickRef = null
+
     async function cloudSyncAfterLogin() {
         try {
             // Обновляем данные пользователя с сервера (план, аватар и т.д.)
             await cloudApi.refreshUser()
+            orgTeamTickRef?.()
             if (typeof updateCloudBtn === 'function') updateCloudBtn()
             updateAddButtonState()
             updateTrialStatusBar()
@@ -3687,6 +3693,10 @@ function applyTabZoom(level) {
         tGet
     })
     orgTeamApi.start()
+    orgTeamTickRef = () => {
+        orgTeamApi.tick()
+        teamTasksUi.refresh()
+    }
     bindVpnSettings({
         invokeIpc,
         tGet,

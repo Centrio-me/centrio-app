@@ -26,7 +26,7 @@ function createOrgTeamApi({
     notifyOwnerAlert = () => {}, // ({ title, body }) => void — OS notification + bell entry for the owner/admin
     tGet = () => ''
 }) {
-    const POLL_INTERVAL_MS = 5 * 60 * 1000
+    const POLL_INTERVAL_MS = 2 * 60 * 1000
     // "Клиент ждёт ответа" (2026-09-30): the server stamps how long an
     // assigned messenger has had unread messages, so it needs fresh data —
     // pushed shortly after every unread change, plus a heartbeat so the owner
