@@ -334,6 +334,12 @@ module.exports = {
     orgUpdateTask(token, orgId, taskId, patch) {
         return request('PATCH', `/api/org/${encodeURIComponent(orgId)}/tasks/${encodeURIComponent(taskId)}`, patch, token)
     },
+    orgGetTaskComments(token, orgId, taskId) {
+        return request('GET', `/api/org/${encodeURIComponent(orgId)}/tasks/${encodeURIComponent(taskId)}/comments`, null, token)
+    },
+    orgAddTaskComment(token, orgId, taskId, body) {
+        return request('POST', `/api/org/${encodeURIComponent(orgId)}/tasks/${encodeURIComponent(taskId)}/comments`, { body }, token)
+    },
     orgMarkTasksSeen(token, orgId) {
         return request('POST', `/api/org/${encodeURIComponent(orgId)}/tasks/seen`, {}, token)
     },

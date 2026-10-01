@@ -226,7 +226,16 @@ function registerApiIpc() {
 
     ipcMain.handle('api-org-update-task', async (event, token, orgId, taskId, patch) => {
         const status = patch?.status === 'DONE' || patch?.status === 'OPEN' ? patch.status : undefined
-        return wrapApi(() => api.orgUpdateTask(token, String(orgId || ''), String(taskId || ''), { status }))
+        const comment = typeof patch?.comment === 'string' ? patch.comment.slice(0, 1000) : undefined
+        return wrapApi(() => api.orgUpdateTask(token, String(orgId || ''), String(taskId || ''), { status, comment }))
+    })
+
+    ipcMain.handle('api-org-get-task-comments', async (event, token, orgId, taskId) => {
+        return wrapApi(() => api.orgGetTaskComments(token, String(orgId || ''), String(taskId || '')))
+    })
+
+    ipcMain.handle('api-org-add-task-comment', async (event, token, orgId, taskId, body) => {
+        return wrapApi(() => api.orgAddTaskComment(token, String(orgId || ''), String(taskId || ''), String(body || '').slice(0, 1000)))
     })
 
     ipcMain.handle('api-org-mark-tasks-seen', async (event, token, orgId) => {

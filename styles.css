@@ -16248,3 +16248,24 @@ body.onb-active #titlebarMenu {
 .rb-move-btn:disabled { opacity: 0.3; cursor: default; }
 .rb-reset { margin-top: 14px; padding: 8px 14px; border: 1px solid var(--border); border-radius: 8px; background: transparent; color: var(--text-secondary); font: inherit; font-size: 13px; cursor: pointer; }
 .rb-reset:hover { background: var(--bg-hover); color: var(--text-primary); }
+
+/* Комментарии к задачам (renderer/team-tasks.js) */
+.team-task-comments-btn { margin-top: 6px; padding: 0; border: 0; background: none; color: var(--accent); font: inherit; font-size: 11.5px; cursor: pointer; }
+.team-task-comments-btn:hover { text-decoration: underline; }
+.team-task-comments-btn.has-new { color: #e5484d; font-weight: 600; }
+.team-task-thread { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 8px; }
+.team-task-thread-empty { font-size: 12px; color: var(--text-muted); }
+.team-comment { padding: 6px 9px; border-radius: 8px; background: var(--bg-primary, transparent); border: 1px solid var(--border); }
+.team-comment.is-own { border-color: var(--accent); }
+.team-comment-head { display: flex; justify-content: space-between; gap: 8px; font-size: 11px; color: var(--text-muted); }
+.team-comment-head strong { color: var(--text-secondary); font-weight: 600; }
+.team-comment-body { margin-top: 2px; font-size: 12.5px; color: var(--text-primary); white-space: pre-wrap; overflow-wrap: anywhere; }
+.team-comment-form { display: flex; flex-direction: column; gap: 6px; }
+.team-comment-input { resize: vertical; min-height: 44px; padding: 6px 8px; border: 1px solid var(--border); border-radius: 7px; background: var(--bg-primary, transparent); color: var(--text-primary); font: inherit; font-size: 12.5px; }
+.team-comment-input:focus { outline: none; border-color: var(--accent); }
+.team-comment-actions { display: flex; gap: 6px; }
+.team-comment-send, .team-comment-done { padding: 5px 12px; border-radius: 7px; font: inherit; font-size: 12px; cursor: pointer; }
+.team-comment-send { border: 0; background: var(--accent); color: #fff; }
+.team-comment-done { border: 1px solid var(--border); background: transparent; color: var(--text-secondary); }
+.team-comment-done:hover { color: var(--text-primary); background: var(--bg-hover); }
+.team-comment-send:disabled, .team-comment-done:disabled { opacity: .5; cursor: default; }
