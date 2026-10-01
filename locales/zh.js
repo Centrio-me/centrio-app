@@ -776,6 +776,33 @@ module.exports = {
         moveDown: "下移",
     },
 
+    addv2: {
+        catalog: "目录",
+        eyebrow: "服务中心",
+        title: "添加服务",
+        subtitle: "聊天、邮箱、AI 和任意网站，尽在一个窗口",
+        searchPlaceholder: "搜索服务或粘贴网站链接…",
+        catAll: "全部",
+        catCustom: "自定义网站",
+        recent: "最近添加",
+        results: "结果",
+        limit: "已添加 {n}/{max}",
+        limitPro: "Pro — 无限制",
+        upgrade: "Pro — 无限制",
+        pickTitle: "选择服务",
+        pickHint: "添加前先设置标签页：名称、文件夹和 VPN。",
+        fieldName: "标签页名称",
+        fieldFolder: "文件夹",
+        vpnLabel: "通过 VPN",
+        vpnHint: "VPN 已连接时，此标签页将使用它",
+        add: "添加 {name}",
+        addMore: "添加并继续选择",
+        customTitle: "自定义网站",
+        customCaption: "任意网站",
+        pasteHint: "粘贴任意网站链接，图标会自动获取",
+        customProHint: "自定义网站仅限 Pro",
+    },
+
     teamTasks: {
 
         title: "主管任务",

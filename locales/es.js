@@ -776,6 +776,33 @@ module.exports = {
         moveDown: "Bajar",
     },
 
+    addv2: {
+        catalog: "Catálogo",
+        eyebrow: "Centro de servicios",
+        title: "Añadir un servicio",
+        subtitle: "Mensajeros, correo, IA y cualquier sitio en una ventana",
+        searchPlaceholder: "Busca un servicio o pega el enlace de un sitio…",
+        catAll: "Todos",
+        catCustom: "Tu sitio",
+        recent: "Añadidos recientemente",
+        results: "Resultados",
+        limit: "{n} de {max} añadidos",
+        limitPro: "Pro — sin límites",
+        upgrade: "Pro — sin límite",
+        pickTitle: "Elige un servicio",
+        pickHint: "Configura la pestaña antes de añadirla: nombre, carpeta y VPN.",
+        fieldName: "Nombre de la pestaña",
+        fieldFolder: "Carpeta",
+        vpnLabel: "Usar VPN",
+        vpnHint: "Si la VPN está conectada, esta pestaña la usa",
+        add: "Añadir {name}",
+        addMore: "Añadir y elegir otro",
+        customTitle: "Tu sitio",
+        customCaption: "Cualquier sitio",
+        pasteHint: "Pega el enlace de cualquier sitio: el icono se carga solo",
+        customProHint: "Los sitios propios están disponibles en Pro",
+    },
+
     teamTasks: {
 
         title: "Del responsable",

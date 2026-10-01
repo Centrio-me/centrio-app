@@ -801,6 +801,33 @@ module.exports = {
         moveDown: "Move down",
     },
 
+    addv2: {
+        catalog: "Catalog",
+        eyebrow: "Service hub",
+        title: "Add a service",
+        subtitle: "Messengers, mail, AI and any website in one window",
+        searchPlaceholder: "Search a service or paste a website link…",
+        catAll: "All",
+        catCustom: "Your site",
+        recent: "Recently added",
+        results: "Results",
+        limit: "{n} of {max} added",
+        limitPro: "Pro — no limits",
+        upgrade: "Pro — no limit",
+        pickTitle: "Pick a service",
+        pickHint: "Set the tab up before adding it: name, folder and VPN.",
+        fieldName: "Tab name",
+        fieldFolder: "Folder",
+        vpnLabel: "Use VPN",
+        vpnHint: "When the VPN is connected, this tab goes through it",
+        add: "Add {name}",
+        addMore: "Add and pick another",
+        customTitle: "Your site",
+        customCaption: "Any website",
+        pasteHint: "Paste a link to any website — the icon is picked up automatically",
+        customProHint: "Your own sites are available in Pro",
+    },
+
     teamTasks: {
 
         title: "From your manager",

@@ -776,6 +776,33 @@ module.exports = {
         moveDown: "Nach unten",
     },
 
+    addv2: {
+        catalog: "Katalog",
+        eyebrow: "Dienste-Zentrale",
+        title: "Dienst hinzufügen",
+        subtitle: "Messenger, E-Mail, KI und jede Website in einem Fenster",
+        searchPlaceholder: "Dienst suchen oder Website-Link einfügen…",
+        catAll: "Alle",
+        catCustom: "Eigene Seite",
+        recent: "Zuletzt hinzugefügt",
+        results: "Ergebnisse",
+        limit: "{n} von {max} hinzugefügt",
+        limitPro: "Pro — ohne Limit",
+        upgrade: "Pro — ohne Limit",
+        pickTitle: "Dienst wählen",
+        pickHint: "Richten Sie den Tab vor dem Hinzufügen ein: Name, Ordner und VPN.",
+        fieldName: "Tab-Name",
+        fieldFolder: "Ordner",
+        vpnLabel: "Über VPN",
+        vpnHint: "Ist das VPN verbunden, läuft dieser Tab darüber",
+        add: "{name} hinzufügen",
+        addMore: "Hinzufügen und weiteren wählen",
+        customTitle: "Eigene Seite",
+        customCaption: "Beliebige Website",
+        pasteHint: "Link zu einer beliebigen Website einfügen — das Symbol wird automatisch geladen",
+        customProHint: "Eigene Seiten sind in Pro verfügbar",
+    },
+
     teamTasks: {
 
         title: "Von der Leitung",

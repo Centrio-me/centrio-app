@@ -1,36 +1,18 @@
-// REDESIGN (2026-08-24, "Полностью переработай окно выбора нового мессенджера
-// с плюсика ... Новый дизайн, больше значков, другая анимация, другая
-// прокрутка" — live user request, explicit dislike of the old design).
+// "Add service" window (REDESIGN 2026-10-02, concept agreed with the owner).
 //
-// Что было: сетка 4×2 (8 плиток), листалась ЦЕЛЫМИ СТРАНИЦАМИ по колесу
-// мыши (e.preventDefault() перехватывал wheel целиком) + точки-пагинатор
-// сбоку — нестандартная и заметно "дёрганная" прокрутка, из 43 сервисов
-// одновременно видно было только 8.
+// Three columns: categories + free-plan meter | search + catalog | a card for
+// the selected service where the tab is set up BEFORE it is added (name,
+// folder, VPN). The search field doubles as a "paste any link" field: a URL
+// turns into a "Свой сайт" card with the site's favicon.
 //
-// Что стало: один непрерывный нативный скролл (никакого preventDefault на
-// wheel — колесо мыши работает как везде), все сервисы сгруппированы под
-// заголовками секций (см. CATEGORY_ORDER, значения приходят из
-// messenger.category в renderer/constants.js), плитки при открытии модалки
-// появляются с лёгкой ступенчатой (staggered) анимацией, при наведении
-// подсвечиваются РЕАЛЬНЫМ фирменным цветом сервиса (messenger.color) —
-// а не одним общим акцентом на всё подряд. Тонкая шкала прогресса прокрутки
-// над сеткой — сигнатурный элемент, показывает, сколько ещё сервисов ниже.
-// UPDATE (2026-08-28, "Добавить категорию Медиа" — live user request):
-// новая категория 'media' (YouTube/Spotify/Яндекс Музыка/кинотеатры и т.д.,
-// см. renderer/constants.js) добавлена в конец порядка — после 'ai', перед
-// секциями без явного порядка (см. orderedKeys fallback в fillMessengerGrid).
-// UPDATE (2026-09-01, "добавь категорию Видеозвонки" — live user request):
-// новая категория 'calls' (Яндекс Телемост/Zoom/Google Meet/Teams и т.д.) —
-// после 'media', та же логика, что и у медиа-апдейта выше.
-// UPDATE (2026-09-17, "добавим ещё раздел 'Документы'" — live user request,
-// список согласован заранее): новая категория 'documents' (Google Docs/
-// Sheets/Slides, Яндекс Документы, Word/Excel Online, MEGA/Яндекс Диск/
-// Google Drive — см. renderer/constants.js) — сразу после 'media', та же
-// логика, что и у предыдущих категорий-апдейтов выше.
-const CATEGORY_ORDER = ['top', 'messengers', 'mail', 'productivity', 'ai', 'media', 'documents', 'calls']
+// History kept from the previous version: one continuous native scroll (no
+// wheel hijacking), tiles glow with the service's real brand colour
+// (--tile-glow), the SyntaxAI promo is the first entry of the AI category and
+// the popular items are shown both under "Популярные" and in their own category.
+const { getCaption } = require('./add-modal-catalog')
+
+const CATEGORY_ORDER = ['messengers', 'mail', 'productivity', 'ai', 'media', 'documents', 'calls']
 const CATEGORY_LABEL_KEYS = {
-    // 'top' переиспользует уже существующий (ранее нигде не подключённый)
-    // ключ modal.popular — не заводим дублирующий по смыслу текст.
     top: 'modal.popular',
     messengers: 'modal.categories.messengers',
     mail: 'modal.categories.mail',
@@ -40,12 +22,11 @@ const CATEGORY_LABEL_KEYS = {
     documents: 'modal.categories.documents',
     calls: 'modal.categories.calls'
 }
-// Максимальная задержка ступенчатой анимации — дальше плитки просто не ждут
-// своей очереди (иначе при 43 элементах последняя плитка появлялась бы почти
-// секунду спустя после открытия модалки, что выглядело бы как лаг, а не как
-// анимация).
-const STAGGER_STEP_MS = 14
-const STAGGER_MAX_MS = 240
+const RECENT_KEY = 'centrio-add-recent'
+const RECENT_MAX = 5
+const STAGGER_STEP_MS = 12
+const STAGGER_MAX_MS = 200
+const CUSTOM_COLOR = '#7b68ee'
 
 function createAddModalUiApi({
     state,
@@ -54,207 +35,387 @@ function createAddModalUiApi({
     addModal,
     messengerGrid,
     addMessenger,
-    tGet
+    tGet,
+    hasEffectivePro,
+    getFreeLimit,
+    showUpgrade,
+    requirePro,
+    getLanguage
 }) {
     const prefersReducedMotion = typeof window.matchMedia === 'function'
         && window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
-    function buildTile(messenger, globalIndex) {
-        const item = document.createElement('div')
-        item.className = 'messenger-grid-item'
-        if (!prefersReducedMotion) {
-            item.style.animationDelay = `${Math.min(globalIndex * STAGGER_STEP_MS, STAGGER_MAX_MS)}ms`
-        } else {
-            item.classList.add('no-stagger')
+    const ui = { category: 'all', query: '', selected: null, options: { name: '', folderId: '', vpn: true } }
+    let recentCache = null
+
+    const t = (key, fallback, params) => {
+        let text = tGet(`addv2.${key}`) || fallback || ''
+        for (const [k, v] of Object.entries(params || {})) text = text.split(`{${k}}`).join(String(v))
+        return text
+    }
+
+    const node = (tag, className, text) => {
+        const element = document.createElement(tag)
+        if (className) element.className = className
+        if (text != null) element.textContent = text
+        return element
+    }
+
+    const language = () => (typeof getLanguage === 'function' ? getLanguage() : 'ru') || 'ru'
+    const catalog = () => popularMessengers.filter((m) => !m.hidden)
+
+    function hostOf(url) {
+        try { return new URL(url).hostname } catch { return '' }
+    }
+
+    function faviconUrl(host) {
+        return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=64`
+    }
+
+    // Anything that looks like a link or a bare domain becomes a custom site.
+    function parseCustomSite(raw) {
+        const text = String(raw || '').trim()
+        if (!text || /\s/.test(text)) return null
+        const withScheme = /^https?:\/\//i.test(text) ? text : (/^[\w-]+(\.[\w-]+)+(\/\S*)?$/.test(text) ? `https://${text}` : '')
+        if (!withScheme) return null
+        let parsed
+        try { parsed = new URL(withScheme) } catch { return null }
+        if (!/^https?:$/.test(parsed.protocol) || !parsed.hostname.includes('.')) return null
+        const host = parsed.hostname.replace(/^www\./, '')
+        const base = host.split('.').slice(0, -1).join('.') || host
+        return {
+            custom: true,
+            name: base.charAt(0).toUpperCase() + base.slice(1),
+            url: parsed.href,
+            icon: faviconUrl(parsed.hostname),
+            color: CUSTOM_COLOR,
+            category: 'custom'
         }
-        if (messenger.color) {
-            item.style.setProperty('--tile-glow', messenger.color)
-        }
+    }
 
-        const hostname = (() => {
-            try { return new URL(messenger.url).hostname } catch { return '' }
-        })()
+    function readRecent() {
+        if (recentCache) return recentCache
+        try { recentCache = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]') } catch { recentCache = [] }
+        if (!Array.isArray(recentCache)) recentCache = []
+        return recentCache
+    }
 
-        item.innerHTML = `
-            <img src="${messenger.icon}"
-                 alt="${messenger.name}" loading="lazy">
-            <span>${messenger.name}</span>
-        `
+    function rememberRecent(name) {
+        const list = [name, ...readRecent().filter((n) => n !== name)].slice(0, RECENT_MAX)
+        recentCache = list
+        try { localStorage.setItem(RECENT_KEY, JSON.stringify(list)) } catch {}
+    }
 
-        // BUGFIX (2026-09-10, same audit as media-player-ui.js's VK Video
-        // icon fix): inline onerror="..." is silently blocked by this app's
-        // CSP (script-src 'self', no 'unsafe-inline') — attach via JS instead.
-        const iconImgEl = item.querySelector('img')
-        if (iconImgEl) {
-            iconImgEl.addEventListener('error', () => {
-                iconImgEl.onerror = null
-                iconImgEl.src = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(hostname)}&sz=64`
+    function categoryLabel(key) {
+        if (key === 'all') return t('catAll', 'Все')
+        if (key === 'custom') return t('catCustom', 'Свой сайт')
+        const labelKey = CATEGORY_LABEL_KEYS[key]
+        return (labelKey && tGet(labelKey)) || key
+    }
+
+    function iconImage(messenger, className) {
+        const image = node('img', className)
+        image.alt = ''
+        image.loading = 'lazy'
+        image.src = messenger.icon
+        const host = hostOf(messenger.url)
+        // Inline onerror is blocked by the app CSP — attach via JS.
+        image.addEventListener('error', () => {
+            image.onerror = null
+            if (host) image.src = faviconUrl(host)
+        })
+        return image
+    }
+
+    // ---- left rail --------------------------------------------------------
+    function renderRail() {
+        const rail = document.getElementById('addRailList')
+        if (!rail) return
+        rail.textContent = ''
+        const items = catalog()
+        const counts = new Map()
+        items.forEach((m) => counts.set(m.category || 'messengers', (counts.get(m.category || 'messengers') || 0) + 1))
+        const entries = [
+            ['all', items.length],
+            ['top', items.filter((m) => m.popular).length],
+            ...CATEGORY_ORDER.filter((key) => counts.has(key)).map((key) => [key, counts.get(key)]),
+            ['custom', null]
+        ]
+        entries.forEach(([key, count]) => {
+            const row = node('button', `add2-cat${ui.category === key ? ' is-on' : ''}`)
+            row.type = 'button'
+            row.appendChild(node('span', '', categoryLabel(key)))
+            if (count != null) row.appendChild(node('i', '', String(count)))
+            else row.appendChild(node('i', '', '+'))
+            row.addEventListener('click', () => {
+                ui.category = key
+                if (key === 'custom') focusSearch(true)
+                renderAll()
             })
-        }
-
-        item.addEventListener('click', () => {
-            addMessenger(messenger)
-            closeModal()
+            rail.appendChild(row)
         })
-
-        return item
+        renderLimit()
     }
 
-    // FEATURE (2026-08-28, "Добавь ссылку на Синтакс в нейросети (в самый
-    // перёд)... Нужно 2 квадратика объеденить в одну ссылку" — live user
-    // request): реферальная промо-плитка SyntaxAI. Занимает место двух
-    // обычных квадратов сетки (grid-column: span 2 в CSS,
-    // .messenger-grid-item--promo) и показывает свой собственный промо-текст
-    // поверх иконки — этим отличается от обычной плитки buildTile() и
-    // поэтому рисуется отдельной функцией.
-    // UPDATE (2026-08-28, тот же день, live user correction — "это
-    // мессенджер. Он должен создавать вкладку с иконкой... Чтобы люди сразу
-    // регались там"): по клику ЭТО обычное добавление мессенджера — та же
-    // addMessenger(), что использует buildTile() ниже — а не открытие
-    // реферальной ссылки во внешнем браузере (так было в первой версии, но
-    // пользователь явно поправил: регистрация должна проходить прямо в
-    // Centrio, в собственном webview этой вкладки).
-    function buildSyntaxAiBanner(globalIndex) {
-        const item = document.createElement('div')
-        item.className = 'messenger-grid-item messenger-grid-item--promo'
-        if (!prefersReducedMotion) {
-            item.style.animationDelay = `${Math.min(globalIndex * STAGGER_STEP_MS, STAGGER_MAX_MS)}ms`
-        } else {
-            item.classList.add('no-stagger')
+    function renderLimit() {
+        const box = document.getElementById('addLimit')
+        if (!box) return
+        box.textContent = ''
+        const used = state.activeMessengers.filter((m) => !m.orgAssigned).length
+        if (hasEffectivePro()) {
+            box.appendChild(node('div', 'add2-limit-pro', t('limitPro', 'Pro — без ограничений')))
+            return
         }
-        if (syntaxAiPromo.color) {
-            item.style.setProperty('--tile-glow', syntaxAiPromo.color)
-        }
-
-        const title = tGet ? tGet('modal.syntaxPromo.title') : 'SyntaxAI'
-        const subtitle = tGet ? tGet('modal.syntaxPromo.subtitle') : ''
-
-        item.innerHTML = `
-            <img class="messenger-grid-item-promo-icon" src="${syntaxAiPromo.icon}" alt="${syntaxAiPromo.name}" loading="lazy">
-            <div class="messenger-grid-item-promo-text">
-                <strong>${title}</strong>
-                <span>${subtitle}</span>
-            </div>
-        `
-
-        item.addEventListener('click', () => {
-            addMessenger(syntaxAiPromo)
-            closeModal()
-        })
-
-        return item
+        const max = getFreeLimit()
+        box.appendChild(node('div', 'add2-limit-text', t('limit', 'Добавлено {n} из {max}', { n: Math.min(used, max), max })))
+        const bar = node('div', 'add2-limit-bar')
+        const fill = node('span')
+        fill.style.width = `${Math.min(100, Math.round((used / max) * 100))}%`
+        bar.appendChild(fill)
+        box.appendChild(bar)
+        const upgrade = node('button', 'add2-limit-upgrade', `${t('upgrade', 'Pro — без лимита')} →`)
+        upgrade.type = 'button'
+        upgrade.addEventListener('click', () => showUpgrade?.())
+        box.appendChild(upgrade)
     }
 
-    function buildEmptyState() {
-        const empty = document.createElement('div')
-        empty.className = 'modal-grid-empty'
-        empty.innerHTML = `
-            <svg width="30" height="30" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/><path d="M21 21l-4.35-4.35" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-            <span>${tGet ? tGet('search.empty') : ''}</span>
-        `
-        return empty
+    // ---- catalog cards ----------------------------------------------------
+    function buildCard(messenger, index) {
+        const card = node('button', 'add2-card')
+        card.type = 'button'
+        if (messenger.color) card.style.setProperty('--tile-glow', messenger.color)
+        if (!prefersReducedMotion) card.style.animationDelay = `${Math.min(index * STAGGER_STEP_MS, STAGGER_MAX_MS)}ms`
+        else card.classList.add('no-stagger')
+        if (ui.selected && ui.selected.name === messenger.name && ui.selected.url === messenger.url) card.classList.add('is-selected')
+
+        card.appendChild(iconImage(messenger, 'add2-card-icon'))
+        const text = node('span', 'add2-card-text')
+        text.appendChild(node('strong', '', messenger.name))
+        const caption = messenger.custom
+            ? (hostOf(messenger.url) || t('customCaption', 'Любой сайт'))
+            : getCaption(messenger.name, language())
+        if (caption) text.appendChild(node('small', '', caption))
+        card.appendChild(text)
+
+        card.addEventListener('click', () => selectMessenger(messenger))
+        card.addEventListener('dblclick', () => commit(messenger, { keepOpen: false, quick: true }))
+        return card
+    }
+
+    function section(title, count, cards) {
+        const wrap = node('div', 'add2-section')
+        const head = node('div', 'add2-section-head')
+        head.appendChild(node('span', '', title))
+        if (count != null) head.appendChild(node('i', '', String(count)))
+        wrap.appendChild(head)
+        const grid = node('div', 'add2-grid')
+        cards.forEach((card) => grid.appendChild(card))
+        wrap.appendChild(grid)
+        return wrap
+    }
+
+    function filteredCatalog() {
+        const q = ui.query.trim().toLowerCase()
+        let list = catalog()
+        if (ui.category === 'top') list = list.filter((m) => m.popular)
+        else if (ui.category !== 'all' && ui.category !== 'custom') list = list.filter((m) => (m.category || 'messengers') === ui.category)
+        if (q) list = list.filter((m) => m.name.toLowerCase().includes(q) || getCaption(m.name, language()).toLowerCase().includes(q))
+        return list
+    }
+
+    function recentItems() {
+        const all = catalog()
+        return readRecent().map((name) => all.find((m) => m.name === name)).filter(Boolean)
     }
 
     function fillMessengerGrid() {
-        messengerGrid.innerHTML = ''
+        messengerGrid.textContent = ''
+        const custom = parseCustomSite(ui.query)
+        let index = 0
+        const nextIndex = () => index++
 
-        const list = state.modalFiltered
-        if (!list.length) {
-            messengerGrid.appendChild(buildEmptyState())
+        if (custom) {
+            messengerGrid.appendChild(section(t('customTitle', 'Свой сайт'), null, [buildCard(custom, nextIndex())]))
+        }
+
+        if (ui.category === 'custom' && !custom) {
+            const hint = node('div', 'add2-empty')
+            hint.appendChild(node('strong', '', t('customTitle', 'Свой сайт')))
+            hint.appendChild(node('span', '', t('pasteHint', 'Вставьте ссылку на любой сайт — иконка подтянется сама')))
+            messengerGrid.appendChild(hint)
             updateScrollProgress()
             return
         }
 
-        // UPDATE (2026-08-28, "Популярные месседжеры должны отображаться также
-        // в своих тематических категориях" — live user request): раньше 'top'
-        // было самостоятельной category — эти 8 пунктов показывались ТОЛЬКО в
-        // разделе "Популярные" и пропадали из своей реальной темы. Теперь
-        // constants.js проставляет каждому пункту его реальную category и
-        // ОТДЕЛЬНО помечает те же 8 пунктов булевым полем popular: true.
-        // Секция "Популярные" теперь — отдельная выборка по этому флагу,
-        // рендерится первой (под тем же ключом 'top', чтобы не трогать
-        // CATEGORY_LABEL_KEYS/CATEGORY_ORDER), а помеченные пункты
-        // одновременно попадают и в свою обычную тематическую секцию ниже —
-        // осознанное дублирование, а не баг.
-        const popularItems = list.filter((m) => m.popular)
+        const list = filteredCatalog()
+        if (!list.length && !custom) {
+            const empty = node('div', 'add2-empty')
+            empty.appendChild(node('span', '', tGet('search.empty') || ''))
+            messengerGrid.appendChild(empty)
+            updateScrollProgress()
+            return
+        }
 
-        const byCategory = new Map()
-        list.forEach((m) => {
-            // FEATURE (2026-09-11, chat widget "first in Популярные, last in
-            // Мессенджеры"): `hidden: true` marks an entry that exists ONLY
-            // for the popularItems filter above — see the matching comment
-            // on its constants.js entry for why a second, real tile handles
-            // the category section instead.
-            if (m.hidden) return
-            const key = m.category || 'messengers'
-            if (!byCategory.has(key)) byCategory.set(key, [])
-            byCategory.get(key).push(m)
-        })
-
-        // Категории, не встречающиеся в CATEGORY_ORDER (на будущее, если кто-то
-        // забудет проставить category в constants.js), дорисовываем в конце —
-        // чтобы новый сервис молча не пропал из пикера.
-        const orderedKeys = [
-            ...(popularItems.length ? ['top'] : []),
-            ...CATEGORY_ORDER.filter((k) => k !== 'top' && byCategory.has(k)),
-            ...[...byCategory.keys()].filter((k) => k !== 'top' && !CATEGORY_ORDER.includes(k))
-        ]
-
-        let globalIndex = 0
-        orderedKeys.forEach((key) => {
-            // FIX (2026-08-28, live user request — "Большой Syntx оставляем тут,
-            // маленький тут убираем. В популярных маленький остается."): в
-            // категории 'ai' обычный тайл SYNTAX дублировал уже показанный
-            // выше widescreen-баннер syntaxAiPromo (тот же реферальный url) —
-            // визуально два SYNTAX подряд. Убираем обычный тайл ТОЛЬКО из
-            // секции 'ai' (баннер и так его представляет), но оставляем в
-            // "Популярные" (popularItems ниже строится из полного списка вне
-            // зависимости от этого фильтра) — как и просили.
-            const items =
-                key === 'top'
-                    ? popularItems
-                    : key === 'ai' && syntaxAiPromo
-                      ? byCategory.get(key).filter((m) => m.url !== syntaxAiPromo.url)
-                      : byCategory.get(key)
-            const section = document.createElement('div')
-            section.className = 'modal-category'
-
-            const header = document.createElement('div')
-            header.className = 'modal-category-header'
-            const labelKey = CATEGORY_LABEL_KEYS[key]
-            header.innerHTML = `
-                <span class="modal-category-label">${labelKey && tGet ? tGet(labelKey) : key}</span>
-                <span class="modal-category-count">${items.length}</span>
-            `
-            section.appendChild(header)
-
-            const grid = document.createElement('div')
-            grid.className = 'messenger-grid'
-
-            // Промо-плитка SyntaxAI — только в категории "Нейросети", самой
-            // первой (см. buildSyntaxAiBanner() выше), и только если
-            // syntaxAiPromo реально передан (defensive — не должно ронять
-            // модалку, если конфигурация когда-нибудь поменяется).
-            if (key === 'ai' && syntaxAiPromo) {
-                grid.appendChild(buildSyntaxAiBanner(globalIndex))
-                globalIndex++
+        const showSections = ui.category === 'all' && !ui.query.trim()
+        if (showSections) {
+            const recent = recentItems()
+            if (recent.length) {
+                const chips = node('div', 'add2-recent')
+                chips.appendChild(node('span', 'add2-recent-label', t('recent', 'Недавно добавляли')))
+                recent.forEach((m) => {
+                    const chip = node('button', 'add2-chip')
+                    chip.type = 'button'
+                    chip.appendChild(iconImage(m, 'add2-chip-icon'))
+                    chip.appendChild(node('span', '', m.name))
+                    chip.addEventListener('click', () => selectMessenger(m))
+                    chips.appendChild(chip)
+                })
+                messengerGrid.appendChild(chips)
             }
-
-            items.forEach((messenger) => {
-                grid.appendChild(buildTile(messenger, globalIndex))
-                globalIndex++
+            const popular = list.filter((m) => m.popular)
+            if (popular.length) {
+                messengerGrid.appendChild(section(categoryLabel('top'), popular.length, popular.map((m) => buildCard(m, nextIndex()))))
+            }
+            CATEGORY_ORDER.forEach((key) => {
+                let items = list.filter((m) => (m.category || 'messengers') === key)
+                if (key === 'ai' && syntaxAiPromo) {
+                    items = items.filter((m) => m.url !== syntaxAiPromo.url)
+                    items = [syntaxAiPromo, ...items]
+                }
+                if (items.length) messengerGrid.appendChild(section(categoryLabel(key), items.length, items.map((m) => buildCard(m, nextIndex()))))
             })
-            section.appendChild(grid)
-
-            messengerGrid.appendChild(section)
-        })
-
+        } else {
+            const title = ui.query.trim() ? t('results', 'Результаты') : categoryLabel(ui.category)
+            let items = list
+            if (ui.category === 'ai' && !ui.query.trim() && syntaxAiPromo) {
+                items = [syntaxAiPromo, ...list.filter((m) => m.url !== syntaxAiPromo.url)]
+            }
+            if (items.length) messengerGrid.appendChild(section(title, items.length, items.map((m) => buildCard(m, nextIndex()))))
+        }
         updateScrollProgress()
     }
 
-    // Тонкая шкала прогресса прокрутки под поиском — сигнатурный элемент
-    // редизайна: замена точек-пагинатора наглядным индикатором "сколько ещё
-    // сервисов ниже", без прерывания нативного скролла.
+    // ---- side card --------------------------------------------------------
+    function selectMessenger(messenger) {
+        ui.selected = messenger
+        ui.options = { name: messenger.name, folderId: '', vpn: true }
+        renderSide()
+        fillMessengerGrid()
+    }
+
+    function renderSide() {
+        const side = document.getElementById('addSide')
+        if (!side) return
+        side.textContent = ''
+        const messenger = ui.selected
+        if (!messenger) {
+            const empty = node('div', 'add2-side-empty')
+            empty.appendChild(node('strong', '', t('pickTitle', 'Выберите сервис')))
+            empty.appendChild(node('span', '', t('pickHint', 'Вкладку можно настроить ещё до добавления: название, папку и VPN.')))
+            side.appendChild(empty)
+            return
+        }
+
+        const head = node('div', 'add2-side-head')
+        if (messenger.color) head.style.setProperty('--tile-glow', messenger.color)
+        head.appendChild(iconImage(messenger, 'add2-side-icon'))
+        const titles = node('div')
+        titles.appendChild(node('h3', '', messenger.name))
+        titles.appendChild(node('small', '', hostOf(messenger.url)))
+        head.appendChild(titles)
+        side.appendChild(head)
+
+        const nameField = node('div', 'add2-field')
+        nameField.appendChild(node('label', '', t('fieldName', 'Название вкладки')))
+        const nameInput = node('input', 'add2-input')
+        nameInput.type = 'text'
+        nameInput.maxLength = 60
+        nameInput.value = ui.options.name
+        nameInput.addEventListener('input', () => { ui.options.name = nameInput.value })
+        nameInput.addEventListener('keydown', (event) => { if (event.key === 'Enter') commit(messenger, { keepOpen: false }) })
+        nameField.appendChild(nameInput)
+        side.appendChild(nameField)
+
+        if (state.folders.length > 0) {
+            const folderField = node('div', 'add2-field')
+            folderField.appendChild(node('label', '', t('fieldFolder', 'Папка')))
+            const select = node('select', 'add2-input')
+            const none = node('option', '', tGet('modal.noFolder') || 'Вне папки')
+            none.value = ''
+            select.appendChild(none)
+            state.folders.forEach((folder) => {
+                const option = node('option', '', folder.name)
+                option.value = folder.id
+                select.appendChild(option)
+            })
+            select.value = ui.options.folderId
+            select.addEventListener('change', () => { ui.options.folderId = select.value })
+            folderField.appendChild(select)
+            side.appendChild(folderField)
+        }
+
+        const vpnRow = node('label', 'add2-option')
+        const vpnText = node('span', 'add2-option-text')
+        vpnText.appendChild(node('strong', '', t('vpnLabel', 'Через VPN')))
+        vpnText.appendChild(node('small', '', t('vpnHint', 'Если VPN подключён, вкладка работает через него')))
+        const toggle = node('span', 'toggle')
+        const checkbox = node('input')
+        checkbox.type = 'checkbox'
+        checkbox.checked = ui.options.vpn
+        checkbox.addEventListener('change', () => { ui.options.vpn = checkbox.checked })
+        toggle.append(checkbox, node('span', 'toggle-slider'))
+        vpnRow.append(vpnText, toggle)
+        side.appendChild(vpnRow)
+
+        if (messenger.custom && !hasEffectivePro()) {
+            side.appendChild(node('div', 'add2-pro-note', t('customProHint', 'Свои сайты доступны в Pro')))
+        }
+
+        const actions = node('div', 'add2-actions')
+        const primary = node('button', 'add2-btn add2-btn-primary', t('add', 'Добавить {name}', { name: ui.options.name || messenger.name }))
+        primary.type = 'button'
+        primary.addEventListener('click', () => commit(messenger, { keepOpen: false }))
+        nameInput.addEventListener('input', () => {
+            primary.textContent = t('add', 'Добавить {name}', { name: nameInput.value.trim() || messenger.name })
+        })
+        const more = node('button', 'add2-btn add2-btn-ghost', t('addMore', 'Добавить и выбрать ещё'))
+        more.type = 'button'
+        more.addEventListener('click', () => commit(messenger, { keepOpen: true }))
+        actions.append(primary, more)
+        side.appendChild(actions)
+    }
+
+    // ---- actions ----------------------------------------------------------
+    async function commit(messenger, { keepOpen, quick = false }) {
+        if (messenger.custom && requirePro && !requirePro('customMessenger')) return
+        const options = quick
+            ? { name: messenger.name, folderId: '', vpn: true }
+            : { ...ui.options, name: (ui.options.name || '').trim() || messenger.name }
+        const payload = { ...messenger }
+        delete payload.custom
+        delete payload.popular
+        delete payload.hidden
+        delete payload.category
+        await addMessenger({ ...payload, name: options.name }, { folderId: options.folderId || null, vpn: options.vpn })
+        if (!messenger.custom) rememberRecent(messenger.name)
+        if (keepOpen) {
+            ui.selected = null
+            ui.query = ''
+            const input = document.getElementById('modalSearchInput')
+            if (input) input.value = ''
+            renderAll()
+            focusSearch(false)
+        } else {
+            closeModal()
+        }
+    }
+
+    function focusSearch(select) {
+        const input = document.getElementById('modalSearchInput')
+        if (!input) return
+        setTimeout(() => { input.focus(); if (select) input.select() }, 30)
+    }
+
     function updateScrollProgress() {
         const wrap = document.getElementById('modalGridWrap')
         const bar = document.getElementById('modalScrollProgressBar')
@@ -264,15 +425,40 @@ function createAddModalUiApi({
         bar.style.width = `${Math.max(6, ratio * 100)}%`
     }
 
+    function renderAll() {
+        renderRail()
+        fillMessengerGrid()
+        renderSide()
+    }
+
+    // The search field: typing filters, Enter picks the only match / pasted link.
+    function onSearchInput(value) {
+        ui.query = value
+        if (parseCustomSite(value) && ui.category !== 'custom') ui.category = 'all'
+        renderRail()
+        fillMessengerGrid()
+    }
+
+    function onSearchEnter() {
+        const custom = parseCustomSite(ui.query)
+        if (custom) { selectMessenger(custom); return }
+        const list = filteredCatalog()
+        if (list.length >= 1 && ui.query.trim()) selectMessenger(list[0])
+    }
+
     function openModal() {
+        ui.category = 'all'
+        ui.query = ''
+        ui.selected = null
+        ui.options = { name: '', folderId: '', vpn: true }
         state.modalFiltered = [...popularMessengers]
         addModal.classList.add('show')
-        fillMessengerGrid()
-        document.getElementById('modalSearchInput').value = ''
-        document.getElementById('customSection').classList.remove('open')
+        const input = document.getElementById('modalSearchInput')
+        if (input) input.value = ''
+        renderAll()
         const wrap = document.getElementById('modalGridWrap')
         if (wrap) wrap.scrollTop = 0
-        setTimeout(() => document.getElementById('modalSearchInput').focus(), 100)
+        focusSearch(false)
     }
 
     function closeModal() {
@@ -280,10 +466,12 @@ function createAddModalUiApi({
     }
 
     return {
-        fillMessengerGrid,
+        fillMessengerGrid: renderAll,
         updateScrollProgress,
         openModal,
-        closeModal
+        closeModal,
+        onSearchInput,
+        onSearchEnter
     }
 }
 

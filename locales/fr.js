@@ -776,6 +776,33 @@ module.exports = {
         moveDown: "Descendre",
     },
 
+    addv2: {
+        catalog: "Catalogue",
+        eyebrow: "Centre de services",
+        title: "Ajouter un service",
+        subtitle: "Messageries, e-mail, IA et n’importe quel site dans une seule fenêtre",
+        searchPlaceholder: "Chercher un service ou coller un lien…",
+        catAll: "Tous",
+        catCustom: "Votre site",
+        recent: "Ajoutés récemment",
+        results: "Résultats",
+        limit: "{n} sur {max} ajoutés",
+        limitPro: "Pro — sans limite",
+        upgrade: "Pro — sans limite",
+        pickTitle: "Choisissez un service",
+        pickHint: "Réglez l’onglet avant de l’ajouter : nom, dossier et VPN.",
+        fieldName: "Nom de l’onglet",
+        fieldFolder: "Dossier",
+        vpnLabel: "Via VPN",
+        vpnHint: "Si le VPN est connecté, cet onglet l’utilise",
+        add: "Ajouter {name}",
+        addMore: "Ajouter et en choisir un autre",
+        customTitle: "Votre site",
+        customCaption: "N’importe quel site",
+        pasteHint: "Collez le lien d’un site : l’icône se charge toute seule",
+        customProHint: "Vos propres sites sont disponibles avec Pro",
+    },
+
     teamTasks: {
 
         title: "De la direction",

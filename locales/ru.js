@@ -868,6 +868,33 @@ module.exports = {
         moveDown: "Ниже",
     },
 
+    addv2: {
+        catalog: "Каталог",
+        eyebrow: "Центр сервисов",
+        title: "Добавить сервис",
+        subtitle: "Мессенджеры, почта, нейросети и любые сайты в одном окне",
+        searchPlaceholder: "Найти сервис или вставить ссылку на сайт…",
+        catAll: "Все",
+        catCustom: "Свой сайт",
+        recent: "Недавно добавляли",
+        results: "Результаты",
+        limit: "Добавлено {n} из {max}",
+        limitPro: "Pro — без ограничений",
+        upgrade: "Pro — без лимита",
+        pickTitle: "Выберите сервис",
+        pickHint: "Вкладку можно настроить ещё до добавления: название, папку и VPN.",
+        fieldName: "Название вкладки",
+        fieldFolder: "Папка",
+        vpnLabel: "Через VPN",
+        vpnHint: "Если VPN подключён, вкладка работает через него",
+        add: "Добавить {name}",
+        addMore: "Добавить и выбрать ещё",
+        customTitle: "Свой сайт",
+        customCaption: "Любой сайт",
+        pasteHint: "Вставьте ссылку на любой сайт — иконка подтянется сама",
+        customProHint: "Свои сайты доступны в Pro",
+    },
+
     teamTasks: {
 
         title: "От руководителя",

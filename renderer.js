@@ -1850,14 +1850,24 @@ function applyTabZoom(level) {
         addModal,
         messengerGrid,
         addMessenger,
-        tGet
+        tGet,
+        hasEffectivePro,
+        getFreeLimit: () => FREE_MESSENGER_LIMIT,
+        showUpgrade: () => showUpgradeModal(
+            tGet('pro.messengerLimitTitle'),
+            tGet('pro.messengerLimitDesc').replace('{n}', FREE_MESSENGER_LIMIT)
+        ),
+        requirePro: (featureKey) => requirePro(featureKey),
+        getLanguage: () => (store.get('settings', {}) || {}).language || 'ru'
     })
 
     const {
         fillMessengerGrid,
         updateScrollProgress,
         openModal,
-        closeModal
+        closeModal,
+        onSearchInput,
+        onSearchEnter
     } = addModalUiApi
 
     // ==============================
@@ -2337,7 +2347,9 @@ function applyTabZoom(level) {
     // ==============================
     // ДОБАВЛЕНИЕ МЕССЕНДЖЕРА
     // ==============================
-    async function addMessenger(messenger) {
+    // options (from the "Add service" window): { folderId, vpn } — the folder to
+    // drop the new tab into and whether it should use the VPN (default yes).
+    async function addMessenger(messenger, options = {}) {
         // ── Plan limits ──────────────────────────────────────────
         if (!hasEffectivePro() && state.activeMessengers.length >= FREE_MESSENGER_LIMIT) {
             showUpgradeModal(
@@ -2375,7 +2387,7 @@ function applyTabZoom(level) {
             ...messenger,
             id,
             name,
-            folderId: null,
+            folderId: options.folderId && state.folders.some((f) => f.id === options.folderId) ? options.folderId : null,
             // FEATURE (2026-09-14, четвёртый пересмотр — "Пространства это
             // смена всех мессенджеров и папок. Как-будто ещё аккаунт"): если
             // сейчас активно конкретное пространство (не «Все»), новый
@@ -2392,7 +2404,13 @@ function applyTabZoom(level) {
             addToSidebarPinned(newMessenger)
         } else {
             state.activeMessengers.push(newMessenger)
-            addToSidebar(newMessenger)
+            if (newMessenger.folderId && document.getElementById(`folder-children-${newMessenger.folderId}`)) {
+                addToFolder(newMessenger, newMessenger.folderId)
+                updateFolderBadge(newMessenger.folderId)
+            } else {
+                newMessenger.folderId = null
+                addToSidebar(newMessenger)
+            }
         }
         addTab(newMessenger)
 
@@ -2424,7 +2442,7 @@ function applyTabZoom(level) {
         // elsewhere) and — critically — applies the real proxy immediately
         // if VPN is currently connected. When VPN isn't active this is a
         // harmless no-op that just persists the default mode.
-        invokeIpc('vpn-set-app-vpn', id, true).catch(() => {})
+        invokeIpc('vpn-set-app-vpn', id, options.vpn !== false).catch(() => {})
 
         welcomeScreen.style.display = 'none'
         tabsContent.style.pointerEvents = 'auto'
@@ -3291,6 +3309,8 @@ function applyTabZoom(level) {
         openModal,
         fillMessengerGrid,
         updateScrollProgress,
+        onSearchInput,
+        onSearchEnter,
         addMessenger,
         requirePro,
         tGet,

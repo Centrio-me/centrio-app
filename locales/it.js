@@ -776,6 +776,33 @@ module.exports = {
         moveDown: "Giù",
     },
 
+    addv2: {
+        catalog: "Catalogo",
+        eyebrow: "Centro servizi",
+        title: "Aggiungi un servizio",
+        subtitle: "Messenger, posta, IA e qualsiasi sito in una sola finestra",
+        searchPlaceholder: "Cerca un servizio o incolla il link di un sito…",
+        catAll: "Tutti",
+        catCustom: "Il tuo sito",
+        recent: "Aggiunti di recente",
+        results: "Risultati",
+        limit: "{n} di {max} aggiunti",
+        limitPro: "Pro — senza limiti",
+        upgrade: "Pro — senza limite",
+        pickTitle: "Scegli un servizio",
+        pickHint: "Configura la scheda prima di aggiungerla: nome, cartella e VPN.",
+        fieldName: "Nome della scheda",
+        fieldFolder: "Cartella",
+        vpnLabel: "Tramite VPN",
+        vpnHint: "Se la VPN è connessa, questa scheda la usa",
+        add: "Aggiungi {name}",
+        addMore: "Aggiungi e scegline un altro",
+        customTitle: "Il tuo sito",
+        customCaption: "Qualsiasi sito",
+        pasteHint: "Incolla il link di un sito: l’icona si carica da sola",
+        customProHint: "I siti personali sono disponibili con Pro",
+    },
+
     teamTasks: {
 
         title: "Dal responsabile",
