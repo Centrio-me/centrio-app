@@ -2439,6 +2439,20 @@ function applyTabZoom(level) {
     // `messenger.id` is caller-supplied and stable (the assignment's own id,
     // prefixed) precisely so repeated polls recognize an already-injected
     // slot instead of duplicating it.
+    function restoreOrgAssignedFolders() {
+        const saved = store.get('orgAssignedFolders', {}) || {}
+        state.activeMessengers.forEach((m) => {
+            const folderId = saved[m.id]
+            if (!m.orgAssigned || m.folderId || !folderId) return
+            if (!state.folders.some((f) => f.id === folderId)) return
+            if (!document.getElementById(`folder-children-${folderId}`)) return
+            document.getElementById(`sidebar-${m.id}`)?.remove()
+            m.folderId = folderId
+            addToFolder(m, folderId)
+            updateFolderBadge(folderId)
+        })
+    }
+
     async function addOrgAssignedMessenger(messenger) {
         if (state.activeMessengers.some(m => m.id === messenger.id)) return
 
@@ -3021,6 +3035,10 @@ function applyTabZoom(level) {
             addTab(normalizedMessenger)
             addWebview(normalizedMessenger)
         })
+
+        // The team poll starts before this function renders the folders, so
+        // an assigned messenger may already be injected into the root list.
+        restoreOrgAssignedFolders()
 
         if (savedMessengers.length > 0) {
             // BUGFIX ("не сохраняется выбранный мессенджер"): settings.extra.activeTabId
