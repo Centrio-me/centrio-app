@@ -647,6 +647,7 @@ module.exports = {
         save: "保存",
         clickToCopy: "点击复制",
         dragToReorder: "拖动以调整顺序",
+        hintReorder: "拖动左侧的圆点即可调整顺序。",
         copied: "已复制",
         edit: "编辑",
         delete: "删除",

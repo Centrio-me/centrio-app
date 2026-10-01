@@ -504,6 +504,7 @@ async function bootstrap() {
         ['dividers', []],
         ['sidebarOrder', []],
         ['mutedMessengers', {}],
+        ['orgAssignedFolders', {}],
         ['globalMuteAll', false],
         ['extensionsState', {}],
         // BUGFIX ("состояние сплита/пресеты не восстанавливаются после
@@ -1010,6 +1011,17 @@ async function bootstrap() {
         // firing-and-forgetting exactly as before, so this is safe to add.
         const messengersSaved = store.set('messengers', messengers)
         store.set('folders', state.folders)
+        // Messengers assigned by a TEAM owner are never persisted themselves
+        // (re-injected from the server each launch), so remember which folder
+        // the user put each one into, or they'd fall out of folders on restart.
+        // Entries for slots not injected yet (early saveData) are kept as-is.
+        const orgFolders = { ...(store.get('orgAssignedFolders', {}) || {}) }
+        state.activeMessengers.forEach((m) => {
+            if (!m.orgAssigned) return
+            if (m.folderId) orgFolders[m.id] = m.folderId
+            else delete orgFolders[m.id]
+        })
+        store.set('orgAssignedFolders', orgFolders)
         store.set('dividers', state.dividers)
         store.set('mutedMessengers', state.mutedMessengers)
         store.set('globalMuteAll', state.globalMuteAll)
@@ -2429,17 +2441,27 @@ function applyTabZoom(level) {
     async function addOrgAssignedMessenger(messenger) {
         if (state.activeMessengers.some(m => m.id === messenger.id)) return
 
+        const savedFolders = store.get('orgAssignedFolders', {}) || {}
+        const savedFolderId = savedFolders[messenger.id]
+        const restoredFolderId = savedFolderId && state.folders.some((f) => f.id === savedFolderId) &&
+            document.getElementById(`folder-children-${savedFolderId}`) ? savedFolderId : null
+
         const newMessenger = {
             ...messenger,
             orgAssigned: true,
-            folderId: null,
+            folderId: restoredFolderId,
             workspaceId: null,
             notifSound: '__default__',
             zoomLevel: state.tabZoomLevel || store.get('tabZoomLevel', 1) || 1
         }
 
         state.activeMessengers.push(newMessenger)
-        addToSidebar(newMessenger)
+        if (restoredFolderId) {
+            addToFolder(newMessenger, restoredFolderId)
+            updateFolderBadge(restoredFolderId)
+        } else {
+            addToSidebar(newMessenger)
+        }
         addTab(newMessenger)
 
         // BUGFIX (2026-09-21, live report — "Сайты у сотрудников то

@@ -147,6 +147,7 @@ function bindQuickRepliesUi({ store, tGet, invokeIpc, openRightPanel, closeRight
         if (hint) {
             const isMac = /Mac/i.test(navigator.platform || '')
             hint.textContent = t('hint', 'Нажмите на ответ — он скопируется. Вставьте в чат: {keys}').replace('{keys}', isMac ? '⌘V' : 'Ctrl+V')
+            if (!query && getOwn().length > 1) hint.textContent += ' ' + t('hintReorder', 'Порядок меняется перетаскиванием за точки слева.')
         }
     }
 

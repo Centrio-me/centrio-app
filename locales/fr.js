@@ -647,6 +647,7 @@ module.exports = {
         save: "Enregistrer",
         clickToCopy: "Cliquer pour copier",
         dragToReorder: "Faites glisser pour réorganiser",
+        hintReorder: "Faites glisser les points à gauche pour changer l’ordre.",
         copied: "Copié",
         edit: "Modifier",
         delete: "Supprimer",

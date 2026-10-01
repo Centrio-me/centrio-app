@@ -16159,13 +16159,13 @@ body.onb-active #titlebarMenu {
     align-self: stretch;
     margin: -2px 0 -2px -6px;
     padding: 0 4px;
-    color: var(--text-muted);
+    color: var(--text-secondary);
     cursor: grab;
-    opacity: 0;
+    opacity: 0.7;
     transition: opacity 0.12s;
 }
 .qr-item:hover .qr-item-handle,
-.qr-item:focus-within .qr-item-handle { opacity: 1; }
+.qr-item:focus-within .qr-item-handle { opacity: 1; color: var(--accent); }
 .qr-item-handle:active { cursor: grabbing; }
 .qr-item.qr-dragging { opacity: 0.4; }
 .qr-item.qr-drop-before { border-top-color: var(--accent); box-shadow: 0 -2px 0 0 var(--accent); }
