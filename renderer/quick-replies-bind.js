@@ -82,6 +82,16 @@ function bindQuickRepliesUi({ store, tGet, invokeIpc, openRightPanel, closeRight
         item.setAttribute('role', 'button')
         item.title = t('clickToCopy', 'Нажмите, чтобы скопировать')
 
+        // Личные ответы можно менять местами перетаскиванием (или Alt+↑/↓).
+        // Пока идёт поиск, список отфильтрован — порядок не трогаем.
+        if (own && !query) {
+            item.draggable = true
+            const handle = el('span', 'qr-item-handle')
+            handle.title = t('dragToReorder', 'Перетащите, чтобы изменить порядок')
+            handle.innerHTML = '<svg width="10" height="14" viewBox="0 0 10 14" fill="currentColor"><circle cx="2.5" cy="2.5" r="1.2"/><circle cx="7.5" cy="2.5" r="1.2"/><circle cx="2.5" cy="7" r="1.2"/><circle cx="7.5" cy="7" r="1.2"/><circle cx="2.5" cy="11.5" r="1.2"/><circle cx="7.5" cy="11.5" r="1.2"/></svg>'
+            item.appendChild(handle)
+        }
+
         const body = el('div', 'qr-item-body')
         body.appendChild(el('div', 'qr-item-title', reply.title))
         body.appendChild(el('div', 'qr-item-text', reply.text))
@@ -227,11 +237,88 @@ function bindQuickRepliesUi({ store, tGet, invokeIpc, openRightPanel, closeRight
     })
 
     list.addEventListener('keydown', (e) => {
+        // Alt+↑ / Alt+↓ — сдвинуть личный ответ на одну позицию.
+        if (e.altKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+            const own = e.target.closest?.('.qr-item[data-source="own"]')
+            if (!own || own !== e.target || query) return
+            e.preventDefault()
+            const replies = getOwn()
+            const i = replies.findIndex(r => r.id === own.dataset.id)
+            const j = e.key === 'ArrowUp' ? i - 1 : i + 1
+            if (i === -1 || j < 0 || j >= replies.length) return
+            ;[replies[i], replies[j]] = [replies[j], replies[i]]
+            saveOwn(replies)
+            render()
+            list.querySelector('.qr-item[data-id="' + CSS.escape(own.dataset.id) + '"]')?.focus()
+            return
+        }
         if (e.key !== 'Enter' && e.key !== ' ') return
         const item = e.target.closest('.qr-item')
         if (!item || e.target !== item) return
         e.preventDefault()
         copyReply(item)
+    })
+
+    function moveReply(srcId, targetId, after) {
+        const replies = getOwn()
+        const from = replies.findIndex(r => r.id === srcId)
+        if (from === -1) return
+        const [moved] = replies.splice(from, 1)
+        const to = replies.findIndex(r => r.id === targetId)
+        if (to === -1) return
+        replies.splice(after ? to + 1 : to, 0, moved)
+        saveOwn(replies)
+        render()
+    }
+
+    let dragId = null
+    const OWN_ITEM = '.qr-item[data-source="own"]'
+
+    function clearDropMarks() {
+        list.querySelectorAll('.qr-drop-before, .qr-drop-after, .qr-dragging')
+            .forEach(n => n.classList.remove('qr-drop-before', 'qr-drop-after', 'qr-dragging'))
+    }
+
+    function dropPosition(e, item) {
+        const rect = item.getBoundingClientRect()
+        return e.clientY > rect.top + rect.height / 2
+    }
+
+    list.addEventListener('dragstart', (e) => {
+        const item = e.target.closest?.(OWN_ITEM)
+        if (!item || query) { e.preventDefault(); return }
+        dragId = item.dataset.id
+        e.dataTransfer.effectAllowed = 'move'
+        e.dataTransfer.setData('text/plain', dragId)
+        setTimeout(() => item.classList.add('qr-dragging'), 0)
+    })
+
+    list.addEventListener('dragover', (e) => {
+        if (!dragId) return
+        const item = e.target.closest?.(OWN_ITEM)
+        if (!item || item.dataset.id === dragId) return
+        e.preventDefault()
+        e.dataTransfer.dropEffect = 'move'
+        const after = dropPosition(e, item)
+        list.querySelectorAll('.qr-drop-before, .qr-drop-after')
+            .forEach(n => n.classList.remove('qr-drop-before', 'qr-drop-after'))
+        item.classList.add(after ? 'qr-drop-after' : 'qr-drop-before')
+    })
+
+    list.addEventListener('drop', (e) => {
+        if (!dragId) return
+        const item = e.target.closest?.(OWN_ITEM)
+        if (!item || item.dataset.id === dragId) return
+        e.preventDefault()
+        const srcId = dragId
+        dragId = null
+        clearDropMarks()
+        moveReply(srcId, item.dataset.id, dropPosition(e, item))
+    })
+
+    list.addEventListener('dragend', () => {
+        dragId = null
+        clearDropMarks()
     })
 
     searchInput?.addEventListener('input', () => {

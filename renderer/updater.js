@@ -220,6 +220,18 @@ function bindUpdater({ ipcRenderer, invokeIpc, showUpdateBanner: _compat, tGet }
             return
         }
 
+        // Скачанное обновление ставится при запуске (main/services/updater.js):
+        // за несколько секунд до перезапуска объясняем, что происходит.
+        if (status === 'installing') {
+            showUpdateCard({
+                type: 'info',
+                icon: 'downloading',
+                title: tGet('updater.installing'),
+                version,
+            })
+            return
+        }
+
         if (status === 'downloaded') {
             showUpdateCard({
                 type: 'success',

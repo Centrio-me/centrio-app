@@ -441,6 +441,7 @@ module.exports = {
         downloading:    '正在下载更新',
         downloaded:     '更新已下载',
         installRestart: '安装并重启',
+        installing: "正在安装更新 — Centrio 将重新启动",
         error:          '更新错误',
     },
 
@@ -645,6 +646,7 @@ module.exports = {
         cancel: "取消",
         save: "保存",
         clickToCopy: "点击复制",
+        dragToReorder: "拖动以调整顺序",
         copied: "已复制",
         edit: "编辑",
         delete: "删除",

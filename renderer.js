@@ -2273,18 +2273,17 @@ function applyTabZoom(level) {
     // teardown removeFolder() (folders-ui.js) already performs one folder at
     // a time — unfold every messenger back to root level, drop the folder's
     // DOM node — instead of duplicating that logic here.
-    function reapplyFolderLocks() {
-        if (hasEffectivePro()) return
-        if (!state.folders || state.folders.length === 0) return
-
-        // removeFolder() mutates state.folders (filters the removed id out)
-        // and calls saveData() itself each time, so iterate over a snapshot
-        // of the ids rather than the live array.
-        const staleFolderIds = state.folders.map(f => f.id)
-        staleFolderIds.forEach(id => {
-            if (typeof removeFolder === 'function') removeFolder(id)
-        })
-    }
+    // CHANGED (2026-10-01, "опять все из папок повылетало"): this used to
+    // delete EVERY folder (removeFolder + saveData, which also synced the empty
+    // result to the cloud) whenever hasEffectivePro() was false. That is also
+    // false whenever the app is simply signed out — after a session was ended,
+    // or before the account data had loaded — so a user who lost nothing but
+    // their login lost their whole folder layout. User data is never deleted
+    // by a lock check: existing folders stay as they are, creating new ones
+    // still requires Pro (requirePro('folders') in the two entry points), and
+    // main.js's store:set backstop still refuses writes to the folders list
+    // for a non-Pro account.
+    function reapplyFolderLocks() {}
 
     // ==============================
     // РЕТРОАКТИВНЫЙ СБРОС PRO-ЗВУКОВ УВЕДОМЛЕНИЙ (messenger.notifSound)

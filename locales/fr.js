@@ -441,6 +441,7 @@ module.exports = {
         downloading:    'Téléchargement de la mise à jour',
         downloaded:     'Mise à jour téléchargée',
         installRestart: 'Installer et redémarrer',
+        installing: "Installation de la mise à jour — Centrio va redémarrer",
         error:          'Erreur de mise à jour',
     },
 
@@ -645,6 +646,7 @@ module.exports = {
         cancel: "Annuler",
         save: "Enregistrer",
         clickToCopy: "Cliquer pour copier",
+        dragToReorder: "Faites glisser pour réorganiser",
         copied: "Copié",
         edit: "Modifier",
         delete: "Supprimer",

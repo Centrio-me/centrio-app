@@ -44,6 +44,46 @@ function sendUpdateStatus(getMainWindow, payload) {
     safeSendToWindow(getMainWindow, IPC_CHANNELS.UPDATE_STATUS, payload)
 }
 
+// ── Установка при запуске ───────────────────────────────────────────────
+// Обновление скачивается само, но ставится только при настоящем выходе из
+// приложения (autoInstallOnAppQuit) или по кнопке в карточке. По умолчанию
+// крестик прячет Centrio в трей, а при выключении/перезагрузке Windows
+// Electron вообще не присылает before-quit/quit — поэтому у тех, кто просто
+// выключает компьютер, скачанное обновление не устанавливалось неделями.
+// Теперь уже скачанное обновление ставится при ближайшем запуске, пока
+// пользователь ещё ничего не начал делать. Защита от цикла: не больше
+// AUTO_INSTALL_MAX_ATTEMPTS попыток на одну версию — дальше остаётся кнопка.
+const AUTO_INSTALL_STARTUP_WINDOW_S = 120
+const AUTO_INSTALL_MAX_ATTEMPTS = 2
+const AUTO_INSTALL_DELAY_MS = 5000
+let autoInstallScheduled = false
+
+function getAutoInstallAttempts(version) {
+    const rec = store.get('autoInstall', null)
+    return rec && rec.version === version ? (rec.attempts || 0) : 0
+}
+
+function shouldAutoInstallOnLaunch(version) {
+    if (process.platform !== 'win32') return false
+    if (autoInstallScheduled) return false
+    if (process.uptime() > AUTO_INSTALL_STARTUP_WINDOW_S) return false
+    return getAutoInstallAttempts(version) < AUTO_INSTALL_MAX_ATTEMPTS
+}
+
+function scheduleAutoInstall(getMainWindow, version) {
+    autoInstallScheduled = true
+    const attempts = getAutoInstallAttempts(version) + 1
+    try { store.set('autoInstall', { version, attempts, at: Date.now() }) } catch {}
+    writeLog('auto-install on launch scheduled for', version, '(attempt', attempts + '/' + AUTO_INSTALL_MAX_ATTEMPTS + ')')
+    sendUpdateStatus(getMainWindow, {
+        status: 'installing',
+        version,
+        label: t('updater.installing'),
+        message: 'Installing update, the app will restart...'
+    })
+    setTimeout(() => installUpdate({ auto: true }), AUTO_INSTALL_DELAY_MS)
+}
+
 function initUpdater(getMainWindow) {
     if (!autoUpdater) {
         writeError('autoUpdater is not available')
@@ -134,6 +174,10 @@ function initUpdater(getMainWindow) {
             label: t('updater.downloaded'),
             message: `Обновление ${info.version} скачано и готово к установке.`
         })
+
+        if (shouldAutoInstallOnLaunch(info.version)) {
+            scheduleAutoInstall(getMainWindow, info.version)
+        }
     })
 
     autoUpdater.on('error', (err) => {
@@ -180,26 +224,35 @@ async function checkForUpdates() {
     }
 }
 
-function installUpdate() {
+function installUpdate({ auto = false } = {}) {
     if (!autoUpdater) {
         writeError('installUpdate aborted: autoUpdater is not available')
         return
     }
 
-    writeLog('quitAndInstall called')
+    // Отмечаем, что установку действительно запускали: только тогда «версия не
+    // сменилась» — это сбой установки, а не просто «пользователь ещё не ставил».
+    try {
+        const pending = store.get('pendingUpdate', null)
+        if (pending) store.set('pendingUpdate', { ...pending, installTriggeredAt: Date.now(), auto })
+    } catch {}
+
+    writeLog('quitAndInstall called', auto ? '(automatic, on launch)' : '(by user)')
     autoUpdater.quitAndInstall()
 }
 
-// Called once at startup (see initApp.js). Detects an auto-update that was
-// attempted (quitAndInstall was called after a verified download) but that
-// the app apparently didn't end up running after relaunch — the strongest
-// available signal, from inside this process, that an update silently
-// failed to apply. This is detection only, not a true rollback: Electron
-// gives no supported way to revert an in-place NSIS/Squirrel install from
-// JS post-relaunch, and attempting one blind (e.g. hunting for a previous
-// installer executable) would risk making a bad situation worse. Surfacing
-// it to crash.log + the server crash-report endpoint at least makes a
-// silently-stuck-on-old-version fleet visible instead of invisible.
+// Called once at startup (see initApp.js). Compares the version the app is
+// running with the update it downloaded last time.
+//   • version matches            → applied successfully;
+//   • install was triggered, version unchanged → 'update-failed-to-apply'
+//     (the installer ran or was requested and the old version came back);
+//   • install never triggered    → 'update-not-installed' (downloaded but the
+//     app was never quit through the normal path, e.g. Windows shutdown with
+//     the app in the tray). Reported once per version: before this split every
+//     such restart was counted as a failed install (345 reports from 57
+//     installs), which hid the real cause.
+// Detection only, not a rollback — Electron has no supported way to revert an
+// in-place NSIS install from JS.
 function checkPendingUpdateOutcome({ appendCrashLog, reportCrashToServer } = {}) {
     try {
         const pending = store.get('pendingUpdate', null)
@@ -207,22 +260,31 @@ function checkPendingUpdateOutcome({ appendCrashLog, reportCrashToServer } = {})
 
         const currentVersion = app.getVersion()
 
-        // Give the install+relaunch cycle a grace window — comparing
-        // immediately at startup would also fire this for a normal, still
-        // in-flight update that just hasn't reached quitAndInstall yet.
+        // Grace window: an install+relaunch cycle (or a download that just
+        // finished) must not be judged before it had time to complete.
         const GRACE_MS = 2 * 60 * 1000
-        if (Date.now() - pending.at < GRACE_MS) return
+        const reference = pending.installTriggeredAt || pending.at
+        if (Date.now() - reference < GRACE_MS) return
 
         if (currentVersion === pending.toVersion) {
             writeLog('update applied successfully:', pending.fromVersion, '->', currentVersion)
-        } else {
+            store.delete('autoInstall')
+        } else if (pending.installTriggeredAt) {
             writeError(
-                'update did not apply as expected — still on', currentVersion,
+                'update install was triggered but the app is still on', currentVersion,
                 'expected', pending.toVersion, '(from', pending.fromVersion + ')'
             )
-            const detail = { fromVersion: pending.fromVersion, toVersion: pending.toVersion, actualVersion: currentVersion }
+            const detail = { fromVersion: pending.fromVersion, toVersion: pending.toVersion, actualVersion: currentVersion, auto: !!pending.auto }
             appendCrashLog && appendCrashLog('update-failed-to-apply', detail)
             reportCrashToServer && reportCrashToServer('update-failed-to-apply', detail)
+        } else {
+            writeLog('update', pending.toVersion, 'was downloaded but not installed yet (still on', currentVersion + ')')
+            if (store.get('notInstalledReported', null) !== pending.toVersion) {
+                const detail = { fromVersion: pending.fromVersion, toVersion: pending.toVersion, actualVersion: currentVersion }
+                appendCrashLog && appendCrashLog('update-not-installed', detail)
+                reportCrashToServer && reportCrashToServer('update-not-installed', detail)
+                store.set('notInstalledReported', pending.toVersion)
+            }
         }
 
         store.delete('pendingUpdate')

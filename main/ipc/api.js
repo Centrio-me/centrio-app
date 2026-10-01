@@ -175,8 +175,8 @@ function registerApiIpc() {
         return wrapApi(() => api.getAssistantUsage(token))
     })
 
-    ipcMain.handle('api-logout', async (event, token) => {
-        return wrapApi(() => api.logout(token))
+    ipcMain.handle('api-logout', async (event, token, refreshToken) => {
+        return wrapApi(() => api.logout(token, typeof refreshToken === 'string' ? refreshToken : undefined))
     })
 
     ipcMain.handle('api-get-notifications', async (event, token) => {

@@ -16151,3 +16151,22 @@ body.onb-active #titlebarMenu {
     text-align: center;
 }
 #quickRepliesAddBtn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* Быстрые ответы — перетаскивание личных ответов (renderer/quick-replies-bind.js) */
+.qr-item-handle {
+    display: flex;
+    align-items: center;
+    align-self: stretch;
+    margin: -2px 0 -2px -6px;
+    padding: 0 4px;
+    color: var(--text-muted);
+    cursor: grab;
+    opacity: 0;
+    transition: opacity 0.12s;
+}
+.qr-item:hover .qr-item-handle,
+.qr-item:focus-within .qr-item-handle { opacity: 1; }
+.qr-item-handle:active { cursor: grabbing; }
+.qr-item.qr-dragging { opacity: 0.4; }
+.qr-item.qr-drop-before { border-top-color: var(--accent); box-shadow: 0 -2px 0 0 var(--accent); }
+.qr-item.qr-drop-after { border-bottom-color: var(--accent); box-shadow: 0 2px 0 0 var(--accent); }

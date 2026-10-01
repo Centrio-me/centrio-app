@@ -483,6 +483,7 @@ module.exports = {
         downloadedTitle: '✓ Обновление готово',
         downloadedDesc: 'Версия {v} скачана и готова к установке.',
         installRestart: 'Установить и перезапустить',
+        installing: "Устанавливаем обновление — Centrio перезапустится",
         error: 'Ошибка обновления',
         errorTitle:     '⚠ Ошибка обновления',
         errorDesc:      'Не удалось скачать обновление.'
@@ -689,6 +690,7 @@ module.exports = {
         cancel: "Отмена",
         save: "Сохранить",
         clickToCopy: "Нажмите, чтобы скопировать",
+        dragToReorder: "Перетащите, чтобы изменить порядок",
         copied: "Скопировано",
         edit: "Изменить",
         delete: "Удалить",

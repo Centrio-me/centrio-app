@@ -1,6 +1,49 @@
 const https = require('https')
 const http = require('http')
+const os = require('os')
+const crypto = require('crypto')
 const { API_URL } = require('./main/config/constants')
+
+// Кто мы для сервера (раздел «Устройства» в личном кабинете). Раньше запросы
+// приложения шли без User-Agent и без идентификатора: сервер видел «неизвестное
+// устройство», не мог отличить два компьютера и не знал, какую сессию удалять
+// при выходе. Идентификатор — хэш ID машины (сырой не отправляем), имя —
+// название компьютера, чтобы владелец узнавал свои устройства в списке.
+let deviceIdentity = null
+function getDeviceIdentity() {
+    if (deviceIdentity) return deviceIdentity
+    let version = '0.0.0'
+    try { version = require('electron').app.getVersion() } catch {
+        try { version = require('./package.json').version } catch {}
+    }
+    let deviceId = null
+    try {
+        const machineId = require('node-machine-id').machineIdSync()
+        deviceId = 'app-' + crypto.createHash('sha256').update('centrio-device-v1:' + machineId).digest('hex').slice(0, 40)
+    } catch {}
+    const platformName = process.platform === 'win32' ? 'Windows' : process.platform === 'darwin' ? 'macOS' : 'Linux'
+    let deviceName = ''
+    try { deviceName = os.hostname() } catch {}
+    deviceIdentity = {
+        deviceId,
+        deviceName: String(deviceName || '').slice(0, 80),
+        version,
+        userAgent: `Centrio/${version} (${platformName}; ${process.arch})`
+    }
+    return deviceIdentity
+}
+
+function deviceHeaders() {
+    const id = getDeviceIdentity()
+    const headers = {
+        'User-Agent': id.userAgent,
+        'X-Centrio-Client': 'desktop',
+        'X-Centrio-App-Version': id.version
+    }
+    if (id.deviceId) headers['X-Centrio-Device-Id'] = id.deviceId
+    if (id.deviceName) headers['X-Centrio-Device-Name'] = encodeURIComponent(id.deviceName)
+    return headers
+}
 
 function createHttpError(status, data) {
     const message =
@@ -55,7 +98,8 @@ function requestOnce(method, path, body, token) {
             path: url.pathname + url.search,
             method,
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                ...deviceHeaders()
             }
         }
 
@@ -138,8 +182,16 @@ module.exports = {
         return request('POST', '/api/auth/refresh', { refreshToken })
     },
 
-    logout(token) {
-        return request('POST', '/api/auth/logout', null, token)
+    // refreshToken нужен серверу, чтобы удалить именно эту сессию: без него
+    // выход оставлял «призрак» в списке устройств и занимал слот лимита.
+    logout(token, refreshToken) {
+        return request('POST', '/api/auth/logout', refreshToken ? { refreshToken } : null, token)
+    },
+
+    // После входа через системный браузер сессию создал запрос браузера —
+    // сообщаем серверу, что это приложение (и какое устройство).
+    identifyDevice(token, refreshToken) {
+        return request('POST', '/api/auth/device', { refreshToken }, token)
     },
 
     googleDesktop(idToken, token) {

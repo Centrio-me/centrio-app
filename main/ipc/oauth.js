@@ -111,6 +111,9 @@ function registerOAuthIpc({ getMainWindow }) {
             // in main.js.
             entitlement.persistCloudUser(user)
 
+            // Сессию создал браузер — представляемся серверу как приложение.
+            apiSvc.identifyDevice(accessToken, refreshToken).catch(() => {})
+
             return { user, accessToken, refreshToken }
         })
     })
@@ -128,6 +131,9 @@ function registerOAuthIpc({ getMainWindow }) {
             if (!user) throw new Error('Failed to get user data')
 
             entitlement.persistCloudUser(user)
+
+            // Сессию создал браузер — представляемся серверу как приложение.
+            apiSvc.identifyDevice(accessToken, refreshToken).catch(() => {})
 
             return { user, accessToken, refreshToken }
         })

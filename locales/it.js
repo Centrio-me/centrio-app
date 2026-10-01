@@ -441,6 +441,7 @@ module.exports = {
         downloading:    'Download aggiornamento',
         downloaded:     'Aggiornamento scaricato',
         installRestart: 'Installa e riavvia',
+        installing: "Installazione dell’aggiornamento — Centrio si riavvierà",
         error:          'Errore aggiornamento',
     },
 
@@ -645,6 +646,7 @@ module.exports = {
         cancel: "Annulla",
         save: "Salva",
         clickToCopy: "Clicca per copiare",
+        dragToReorder: "Trascina per riordinare",
         copied: "Copiato",
         edit: "Modifica",
         delete: "Elimina",

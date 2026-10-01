@@ -335,7 +335,7 @@ function createCloudApi({
     async function logout() {
         try {
             if (cloudStore.getToken()) {
-                await authorizedInvoke('api-logout')
+                await authorizedInvoke('api-logout', cloudStore.getRefresh())
             }
         } catch {}
         forceLogout()

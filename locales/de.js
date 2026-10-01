@@ -441,6 +441,7 @@ module.exports = {
         downloading:    'Update wird heruntergeladen',
         downloaded:     'Update heruntergeladen',
         installRestart: 'Installieren und neu starten',
+        installing: "Update wird installiert — Centrio startet neu",
         error:          'Update-Fehler',
     },
 
@@ -645,6 +646,7 @@ module.exports = {
         cancel: "Abbrechen",
         save: "Speichern",
         clickToCopy: "Zum Kopieren klicken",
+        dragToReorder: "Zum Sortieren ziehen",
         copied: "Kopiert",
         edit: "Bearbeiten",
         delete: "Löschen",
