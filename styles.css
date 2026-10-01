@@ -16233,3 +16233,18 @@ body.onb-active #titlebarMenu {
 .team-task-notes { margin-top: 2px; font-size: 12px; color: var(--text-secondary); white-space: pre-wrap; overflow-wrap: anywhere; }
 .team-task-meta { display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 3px; font-size: 11px; color: var(--text-muted); }
 .team-task-high { color: #e5484d; font-weight: 600; }
+
+/* Рабочее пространство — иконки правой панели (renderer/rightbar-custom.js) */
+.right-activity-bar .activity-btn.rb-user-hidden { display: none !important; }
+.rb-pro-note { margin-bottom: 12px; padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-hover); }
+.rb-list { display: flex; flex-direction: column; gap: 6px; max-width: 520px; }
+.rb-row { display: flex; align-items: center; gap: 12px; padding: 8px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--bg-hover); }
+.rb-row-icon { display: inline-flex; width: 28px; height: 28px; align-items: center; justify-content: center; color: var(--text-secondary); }
+.rb-row-icon svg { width: 18px; height: 18px; }
+.rb-row-name { flex: 1; min-width: 0; font-size: 13.5px; color: var(--text-primary); }
+.rb-row-moves { display: inline-flex; gap: 2px; }
+.rb-move-btn { display: inline-flex; width: 26px; height: 26px; align-items: center; justify-content: center; border: 1px solid transparent; border-radius: 6px; background: transparent; color: var(--text-secondary); cursor: pointer; }
+.rb-move-btn:hover:not(:disabled) { background: var(--bg-primary, transparent); border-color: var(--border); color: var(--text-primary); }
+.rb-move-btn:disabled { opacity: 0.3; cursor: default; }
+.rb-reset { margin-top: 14px; padding: 8px 14px; border: 1px solid var(--border); border-radius: 8px; background: transparent; color: var(--text-secondary); font: inherit; font-size: 13px; cursor: pointer; }
+.rb-reset:hover { background: var(--bg-hover); color: var(--text-primary); }

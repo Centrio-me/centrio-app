@@ -20,10 +20,9 @@ function registerShortcuts({ getMainWindow, showMainWindow }) {
         }
     })
 
-    // F12 — toggle DevTools for the main window itself (renderer.js/split.js/
-    // unread.js etc). Complements webview.openDevTools() (see ctxDevTools in
-    // context-actions-bind.js, opens DevTools scoped to one messenger's own
-    // page) — this one is for host-side code that isn't inside any webview.
+    // F12 — toggle DevTools for the main window. This shortcut is the only way
+    // to open the console now: the "Инструменты разработчика" context-menu
+    // item was removed.
     globalShortcut.register('F12', () => {
         withWindow(getMainWindow, (win) => win.webContents.toggleDevTools())
     })

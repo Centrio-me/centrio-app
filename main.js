@@ -250,6 +250,12 @@ const ALLOWED_STORE_ROOTS = new Set([
     // Personal quick replies — renderer/quick-replies-bind.js; synced across
     // devices via settings.extra in the cloud payload.
     'quickReplies',
+    // Folder of every team-assigned messenger (they are re-injected on each
+    // launch, so the placement is stored separately) — renderer.js.
+    'orgAssignedFolders',
+    // Settings -> Workspace: hidden/ordered right-bar icons —
+    // renderer/rightbar-custom.js; synced via settings.extra.
+    'rightbarLayout',
     // AI-ассистент — режим инференса, BYOK-ключи (зашифрованы через
     // store:secure-* под assistant.byok.<provider>.keyEnc), адрес Ollama,
     // локальная история чата. См. main/services/aiProviders/index.js и

@@ -369,13 +369,6 @@ function bindContextActionsUi({
         }
     })
 
-    document.getElementById('ctxDevTools')?.addEventListener('click', () => {
-        const m = getMessengerById(state.contextTargetId)
-        hideAllMenus()
-        if (!m) return
-        document.getElementById(`webview-${m.id}`)?.openDevTools()
-    })
-
 }
 
 module.exports = {

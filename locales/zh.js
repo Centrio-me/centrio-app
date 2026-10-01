@@ -766,6 +766,16 @@ module.exports = {
         }
     },
 
+    rightbarCustom: {
+        nav: "工作区",
+        title: "右侧栏图标",
+        hint: "选择右侧显示哪些图标并按喜好排序。隐藏的图标会消失，其余图标上移。",
+        proNote: "此设置仅限 Pro。目前显示全部图标。",
+        reset: "恢复默认",
+        moveUp: "上移",
+        moveDown: "下移",
+    },
+
     teamTasks: {
 
         title: "主管任务",
@@ -823,6 +833,8 @@ module.exports = {
     pro: {
         quickRepliesTitle: "快捷回复 — 仅限 Pro",
         quickRepliesDesc: "保存常用文字（地址、营业时间、价格），一键复制到任意聊天。Pro 或 Team 计划可用。",
+        rightbarCustomTitle: "工作区 — 仅限 Pro",
+        rightbarCustomDesc: "隐藏右侧不需要的图标并调整顺序。适用于 Pro 或 Team 套餐。",
         messengerLimitTitle:  '需要 Pro',
         messengerLimitDesc:   '免费计划最多支持 {n} 个应用。升级到 Pro 可无限添加。',
         themesTitle:          '主题 — 仅 Pro 版',

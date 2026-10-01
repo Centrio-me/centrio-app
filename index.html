@@ -1615,13 +1615,6 @@
         </svg>
         <span id="ctxDarkModeLabel">Тёмная тема</span>
     </div>
-    <div class="context-item" id="ctxDevTools">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="16 18 22 12 16 6"></polyline>
-            <polyline points="8 6 2 12 8 18"></polyline>
-        </svg>
-        <span>Инструменты разработчика</span>
-    </div>
     <div class="context-item" id="ctxEdit">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -2039,6 +2032,15 @@
                         <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" stroke="currentColor" stroke-width="1.8"/>
                     </svg>
                     <span data-i18n="settings.sections.network"></span>
+                </div>
+                <div class="settings-nav-item" data-section="workspace">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+                        <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" stroke-width="1.8"/>
+                        <path d="M15 3v18" stroke="currentColor" stroke-width="1.8"/>
+                        <path d="M18 8h.01M18 12h.01M18 16h.01" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>
+                    </svg>
+                    <span data-i18n="rightbarCustom.nav"></span>
+                    <span class="settings-nav-pro-badge">PRO</span>
                 </div>
                 <div class="settings-nav-item" data-section="extensions">
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
@@ -2853,6 +2855,17 @@
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                <!-- Рабочее пространство (иконки правой панели, Pro) -->
+                <div class="settings-section" id="section-workspace">
+                    <div class="settings-group">
+                        <div class="settings-group-title" data-i18n="rightbarCustom.title"></div>
+                        <div class="settings-hint" style="margin-bottom:16px" data-i18n="rightbarCustom.hint"></div>
+                        <div class="settings-hint rb-pro-note" id="rightbarCustomProNote" style="display:none" data-i18n="rightbarCustom.proNote"></div>
+                        <div id="rightbarCustomList" class="rb-list"></div>
+                        <button type="button" class="btn-secondary rb-reset" id="rightbarCustomReset" data-i18n="rightbarCustom.reset"></button>
                     </div>
                 </div>
 

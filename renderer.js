@@ -28,6 +28,7 @@ const { bindSupportTicketsUi } = require('./renderer/support-tickets-ui')
 const { applyOrgLogo } = require('./renderer/org-branding')
 const { createOrgTeamApi } = require('./renderer/org-team')
 const { createTeamTasksUi } = require('./renderer/team-tasks')
+const { bindRightbarCustom } = require('./renderer/rightbar-custom')
 const { createContextMenusApi } = require('./renderer/context-menus')
 const { bindPopupBackdrop } = require('./renderer/popup-backdrop-bind')
 const { createFoldersUiApi } = require('./renderer/folders-ui')
@@ -90,7 +91,7 @@ const SYNCED_STORE_KEYS = new Set([
     'messengers', 'folders', 'settings', 'security', 'lockOnStartup',
     'globalProxy', 'sidebarOrder', 'menuCollapsed', 'appZoomLevel',
     'vpnAppModes', 'extensionsState', 'splitLeftPctPref', 'splitPresets',
-    'mutedMessengers', 'quickReplies'
+    'mutedMessengers', 'quickReplies', 'rightbarLayout'
 ])
 
 let suppressAutoCloudSync = false
@@ -506,6 +507,7 @@ async function bootstrap() {
         ['sidebarOrder', []],
         ['mutedMessengers', {}],
         ['orgAssignedFolders', {}],
+        ['rightbarLayout', null],
         ['globalMuteAll', false],
         ['extensionsState', {}],
         // BUGFIX ("состояние сплита/пресеты не восстанавливаются после
@@ -755,7 +757,8 @@ async function bootstrap() {
                         // а не подгонял её заново при каждом входе (см. renderer/split.js).
                         splitLeftPctPref: store.get('splitLeftPctPref', 50),
                         splitPresets:     store.get('splitPresets', []) || [],
-                        quickReplies:     store.get('quickReplies', []) || []
+                        quickReplies:     store.get('quickReplies', []) || [],
+                        rightbarLayout:   store.get('rightbarLayout', null)
                     }
                 }
             }
@@ -878,6 +881,7 @@ async function bootstrap() {
                         if (extra.splitLeftPctPref !== undefined) await store.setAsync('splitLeftPctPref', extra.splitLeftPctPref)
                         if (extra.splitPresets !== undefined) await store.setAsync('splitPresets', extra.splitPresets)
                         if (Array.isArray(extra.quickReplies)) await store.setAsync('quickReplies', extra.quickReplies)
+                        if (extra.rightbarLayout !== undefined) await store.setAsync('rightbarLayout', extra.rightbarLayout)
                         if (extra.activeTabId !== undefined) await store.setAsync('activeTabId', extra.activeTabId)
                         if (extra.activeWorkspaceId !== undefined) await store.setAsync('activeWorkspaceId', extra.activeWorkspaceId)
                     }
@@ -2697,10 +2701,11 @@ function applyTabZoom(level) {
     // отложенную ссылку вместо прямого замыкания на notesUiApi.
     let notesUiApiRef = null
     let quickRepliesApiRef = null
+    let rightbarCustomApiRef = null
 
     function onExtensionToggle(extId, isEnabled) {
         if (extId === 'notes') {
-            notesUiApiRef?.updateButtonVisibility(); quickRepliesApiRef?.updateButtonState()
+            notesUiApiRef?.updateButtonVisibility(); quickRepliesApiRef?.updateButtonState(); rightbarCustomApiRef?.apply()
         }
         if (extId === 'screenshot') {
             const btn = document.getElementById('screenshotBtn')
@@ -2743,7 +2748,7 @@ function applyTabZoom(level) {
             reapplyFolderLocks()
             reapplySoundLocks()
             notesUiApiRef?.invalidate()
-            notesUiApiRef?.updateButtonVisibility(); quickRepliesApiRef?.updateButtonState()
+            notesUiApiRef?.updateButtonVisibility(); quickRepliesApiRef?.updateButtonState(); rightbarCustomApiRef?.apply()
         })
     }
 
@@ -2922,6 +2927,7 @@ function applyTabZoom(level) {
                 if (extra.splitLeftPctPref !== undefined) store.set('splitLeftPctPref', extra.splitLeftPctPref)
                 if (extra.splitPresets !== undefined) store.set('splitPresets', extra.splitPresets)
                 if (Array.isArray(extra.quickReplies)) store.set('quickReplies', extra.quickReplies)
+                if (extra.rightbarLayout !== undefined) store.set('rightbarLayout', extra.rightbarLayout)
                 // BUGFIX ("не сохраняется выбранный мессенджер"): restore
                 // last-active tab from cloud too, mirroring every other
                 // extra.* field here — see switchTab()/loadData() above.
@@ -3597,6 +3603,16 @@ function applyTabZoom(level) {
         requirePro
     })
 
+    rightbarCustomApiRef = bindRightbarCustom({
+        store,
+        tGet,
+        hasEffectivePro,
+        requirePro,
+        closeRightPanel,
+        getActivePanelKey: () => rightPanelActiveKey,
+        cloudSyncPush: () => { if (cloudStore.isLoggedIn()) cloudSyncPush() }
+    })
+
     notesUiApiRef = bindNotesUi({
         store,
         tGet,
@@ -3808,7 +3824,7 @@ function applyTabZoom(level) {
         // пользователь оплатил Pro на сайте, а приложение уже было запущено (или
         // было закрыто и открыто заново без повторного логина), Pro-статус в UI
         // мог оставаться устаревшим сколь угодно долго.
-        cloudApi.refreshUser().then(() => { if (typeof updateCloudBtn === 'function') updateCloudBtn(); updateAddButtonState(); updateTrialStatusBar(); reapplyMessengerLocks(); reapplyExtensionLocks(); reapplySettingsLocks(); reapplyFolderLocks(); reapplySoundLocks(); notesUiApiRef?.invalidate(); notesUiApiRef?.updateButtonVisibility(); quickRepliesApiRef?.updateButtonState() })
+        cloudApi.refreshUser().then(() => { if (typeof updateCloudBtn === 'function') updateCloudBtn(); updateAddButtonState(); updateTrialStatusBar(); reapplyMessengerLocks(); reapplyExtensionLocks(); reapplySettingsLocks(); reapplyFolderLocks(); reapplySoundLocks(); notesUiApiRef?.invalidate(); notesUiApiRef?.updateButtonVisibility(); quickRepliesApiRef?.updateButtonState(); rightbarCustomApiRef?.apply() })
     }
 
     // ...и повторяем при каждом возврате фокуса на окно — типичный сценарий:
@@ -3817,7 +3833,7 @@ function applyTabZoom(level) {
     // Тот же паттерн already используется для уведомлений в app-notif-bind.js.
     window.addEventListener('focus', () => {
         if (cloudStore.isLoggedIn()) {
-            cloudApi.refreshUser().then(() => { if (typeof updateCloudBtn === 'function') updateCloudBtn(); updateAddButtonState(); updateTrialStatusBar(); reapplyMessengerLocks(); reapplyExtensionLocks(); reapplySettingsLocks(); reapplyFolderLocks(); reapplySoundLocks(); notesUiApiRef?.invalidate(); notesUiApiRef?.updateButtonVisibility(); quickRepliesApiRef?.updateButtonState() })
+            cloudApi.refreshUser().then(() => { if (typeof updateCloudBtn === 'function') updateCloudBtn(); updateAddButtonState(); updateTrialStatusBar(); reapplyMessengerLocks(); reapplyExtensionLocks(); reapplySettingsLocks(); reapplyFolderLocks(); reapplySoundLocks(); notesUiApiRef?.invalidate(); notesUiApiRef?.updateButtonVisibility(); quickRepliesApiRef?.updateButtonState(); rightbarCustomApiRef?.apply() })
         } else {
             // No account — still catch a local (no-login) trial expiring
             // while the app was open. hasEffectivePro() checks
@@ -3846,7 +3862,7 @@ function applyTabZoom(level) {
     const PRO_REVALIDATE_INTERVAL_MS = 30 * 60 * 1000
     setInterval(() => {
         if (cloudStore.isLoggedIn()) {
-            cloudApi.refreshUser().then(() => { if (typeof updateCloudBtn === 'function') updateCloudBtn(); updateAddButtonState(); updateTrialStatusBar(); reapplyMessengerLocks(); reapplyExtensionLocks(); reapplySettingsLocks(); reapplyFolderLocks(); reapplySoundLocks(); notesUiApiRef?.invalidate(); notesUiApiRef?.updateButtonVisibility(); quickRepliesApiRef?.updateButtonState() })
+            cloudApi.refreshUser().then(() => { if (typeof updateCloudBtn === 'function') updateCloudBtn(); updateAddButtonState(); updateTrialStatusBar(); reapplyMessengerLocks(); reapplyExtensionLocks(); reapplySettingsLocks(); reapplyFolderLocks(); reapplySoundLocks(); notesUiApiRef?.invalidate(); notesUiApiRef?.updateButtonVisibility(); quickRepliesApiRef?.updateButtonState(); rightbarCustomApiRef?.apply() })
         } else {
             // Same reasoning as the focus listener above: a local trial can
             // expire while the app sits open and unfocused too.
