@@ -858,6 +858,40 @@ module.exports = {
         }
     },
 
+    teamTasks: {
+
+        title: "От руководителя",
+
+        add: "Поставить задачу",
+
+        placeholder: "Что нужно сделать?",
+
+        assignee: "Кому",
+
+        from: "от {name}",
+
+        to: "для {name}",
+
+        due: "до {date}",
+
+        high: "Срочно",
+
+        done: "Выполнено",
+
+        empty: "Пока нет задач от руководителя",
+
+        notifyTitle: "Новая задача",
+
+        notifyMore: "и ещё {n}",
+
+        created: "Задача поставлена",
+
+        failed: "Не удалось выполнить действие",
+
+        doneSection: "Выполненные",
+
+    },
+
     todos: {
         title: 'Задачи',
         all: 'Все',

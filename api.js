@@ -324,6 +324,20 @@ module.exports = {
         return request('GET', `/api/org/${encodeURIComponent(orgId)}/quick-replies`, null, token)
     },
 
+    // Задачи сотрудникам (TEAM, 2026-10-01).
+    orgGetTasks(token, orgId) {
+        return request('GET', `/api/org/${encodeURIComponent(orgId)}/tasks`, null, token)
+    },
+    orgCreateTask(token, orgId, task) {
+        return request('POST', `/api/org/${encodeURIComponent(orgId)}/tasks`, task, token)
+    },
+    orgUpdateTask(token, orgId, taskId, patch) {
+        return request('PATCH', `/api/org/${encodeURIComponent(orgId)}/tasks/${encodeURIComponent(taskId)}`, patch, token)
+    },
+    orgMarkTasksSeen(token, orgId) {
+        return request('POST', `/api/org/${encodeURIComponent(orgId)}/tasks/seen`, {}, token)
+    },
+
     // OWNER/ADMIN only server-side — "Клиент ждёт ответа" alerts created
     // after `afterIso`, for the "В приложение Centrio" delivery channel.
     orgGetAlerts(token, orgId, afterIso) {

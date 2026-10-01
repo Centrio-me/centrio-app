@@ -766,6 +766,40 @@ module.exports = {
         }
     },
 
+    teamTasks: {
+
+        title: "Von der Leitung",
+
+        add: "Aufgabe zuweisen",
+
+        placeholder: "Was ist zu tun?",
+
+        assignee: "Empfänger",
+
+        from: "von {name}",
+
+        to: "für {name}",
+
+        due: "bis {date}",
+
+        high: "Dringend",
+
+        done: "Erledigt",
+
+        empty: "Noch keine Aufgaben von der Leitung",
+
+        notifyTitle: "Neue Aufgabe",
+
+        notifyMore: "und {n} weitere",
+
+        created: "Aufgabe zugewiesen",
+
+        failed: "Aktion fehlgeschlagen",
+
+        doneSection: "Erledigt",
+
+    },
+
     todos: {
         title: 'Aufgaben',
         all: 'Alle',

@@ -766,6 +766,40 @@ module.exports = {
         }
     },
 
+    teamTasks: {
+
+        title: "主管任务",
+
+        add: "分配任务",
+
+        placeholder: "需要做什么？",
+
+        assignee: "负责人",
+
+        from: "来自 {name}",
+
+        to: "分配给 {name}",
+
+        due: "截止 {date}",
+
+        high: "紧急",
+
+        done: "已完成",
+
+        empty: "暂无主管分配的任务",
+
+        notifyTitle: "新任务",
+
+        notifyMore: "另有 {n} 项",
+
+        created: "任务已分配",
+
+        failed: "操作失败",
+
+        doneSection: "已完成",
+
+    },
+
     todos: {
         title: '任务',
         all: '全部',

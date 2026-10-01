@@ -766,6 +766,40 @@ module.exports = {
         }
     },
 
+    teamTasks: {
+
+        title: "Dal responsabile",
+
+        add: "Assegna un compito",
+
+        placeholder: "Cosa c’è da fare?",
+
+        assignee: "Per",
+
+        from: "da {name}",
+
+        to: "per {name}",
+
+        due: "entro {date}",
+
+        high: "Urgente",
+
+        done: "Fatto",
+
+        empty: "Ancora nessun compito dal responsabile",
+
+        notifyTitle: "Nuovo compito",
+
+        notifyMore: "e altri {n}",
+
+        created: "Compito assegnato",
+
+        failed: "Azione non riuscita",
+
+        doneSection: "Completati",
+
+    },
+
     todos: {
         title: 'Attività',
         all: 'Tutte',

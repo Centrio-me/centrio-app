@@ -766,6 +766,40 @@ module.exports = {
         }
     },
 
+    teamTasks: {
+
+        title: "De la direction",
+
+        add: "Assigner une tâche",
+
+        placeholder: "Que faut-il faire ?",
+
+        assignee: "Pour",
+
+        from: "de {name}",
+
+        to: "pour {name}",
+
+        due: "avant le {date}",
+
+        high: "Urgent",
+
+        done: "Terminé",
+
+        empty: "Aucune tâche de la direction pour le moment",
+
+        notifyTitle: "Nouvelle tâche",
+
+        notifyMore: "et {n} autres",
+
+        created: "Tâche assignée",
+
+        failed: "Action impossible",
+
+        doneSection: "Terminées",
+
+    },
+
     todos: {
         title: 'Tâches',
         all: 'Toutes',

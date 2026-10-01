@@ -22,6 +22,7 @@ function createOrgTeamApi({
     refreshAllVpnBadges = () => {}, // (active) => void — keeps the sidebar VPN badges/state.vpnActive in sync, see renderer.js
     setCanAddOwnMessengers = () => {}, // (allowed: boolean) => void — gates the "+" add-messenger button, see renderer.js/add-modal-bind.js
     setTeamQuickReplies = () => {}, // (replies) => void — renderer/quick-replies-bind.js
+    refreshTeamTasks = () => {}, // () => Promise — renderer/team-tasks.js, polled every TASKS_POLL_MS
     notifyOwnerAlert = () => {}, // ({ title, body }) => void — OS notification + bell entry for the owner/admin
     tGet = () => ''
 }) {
@@ -33,10 +34,12 @@ function createOrgTeamApi({
     const STATS_PUSH_DEBOUNCE_MS = 15 * 1000
     const STATS_HEARTBEAT_MS = 2 * 60 * 1000
     const ALERTS_POLL_MS = 60 * 1000
+    const TASKS_POLL_MS = 45 * 1000
     const ALERTS_SEEN_KEY = 'centrio-org-alerts-seen-at'
     let pollTimer = null
     let statsHeartbeatTimer = null
     let alertsTimer = null
+    let tasksTimer = null
     let statsPushTimer = null
     const reportedMessengerIds = new Set()
     let lastForcedTheme = null
@@ -282,6 +285,8 @@ function createOrgTeamApi({
             if (orgId) pushStats(orgId)
         }, STATS_HEARTBEAT_MS)
         alertsTimer = setInterval(pollAlerts, ALERTS_POLL_MS)
+        tasksTimer = setInterval(() => { if (getOrgId()) refreshTeamTasks() }, TASKS_POLL_MS)
+        ;[4000, 12000].forEach(ms => setTimeout(() => { if (getOrgId()) refreshTeamTasks() }, ms))
         setTimeout(pollAlerts, 10000)
 
         // BUGFIX (2026-09-19, live report — "Мессенджеры почему-то через
@@ -312,6 +317,7 @@ function createOrgTeamApi({
         if (pollTimer) clearInterval(pollTimer)
         clearInterval(statsHeartbeatTimer)
         clearInterval(alertsTimer)
+        clearInterval(tasksTimer)
         clearTimeout(statsPushTimer)
         pollTimer = null
         statsHeartbeatTimer = null

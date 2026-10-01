@@ -210,6 +210,29 @@ function registerApiIpc() {
         return wrapApi(() => api.orgGetQuickReplies(token, String(orgId || '')))
     })
 
+    ipcMain.handle('api-org-get-tasks', async (event, token, orgId) => {
+        return wrapApi(() => api.orgGetTasks(token, String(orgId || '')))
+    })
+
+    ipcMain.handle('api-org-create-task', async (event, token, orgId, task) => {
+        return wrapApi(() => api.orgCreateTask(token, String(orgId || ''), {
+            assigneeId: String(task?.assigneeId || ''),
+            title: String(task?.title || ''),
+            notes: task?.notes == null ? undefined : String(task.notes),
+            priority: task?.priority === 'HIGH' ? 'HIGH' : 'NORMAL',
+            dueAt: task?.dueAt || null
+        }))
+    })
+
+    ipcMain.handle('api-org-update-task', async (event, token, orgId, taskId, patch) => {
+        const status = patch?.status === 'DONE' || patch?.status === 'OPEN' ? patch.status : undefined
+        return wrapApi(() => api.orgUpdateTask(token, String(orgId || ''), String(taskId || ''), { status }))
+    })
+
+    ipcMain.handle('api-org-mark-tasks-seen', async (event, token, orgId) => {
+        return wrapApi(() => api.orgMarkTasksSeen(token, String(orgId || '')))
+    })
+
     ipcMain.handle('api-org-get-alerts', async (event, token, orgId, afterIso) => {
         return wrapApi(() => api.orgGetAlerts(token, String(orgId || ''), String(afterIso || '')))
     })

@@ -27,6 +27,7 @@ const { createCloudUiApi } = require('./renderer/cloud-ui')
 const { bindSupportTicketsUi } = require('./renderer/support-tickets-ui')
 const { applyOrgLogo } = require('./renderer/org-branding')
 const { createOrgTeamApi } = require('./renderer/org-team')
+const { createTeamTasksUi } = require('./renderer/team-tasks')
 const { createContextMenusApi } = require('./renderer/context-menus')
 const { bindPopupBackdrop } = require('./renderer/popup-backdrop-bind')
 const { createFoldersUiApi } = require('./renderer/folders-ui')
@@ -3635,6 +3636,16 @@ function applyTabZoom(level) {
     // shared VPN / forced theme / assigned messengers / read-status stats.
     // tick() itself no-ops whenever the current user isn't an org member, so
     // it's safe to always start this regardless of login state.
+    const teamTasksUi = createTeamTasksUi({
+        authorizedInvoke,
+        cloudStore,
+        tGet,
+        playSound: () => playNotifSound(),
+        notify: ({ title, body }) => {
+            addMessengerNotifRef?.(title, body, null, 'org-task')
+            ipcRenderer.send('show-notification', { title, body, messengerId: 'org-task' })
+        }
+    })
     const orgTeamApi = createOrgTeamApi({
         authorizedInvoke,
         invokeIpc,
@@ -3650,6 +3661,7 @@ function applyTabZoom(level) {
             updateAddButtonState()
         },
         setTeamQuickReplies: (replies) => quickRepliesApi?.setTeamReplies(replies),
+        refreshTeamTasks: () => teamTasksUi.refresh(),
         notifyOwnerAlert: ({ title, body }) => {
             addMessengerNotifRef?.(title, body, null, 'org-alert')
             ipcRenderer.send('show-notification', { title, body, messengerId: 'org-alert' })

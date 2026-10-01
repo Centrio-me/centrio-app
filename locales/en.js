@@ -791,6 +791,40 @@ module.exports = {
         }
     },
 
+    teamTasks: {
+
+        title: "From your manager",
+
+        add: "Assign a task",
+
+        placeholder: "What needs to be done?",
+
+        assignee: "Assignee",
+
+        from: "from {name}",
+
+        to: "for {name}",
+
+        due: "due {date}",
+
+        high: "Urgent",
+
+        done: "Done",
+
+        empty: "No tasks from your manager yet",
+
+        notifyTitle: "New task",
+
+        notifyMore: "and {n} more",
+
+        created: "Task assigned",
+
+        failed: "Could not complete the action",
+
+        doneSection: "Completed",
+
+    },
+
     todos: {
         title: 'Todos',
         all: 'All',

@@ -766,6 +766,40 @@ module.exports = {
         }
     },
 
+    teamTasks: {
+
+        title: "Del responsable",
+
+        add: "Asignar tarea",
+
+        placeholder: "¿Qué hay que hacer?",
+
+        assignee: "Para",
+
+        from: "de {name}",
+
+        to: "para {name}",
+
+        due: "hasta {date}",
+
+        high: "Urgente",
+
+        done: "Hecho",
+
+        empty: "Aún no hay tareas del responsable",
+
+        notifyTitle: "Nueva tarea",
+
+        notifyMore: "y {n} más",
+
+        created: "Tarea asignada",
+
+        failed: "No se pudo completar la acción",
+
+        doneSection: "Completadas",
+
+    },
+
     todos: {
         title: 'Tareas',
         all: 'Todas',

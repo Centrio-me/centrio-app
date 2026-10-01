@@ -16170,3 +16170,66 @@ body.onb-active #titlebarMenu {
 .qr-item.qr-dragging { opacity: 0.4; }
 .qr-item.qr-drop-before { border-top-color: var(--accent); box-shadow: 0 -2px 0 0 var(--accent); }
 .qr-item.qr-drop-after { border-bottom-color: var(--accent); box-shadow: 0 2px 0 0 var(--accent); }
+
+/* Задачи от руководителя (TEAM) — renderer/team-tasks.js */
+#todosBtn { position: relative; }
+.team-tasks-dot {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    border-radius: 8px;
+    background: #e5484d;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 16px;
+    text-align: center;
+    box-shadow: 0 0 0 2px var(--bg-primary, #0b0a08);
+    pointer-events: none;
+}
+.team-tasks-dot[hidden] { display: none; }
+.team-tasks {
+    flex-shrink: 0;
+    margin: 0 10px 10px;
+    padding: 10px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--bg-hover);
+}
+.team-tasks-title, .team-tasks-sub {
+    margin-bottom: 8px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+}
+.team-tasks-sub { margin-top: 10px; }
+.team-tasks-empty { padding: 6px 0; font-size: 12.5px; color: var(--text-muted); }
+.team-task-form { display: flex; gap: 6px; margin-bottom: 10px; }
+.team-task-select, .team-task-input {
+    min-width: 0;
+    padding: 6px 8px;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    background: var(--bg-primary, transparent);
+    color: var(--text-primary);
+    font: inherit;
+    font-size: 12.5px;
+}
+.team-task-select { flex: 0 0 38%; }
+.team-task-input { flex: 1; }
+.team-task-input:focus, .team-task-select:focus { outline: none; border-color: var(--accent); }
+.team-task { display: flex; gap: 8px; align-items: flex-start; padding: 7px 8px; border-radius: 8px; }
+.team-task + .team-task { margin-top: 2px; }
+.team-task.is-new { background: rgba(229, 72, 77, 0.12); box-shadow: inset 2px 0 0 #e5484d; }
+.team-task.is-done .team-task-title { text-decoration: line-through; color: var(--text-muted); }
+.team-task-check { margin-top: 3px; accent-color: var(--accent); cursor: pointer; }
+.team-task-body { min-width: 0; flex: 1; }
+.team-task-title { font-size: 13px; color: var(--text-primary); overflow-wrap: anywhere; }
+.team-task-notes { margin-top: 2px; font-size: 12px; color: var(--text-secondary); white-space: pre-wrap; overflow-wrap: anywhere; }
+.team-task-meta { display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 3px; font-size: 11px; color: var(--text-muted); }
+.team-task-high { color: #e5484d; font-weight: 600; }
