@@ -22,6 +22,7 @@ function createOrgTeamApi({
     refreshAllVpnBadges = () => {}, // (active) => void — keeps the sidebar VPN badges/state.vpnActive in sync, see renderer.js
     setCanAddOwnMessengers = () => {}, // (allowed: boolean) => void — gates the "+" add-messenger button, see renderer.js/add-modal-bind.js
     setTeamQuickReplies = () => {}, // (replies) => void — renderer/quick-replies-bind.js
+    applyOrgStructure = () => {}, // ({ workspaces, folders }) => void — owner-managed workspaces/folders, see renderer.js
     refreshTeamTasks = () => {}, // () => Promise — renderer/team-tasks.js, polled every TASKS_POLL_MS
     notifyOwnerAlert = () => {}, // ({ title, body }) => void — OS notification + bell entry for the owner/admin
     tGet = () => ''
@@ -85,8 +86,19 @@ function createOrgTeamApi({
         } catch {}
     }
 
+    // Workspaces and folders the owner built for THIS employee. Managers see
+    // every assignment but arrange them themselves, so they skip this.
+    async function syncStructure(orgId) {
+        if (isOrgManager()) return
+        try {
+            const structure = unwrap(await authorizedInvoke('api-org-get-my-structure', orgId))
+            if (structure && Array.isArray(structure.folders) && Array.isArray(structure.workspaces)) applyOrgStructure(structure)
+        } catch {}
+    }
+
     async function syncAssignments(orgId) {
         try {
+            await syncStructure(orgId)
             const result = await authorizedInvoke('api-org-get-messenger-assignments', orgId)
             const assignments = unwrap(result)
             if (!Array.isArray(assignments)) return
@@ -100,7 +112,8 @@ function createOrgTeamApi({
                     name: a.name,
                     url: a.url,
                     icon: a.icon || null,
-                    color: a.color || null
+                    color: a.color || null,
+                    managedFolderId: a.folderId || null
                 })
             }
 

@@ -696,7 +696,7 @@ async function bootstrap() {
                 zoomLevel: typeof m.zoomLevel === 'number' ? m.zoomLevel : 1
             }))
 
-            const folders = state.folders.map((f, idx) => ({
+            const folders = state.folders.filter((f) => !f.orgManaged).map((f, idx) => ({
                 id: f.id,
                 name: f.name,
                 icon: f.icon,
@@ -707,7 +707,7 @@ async function bootstrap() {
             // Рабочие пространства (плагин, 2026-09-14) — контейнеры ДЛЯ
             // ПАПОК (folder.workspaceId выше), а не для мессенджеров
             // напрямую. См. renderer/workspaces-ui.js.
-            const workspaces = state.workspaces.map((w, idx) => ({
+            const workspaces = state.workspaces.filter((w) => !w.orgManaged).map((w, idx) => ({
                 id: w.id,
                 name: w.name,
                 color: w.color || null,
@@ -1027,14 +1027,14 @@ async function bootstrap() {
         // saveData()`. Existing call sites that don't await this keep
         // firing-and-forgetting exactly as before, so this is safe to add.
         const messengersSaved = store.set('messengers', messengers)
-        store.set('folders', state.folders)
+        store.set('folders', state.folders.filter((f) => !f.orgManaged))
         // Messengers assigned by a TEAM owner are never persisted themselves
         // (re-injected from the server each launch), so remember which folder
         // the user put each one into, or they'd fall out of folders on restart.
         // Entries for slots not injected yet (early saveData) are kept as-is.
         const orgFolders = { ...(store.get('orgAssignedFolders', {}) || {}) }
         state.activeMessengers.forEach((m) => {
-            if (!m.orgAssigned) return
+            if (!m.orgAssigned || m.managedFolder) return
             if (m.folderId) orgFolders[m.id] = m.folderId
             else delete orgFolders[m.id]
         })
@@ -1314,6 +1314,10 @@ async function bootstrap() {
     function moveMessengerToFolder(messengerId, folderId) {
         const messenger = state.activeMessengers.find(m => m.id === messengerId)
         if (!messenger) return
+        // Folders built by the team owner are read-only for the employee: nothing
+        // moves into them and the messengers inside them stay put.
+        if (messenger.managedFolder) return
+        if (folderId && state.folders.find((f) => f.id === folderId)?.orgManaged) return
 
         const oldFolderId = messenger.folderId
         document.getElementById(`sidebar-${messengerId}`)?.remove()
@@ -1393,6 +1397,7 @@ async function bootstrap() {
         header.addEventListener('contextmenu', (e) => {
             e.preventDefault()
             e.stopPropagation()
+            if (folder.orgManaged) return
             state.contextTargetFolderId = folder.id
             showFolderContextMenu(e, folder.id)
         })
@@ -2477,7 +2482,7 @@ function applyTabZoom(level) {
         const saved = store.get('orgAssignedFolders', {}) || {}
         state.activeMessengers.forEach((m) => {
             const folderId = saved[m.id]
-            if (!m.orgAssigned || m.folderId || !folderId) return
+            if (!m.orgAssigned || m.managedFolder || m.folderId || !folderId) return
             if (!state.folders.some((f) => f.id === folderId)) return
             if (!document.getElementById(`folder-children-${folderId}`)) return
             document.getElementById(`sidebar-${m.id}`)?.remove()
@@ -2487,27 +2492,100 @@ function applyTabZoom(level) {
         })
     }
 
+    // Moves an already injected assigned messenger without touching the
+    // personal store (used when the owner changes its managed folder).
+    function relocateOrgAssigned(existing, folderId) {
+        if ((existing.folderId || null) === (folderId || null)) return
+        const oldFolderId = existing.folderId
+        document.getElementById(`sidebar-${existing.id}`)?.remove()
+        existing.folderId = folderId || null
+        if (folderId) { addToFolder(existing, folderId); updateFolderBadge(folderId) } else addToSidebar(existing)
+        if (oldFolderId) updateFolderBadge(oldFolderId)
+        if (state.activeFolderPanelId) renderFolderPanel(state.activeFolderPanelId)
+    }
+
+    function managedFolderTarget(rawFolderId) {
+        const id = rawFolderId ? `orgf:${rawFolderId}` : null
+        return id && state.folders.some((f) => f.id === id) && document.getElementById(`folder-children-${id}`) ? id : null
+    }
+
+    // Workspaces and folders created by the team owner for this employee.
+    // They live in state only (never saved or synced with the personal data),
+    // are marked orgManaged and cannot be edited by the employee.
+    function applyOrgStructure(structure) {
+        const wantedWs = new Map((structure.workspaces || []).map((w) => [`orgw:${w.id}`, w]))
+        const wantedFolders = new Map((structure.folders || []).map((f) => [`orgf:${f.id}`, f]))
+
+        // Removed by the owner
+        state.folders.filter((f) => f.orgManaged && !wantedFolders.has(f.id)).forEach((f) => {
+            state.activeMessengers.filter((m) => m.folderId === f.id).forEach((m) => { m.managedFolder = false; relocateOrgAssigned(m, null) })
+            if (state.activeFolderPanelId === f.id) closeFolderPanel()
+            document.getElementById(`folder-${f.id}`)?.remove()
+        })
+        state.folders = state.folders.filter((f) => !f.orgManaged || wantedFolders.has(f.id))
+        state.workspaces = state.workspaces.filter((w) => !w.orgManaged || wantedWs.has(w.id))
+        if (state.activeWorkspaceId && !state.workspaces.some((w) => w.id === state.activeWorkspaceId)) {
+            workspacesUiApi.setActiveWorkspace(null)
+        }
+
+        wantedWs.forEach((w, id) => {
+            const existing = state.workspaces.find((x) => x.id === id)
+            if (existing) { existing.name = w.name; existing.color = w.color || null } else {
+                state.workspaces.push({ id, name: w.name, color: w.color || null, orgManaged: true })
+            }
+        })
+
+        wantedFolders.forEach((f, id) => {
+            const workspaceId = f.workspaceId ? `orgw:${f.workspaceId}` : null
+            const existing = state.folders.find((x) => x.id === id)
+            if (existing) {
+                existing.name = f.name
+                existing.workspaceId = workspaceId
+                const nameEl = document.querySelector(`#folder-${CSS.escape(id)} .folder-name`)
+                if (nameEl) nameEl.textContent = f.name
+            } else {
+                const folder = { id, name: f.name, icon: 'folder', workspaceId, orgManaged: true }
+                state.folders.push(folder)
+                renderFolder(folder)
+                document.getElementById(`folder-${id}`)?.classList.add('folder-managed')
+            }
+        })
+
+        if (wantedWs.size > 0 && !workspacesUiApi.isEnabled()) workspacesUiApi.setEnabled(true)
+        workspacesUiApi.updateSwitcherLabel()
+        workspacesUiApi.applyWorkspaceFilter()
+    }
+
     async function addOrgAssignedMessenger(messenger) {
-        if (state.activeMessengers.some(m => m.id === messenger.id)) return
+        const existingMessenger = state.activeMessengers.find(m => m.id === messenger.id)
+        if (existingMessenger) {
+            const target = managedFolderTarget(messenger.managedFolderId)
+            if (target) { existingMessenger.managedFolder = true; relocateOrgAssigned(existingMessenger, target) }
+            else if (existingMessenger.managedFolder) { existingMessenger.managedFolder = false; relocateOrgAssigned(existingMessenger, null) }
+            return
+        }
 
         const savedFolders = store.get('orgAssignedFolders', {}) || {}
         const savedFolderId = savedFolders[messenger.id]
         const restoredFolderId = savedFolderId && state.folders.some((f) => f.id === savedFolderId) &&
             document.getElementById(`folder-children-${savedFolderId}`) ? savedFolderId : null
 
+        const managedTarget = managedFolderTarget(messenger.managedFolderId)
+        const { managedFolderId: _managedFolderId, ...messengerFields } = messenger
         const newMessenger = {
-            ...messenger,
+            ...messengerFields,
             orgAssigned: true,
-            folderId: restoredFolderId,
+            managedFolder: !!managedTarget,
+            folderId: managedTarget || restoredFolderId,
             workspaceId: null,
             notifSound: '__default__',
             zoomLevel: state.tabZoomLevel || store.get('tabZoomLevel', 1) || 1
         }
 
         state.activeMessengers.push(newMessenger)
-        if (restoredFolderId) {
-            addToFolder(newMessenger, restoredFolderId)
-            updateFolderBadge(restoredFolderId)
+        if (newMessenger.folderId) {
+            addToFolder(newMessenger, newMessenger.folderId)
+            updateFolderBadge(newMessenger.folderId)
         } else {
             addToSidebar(newMessenger)
         }
@@ -3729,6 +3807,7 @@ function applyTabZoom(level) {
             updateAddButtonState()
         },
         setTeamQuickReplies: (replies) => quickRepliesApi?.setTeamReplies(replies),
+        applyOrgStructure,
         refreshTeamTasks: () => teamTasksUi.refresh(),
         notifyOwnerAlert: ({ title, body }) => {
             addMessengerNotifRef?.(title, body, null, 'org-alert')

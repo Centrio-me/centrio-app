@@ -230,6 +230,10 @@ function registerApiIpc() {
         return wrapApi(() => api.orgUpdateTask(token, String(orgId || ''), String(taskId || ''), { status, comment }))
     })
 
+    ipcMain.handle('api-org-get-my-structure', async (event, token, orgId) => {
+        return wrapApi(() => api.orgGetMyStructure(token, String(orgId || '')))
+    })
+
     ipcMain.handle('api-org-get-task-comments', async (event, token, orgId, taskId) => {
         return wrapApi(() => api.orgGetTaskComments(token, String(orgId || ''), String(taskId || '')))
     })

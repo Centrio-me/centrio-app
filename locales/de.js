@@ -767,7 +767,7 @@ module.exports = {
     },
 
     rightbarCustom: {
-        nav: "Arbeitsbereich",
+        nav: "Leiste",
         title: "Symbole der rechten Leiste",
         hint: "Wählen Sie, welche Symbole rechts erscheinen, und ordnen Sie sie nach Wunsch. Ausgeblendete Symbole verschwinden, die übrigen rücken nach oben.",
         proNote: "Diese Einstellung ist in Pro verfügbar. Aktuell werden alle Symbole angezeigt.",
@@ -878,7 +878,7 @@ module.exports = {
     pro: {
         quickRepliesTitle: "Schnellantworten — nur Pro",
         quickRepliesDesc: "Speichern Sie fertige Texte – Adresse, Öffnungszeiten, Preise – und kopieren Sie sie mit einem Klick in jeden Chat. Verfügbar im Pro- oder Team-Plan.",
-        rightbarCustomTitle: "Arbeitsbereich — nur in Pro",
+        rightbarCustomTitle: "Leiste — nur in Pro",
         rightbarCustomDesc: "Blenden Sie nicht benötigte Symbole rechts aus und ändern Sie ihre Reihenfolge. Verfügbar im Pro- oder Team-Tarif.",
         messengerLimitTitle:  'Pro erforderlich',
         messengerLimitDesc:   'Der kostenlose Plan unterstützt bis zu {n} Messenger. Auf Pro upgraden für unbegrenzte Anzahl.',

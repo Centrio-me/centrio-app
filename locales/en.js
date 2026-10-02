@@ -792,7 +792,7 @@ module.exports = {
     },
 
     rightbarCustom: {
-        nav: "Workspace",
+        nav: "Panel",
         title: "Right panel icons",
         hint: "Choose which icons appear on the right and put them in the order you like. Hidden icons disappear and the rest move up.",
         proNote: "This setting is available on Pro. All icons are shown for now.",
@@ -903,7 +903,7 @@ module.exports = {
     pro: {
         quickRepliesTitle: "Quick replies — Pro only",
         quickRepliesDesc: "Save ready-made texts — address, opening hours, prices — and copy them into any chat with one click. Available on the Pro or Team plan.",
-        rightbarCustomTitle: "Workspace — Pro only",
+        rightbarCustomTitle: "Panel — Pro only",
         rightbarCustomDesc: "Hide the icons on the right you do not need and change their order. Available on the Pro or Team plan.",
         messengerLimitTitle:  'Pro Required',
         messengerLimitDesc:   'The free plan supports up to {n} messengers. Upgrade to Pro for unlimited.',

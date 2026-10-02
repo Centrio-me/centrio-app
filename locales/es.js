@@ -767,7 +767,7 @@ module.exports = {
     },
 
     rightbarCustom: {
-        nav: "Espacio de trabajo",
+        nav: "Panel",
         title: "Iconos del panel derecho",
         hint: "Elige qué iconos se muestran a la derecha y ordénalos como prefieras. Los iconos ocultos desaparecen y el resto sube.",
         proNote: "Este ajuste está disponible en Pro. Por ahora se muestran todos los iconos.",
@@ -878,7 +878,7 @@ module.exports = {
     pro: {
         quickRepliesTitle: "Respuestas rápidas — solo Pro",
         quickRepliesDesc: "Guarda textos listos (dirección, horario, precios) y cópialos en cualquier chat con un clic. Disponible en el plan Pro o Team.",
-        rightbarCustomTitle: "Espacio de trabajo — solo en Pro",
+        rightbarCustomTitle: "Panel — solo en Pro",
         rightbarCustomDesc: "Oculta los iconos de la derecha que no necesites y cambia su orden. Disponible en el plan Pro o Team.",
         messengerLimitTitle:  'Se requiere Pro',
         messengerLimitDesc:   'El plan gratuito admite hasta {n} messengers. Actualiza a Pro para ilimitados.',

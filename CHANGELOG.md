@@ -8,7 +8,8 @@ The format is based on Keep a Changelog. This project does not currently follow 
 
 ## [Unreleased]
 
-_No unreleased changes yet — add entries here as they land, then move them under a new version heading at release time._
+- Новое (Centrio TEAM): владелец создаёт для сотрудника пространства и папки и раскладывает по ним его мессенджеры — у сотрудника они появляются сами с пометкой, свои папки остаются
+- Улучшено: раздел настроек «Рабочее пространство» переименован в «Панель»
 
 ## [2.9.14]
 

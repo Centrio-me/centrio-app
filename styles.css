@@ -16362,3 +16362,7 @@ body.onb-active #titlebarMenu {
 @media (max-width: 1000px) { .add2-rail { display: none; } .add2-side { width: 280px; } }
 @media (max-width: 760px) { .modal-content.modal-add.modal-add-v2 { flex-direction: column; height: 92vh; } .add2-side { width: auto; border-left: 0; border-top: 1px solid var(--border); max-height: 42%; } }
 @media (prefers-reduced-motion: reduce) { .add2-card { animation: none; } }
+
+/* Папки от руководителя (TEAM) */
+.folder-item.folder-managed .folder-icon-wrap { position: relative; }
+.folder-item.folder-managed .folder-icon-wrap::after { content: ""; position: absolute; right: -2px; bottom: -2px; width: 8px; height: 8px; border-radius: 50%; background: var(--warning); box-shadow: 0 0 0 2px var(--sidebar-bg, var(--bg-secondary)); }

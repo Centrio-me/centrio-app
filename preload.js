@@ -128,6 +128,7 @@ const validInvokeChannels = new Set([
     'api-org-add-task-comment',
     'api-org-create-task',
     'api-org-get-alerts',
+    'api-org-get-my-structure',
     'api-org-get-task-comments',
     'api-org-get-tasks',
     'api-org-mark-tasks-seen',

@@ -334,6 +334,9 @@ module.exports = {
     orgUpdateTask(token, orgId, taskId, patch) {
         return request('PATCH', `/api/org/${encodeURIComponent(orgId)}/tasks/${encodeURIComponent(taskId)}`, patch, token)
     },
+    orgGetMyStructure(token, orgId) {
+        return request('GET', `/api/org/${encodeURIComponent(orgId)}/my-structure`, null, token)
+    },
     orgGetTaskComments(token, orgId, taskId) {
         return request('GET', `/api/org/${encodeURIComponent(orgId)}/tasks/${encodeURIComponent(taskId)}/comments`, null, token)
     },

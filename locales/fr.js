@@ -767,7 +767,7 @@ module.exports = {
     },
 
     rightbarCustom: {
-        nav: "Espace de travail",
+        nav: "Barre",
         title: "Icônes du panneau de droite",
         hint: "Choisissez les icônes affichées à droite et classez-les comme vous voulez. Les icônes masquées disparaissent et les autres remontent.",
         proNote: "Ce réglage est disponible avec Pro. Toutes les icônes sont affichées pour l’instant.",
@@ -878,7 +878,7 @@ module.exports = {
     pro: {
         quickRepliesTitle: "Réponses rapides — Pro uniquement",
         quickRepliesDesc: "Enregistrez des textes prêts à l’emploi (adresse, horaires, tarifs) et copiez-les dans n’importe quel chat en un clic. Disponible avec le plan Pro ou Team.",
-        rightbarCustomTitle: "Espace de travail — réservé à Pro",
+        rightbarCustomTitle: "Barre — réservé à Pro",
         rightbarCustomDesc: "Masquez les icônes de droite dont vous n’avez pas besoin et changez leur ordre. Disponible avec le plan Pro ou Team.",
         messengerLimitTitle:  'Pro requis',
         messengerLimitDesc:   'Le plan gratuit prend en charge jusqu\'à {n} messengers. Passez à Pro pour illimité.',

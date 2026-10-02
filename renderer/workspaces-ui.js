@@ -259,6 +259,7 @@ function createWorkspacesUiApi({
             document.addEventListener('close-all-popups', () => { tinyMenuEl.style.display = 'none' })
         }
         const ws = getWorkspaceById(workspaceId)
+        if (ws && ws.orgManaged) return // created by the team owner: not editable here
         if (!ws) return
         tinyMenuEl.innerHTML = `
             <div class="workspace-switcher-item" data-act="rename">
