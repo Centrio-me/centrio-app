@@ -111,12 +111,25 @@ function createFoldersUiApi({
         afterPanelRender(folderId)
     }
 
-    function updateFolderPanelPosition() {
+    function updateFolderPanelPosition(folderId) {
         const activityBar = document.querySelector('.activity-bar')
         const rect = activityBar.getBoundingClientRect()
+        if (forceWidePanel() && folderId) {
+            // New look: a floating card next to the folder, nothing is pushed aside.
+            const header = document.querySelector(`#folder-${CSS.escape(folderId)} .folder-header`)
+            const anchorTop = header ? header.getBoundingClientRect().top : 44
+            const maxHeight = Math.max(240, window.innerHeight - 90)
+            folderPanel.style.left = `${rect.right + 10}px`
+            folderPanel.style.bottom = 'auto'
+            folderPanel.style.maxHeight = `${maxHeight}px`
+            const height = Math.min(folderPanel.scrollHeight || 320, maxHeight)
+            folderPanel.style.top = `${Math.max(44, Math.min(anchorTop - 8, window.innerHeight - height - 34))}px`
+            return
+        }
         folderPanel.style.left = `${rect.right}px`
         folderPanel.style.top = '36px'
         folderPanel.style.bottom = '26px'
+        folderPanel.style.maxHeight = ''
     }
 
     function openFolderPanel(folderId) {
@@ -145,8 +158,8 @@ function createFoldersUiApi({
         // can toggle the sidebar while the panel is closed.
         const isExpanded = !!document.getElementById('activityBar')?.classList.contains('sidebar-expanded') || forceWidePanel()
         folderPanel.classList.toggle('folder-panel-wide', isExpanded)
-        document.querySelector('.main-container').classList.add('folder-panel-open')
-        updateFolderPanelPosition()
+        if (!forceWidePanel()) document.querySelector('.main-container').classList.add('folder-panel-open')
+        updateFolderPanelPosition(folderId)
     }
 
     function closeFolderPanel() {

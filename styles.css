@@ -16460,3 +16460,8 @@ body.onb-active #titlebarMenu {
 .folders-modern .folder-item.has-members .folder-mosaic { width: 100%; height: 100%; }
 .folders-modern .folder-panel.folder-panel-wide.open { width: 292px; }
 .folders-modern .folder-panel-wide .folder-panel-content .messenger-item { height: 48px; }
+
+/* Узкий сайдбар: карточка папки всплывает рядом и ничего не раздвигает */
+.folders-modern .folder-panel { top: auto; bottom: auto; height: auto; border: 1px solid var(--border-light); border-radius: 16px; opacity: 0; pointer-events: none; transform: translateX(-8px); box-shadow: 0 24px 60px rgba(0,0,0,.55); transition: opacity .16s ease, transform .16s ease; overflow: hidden; flex-direction: column; z-index: 60; }
+.folders-modern .folder-panel.open, .folders-modern .folder-panel.folder-panel-wide.open { width: 300px; opacity: 1; pointer-events: auto; transform: none; box-shadow: 0 24px 60px rgba(0,0,0,.55); border-right: 1px solid var(--border-light); }
+.folders-modern .folder-panel .folder-panel-content { overflow-y: auto; max-height: inherit; }

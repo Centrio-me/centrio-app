@@ -223,6 +223,16 @@ function createFoldersModern({ state, store, tGet, getLanguage, updateMuteIcon, 
         })
     }
 
+    // The floating card closes on a click outside it or on Escape.
+    document.addEventListener('mousedown', (event) => {
+        if (!isModern() || !state.activeFolderPanelId) return
+        if (event.target.closest('#folderPanel, .folder-header, #folderContextMenu')) return
+        closeFolderPanel()
+    })
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && isModern() && state.activeFolderPanelId) closeFolderPanel()
+    })
+
     applyStyle()
     bindControls()
 
