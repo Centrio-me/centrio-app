@@ -8,7 +8,8 @@ The format is based on Keep a Changelog. This project does not currently follow 
 
 ## [Unreleased]
 
-_No unreleased changes yet — add entries here as they land, then move them under a new version heading at release time._
+- Улучшено (Centrio TEAM): раскладка мессенджеров сотрудников по папкам и разделители боковой панели теперь передаются между всеми вашими компьютерами
+- Улучшено: настройки аккаунта больше не затираются при входе со старой версии приложения
 
 ## [2.9.13]
 

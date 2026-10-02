@@ -91,7 +91,7 @@ const SYNCED_STORE_KEYS = new Set([
     'messengers', 'folders', 'settings', 'security', 'lockOnStartup',
     'globalProxy', 'sidebarOrder', 'menuCollapsed', 'appZoomLevel',
     'vpnAppModes', 'extensionsState', 'splitLeftPctPref', 'splitPresets',
-    'mutedMessengers', 'quickReplies', 'rightbarLayout'
+    'mutedMessengers', 'quickReplies', 'rightbarLayout', 'orgAssignedFolders', 'dividers'
 ])
 
 let suppressAutoCloudSync = false
@@ -758,7 +758,11 @@ async function bootstrap() {
                         splitLeftPctPref: store.get('splitLeftPctPref', 50),
                         splitPresets:     store.get('splitPresets', []) || [],
                         quickReplies:     store.get('quickReplies', []) || [],
-                        rightbarLayout:   store.get('rightbarLayout', null)
+                        rightbarLayout:   store.get('rightbarLayout', null),
+                        // Folder of each team-assigned messenger and the sidebar
+                        // dividers must follow the account to every computer too.
+                        orgAssignedFolders: store.get('orgAssignedFolders', {}) || {},
+                        dividers:         state.dividers || []
                     }
                 }
             }
@@ -882,6 +886,8 @@ async function bootstrap() {
                         if (extra.splitPresets !== undefined) await store.setAsync('splitPresets', extra.splitPresets)
                         if (Array.isArray(extra.quickReplies)) await store.setAsync('quickReplies', extra.quickReplies)
                         if (extra.rightbarLayout !== undefined) await store.setAsync('rightbarLayout', extra.rightbarLayout)
+                        if (extra.orgAssignedFolders && typeof extra.orgAssignedFolders === 'object') await store.setAsync('orgAssignedFolders', extra.orgAssignedFolders)
+                        if (Array.isArray(extra.dividers)) await store.setAsync('dividers', extra.dividers)
                         if (extra.activeTabId !== undefined) await store.setAsync('activeTabId', extra.activeTabId)
                         if (extra.activeWorkspaceId !== undefined) await store.setAsync('activeWorkspaceId', extra.activeWorkspaceId)
                     }
@@ -2946,6 +2952,8 @@ function applyTabZoom(level) {
                 if (extra.splitPresets !== undefined) store.set('splitPresets', extra.splitPresets)
                 if (Array.isArray(extra.quickReplies)) store.set('quickReplies', extra.quickReplies)
                 if (extra.rightbarLayout !== undefined) store.set('rightbarLayout', extra.rightbarLayout)
+                if (extra.orgAssignedFolders && typeof extra.orgAssignedFolders === 'object') store.set('orgAssignedFolders', extra.orgAssignedFolders)
+                if (Array.isArray(extra.dividers)) store.set('dividers', extra.dividers)
                 // BUGFIX ("не сохраняется выбранный мессенджер"): restore
                 // last-active tab from cloud too, mirroring every other
                 // extra.* field here — see switchTab()/loadData() above.
