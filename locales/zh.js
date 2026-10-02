@@ -871,7 +871,7 @@ module.exports = {
         open: "打开设置",
         ok: "知道了",
         folderName: "客户",
-        folderMeta: "服务：3 · 未读：3",
+        folderMeta: "服务：4 · 未读：3",
     },
 
     teamTasks: {

@@ -51,6 +51,22 @@ function createFoldersModern({ state, store, tGet, getLanguage, updateMuteIcon, 
         return element
     }
 
+    // Always four slots: the services first, then dashed "+" placeholders.
+    function fillMosaic(container, list) {
+        container.textContent = ''
+        for (let index = 0; index < MOSAIC_MAX; index++) {
+            const messenger = list[index]
+            if (messenger) {
+                const image = document.createElement('img')
+                image.alt = ''
+                image.src = messenger.icon
+                container.appendChild(image)
+            } else {
+                container.appendChild(node('span', 'mosaic-empty'))
+            }
+        }
+    }
+
     // Header decorations (mosaic host, count pill, chevron) are created once.
     function decorateHeader(folderEl) {
         const header = folderEl.querySelector('.folder-header')
@@ -75,15 +91,7 @@ function createFoldersModern({ state, store, tGet, getLanguage, updateMuteIcon, 
         else folderEl.style.removeProperty('--folder-color')
 
         const mosaic = folderEl.querySelector('.folder-mosaic')
-        if (mosaic) {
-            mosaic.textContent = ''
-            list.slice(0, MOSAIC_MAX).forEach((m) => {
-                const image = document.createElement('img')
-                image.alt = ''
-                image.src = m.icon
-                mosaic.appendChild(image)
-            })
-        }
+        if (mosaic) fillMosaic(mosaic, list)
         const count = folderEl.querySelector('.folder-count')
         if (count) {
             count.textContent = String(list.length)
@@ -120,12 +128,7 @@ function createFoldersModern({ state, store, tGet, getLanguage, updateMuteIcon, 
         if (color) head.style.setProperty('--folder-color', color)
 
         const mosaic = node('div', 'fp-mosaic')
-        list.slice(0, MOSAIC_MAX).forEach((m) => {
-            const image = document.createElement('img')
-            image.alt = ''
-            image.src = m.icon
-            mosaic.appendChild(image)
-        })
+        fillMosaic(mosaic, list)
         head.appendChild(mosaic)
 
         const text = node('div', 'fp-text')
@@ -183,7 +186,16 @@ function createFoldersModern({ state, store, tGet, getLanguage, updateMuteIcon, 
         else delete map[folderId]
         store.set('folderColors', map)
         refreshFolder(folderId)
-        if (state.activeFolderPanelId === folderId) decoratePanel(folderId)
+        if (state.activeFolderPanelId === folderId) {
+            // The open card changes colour right away, not on the next open.
+            const panel = document.getElementById('folderPanel')
+            if (panel) {
+                panel.classList.toggle('tinted', !!color)
+                if (color) panel.style.setProperty('--folder-color', color)
+                else panel.style.removeProperty('--folder-color')
+            }
+            decoratePanel(folderId)
+        }
         pushToCloud?.()
     }
 
@@ -201,7 +213,7 @@ function createFoldersModern({ state, store, tGet, getLanguage, updateMuteIcon, 
                 swatch.addEventListener('click', (event) => {
                     event.stopPropagation()
                     const folderId = state.contextTargetFolderId
-                    document.dispatchEvent(new CustomEvent('close-all-popups'))
+                    document.getElementById('folderContextMenu')?.classList.remove('show')
                     if (folderId) setColor(folderId, color)
                 })
                 colorRow.appendChild(swatch)
@@ -212,14 +224,14 @@ function createFoldersModern({ state, store, tGet, getLanguage, updateMuteIcon, 
             reset.addEventListener('click', (event) => {
                 event.stopPropagation()
                 const folderId = state.contextTargetFolderId
-                document.dispatchEvent(new CustomEvent('close-all-popups'))
+                document.getElementById('folderContextMenu')?.classList.remove('show')
                 if (folderId) setColor(folderId, null)
             })
             colorRow.appendChild(reset)
         }
         document.getElementById('ctxFolderMute')?.addEventListener('click', () => {
             const folderId = state.contextTargetFolderId
-            document.dispatchEvent(new CustomEvent('close-all-popups'))
+            document.getElementById('folderContextMenu')?.classList.remove('show')
             if (folderId) { muteFolder(folderId); refreshAll() }
         })
     }

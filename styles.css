@@ -16504,20 +16504,20 @@ body.onb-active #titlebarMenu {
 .fpromo-overlay.show .fpromo-dialog { transform: none; }
 .fpromo-pill { display: inline-block; padding: 3px 11px; border-radius: 999px; background: var(--accent-dim); color: var(--accent-hover); font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
 .fpromo-title { margin: 10px 0 14px; font-size: 22px; font-weight: 700; letter-spacing: -.02em; color: var(--text-bright); }
-.fpromo-scene { position: relative; height: 188px; border-radius: 14px; background: var(--bg-primary); border: 1px solid var(--border); overflow: hidden; }
+.fpromo-scene { position: relative; height: 226px; border-radius: 14px; background: var(--bg-primary); border: 1px solid var(--border); overflow: hidden; }
 .fpromo-rail { position: absolute; left: 14px; top: 16px; width: 44px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
 .fpromo-stack { position: relative; width: 40px; height: 40px; }
 .fpromo-folder { position: absolute; inset: 0; border-radius: 11px; display: flex; align-items: center; justify-content: center; }
 .fpromo-classic { color: var(--text-secondary); animation: fpromoClassic 7s infinite; }
-.fpromo-modern { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; padding: 4px; box-sizing: border-box; background: var(--bg-tertiary); border: 1.5px solid #22c55e; box-shadow: 0 0 14px rgba(34,197,94,.35); animation: fpromoModern 7s infinite; }
+.fpromo-modern { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; padding: 4px; box-sizing: border-box; background: var(--bg-tertiary); border: 1.5px solid var(--accent); box-shadow: 0 0 14px var(--accent-glow); animation: fpromoModern 7s infinite; }
 .fpromo-modern img { width: 100%; height: 100%; object-fit: contain; border-radius: 4px; }
-.fpromo-badge { position: absolute; top: -6px; right: -6px; min-width: 16px; height: 16px; padding: 0 4px; box-sizing: border-box; border-radius: 8px; background: #22c55e; color: #fff; font-size: 10px; font-weight: 700; line-height: 16px; text-align: center; box-shadow: 0 0 0 2px var(--bg-primary); }
+.fpromo-badge { position: absolute; top: -6px; right: -6px; min-width: 16px; height: 16px; padding: 0 4px; box-sizing: border-box; border-radius: 8px; background: var(--accent); color: #fff; font-size: 10px; font-weight: 700; line-height: 16px; text-align: center; box-shadow: 0 0 0 2px var(--bg-primary); }
 .fpromo-tile { width: 34px; height: 34px; }
 .fpromo-tile img { width: 100%; height: 100%; object-fit: contain; border-radius: 9px; }
-.fpromo-card { position: absolute; left: 76px; top: 10px; width: 230px; padding: 10px; border: 1px solid color-mix(in srgb, #22c55e 38%, var(--border-light)); border-radius: 14px; background: linear-gradient(180deg, color-mix(in srgb, #22c55e 12%, var(--bg-secondary)), var(--bg-secondary) 80px); box-shadow: 0 16px 40px rgba(0,0,0,.5), 0 6px 24px rgba(34,197,94,.14); animation: fpromoCard 7s infinite; }
-.fpromo-card::before { content: ""; position: absolute; left: -7px; top: 20px; width: 12px; height: 12px; transform: rotate(45deg); background: color-mix(in srgb, #22c55e 12%, var(--bg-secondary)); border-left: 1px solid color-mix(in srgb, #22c55e 38%, var(--border-light)); border-bottom: 1px solid color-mix(in srgb, #22c55e 38%, var(--border-light)); border-radius: 0 0 0 4px; }
-.fpromo-card-head { display: flex; align-items: center; gap: 10px; padding-bottom: 8px; margin-bottom: 4px; border-bottom: 1px solid color-mix(in srgb, #22c55e 22%, var(--border)); }
-.fpromo-card-mosaic { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; width: 32px; height: 32px; padding: 3px; box-sizing: border-box; border-radius: 9px; border: 1.5px solid #22c55e; background: var(--bg-tertiary); }
+.fpromo-card { position: absolute; left: 88px; top: 52px; width: 230px; padding: 10px; border: 1px solid color-mix(in srgb, var(--accent) 38%, var(--border-light)); border-radius: 14px; background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 12%, var(--bg-secondary)), var(--bg-secondary) 80px); box-shadow: 0 16px 40px rgba(0,0,0,.5), 0 6px 24px var(--accent-dim); animation: fpromoCard 7s infinite; }
+.fpromo-card::before { content: ""; position: absolute; left: -7px; top: 20px; width: 12px; height: 12px; transform: rotate(45deg); background: color-mix(in srgb, var(--accent) 12%, var(--bg-secondary)); border-left: 1px solid color-mix(in srgb, var(--accent) 38%, var(--border-light)); border-bottom: 1px solid color-mix(in srgb, var(--accent) 38%, var(--border-light)); border-radius: 0 0 0 4px; }
+.fpromo-card-head { display: flex; align-items: center; gap: 10px; padding-bottom: 8px; margin-bottom: 4px; border-bottom: 1px solid color-mix(in srgb, var(--accent) 22%, var(--border)); }
+.fpromo-card-mosaic { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; width: 32px; height: 32px; padding: 3px; box-sizing: border-box; border-radius: 9px; border: 1.5px solid var(--accent); background: var(--bg-tertiary); }
 .fpromo-card-mosaic img { width: 100%; height: 100%; object-fit: contain; border-radius: 3px; }
 .fpromo-card-head strong { display: block; font-size: 13px; color: var(--text-bright); }
 .fpromo-card-head small { font-size: 10.5px; color: var(--text-secondary); }
@@ -16539,3 +16539,35 @@ body.onb-active #titlebarMenu {
 @keyframes fpromoCard { 0%, 40% { opacity: 0; transform: translateX(-12px) scale(.96); } 50%, 88% { opacity: 1; transform: none; } 96%, 100% { opacity: 0; transform: translateX(-12px) scale(.96); } }
 @keyframes fpromoSeg { 0%, 60% { box-shadow: 0 0 0 0 var(--accent-glow); } 72% { box-shadow: 0 0 0 6px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
 @media (prefers-reduced-motion: reduce) { .fpromo-classic { animation: none; opacity: 0; } .fpromo-modern, .fpromo-card, .fpromo-seg .fpromo-seg-on { animation: none; opacity: 1; transform: none; } }
+
+/* Окно-подсказка: фирменный цвет и очертания сайдбара */
+.fpromo-dialog { background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 13%, var(--bg-secondary)), var(--bg-secondary) 170px); border-color: color-mix(in srgb, var(--accent) 36%, var(--border-light)); box-shadow: 0 32px 80px rgba(0,0,0,.6), 0 12px 48px color-mix(in srgb, var(--accent) 18%, transparent); }
+.fpromo-sidebar { position: absolute; left: 0; top: 0; bottom: 0; width: 68px; background: var(--sidebar-bg, var(--bg-secondary)); border-right: 1px solid var(--border); }
+.fpromo-rail { left: 12px; top: 12px; width: 44px; gap: 10px; }
+.fpromo-add { width: 40px; height: 34px; border-radius: 10px; display: flex; align-items: center; justify-content: center; background: color-mix(in srgb, var(--accent) 14%, var(--bg-tertiary)); color: var(--text-secondary); }
+.fpromo-ghost { width: 34px; height: 34px; border-radius: 26%; background: var(--bg-tertiary); border: 1px solid var(--border); }
+.fpromo-card-head small { white-space: nowrap; }
+
+/* Единый вид иконок в папках: везде скруглённые углы */
+.folders-modern .folder-mosaic img, .fp-mosaic img, .fpromo-modern img, .fpromo-card-mosaic img, .fpromo-row img { border-radius: 26%; object-fit: cover; }
+.folders-modern .folder-panel .messenger-icon, .folders-modern .folder-item > .folder-children .messenger-icon { border-radius: 26%; object-fit: cover; }
+.folder-mosaic .mosaic-empty, .fp-mosaic .mosaic-empty { position: relative; display: block; box-sizing: border-box; border: 1px dashed color-mix(in srgb, var(--folder-color, var(--text-secondary)) 55%, transparent); border-radius: 26%; color: var(--text-muted); }
+.folder-mosaic .mosaic-empty::before, .folder-mosaic .mosaic-empty::after, .fp-mosaic .mosaic-empty::before, .fp-mosaic .mosaic-empty::after { content: ""; position: absolute; left: 50%; top: 50%; background: currentColor; transform: translate(-50%, -50%); }
+.folder-mosaic .mosaic-empty::before, .fp-mosaic .mosaic-empty::before { width: 46%; height: 1px; }
+.folder-mosaic .mosaic-empty::after, .fp-mosaic .mosaic-empty::after { width: 1px; height: 46%; }
+
+/* Меню переключения пространств: аккуратные строки вместо сплошной полосы */
+.workspace-switcher-menu { background: var(--bg-secondary); border: 1px solid var(--border-light); border-radius: 14px; padding: 8px; min-width: 224px; box-shadow: 0 18px 44px rgba(0,0,0,.5); }
+.workspace-switcher-menu-inline { background: var(--bg-primary); border: 1px solid var(--border); border-radius: 12px; padding: 6px; box-shadow: none; }
+.workspace-switcher-item { padding: 9px 12px; border-radius: 10px; gap: 10px; transition: background .15s, color .15s; }
+.workspace-switcher-item:hover { background: var(--bg-hover); }
+.workspace-switcher-item.active { background: var(--accent-dim); color: var(--text-bright); font-weight: 500; }
+.workspace-switcher-item.active::after { content: "✓"; margin-left: auto; padding-left: 8px; font-size: 12px; color: var(--accent-hover); }
+.workspace-switcher-divider { margin: 6px 10px; }
+.workspace-switcher-manage { padding: 9px 12px; border-radius: 10px; }
+
+.folders-modern .folder-item.has-members .folder-mosaic, .fp-mosaic, .fpromo-modern, .fpromo-card-mosaic { grid-template-rows: 1fr 1fr; }
+.folders-modern .folder-mosaic img, .fp-mosaic img, .fpromo-modern img, .fpromo-card-mosaic img { aspect-ratio: 1 / 1; min-width: 0; min-height: 0; }
+
+.fpromo-scene { height: 252px; }
+.fpromo-card { top: 44px; }

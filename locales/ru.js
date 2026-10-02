@@ -963,7 +963,7 @@ module.exports = {
         open: "Открыть настройки",
         ok: "Понятно",
         folderName: "Клиенты",
-        folderMeta: "Сервисов: 3 · новых: 3",
+        folderMeta: "Сервисов: 4 · новых: 3",
     },
 
     teamTasks: {

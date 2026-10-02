@@ -871,7 +871,7 @@ module.exports = {
         open: "Ouvrir les réglages",
         ok: "Compris",
         folderName: "Clients",
-        folderMeta: "Services : 3 · non lus : 3",
+        folderMeta: "Services : 4 · non lus : 3",
     },
 
     teamTasks: {

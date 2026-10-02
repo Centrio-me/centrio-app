@@ -27,31 +27,35 @@ function bindFoldersPromo({ state, tGet, openAppearanceSettings }) {
         return image
     }
 
+    // Standard service icons only: Telegram, WhatsApp, VK, MAX.
+    const SERVICES = [['telegram', 'Telegram'], ['whatsapp', 'WhatsApp'], ['vk', 'VK'], ['max', 'MAX']]
+
     function buildScene() {
         const scene = el('div', 'fpromo-scene')
+        scene.appendChild(el('div', 'fpromo-sidebar'))
 
         const rail = el('div', 'fpromo-rail')
+        const add = el('div', 'fpromo-add')
+        add.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>'
         const classic = el('div', 'fpromo-folder fpromo-classic')
         classic.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>'
         const modern = el('div', 'fpromo-folder fpromo-modern')
-        ;['whatsapp', 'vk', 'telegram'].forEach((name) => modern.appendChild(icon(name)))
+        SERVICES.forEach(([name]) => modern.appendChild(icon(name)))
         modern.appendChild(el('span', 'fpromo-badge', '3'))
         const stack = el('div', 'fpromo-stack')
         stack.append(classic, modern)
-        const other = el('div', 'fpromo-tile')
-        other.appendChild(icon('discord'))
-        rail.append(stack, other)
+        rail.append(add, stack, el('div', 'fpromo-ghost'), el('div', 'fpromo-ghost'))
 
         const card = el('div', 'fpromo-card')
         const head = el('div', 'fpromo-card-head')
         const mosaic = el('div', 'fpromo-card-mosaic')
-        ;['whatsapp', 'vk', 'telegram'].forEach((name) => mosaic.appendChild(icon(name)))
+        SERVICES.forEach(([name]) => mosaic.appendChild(icon(name)))
         const titles = el('div')
         titles.appendChild(el('strong', '', t('folderName', 'Клиенты')))
-        titles.appendChild(el('small', '', t('folderMeta', 'Сервисов: 3 · новых: 3')))
+        titles.appendChild(el('small', '', t('folderMeta', 'Сервисов: 4 · новых: 3')))
         head.append(mosaic, titles)
         card.appendChild(head)
-        ;[['whatsapp', 'WhatsApp'], ['vk', 'VK'], ['telegram', 'Telegram']].forEach(([name, label]) => {
+        SERVICES.forEach(([name, label]) => {
             const row = el('div', 'fpromo-row')
             row.appendChild(icon(name))
             row.appendChild(el('span', '', label))
