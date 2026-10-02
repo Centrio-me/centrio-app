@@ -144,11 +144,15 @@ function createFoldersModern({ state, store, tGet, getLanguage, updateMuteIcon, 
         mute.type = 'button'
         mute.title = allMuted ? t('unmute', 'Включить уведомления папки') : t('mute', 'Заглушить папку')
         mute.setAttribute('aria-label', mute.title)
-        mute.textContent = allMuted ? '🔕' : '🔔'
+        // Single-colour line icon (currentColor), never an emoji.
+        mute.innerHTML = allMuted
+            ? '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M13.73 21a2 2 0 0 1-3.46 0"/><path d="M18.63 13A17.89 17.89 0 0 1 18 8"/><path d="M6.26 6.26A5.86 5.86 0 0 0 6 8c0 7-3 9-3 9h14"/><path d="M18 8a6 6 0 0 0-9.33-5"/><line x1="1" y1="1" x2="23" y2="23"/></svg>'
+            : '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>'
         mute.addEventListener('click', () => { muteFolder(folderId); decoratePanel(folderId) })
         actions.appendChild(mute)
         if (!folder.orgManaged) {
-            const more = node('button', 'fp-btn', '⋯')
+            const more = node('button', 'fp-btn')
+            more.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>'
             more.type = 'button'
             more.title = t('more', 'Ещё')
             more.setAttribute('aria-label', more.title)

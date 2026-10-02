@@ -77,6 +77,8 @@ function bindFoldersPromo({ state, tGet, openAppearanceSettings }) {
     }
 
     function show() {
+        // Counted as seen the moment it appears, so it can never come back.
+        markSeen()
         const overlay = el('div', 'fpromo-overlay')
         const dialog = el('div', 'fpromo-dialog')
         dialog.setAttribute('role', 'dialog')

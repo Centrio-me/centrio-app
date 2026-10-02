@@ -16571,3 +16571,6 @@ body.onb-active #titlebarMenu {
 
 .fpromo-scene { height: 252px; }
 .fpromo-card { top: 44px; }
+
+.fp-btn { display: inline-flex; align-items: center; justify-content: center; padding: 0; }
+.fp-btn svg { display: block; }
