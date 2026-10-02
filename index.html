@@ -3998,45 +3998,50 @@
 
 <!-- ── PRO Upgrade Modal ─────────────────────────────────────── -->
 <div id="upgradeModal" class="modal" style="z-index:9999;">
-  <div class="modal-content modal-sm upgrade-modal-card">
-
-    <!-- header -->
-    <div class="upgrade-modal-header">
-      <div class="upgrade-modal-header-text">
-        <div class="upgrade-modal-title" id="upgradeModalTitle">Нужен Pro</div>
-        <div class="upgrade-modal-desc" id="upgradeModalDesc">Достигнут лимит бесплатного плана.</div>
-      </div>
+  <div class="modal-content upgrade-modal-card pw-card" role="dialog" aria-modal="true" aria-labelledby="upgradeModalTitle">
+    <div class="pw-main">
       <button class="upgrade-modal-x" id="upgradeModalClose" aria-label="Close">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
-    </div>
-
-    <!-- features -->
-    <div class="upgrade-modal-features" id="upgradeModalFeatures">
-      <div class="upgrade-modal-feat-list">
-        <div class="upgrade-modal-feat"><svg class="upgrade-feat-check" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg><span data-i18n="pro.benefit1">Неограниченное количество мессенджеров — вместо 3 на бесплатном</span></div>
-        <div class="upgrade-modal-feat"><svg class="upgrade-feat-check" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg><span data-i18n="pro.benefit2">Встроенный VPN на каждый сервис</span></div>
-        <div class="upgrade-modal-feat"><svg class="upgrade-feat-check" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg><span data-i18n="pro.benefit3">Облачная синхронизация между устройствами</span></div>
-        <div class="upgrade-modal-feat"><svg class="upgrade-feat-check" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg><span data-i18n="pro.benefit9">До 5 устройств одновременно</span></div>
-        <div class="upgrade-modal-feat"><svg class="upgrade-feat-check" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg><span data-i18n="pro.benefit4">Папки и группировка сервисов</span></div>
-        <div class="upgrade-modal-feat"><svg class="upgrade-feat-check" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg><span data-i18n="pro.benefit10">Сплит-экран — несколько мессенджеров одновременно</span></div>
-        <div class="upgrade-modal-feat"><svg class="upgrade-feat-check" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg><span data-i18n="pro.benefit6">Расширения: AdBlock, переводчик и другие</span></div>
-        <div class="upgrade-modal-feat"><svg class="upgrade-feat-check" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg><span data-i18n="pro.benefit5">Все темы и цвета акцента</span></div>
-        <div class="upgrade-modal-feat"><svg class="upgrade-feat-check" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg><span data-i18n="pro.benefit7">Индивидуальные звуки уведомлений</span></div>
-        <div class="upgrade-modal-feat"><svg class="upgrade-feat-check" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg><span data-i18n="pro.benefit8">Приоритетная поддержка</span></div>
+      <span class="pw-pill" data-i18n="proWin.pill"></span>
+      <h3 class="pw-title" id="upgradeModalTitle"></h3>
+      <p class="pw-sub" id="upgradeModalDesc"></p>
+      <div class="pw-groups">
+        <div class="pw-group"><h5 data-i18n="proWin.g1"></h5><div class="pw-feat"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg><div><span data-i18n="proWin.g1a"></span><small data-i18n="proWin.g1ah"></small></div></div><div class="pw-feat"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg><div><span data-i18n="proWin.g1b"></span><small data-i18n="proWin.g1bh"></small></div></div></div>
+        <div class="pw-group"><h5 data-i18n="proWin.g2"></h5><div class="pw-feat"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg><div><span data-i18n="proWin.g2a"></span><small data-i18n="proWin.g2ah"></small></div></div><div class="pw-feat"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg><div><span data-i18n="proWin.g2b"></span><small data-i18n="proWin.g2bh"></small></div></div></div>
+        <div class="pw-group"><h5 data-i18n="proWin.g3"></h5><div class="pw-feat"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg><div><span data-i18n="proWin.g3a"></span><small data-i18n="proWin.g3ah"></small></div></div><div class="pw-feat"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg><div><span data-i18n="proWin.g3b"></span><small data-i18n="proWin.g3bh"></small></div></div></div>
+        <div class="pw-group"><h5 data-i18n="proWin.g4"></h5><div class="pw-feat"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg><div><span data-i18n="proWin.g4a"></span><small data-i18n="proWin.g4ah"></small></div></div><div class="pw-feat"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg><div><span data-i18n="proWin.g4b"></span><small data-i18n="proWin.g4bh"></small></div></div></div>
+      </div>
+      <div class="pw-cmp">
+        <div class="pw-row pw-head"><span data-i18n="proWin.cmpWhat"></span><span>Free</span><span>Pro</span><span>Team</span></div>
+        <div class="pw-row"><span data-i18n="proWin.cmp1"></span><span>3</span><span class="yes">∞</span><span class="yes">∞</span></div>
+        <div class="pw-row"><span data-i18n="proWin.cmp2"></span><span class="no">—</span><span class="yes">✓</span><span class="yes">✓</span></div>
+        <div class="pw-row"><span data-i18n="proWin.cmp3"></span><span class="no">—</span><span class="yes">✓</span><span class="yes">✓</span></div>
+        <div class="pw-row"><span data-i18n="proWin.cmp4"></span><span class="no">—</span><span class="no">—</span><span class="yes">✓</span></div>
+        <div class="pw-row"><span data-i18n="proWin.cmp5"></span><span class="no">—</span><span class="no">—</span><span class="yes">✓</span></div>
       </div>
     </div>
-
-    <!-- actions -->
-    <div class="upgrade-modal-actions">
-      <button id="upgradeModalBtn" class="upgrade-modal-cta">
-        <span data-i18n="pro.upgradeBtn">Перейти на Pro</span>
-      </button>
-      <button id="upgradeModalLater" class="upgrade-modal-later">
-        <span data-i18n="pro.laterBtn">Позже</span>
-      </button>
-    </div>
-    <div class="upgrade-modal-price-hint">от 133 ₽/мес · Отмена в любой момент</div>
+    <aside class="pw-price">
+      <div class="pw-seg" role="tablist">
+        <button type="button" id="upgradeSegMonth" role="tab"><span data-i18n="proWin.month"></span></button>
+        <button type="button" id="upgradeSegYear" role="tab" class="on"><span data-i18n="proWin.year"></span><em>−33%</em></button>
+      </div>
+      <div class="pw-amount-block">
+        <div class="pw-strike" id="upgradeStrike"></div>
+        <div class="pw-amount"><span id="upgradeAmount"></span><small id="upgradePer"></small></div>
+        <div class="pw-note" id="upgradePriceNote"></div>
+      </div>
+      <ul class="pw-bullets">
+        <li data-i18n="proWin.b1"></li>
+        <li data-i18n="proWin.b2"></li>
+        <li data-i18n="proWin.b3"></li>
+      </ul>
+      <div class="pw-promo"><span data-i18n="proWin.promo"></span><button type="button" id="upgradePromoBtn" data-i18n="proWin.promoEnter"></button></div>
+      <button id="upgradeModalBtn" class="upgrade-modal-cta"><span data-i18n="pro.upgradeBtn">Перейти на Pro</span></button>
+      <button id="upgradeModalLater" class="upgrade-modal-later"><span data-i18n="pro.laterBtn">Позже</span></button>
+      <div class="pw-pay" data-i18n="proWin.pay"></div>
+      <div class="pw-team"><span data-i18n="proWin.teamNote"></span> <button type="button" id="upgradeTeamBtn" data-i18n="proWin.teamLink"></button></div>
+    </aside>
   </div>
 </div>
 

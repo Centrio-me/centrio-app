@@ -29,6 +29,7 @@ const { applyOrgLogo } = require('./renderer/org-branding')
 const { createOrgTeamApi } = require('./renderer/org-team')
 const { createTeamTasksUi } = require('./renderer/team-tasks')
 const { bindRightbarCustom } = require('./renderer/rightbar-custom')
+const { bindProWindow } = require('./renderer/pro-window')
 const { createContextMenusApi } = require('./renderer/context-menus')
 const { bindPopupBackdrop } = require('./renderer/popup-backdrop-bind')
 const { createFoldersUiApi } = require('./renderer/folders-ui')
@@ -1884,15 +1885,24 @@ function applyTabZoom(level) {
     // ==============================
     // UPGRADE MODAL HELPERS
     // ==============================
+    let proWindowApi = null
     function showUpgradeModal(title, desc) {
         const modal = document.getElementById('upgradeModal')
         if (!modal) return
         const titleEl = document.getElementById('upgradeModalTitle')
         const descEl  = document.getElementById('upgradeModalDesc')
-        if (title && titleEl) titleEl.textContent = title
-        if (desc  && descEl)  descEl.textContent  = desc
+        // Without a specific reason, fall back to the generic pitch instead of
+        // keeping the text of whatever opened the window last.
+        if (titleEl) titleEl.textContent = title || tGet('proWin.heading')
+        if (descEl)  descEl.textContent  = desc  || tGet('proWin.sub')
+        proWindowApi?.render()
         modal.classList.add('show')
     }
+    proWindowApi = bindProWindow({
+        tGet,
+        getLanguage: () => (store.get('settings', {}) || {}).language || 'ru',
+        openExternal: (url) => window.electronAPI?.openExternal?.(url)
+    })
 
     const _closeUpgradeModal = () => document.getElementById('upgradeModal')?.classList.remove('show')
     document.getElementById('upgradeModalClose')?.addEventListener('click', _closeUpgradeModal)
