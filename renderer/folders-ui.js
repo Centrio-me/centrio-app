@@ -123,7 +123,14 @@ function createFoldersUiApi({
             folderPanel.style.bottom = 'auto'
             folderPanel.style.maxHeight = `${maxHeight}px`
             const height = Math.min(folderPanel.scrollHeight || 320, maxHeight)
-            folderPanel.style.top = `${Math.max(44, Math.min(anchorTop - 8, window.innerHeight - height - 34))}px`
+            const top = Math.max(44, Math.min(anchorTop - 8, window.innerHeight - height - 34))
+            folderPanel.style.top = `${top}px`
+            // The tail points at the middle of the open folder.
+            const headerHeight = header ? header.getBoundingClientRect().height : 44
+            folderPanel.style.setProperty('--tail-y', `${Math.max(22, Math.min(height - 22, anchorTop + headerHeight / 2 - top))}px`)
+            const color = (store.get('folderColors', {}) || {})[folderId]
+            if (color) folderPanel.style.setProperty('--folder-color', color)
+            else folderPanel.style.removeProperty('--folder-color')
             return
         }
         folderPanel.style.left = `${rect.right}px`
@@ -141,6 +148,8 @@ function createFoldersUiApi({
 
         const folderEl = document.getElementById(`folder-${folderId}`)
         if (folderEl) folderEl.classList.add('open')
+        document.querySelectorAll('.folder-item.panel-active').forEach((f) => f.classList.remove('panel-active'))
+        folderEl?.classList.add('panel-active')
 
         document.getElementById('folderPanelName').textContent = folder.name
         renderFolderPanel(folderId)
@@ -166,7 +175,7 @@ function createFoldersUiApi({
         state.activeFolderPanelId = null
         folderPanel.classList.remove('open')
         document.querySelector('.main-container').classList.remove('folder-panel-open')
-        document.querySelectorAll('.folder-item').forEach(f => f.classList.remove('open'))
+        document.querySelectorAll('.folder-item').forEach(f => f.classList.remove('open', 'panel-active'))
     }
 
     function toggleFolderPanel(folderId) {

@@ -16465,3 +16465,20 @@ body.onb-active #titlebarMenu {
 .folders-modern .folder-panel { top: auto; bottom: auto; height: auto; border: 1px solid var(--border-light); border-radius: 16px; opacity: 0; pointer-events: none; transform: translateX(-8px); box-shadow: 0 24px 60px rgba(0,0,0,.55); transition: opacity .16s ease, transform .16s ease; overflow: hidden; flex-direction: column; z-index: 60; }
 .folders-modern .folder-panel.open, .folders-modern .folder-panel.folder-panel-wide.open { width: 300px; opacity: 1; pointer-events: auto; transform: none; box-shadow: 0 24px 60px rgba(0,0,0,.55); border-right: 1px solid var(--border-light); }
 .folders-modern .folder-panel .folder-panel-content { overflow-y: auto; max-height: inherit; }
+
+/* Карточка папки: хвостик к открытой папке и стиль под выбранный цвет */
+.folders-modern .folder-panel { --folder-color: var(--accent); --card-bg: color-mix(in srgb, var(--folder-color) 12%, var(--bg-secondary)); --card-border: color-mix(in srgb, var(--folder-color) 38%, var(--border-light)); overflow: visible; background: linear-gradient(180deg, var(--card-bg), var(--bg-secondary) 130px); border: 1px solid var(--card-border); border-radius: 18px; box-shadow: 0 26px 64px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.02), 0 10px 40px color-mix(in srgb, var(--folder-color) 16%, transparent); }
+.folders-modern .folder-panel.open, .folders-modern .folder-panel.folder-panel-wide.open { border: 1px solid var(--card-border); box-shadow: 0 26px 64px rgba(0,0,0,.55), 0 10px 40px color-mix(in srgb, var(--folder-color) 16%, transparent); }
+.folders-modern .folder-panel::before { content: ""; position: absolute; left: -8px; top: calc(var(--tail-y, 30px) - 8px); width: 16px; height: 16px; transform: rotate(45deg); background: var(--card-bg); border-left: 1px solid var(--card-border); border-bottom: 1px solid var(--card-border); border-radius: 0 0 0 5px; z-index: 0; }
+.folders-modern .folder-panel .folder-panel-content { position: relative; z-index: 1; border-radius: 18px; max-height: calc(100vh - 100px); }
+.folders-modern .folder-panel .fp-head { border-bottom-color: color-mix(in srgb, var(--folder-color) 22%, var(--border)); }
+.folders-modern .folder-panel .fp-head::after { width: 64px; height: 3px; background: var(--folder-color); }
+.folders-modern .folder-panel .fp-mosaic { background: color-mix(in srgb, var(--folder-color) 10%, var(--bg-tertiary)); border-color: var(--folder-color); box-shadow: 0 4px 14px color-mix(in srgb, var(--folder-color) 25%, transparent); }
+.folders-modern .folder-panel .fp-btn { border-color: color-mix(in srgb, var(--folder-color) 30%, var(--border-light)); }
+.folders-modern .folder-panel .fp-btn:hover { background: color-mix(in srgb, var(--folder-color) 16%, transparent); }
+.folders-modern .folder-panel .messenger-item { border-radius: 12px; transition: background .15s; }
+.folders-modern .folder-panel .messenger-item:hover { background: color-mix(in srgb, var(--folder-color) 14%, transparent); }
+.folders-modern .folder-panel .messenger-item.active { background: color-mix(in srgb, var(--folder-color) 20%, transparent); }
+.folders-modern .folder-panel .messenger-badge { background: var(--folder-color); }
+.folders-modern .folder-item.panel-active .folder-header { background: color-mix(in srgb, var(--folder-color, var(--accent)) 20%, transparent); box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--folder-color, var(--accent)) 55%, transparent); }
+.folders-modern .folder-item.panel-active .folder-header::before { background: var(--folder-color, var(--accent)); box-shadow: 2px 0 8px color-mix(in srgb, var(--folder-color, var(--accent)) 50%, transparent); }

@@ -949,7 +949,7 @@ module.exports = {
         unmute: "Включить уведомления папки",
         more: "Ещё",
         services: "Сервисов: {n}",
-        unread: "непрочитанных: {n}",
+        unread: "новых: {n}",
         colorReset: "Без цвета",
     },
 
