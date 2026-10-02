@@ -16482,3 +16482,17 @@ body.onb-active #titlebarMenu {
 .folders-modern .folder-panel .messenger-badge { background: var(--folder-color); }
 .folders-modern .folder-item.panel-active .folder-header { background: color-mix(in srgb, var(--folder-color, var(--accent)) 20%, transparent); box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--folder-color, var(--accent)) 55%, transparent); }
 .folders-modern .folder-item.panel-active .folder-header::before { background: var(--folder-color, var(--accent)); box-shadow: 2px 0 8px color-mix(in srgb, var(--folder-color, var(--accent)) 50%, transparent); }
+
+/* Внутри папки всё берёт оттенок выбранного цвета, а не общего акцента темы */
+.folders-modern .folder-panel.tinted,
+.folders-modern .folder-item.tinted > .folder-children {
+    --accent: var(--folder-color);
+    --accent-hover: color-mix(in srgb, var(--folder-color) 78%, white);
+    --accent-dim: color-mix(in srgb, var(--folder-color) 18%, transparent);
+    --accent-glow: color-mix(in srgb, var(--folder-color) 32%, transparent);
+}
+.folders-modern .folder-item.tinted .folder-count.has-unread { background: color-mix(in srgb, var(--folder-color) 22%, transparent); color: color-mix(in srgb, var(--folder-color) 78%, white); }
+
+.folders-modern #activityBar.sidebar-expanded .folder-item.tinted .folder-count.has-unread { background: color-mix(in srgb, var(--folder-color) 22%, transparent); color: color-mix(in srgb, var(--folder-color) 78%, white); }
+.folders-modern .folder-item.tinted .folder-badge { background: var(--folder-color); box-shadow: 0 0 6px color-mix(in srgb, var(--folder-color) 45%, transparent); }
+.folders-modern .folder-item.tinted > .folder-children .messenger-badge { background: var(--folder-color); }

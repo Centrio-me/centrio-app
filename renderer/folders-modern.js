@@ -70,6 +70,7 @@ function createFoldersModern({ state, store, tGet, getLanguage, updateMuteIcon, 
         const list = members(folderId)
         folderEl.classList.toggle('has-members', list.length > 0)
         const color = colors()[folderId]
+        folderEl.classList.toggle('tinted', !!color)
         if (color) folderEl.style.setProperty('--folder-color', color)
         else folderEl.style.removeProperty('--folder-color')
 
