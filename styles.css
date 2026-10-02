@@ -16409,3 +16409,54 @@ body.onb-active #titlebarMenu {
 .pw-card .upgrade-modal-x { top: 18px; right: 18px; }
 .pw-price .upgrade-modal-cta { flex: none; height: 46px; }
 .pw-price .upgrade-modal-later { flex: none; height: 40px; }
+
+/* ===== Новый вид папок (renderer/folders-modern.js) ===== */
+.folder-mosaic, .folder-count, .folder-chevron { display: none; }
+.settings-view-switch { display: inline-flex; padding: 3px; border: 1px solid var(--border-light); border-radius: 10px; background: var(--bg-primary); }
+.settings-view-option { padding: 7px 18px; border: 0; border-radius: 8px; background: transparent; color: var(--text-secondary); font: inherit; font-size: 13px; cursor: pointer; }
+.settings-view-option.on { background: var(--accent); color: #fff; }
+
+.folders-modern .folder-icon-wrap { color: var(--folder-color, var(--text-secondary)); }
+.folders-modern .folder-item.has-members .folder-icon-wrap > svg { display: none !important; }
+.folders-modern .folder-item.has-members .folder-mosaic {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 2px; width: 34px; height: 34px; padding: 3px;
+    border-radius: 10px; background: var(--bg-tertiary); box-sizing: border-box;
+    border: 1.5px solid var(--folder-color, var(--border-light));
+}
+.folders-modern .folder-mosaic img { width: 100%; height: 100%; object-fit: contain; border-radius: 4px; }
+.folders-modern .folder-item.open .folder-mosaic, .folders-modern .folder-header:hover .folder-mosaic { border-color: var(--folder-color, var(--accent)); }
+.folders-modern .folder-badge { top: -4px; right: -4px; }
+
+.folders-modern #activityBar.sidebar-expanded .folder-count { display: inline-block; margin-left: auto; padding: 1px 8px; border-radius: 999px; background: var(--bg-tertiary); color: var(--text-secondary); font-size: 11px; line-height: 16px; }
+.folders-modern #activityBar.sidebar-expanded .folder-count.has-unread { background: var(--accent-dim); color: var(--accent-hover); }
+.folders-modern #activityBar.sidebar-expanded .folder-chevron { display: inline-flex; margin-left: 6px; color: var(--text-muted); transition: transform .2s; }
+.folders-modern #activityBar.sidebar-expanded .folder-item.inline-open .folder-chevron { transform: rotate(180deg); }
+.folders-modern #activityBar.sidebar-expanded .folder-item.inline-open > .folder-children {
+    display: flex !important; flex-direction: column; align-items: stretch;
+    margin: 2px 0 6px 18px; padding-left: 8px; width: calc(100% - 18px);
+    border-left: 2px solid var(--folder-color, var(--border-light));
+}
+
+.folders-modern .folder-panel-label { display: none !important; }
+.folders-modern .folder-panel.open { width: 292px; }
+.folders-modern .folder-panel .folder-panel-content { padding: 0 8px 10px; }
+.fp-head { display: flex; align-items: center; gap: 12px; margin: 0 -8px 8px; padding: 14px 14px 12px; border-bottom: 1px solid var(--border); position: relative; }
+.fp-head::after { content: ""; position: absolute; left: 0; bottom: -1px; width: 56px; height: 2px; background: var(--folder-color, var(--accent)); border-radius: 2px; }
+.fp-mosaic { flex: none; display: grid; grid-template-columns: 1fr 1fr; gap: 2px; width: 38px; height: 38px; padding: 3px; box-sizing: border-box; border-radius: 11px; background: var(--bg-tertiary); border: 1.5px solid var(--folder-color, var(--border-light)); }
+.fp-mosaic img { width: 100%; height: 100%; object-fit: contain; border-radius: 4px; }
+.fp-text { min-width: 0; flex: 1; display: flex; flex-direction: column; }
+.fp-text strong { font-size: 15px; font-weight: 650; color: var(--text-bright); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fp-text small { font-size: 11.5px; color: var(--text-secondary); }
+.fp-actions { display: flex; gap: 4px; }
+.fp-btn { width: 28px; height: 28px; border: 1px solid var(--border-light); border-radius: 8px; background: transparent; color: var(--text-secondary); font: inherit; font-size: 13px; cursor: pointer; }
+.fp-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
+.fp-caption { display: block; margin-top: 1px; font-size: 11px; font-weight: 400; color: var(--text-secondary); }
+.ctx-colors { display: flex; gap: 8px; padding: 8px 12px; }
+.folders-classic .ctx-colors { display: none; }
+.ctx-color { width: 20px; height: 20px; border: 0; border-radius: 50%; background: var(--c); cursor: pointer; box-shadow: 0 0 0 2px var(--bg-secondary); }
+.ctx-color:hover { box-shadow: 0 0 0 2px var(--bg-secondary), 0 0 0 4px var(--c); }
+.ctx-color-reset { background: var(--bg-tertiary); color: var(--text-secondary); font-size: 13px; line-height: 20px; }
+
+.folders-modern .folder-item.has-members .folder-mosaic { width: 100%; height: 100%; }
+.folders-modern .folder-panel.folder-panel-wide.open { width: 292px; }
+.folders-modern .folder-panel-wide .folder-panel-content .messenger-item { height: 48px; }

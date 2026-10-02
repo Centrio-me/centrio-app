@@ -848,6 +848,19 @@ module.exports = {
         teamLink: "En savoir plus",
     },
 
+    foldersView: {
+        title: "Affichage des dossiers",
+        hint: "La nouvelle vue montre les icônes des services dans le dossier et le compteur de non-lus. La vue classique reste inchangée.",
+        modern: "Nouvelle",
+        classic: "Classique",
+        mute: "Couper les notifications du dossier",
+        unmute: "Réactiver les notifications du dossier",
+        more: "Plus",
+        services: "Services : {n}",
+        unread: "non lus : {n}",
+        colorReset: "Sans couleur",
+    },
+
     teamTasks: {
 
         title: "De la direction",

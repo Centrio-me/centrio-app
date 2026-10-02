@@ -1705,6 +1705,11 @@
         </svg>
         <span data-i18n="folders.changeIcon"></span>
     </div>
+    <div class="context-item" id="ctxFolderMute">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <span data-i18n="foldersView.mute"></span>
+    </div>
+    <div class="ctx-colors" id="ctxFolderColors"></div>
     <div class="context-divider"></div>
     <div class="context-item context-danger" id="ctxFolderRemove">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
@@ -2156,6 +2161,14 @@
 
                 <!-- Внешний вид -->
                 <div class="settings-section" id="section-appearance">
+                    <div class="settings-group">
+                        <div class="settings-group-title" data-i18n="foldersView.title"></div>
+                        <div class="settings-hint" style="margin-bottom:12px" data-i18n="foldersView.hint"></div>
+                        <div class="settings-view-switch">
+                            <button type="button" class="settings-view-option" data-folders-style="modern"><span data-i18n="foldersView.modern"></span></button>
+                            <button type="button" class="settings-view-option" data-folders-style="classic"><span data-i18n="foldersView.classic"></span></button>
+                        </div>
+                    </div>
                     <div class="settings-group">
                         <div class="settings-group-title" data-i18n="settings.theme"></div>
                         <div class="theme-picker">

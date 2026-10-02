@@ -256,6 +256,9 @@ const ALLOWED_STORE_ROOTS = new Set([
     // Settings -> Workspace: hidden/ordered right-bar icons —
     // renderer/rightbar-custom.js; synced via settings.extra.
     'rightbarLayout',
+    // Folder look (modern/classic) and folder colours — renderer/folders-modern.js;
+    // both synced via settings.extra.
+    'foldersStyle', 'folderColors',
     // AI-ассистент — режим инференса, BYOK-ключи (зашифрованы через
     // store:secure-* под assistant.byok.<provider>.keyEnc), адрес Ollama,
     // локальная история чата. См. main/services/aiProviders/index.js и

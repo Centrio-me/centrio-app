@@ -848,6 +848,19 @@ module.exports = {
         teamLink: "了解更多",
     },
 
+    foldersView: {
+        title: "文件夹外观",
+        hint: "新外观在文件夹中显示服务图标和未读数。经典外观保持不变。",
+        modern: "新",
+        classic: "经典",
+        mute: "静音文件夹",
+        unmute: "开启文件夹通知",
+        more: "更多",
+        services: "服务：{n}",
+        unread: "未读：{n}",
+        colorReset: "无颜色",
+    },
+
     teamTasks: {
 
         title: "主管任务",

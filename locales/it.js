@@ -848,6 +848,19 @@ module.exports = {
         teamLink: "Scopri di più",
     },
 
+    foldersView: {
+        title: "Vista delle cartelle",
+        hint: "La nuova vista mostra le icone dei servizi nella cartella e il contatore dei non letti. Quella classica resta com’era.",
+        modern: "Nuova",
+        classic: "Classica",
+        mute: "Silenzia cartella",
+        unmute: "Riattiva avvisi della cartella",
+        more: "Altro",
+        services: "Servizi: {n}",
+        unread: "non letti: {n}",
+        colorReset: "Nessun colore",
+    },
+
     teamTasks: {
 
         title: "Dal responsabile",

@@ -873,6 +873,19 @@ module.exports = {
         teamLink: "Learn more",
     },
 
+    foldersView: {
+        title: "Folder view",
+        hint: "The new view shows the service icons inside a folder and the unread counter. Classic stays as it was.",
+        modern: "New",
+        classic: "Classic",
+        mute: "Mute folder",
+        unmute: "Unmute folder",
+        more: "More",
+        services: "Services: {n}",
+        unread: "unread: {n}",
+        colorReset: "No colour",
+    },
+
     teamTasks: {
 
         title: "From your manager",

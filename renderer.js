@@ -30,6 +30,7 @@ const { createOrgTeamApi } = require('./renderer/org-team')
 const { createTeamTasksUi } = require('./renderer/team-tasks')
 const { bindRightbarCustom } = require('./renderer/rightbar-custom')
 const { bindProWindow } = require('./renderer/pro-window')
+const { createFoldersModern } = require('./renderer/folders-modern')
 const { createContextMenusApi } = require('./renderer/context-menus')
 const { bindPopupBackdrop } = require('./renderer/popup-backdrop-bind')
 const { createFoldersUiApi } = require('./renderer/folders-ui')
@@ -92,7 +93,7 @@ const SYNCED_STORE_KEYS = new Set([
     'messengers', 'folders', 'settings', 'security', 'lockOnStartup',
     'globalProxy', 'sidebarOrder', 'menuCollapsed', 'appZoomLevel',
     'vpnAppModes', 'extensionsState', 'splitLeftPctPref', 'splitPresets',
-    'mutedMessengers', 'quickReplies', 'rightbarLayout', 'orgAssignedFolders', 'dividers'
+    'mutedMessengers', 'quickReplies', 'rightbarLayout', 'orgAssignedFolders', 'dividers', 'foldersStyle', 'folderColors'
 ])
 
 let suppressAutoCloudSync = false
@@ -509,6 +510,8 @@ async function bootstrap() {
         ['mutedMessengers', {}],
         ['orgAssignedFolders', {}],
         ['rightbarLayout', null],
+        ['foldersStyle', 'modern'],
+        ['folderColors', {}],
         ['globalMuteAll', false],
         ['extensionsState', {}],
         // BUGFIX ("состояние сплита/пресеты не восстанавливаются после
@@ -763,6 +766,8 @@ async function bootstrap() {
                         // Folder of each team-assigned messenger and the sidebar
                         // dividers must follow the account to every computer too.
                         orgAssignedFolders: store.get('orgAssignedFolders', {}) || {},
+                        foldersStyle:     store.get('foldersStyle', 'modern') || 'modern',
+                        folderColors:     store.get('folderColors', {}) || {},
                         dividers:         state.dividers || []
                     }
                 }
@@ -889,6 +894,8 @@ async function bootstrap() {
                         if (extra.rightbarLayout !== undefined) await store.setAsync('rightbarLayout', extra.rightbarLayout)
                         if (extra.orgAssignedFolders && typeof extra.orgAssignedFolders === 'object') await store.setAsync('orgAssignedFolders', extra.orgAssignedFolders)
                         if (Array.isArray(extra.dividers)) await store.setAsync('dividers', extra.dividers)
+                        if (typeof extra.foldersStyle === 'string') await store.setAsync('foldersStyle', extra.foldersStyle)
+                        if (extra.folderColors && typeof extra.folderColors === 'object') await store.setAsync('folderColors', extra.folderColors)
                         if (extra.activeTabId !== undefined) await store.setAsync('activeTabId', extra.activeTabId)
                         if (extra.activeWorkspaceId !== undefined) await store.setAsync('activeWorkspaceId', extra.activeWorkspaceId)
                     }
@@ -1176,6 +1183,7 @@ async function bootstrap() {
     // ==============================
     // FOLDERS UI API
     // ==============================
+    let foldersModernRef = null
     const foldersUiApi = createFoldersUiApi({
         state,
         store,
@@ -1183,7 +1191,10 @@ async function bootstrap() {
         messengerList,
         renderMessengerItem: createMessengerItem,
         addToSidebar,
-        saveData
+        saveData,
+        onFolderChanged: (folderId) => foldersModernRef?.refreshFolder(folderId),
+        afterPanelRender: (folderId) => foldersModernRef?.decoratePanel(folderId),
+        forceWidePanel: () => !!foldersModernRef?.isModern()
     })
 
     const {
@@ -1366,6 +1377,21 @@ async function bootstrap() {
         showDividerContextMenu
     } = contextMenusApi
 
+    foldersModernRef = createFoldersModern({
+        state,
+        store,
+        tGet,
+        getLanguage: () => (store.get('settings', {}) || {}).language || 'ru',
+        updateMuteIcon,
+        saveData,
+        pushToCloud: () => { if (cloudStore.isLoggedIn()) cloudSyncPush() },
+        closeFolderPanel,
+        openFolderMenu: (event, folderId) => {
+            state.contextTargetFolderId = folderId
+            showFolderContextMenu(event, folderId)
+        }
+    })
+
     // ==============================
     // РЕНДЕР ПАПКИ
     // ==============================
@@ -1392,9 +1418,14 @@ async function bootstrap() {
             <div class="folder-children" id="folder-children-${folder.id}"></div>
         `
         folderEl.querySelector('.folder-name').textContent = folder.name
+        foldersModernRef?.decorateHeader(folderEl)
 
         const header = folderEl.querySelector('.folder-header')
-        header.addEventListener('click', () => toggleFolderPanel(folder.id))
+        header.addEventListener('click', () => {
+            // Expanded sidebar + new look: open the folder in place.
+            if (foldersModernRef?.useInline()) foldersModernRef.toggleInline(folder.id)
+            else toggleFolderPanel(folder.id)
+        })
         header.addEventListener('contextmenu', (e) => {
             e.preventDefault()
             e.stopPropagation()
@@ -1418,6 +1449,7 @@ async function bootstrap() {
         const zone = messengerList.querySelector('.sidebar-root-drop-zone')
         if (zone) messengerList.insertBefore(folderEl, zone)
         else messengerList.appendChild(folderEl)
+        foldersModernRef?.refreshFolder(folder.id)
     }
 
     // ==============================
@@ -2564,6 +2596,7 @@ function applyTabZoom(level) {
         if (wantedWs.size > 0 && !workspacesUiApi.isEnabled()) workspacesUiApi.setEnabled(true)
         workspacesUiApi.updateSwitcherLabel()
         workspacesUiApi.applyWorkspaceFilter()
+        foldersModernRef?.refreshAll()
     }
 
     async function addOrgAssignedMessenger(messenger) {
@@ -3042,6 +3075,8 @@ function applyTabZoom(level) {
                 if (extra.rightbarLayout !== undefined) store.set('rightbarLayout', extra.rightbarLayout)
                 if (extra.orgAssignedFolders && typeof extra.orgAssignedFolders === 'object') store.set('orgAssignedFolders', extra.orgAssignedFolders)
                 if (Array.isArray(extra.dividers)) store.set('dividers', extra.dividers)
+                if (typeof extra.foldersStyle === 'string') store.set('foldersStyle', extra.foldersStyle)
+                if (extra.folderColors && typeof extra.folderColors === 'object') store.set('folderColors', extra.folderColors)
                 // BUGFIX ("не сохраняется выбранный мессенджер"): restore
                 // last-active tab from cloud too, mirroring every other
                 // extra.* field here — see switchTab()/loadData() above.
@@ -3165,6 +3200,7 @@ function applyTabZoom(level) {
         // The team poll starts before this function renders the folders, so
         // an assigned messenger may already be injected into the root list.
         restoreOrgAssignedFolders()
+        foldersModernRef?.refreshAll()
 
         if (savedMessengers.length > 0) {
             // BUGFIX ("не сохраняется выбранный мессенджер"): settings.extra.activeTabId

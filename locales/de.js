@@ -848,6 +848,19 @@ module.exports = {
         teamLink: "Mehr erfahren",
     },
 
+    foldersView: {
+        title: "Ordneransicht",
+        hint: "Die neue Ansicht zeigt die Symbole der Dienste im Ordner und den Zähler für Ungelesenes. Klassisch bleibt wie bisher.",
+        modern: "Neu",
+        classic: "Klassisch",
+        mute: "Ordner stummschalten",
+        unmute: "Ordner-Benachrichtigungen einschalten",
+        more: "Mehr",
+        services: "Dienste: {n}",
+        unread: "ungelesen: {n}",
+        colorReset: "Keine Farbe",
+    },
+
     teamTasks: {
 
         title: "Von der Leitung",

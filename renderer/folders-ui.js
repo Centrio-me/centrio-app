@@ -5,7 +5,10 @@ function createFoldersUiApi({
     messengerList,
     renderMessengerItem,
     addToSidebar,
-    saveData
+    saveData,
+    onFolderChanged = () => {},
+    afterPanelRender = () => {},
+    forceWidePanel = () => false
 }) {
     function updateFolderBadge(folderId) {
         const folderEl = document.getElementById(`folder-${folderId}`)
@@ -29,6 +32,7 @@ function createFoldersUiApi({
         } else {
             badge?.remove()
         }
+        onFolderChanged(folderId)
     }
 
     function renderFolderPanel(folderId) {
@@ -104,6 +108,7 @@ function createFoldersUiApi({
 
                 content.appendChild(item)
             })
+        afterPanelRender(folderId)
     }
 
     function updateFolderPanelPosition() {
@@ -138,7 +143,7 @@ function createFoldersUiApi({
         // isExpanded check renderer/workspaces-ui.js uses for the same
         // structural reason — computed fresh on each open, since the user
         // can toggle the sidebar while the panel is closed.
-        const isExpanded = !!document.getElementById('activityBar')?.classList.contains('sidebar-expanded')
+        const isExpanded = !!document.getElementById('activityBar')?.classList.contains('sidebar-expanded') || forceWidePanel()
         folderPanel.classList.toggle('folder-panel-wide', isExpanded)
         document.querySelector('.main-container').classList.add('folder-panel-open')
         updateFolderPanelPosition()
@@ -161,6 +166,7 @@ function createFoldersUiApi({
         if (!container) return
         container.appendChild(renderMessengerItem(messenger))
         document.getElementById(`folder-${folderId}`)?.classList.add('open')
+        onFolderChanged(folderId)
     }
 
     function removeFolder(folderId) {
