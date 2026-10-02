@@ -861,6 +861,19 @@ module.exports = {
         colorReset: "Sans couleur",
     },
 
+    foldersPromo: {
+        pill: "Nouveau",
+        title: "Nouvel affichage des dossiers",
+        text: "Les icônes des services sur le dossier, un compteur de non-lus, des couleurs et une carte flottante. Pas convaincu ? Revenez à l’ancienne vue.",
+        path: "Réglages → Apparence → Affichage des dossiers",
+        modern: "Nouvelle",
+        classic: "Classique",
+        open: "Ouvrir les réglages",
+        ok: "Compris",
+        folderName: "Clients",
+        folderMeta: "Services : 3 · non lus : 3",
+    },
+
     teamTasks: {
 
         title: "De la direction",

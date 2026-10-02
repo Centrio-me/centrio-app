@@ -861,6 +861,19 @@ module.exports = {
         colorReset: "Sin color",
     },
 
+    foldersPromo: {
+        pill: "Nuevo",
+        title: "Nueva vista de carpetas",
+        text: "Iconos de servicios en la propia carpeta, contador de no leídos, colores y una tarjeta emergente. ¿No te gusta? Vuelve a la vista anterior.",
+        path: "Ajustes → Apariencia → Vista de carpetas",
+        modern: "Nueva",
+        classic: "Clásica",
+        open: "Abrir ajustes",
+        ok: "Entendido",
+        folderName: "Clientes",
+        folderMeta: "Servicios: 3 · sin leer: 3",
+    },
+
     teamTasks: {
 
         title: "Del responsable",

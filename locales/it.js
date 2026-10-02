@@ -861,6 +861,19 @@ module.exports = {
         colorReset: "Nessun colore",
     },
 
+    foldersPromo: {
+        pill: "Novità",
+        title: "Nuova vista delle cartelle",
+        text: "Icone dei servizi sulla cartella, contatore dei non letti, colori e una scheda a comparsa. Non ti piace? Torna alla vista precedente.",
+        path: "Impostazioni → Aspetto → Vista delle cartelle",
+        modern: "Nuova",
+        classic: "Classica",
+        open: "Apri impostazioni",
+        ok: "Ho capito",
+        folderName: "Clienti",
+        folderMeta: "Servizi: 3 · non letti: 3",
+    },
+
     teamTasks: {
 
         title: "Dal responsabile",

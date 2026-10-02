@@ -886,6 +886,19 @@ module.exports = {
         colorReset: "No colour",
     },
 
+    foldersPromo: {
+        pill: "New",
+        title: "New folder look",
+        text: "Service icons right on the folder, an unread counter, colours and a pop-up card. Don’t like it? Switch back to the old look.",
+        path: "Settings → Appearance → Folder view",
+        modern: "New",
+        classic: "Classic",
+        open: "Open settings",
+        ok: "Got it",
+        folderName: "Clients",
+        folderMeta: "Services: 3 · unread: 3",
+    },
+
     teamTasks: {
 
         title: "From your manager",

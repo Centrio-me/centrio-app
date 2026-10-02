@@ -861,6 +861,19 @@ module.exports = {
         colorReset: "Keine Farbe",
     },
 
+    foldersPromo: {
+        pill: "Neu",
+        title: "Neue Ordneransicht",
+        text: "Dienst-Symbole direkt auf dem Ordner, Zähler für Ungelesenes, Farben und eine Pop-up-Karte. Gefällt es nicht? Zurück zur alten Ansicht.",
+        path: "Einstellungen → Darstellung → Ordneransicht",
+        modern: "Neu",
+        classic: "Klassisch",
+        open: "Einstellungen öffnen",
+        ok: "Verstanden",
+        folderName: "Kunden",
+        folderMeta: "Dienste: 3 · ungelesen: 3",
+    },
+
     teamTasks: {
 
         title: "Von der Leitung",

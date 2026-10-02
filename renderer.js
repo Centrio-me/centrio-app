@@ -31,6 +31,7 @@ const { createTeamTasksUi } = require('./renderer/team-tasks')
 const { bindRightbarCustom } = require('./renderer/rightbar-custom')
 const { bindProWindow } = require('./renderer/pro-window')
 const { createFoldersModern } = require('./renderer/folders-modern')
+const { bindFoldersPromo } = require('./renderer/folders-promo')
 const { createContextMenusApi } = require('./renderer/context-menus')
 const { bindPopupBackdrop } = require('./renderer/popup-backdrop-bind')
 const { createFoldersUiApi } = require('./renderer/folders-ui')
@@ -3860,6 +3861,14 @@ function applyTabZoom(level) {
             ipcRenderer.send('show-notification', { title, body, messengerId: 'org-alert' })
         },
         tGet
+    })
+    bindFoldersPromo({
+        state,
+        tGet,
+        openAppearanceSettings: () => {
+            document.getElementById('settingsBtn')?.click()
+            setTimeout(() => document.querySelector('.settings-nav-item[data-section="appearance"]')?.click(), 80)
+        }
     })
     orgTeamApi.start()
     orgTeamTickRef = () => {

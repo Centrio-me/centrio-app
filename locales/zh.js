@@ -861,6 +861,19 @@ module.exports = {
         colorReset: "无颜色",
     },
 
+    foldersPromo: {
+        pill: "新",
+        title: "全新文件夹外观",
+        text: "文件夹上直接显示服务图标、未读数、颜色和弹出卡片。不喜欢？可以切换回旧外观。",
+        path: "设置 → 外观 → 文件夹外观",
+        modern: "新",
+        classic: "经典",
+        open: "打开设置",
+        ok: "知道了",
+        folderName: "客户",
+        folderMeta: "服务：3 · 未读：3",
+    },
+
     teamTasks: {
 
         title: "主管任务",
