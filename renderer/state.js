@@ -4,6 +4,7 @@ const state = {
     dividers: [],
     activeTabId: null,
     unreadCounts: {},
+    sleepingTabs: new Set(), // messenger ids whose page is unloaded (tab manager)
     rawUnreadCounts: {},
     loginStates: {}, // messengerId -> 'in' | 'out' (main-process poll, see startLoginStatePolling)
     lastSiteNotifyAt: {}, // messengerId -> ms of the last notification the site itself produced

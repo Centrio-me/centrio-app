@@ -1,3 +1,5 @@
+const DUPLICATE_WINDOW_MS = 8000
+
 function createWebviewNotifyApi({
     state,
     store,
@@ -20,10 +22,15 @@ function createWebviewNotifyApi({
         const tag = String(payload.tag || '')
         const icon = payload.icon || messenger.icon || ''
 
-        const dedupeKey = `${messenger.id}::${title}::${body}::${tag}`
+        // The same message often arrives twice: a site fires Notification AND the service worker's
+        // showNotification, usually with a different tag. Same sender (title) and same text within a few seconds is
+        // one message; two different senders writing "ok" are not merged (the unread-count fallback keeps its own key).
+        const dedupeKey = tag === 'unread-fallback'
+            ? `${messenger.id}::unread-fallback`
+            : `${messenger.id}::${title}::${body}`
         const now = Date.now()
         const prevTime = state.siteNotificationState[dedupeKey] || 0
-        if (now - prevTime < 5000) return
+        if (now - prevTime < DUPLICATE_WINDOW_MS) return
         state.siteNotificationState[dedupeKey] = now
 
         const isActiveTab = state.activeTabId === messenger.id

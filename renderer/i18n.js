@@ -45,7 +45,8 @@ async function initI18n () {
             } else {
                 const messengers = await window.electronAPI.storeGet('messengers', [])
                 const seenAuth = await window.electronAPI.storeGet('onboardingAuthSeen', false)
-                if (!(Array.isArray(messengers) && messengers.length) && !seenAuth) {
+                const hasOtherSettings = settings && Object.keys(settings).length > 0
+                if (!(Array.isArray(messengers) && messengers.length) && !seenAuth && !hasOtherSettings) {
                     currentLanguage = detectSystemLanguage()
                     cachedDictionary = null
                     cachedLanguage = null

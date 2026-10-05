@@ -1066,6 +1066,14 @@
             <span id="statusMessengersText"></span>
         </span>
         <div class="status-divider"></div>
+        <span class="status-item status-memory-btn" id="statusMemory" title="">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
+                <rect x="3" y="7" width="18" height="10" rx="2" stroke="currentColor" stroke-width="2"/>
+                <path d="M7 7V4M12 7V4M17 7V4M7 20v-3M12 20v-3M17 20v-3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            <span id="statusMemoryText">…</span>
+        </span>
+        <div class="status-divider"></div>
         <span class="status-item" id="statusUnread">
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
                 <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" stroke="currentColor" stroke-width="2"/>
@@ -1175,6 +1183,19 @@
         <button class="changelog-popup-close" id="changelogPopupClose">✕</button>
     </div>
     <div class="changelog-popup-body">
+        <div class="changelog-entry">
+            <div class="changelog-version">v3.0.1</div>
+            <ul class="changelog-list">
+                <li>Приносим извинения за частые обновления: так мы делаем Centrio лучше с каждым днём, и это часть разработки. Спасибо за понимание!</li>
+                <li>Новое: импорт паролей. Перенесите пароли из Chrome, Edge, Яндекс Браузера, Firefox, Opera, Brave, Bitwarden, 1Password, LastPass, KeePass или любого файла CSV. Внутри пошаговая инструкция для каждого источника, перед импортом видно, сколько паролей найдено, а файл с паролями можно сразу удалить</li>
+                <li>Новое: диспетчер вкладок. Показывает, сколько памяти и процессора занимает каждая вкладка, позволяет перезагрузить её или «усыпить», чтобы освободить память, а общий расход виден в строке состояния. Открывается по Ctrl+Shift+M</li>
+                <li>Исправлено: у сотрудников команды папки, которые создал руководитель, больше не задваиваются после синхронизации</li>
+                <li>Исправлено: уведомления больше не приходят по несколько раз</li>
+                <li>Исправлено: пароли синхронизируются между устройствами для Pro. Раньше синхронизация не успевала сохранить хранилище</li>
+                <li>Улучшено: безопасность менеджера паролей. Пароль подставляется только на тот же сайт и только по защищённому соединению, защита от подбора мастер-пароля, очистка буфера обмена и блокировка при выходе компьютера в сон</li>
+                <li>Исправлено: экран блокировки читается на светлой теме</li>
+            </ul>
+        </div>
         <div class="changelog-entry">
             <div class="changelog-version">v3.0.0</div>
             <ul class="changelog-list">

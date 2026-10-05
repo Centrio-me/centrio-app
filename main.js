@@ -211,6 +211,9 @@ function safeHandle(channel, handler) {
 // segment before the first dot.
 const ALLOWED_STORE_ROOTS = new Set([
     'settings', 'security', 'cloud', 'extensionsState', 'foldersEnabled',
+    // Password manager vault (encrypted blob). The renderer keeps a cached copy for cloud sync; writes are validated
+    // below, and the main-process service is the only real owner of this key.
+    'pmVault',
     'menuCollapsed', 'messengers', 'mutedMessengers', 'globalMuteAll',
     'globalProxy', 'sidebarOrder', 'vpnAppModes', 'vpnActiveLink',
     'vpnSubUrl', 'vpnSubLinks', 'tabZoomLevel', 'appZoomLevel', 'folders',
@@ -366,6 +369,13 @@ safeHandle('store:set', async (_event, key, value) => {
     if (!isValidStoreKey(key)) {
         console.warn(`[store] Blocked store:set for disallowed key "${key}"`)
         return { success: false, error: 'Disallowed key' }
+    }
+    if (key === 'pmVault' || key.startsWith('pmVault.')) {
+        // only a structurally valid encrypted vault (or a clear) may be written through the generic channel
+        if (key !== 'pmVault' || (value !== null && !require('./main/services/pmVault').isValidVault(value))) {
+            console.warn('[store] Blocked store:set for an invalid pmVault value')
+            return { success: false, error: 'Disallowed value' }
+        }
     }
     if (isProtectedSetKey(key)) {
         console.warn(`[store] Blocked store:set for protected key "${key}" — ` +

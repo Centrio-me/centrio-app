@@ -19,6 +19,7 @@ const ru = {
     syncTitle: 'Синхронизация', syncOn: 'Пароли синхронизируются между вашими устройствами в зашифрованном виде. Облако хранит только зашифрованные данные, прочитать их без мастер-пароля нельзя.', syncPro: 'Синхронизация паролей между устройствами доступна в Pro.',
     changeMaster: 'Сменить мастер-пароль', changeBtn: 'Сменить', masterChanged: 'Мастер-пароль изменён',
     resetText: 'Если мастер-пароль забыт, хранилище можно только сбросить: все сохранённые пароли будут удалены.', resetBtn: 'Сбросить хранилище', resetConfirm: 'Удалить все пароли?',
+    importBtn: 'Импортировать пароли', importHint: 'Из Chrome, Яндекс Браузера, Firefox, Bitwarden, 1Password и других — пошаговая инструкция внутри.',
     stripManage: 'Управление', stripNone: 'Ничего не найдено', stripClose: 'Закрыть',
     mismatch: 'В облаке уже есть другое хранилище паролей. Введите его мастер-пароль, чтобы объединить пароли.', mismatchJoin: 'Объединить', mismatchLater: 'Не сейчас'
 }
@@ -43,6 +44,7 @@ const en = {
     syncTitle: 'Sync', syncOn: 'Passwords sync between your devices, encrypted. The cloud only stores encrypted data that cannot be read without the master password.', syncPro: 'Syncing passwords between devices is available in Pro.',
     changeMaster: 'Change master password', changeBtn: 'Change', masterChanged: 'Master password changed',
     resetText: 'If the master password is forgotten, the vault can only be reset: all saved passwords will be deleted.', resetBtn: 'Reset vault', resetConfirm: 'Delete all passwords?',
+    importBtn: 'Import passwords', importHint: 'From Chrome, Yandex Browser, Firefox, Bitwarden, 1Password and more — step-by-step guide inside.',
     stripManage: 'Manage', stripNone: 'Nothing found', stripClose: 'Close',
     mismatch: 'The cloud already holds another password vault. Enter its master password to merge the passwords.', mismatchJoin: 'Merge', mismatchLater: 'Not now'
 }

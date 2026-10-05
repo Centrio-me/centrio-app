@@ -68,6 +68,8 @@ const { bindTodosUi } = require('./renderer/todos-bind')
 const { bindQuickRepliesUi } = require('./renderer/quick-replies-bind')
 const { bindPasswordsUi } = require('./renderer/passwords-ui')
 const { createPmBar } = require('./renderer/pm-bar')
+const { createTabManager } = require('./renderer/tab-manager')
+const { dedupeFolders } = require('./renderer/folders-dedupe')
 const { startSplashFacts, stopSplashFacts } = require('./renderer/splash-facts')
 const { bindNotesUi } = require('./renderer/notes-bind')
 const { bindDownloadsUi } = require('./renderer/downloads-bind')
@@ -1415,6 +1417,8 @@ async function bootstrap() {
     // РЕНДЕР ПАПКИ
     // ==============================
     function renderFolder(folder) {
+        // Rendering the same folder again must replace it, never add a second copy next to it.
+        document.getElementById(`folder-${folder.id}`)?.remove()
         const folderEl = document.createElement('div')
         folderEl.className = 'folder-item'
         folderEl.id = `folder-${folder.id}`
@@ -1567,7 +1571,11 @@ function applyZoomWhenReady(webview, zoomLevel) {
     // ── Мини-плеер медиа (initialised below, after switchTab/tGet are ready) ──
     let mediaPlayerUiApi = null
 
+// Set once the webview API exists: brings a sleeping tab back (its page is loaded again).
+let wakeTabRef = null
+
 function switchTab(id) {
+    if (state.sleepingTabs.has(id) && typeof wakeTabRef === 'function') wakeTabRef(id)
     // In split mode route to the focused pane
     if (state.splitMode) {
         if (state.splitLayout !== '2col') {
@@ -1898,6 +1906,33 @@ function applyTabZoom(level) {
         cloudSyncPush,
         isCloudLoggedIn: () => cloudStore.isLoggedIn()
     })
+
+    // Tab manager: put a tab to sleep (unload its page) or wake it up again.
+    function markSleeping(id, sleeping) {
+        document.getElementById(`sidebar-${id}`)?.classList.toggle('is-sleeping', sleeping)
+        document.getElementById(`tab-${id}`)?.classList.toggle('is-sleeping', sleeping)
+    }
+
+    function sleepTab(id) {
+        const messenger = state.activeMessengers.find((m) => m.id === id)
+        if (!messenger || state.sleepingTabs.has(id) || state.activeTabId === id) return false
+        if (state.splitMode && (state.splitTabId === id || (state.splitZoneIds || []).includes(id))) return false
+        const view = document.getElementById(`webview-${id}`)
+        if (!view) return false
+        state.webviewWatchBound.delete(`webview-${id}`)
+        view.remove()
+        state.sleepingTabs.add(id)
+        markSleeping(id, true)
+        return true
+    }
+
+    function wakeTab(id) {
+        if (!state.sleepingTabs.delete(id)) return
+        markSleeping(id, false)
+        const messenger = state.activeMessengers.find((m) => m.id === id)
+        if (messenger && !document.getElementById(`webview-${id}`)) webviewTabsApi.addWebview(messenger)
+    }
+    wakeTabRef = wakeTab
 
     // Expose focus-tracker for webview-tabs-bind.js
     window.__centrioSplitFocus = (webview) => splitApi.onWebviewFocus(webview)
@@ -3173,9 +3208,14 @@ function applyTabZoom(level) {
         const savedDividers = await store.getAsync('dividers', [])
         state.mutedMessengers = await store.getAsync('mutedMessengers', {})
         state.globalMuteAll = await store.getAsync('globalMuteAll', false)
-        state.folders = savedFolders || []
+        // The team poller can run while loadData() still waits for the cloud: folders it already created for
+        // this employee (orgManaged) must survive this assignment, or the next poll draws them a second time.
+        const orgFoldersSoFar = state.folders.filter((f) => f.orgManaged)
+        state.folders = [...(savedFolders || []), ...orgFoldersSoFar.filter((o) => !(savedFolders || []).some((f) => f.id === o.id))]
         state.dividers = savedDividers || []
-        state.workspaces = (await store.getAsync('workspaces', [])) || []
+        const orgWorkspacesSoFar = state.workspaces.filter((w) => w.orgManaged)
+        const savedWorkspaces = (await store.getAsync('workspaces', [])) || []
+        state.workspaces = [...savedWorkspaces, ...orgWorkspacesSoFar.filter((o) => !savedWorkspaces.some((w) => w.id === o.id))]
         state.activeWorkspaceId = await store.getAsync('activeWorkspaceId', null)
         if (state.activeWorkspaceId && !state.workspaces.some(w => w.id === state.activeWorkspaceId)) {
             state.activeWorkspaceId = null
@@ -3193,7 +3233,14 @@ function applyTabZoom(level) {
         welcomeScreen.style.display = 'none'
         tabsContent.style.pointerEvents = 'auto'
 
-        state.folders.forEach(renderFolder)
+        // A folder listed twice (or an empty twin of a filled folder) used to show up twice in the sidebar.
+        const folderRepair = dedupeFolders(state.folders, savedMessengers)
+        if (folderRepair.removed > 0) {
+            state.folders = folderRepair.folders
+            store.set('folders', state.folders.filter((f) => !f.orgManaged))
+            console.warn('[folders] removed ' + folderRepair.removed + ' duplicate folder(s)')
+        }
+        state.folders.forEach((folder) => { if (!document.getElementById(`folder-${folder.id}`)) renderFolder(folder) })
         state.dividers.forEach(renderDivider)
 
         const settings = await store.getAsync('settings', {})
@@ -3795,6 +3842,8 @@ function applyTabZoom(level) {
         getUserIsPro: hasEffectivePro,
         requirePro
     })
+
+    createTabManager({ state, store, invokeIpc, switchTab, sleepTab, wakeTab })
 
     const passwordsApi = bindPasswordsUi({
         store,

@@ -3,6 +3,7 @@
 // user has pressed "show" (and for a few seconds); the main process does the copying and the typing into pages.
 const { passwordsTexts } = require('./passwords-texts')
 const { generatePassword } = require('./passwords-gen')
+const { createImportView } = require('./passwords-import-ui')
 
 const REVEAL_MS = 15000
 const FEEDBACK_MS = 2400
@@ -46,7 +47,9 @@ function bindPasswordsUi({ store, state, invokeIpc, openRightPanel, closeRightPa
     let status = { state: 'none', count: 0, autoLockMin: 15, autoLockChoices: [5, 15, 30, 60, 0], mismatch: false }
     let entries = []
     let query = ''
-    let view = 'main' // 'main' | 'settings'
+    let view = 'main' // 'main' | 'settings' | 'import'
+    const importWrap = document.createElement('div')
+    let importMounted = false
     let openId = null
     let flash = null // { text, kind, at }
     const revealed = new Map() // id -> { password, timer }
@@ -123,6 +126,25 @@ function bindPasswordsUi({ store, state, invokeIpc, openRightPanel, closeRightPa
         await refresh()
     }
 
+    // After an import only the cloud copy has to follow; the wizard itself must not be redrawn underneath the user.
+    async function syncVaultQuietly() {
+        const exported = await invokeIpc('pm:export')
+        if (exported && exported.success && exported.vault) store.set('pmVault', exported.vault)
+    }
+
+    const importView = createImportView({
+        lang: () => (store.get('settings', {}) || {}).language || 'ru',
+        invokeIpc,
+        onClose: () => { importView.reset(); importMounted = false; view = 'main'; refresh() },
+        onImported: () => { syncVaultQuietly() }
+    })
+
+    function openImport() {
+        importMounted = false
+        view = 'import'
+        render()
+    }
+
     async function applyRemote(blob) {
         if (!isPro() || !blob) return
         const result = await invokeIpc('pm:merge-remote', blob)
@@ -186,6 +208,7 @@ function bindPasswordsUi({ store, state, invokeIpc, openRightPanel, closeRightPa
     function renderSettings() {
         const box = el('div', 'pm-settings')
         box.appendChild(textBtn(`← ${t('back')}`, 'pm-link-btn pm-back', () => { view = 'main'; render() }))
+        box.appendChild(textBtn(t('importBtn'), 'qr-btn-ghost pm-import-row', openImport))
 
         const lockRow = el('label', 'pm-field')
         lockRow.appendChild(el('span', 'pm-field-label', t('autoLock')))
@@ -357,6 +380,8 @@ function bindPasswordsUi({ store, state, invokeIpc, openRightPanel, closeRightPa
             const empty = el('div', 'pm-empty')
             empty.appendChild(el('div', 'pm-empty-title', t('emptyTitle')))
             empty.appendChild(el('div', 'pm-empty-hint', t('emptyHint')))
+            empty.appendChild(textBtn(t('importBtn'), 'qr-btn-primary pm-empty-btn', openImport))
+            empty.appendChild(el('div', 'pm-empty-hint', t('importHint')))
             listEl.appendChild(empty)
             return
         }
@@ -455,6 +480,11 @@ function bindPasswordsUi({ store, state, invokeIpc, openRightPanel, closeRightPa
         listEl.textContent = ''
         if (status.state === 'none') { listEl.appendChild(renderSetup()); return }
         if (status.state === 'locked') { listEl.appendChild(renderUnlock()); return }
+        if (view === 'import') {
+            listEl.appendChild(importWrap)
+            if (!importMounted) { importMounted = true; importView.mount(importWrap) }
+            return
+        }
         if (view === 'settings') { listEl.appendChild(renderSettings()); return }
         renderList()
     }

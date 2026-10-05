@@ -7,12 +7,15 @@
 // The renderer never receives a password except through `reveal` (the "show" button). Copying and typing into a page
 // happen here; the clipboard is wiped after 30 seconds.
 const crypto = require('crypto')
+const fs = require('fs')
 const { clipboard } = require('electron')
 const store = require('./store')
 const vault = require('./vault')
 const pmVault = require('./pmVault')
+const pmImport = require('./pmImport')
 
 const VAULT_KEY = 'pmVault'
+const BACKUP_KEY = 'pmVaultBackup' // the vault as it was before the last cloud merge, so a bad merge can be undone by hand
 const SETTINGS_KEY = 'pmSettings'
 const LEGACY_KEY = 'passwordManager' // pre-master-password builds: entries encrypted with the OS storage only
 const CLIPBOARD_CLEAR_MS = 30 * 1000
@@ -20,9 +23,15 @@ const CAPTURE_TTL_MS = 5 * 60 * 1000
 const AUTO_LOCK_CHOICES = [5, 15, 30, 60, 0] // minutes, 0 = only when the app closes
 const DEFAULT_AUTO_LOCK_MIN = 15
 const MAX_FAILED_BEFORE_DELAY = 3
+const MAX_CAPTURES = 5
+const MAX_CLOCK_SKEW_MS = 24 * 60 * 60 * 1000
 
 let current = null // { vault, dek } — dek is null while locked
 let clipboardTimer = null
+let lastCopied = null
+let gate = Promise.resolve() // every master-password check runs one after another and shares one failure counter
+let powerWatched = false
+let setupBusy = false
 let lockTimer = null
 let failedAttempts = 0
 let pendingRemote = null // a cloud vault with another key, waiting for the user's decision
@@ -52,9 +61,27 @@ function persist() {
 }
 
 // ── lock / unlock ────────────────────────────────────────────────────────────────────────────────────────
+function wipeClipboardIfOurs() {
+    clearTimeout(clipboardTimer)
+    try { if (lastCopied && clipboard.readText() === lastCopied) clipboard.clear() } catch { /* clipboard busy */ }
+    lastCopied = null
+}
+
+function watchPower() {
+    if (powerWatched) return
+    powerWatched = true
+    try {
+        const { powerMonitor } = require('electron')
+        powerMonitor.on('lock-screen', () => lock('power'))
+        powerMonitor.on('suspend', () => lock('power'))
+    } catch { /* not available before the app is ready */ }
+}
+
 function lock(reason) {
     clearTimeout(lockTimer)
     lockTimer = null
+    wipeClipboardIfOurs()
+    if (current && current.dek) current.dek.fill(0)
     if (current) current.dek = null
     captures.forEach((c) => { c.password = '' })
     captures.clear()
@@ -62,6 +89,7 @@ function lock(reason) {
 }
 
 function touch() {
+    watchPower()
     clearTimeout(lockTimer)
     const minutes = settings().autoLockMin
     if (!current || !current.dek || minutes === 0) return
@@ -104,41 +132,64 @@ async function migrateLegacy() {
 }
 
 async function setup(master) {
-    if (loadVault()) return { success: false, error: 'EXISTS' }
+    if (loadVault() || setupBusy) return { success: false, error: 'EXISTS' }
     const bad = pmVault.checkMaster(master)
     if (bad) return { success: false, error: bad }
-    const created = await pmVault.createVault(master)
-    current = { vault: created.vault, dek: created.dek }
-    await migrateLegacy()
-    persist()
-    touch()
-    return { success: true }
+    setupBusy = true
+    try {
+        const created = await pmVault.createVault(master)
+        current = { vault: created.vault, dek: created.dek }
+        await migrateLegacy()
+        persist()
+        touch()
+        return { success: true }
+    } finally {
+        setupBusy = false
+    }
 }
 
-async function unlock(master) {
-    const loaded = loadVault()
-    if (!loaded) return { success: false, error: 'NO_VAULT' }
+// One queue for every master-password check (unlock, change, join the cloud vault): parallel calls cannot skip the
+// delay, and a wrong master counts the same wherever it was typed.
+function serial(fn) {
+    const run = gate.then(fn, fn)
+    gate = run.then(() => undefined, () => undefined)
+    return run
+}
+
+async function throttleWrongMaster() {
     if (failedAttempts >= MAX_FAILED_BEFORE_DELAY) await sleep(Math.min(5000, 500 * 2 ** (failedAttempts - MAX_FAILED_BEFORE_DELAY)))
-    const dek = await pmVault.unlock(loaded.vault, master)
-    if (!dek) { failedAttempts += 1; return { success: false, error: 'WRONG_MASTER' } }
-    failedAttempts = 0
-    loaded.dek = dek
-    touch()
-    return { success: true }
 }
 
-async function changeMaster(oldMaster, newMaster) {
-    const loaded = loadVault()
-    if (!loaded) return { success: false, error: 'NO_VAULT' }
-    const bad = pmVault.checkMaster(newMaster)
-    if (bad) return { success: false, error: bad }
-    const dek = await pmVault.unlock(loaded.vault, oldMaster)
-    if (!dek) return { success: false, error: 'WRONG_MASTER' }
-    loaded.vault = await pmVault.rewrap(loaded.vault, dek, newMaster)
-    loaded.dek = dek
-    persist()
-    touch()
-    return { success: true }
+function unlock(master) {
+    return serial(async () => {
+        const loaded = loadVault()
+        if (!loaded) return { success: false, error: 'NO_VAULT' }
+        await throttleWrongMaster()
+        const dek = await pmVault.unlock(loaded.vault, master)
+        if (!dek) { failedAttempts += 1; return { success: false, error: 'WRONG_MASTER' } }
+        failedAttempts = 0
+        loaded.dek = dek
+        touch()
+        return { success: true }
+    })
+}
+
+function changeMaster(oldMaster, newMaster) {
+    return serial(async () => {
+        const loaded = loadVault()
+        if (!loaded) return { success: false, error: 'NO_VAULT' }
+        const bad = pmVault.checkMaster(newMaster)
+        if (bad) return { success: false, error: bad }
+        await throttleWrongMaster()
+        const dek = await pmVault.unlock(loaded.vault, oldMaster)
+        if (!dek) { failedAttempts += 1; return { success: false, error: 'WRONG_MASTER' } }
+        failedAttempts = 0
+        loaded.vault = await pmVault.rewrap(loaded.vault, dek, newMaster)
+        loaded.dek = dek
+        persist()
+        touch()
+        return { success: true }
+    })
 }
 
 function reset() {
@@ -259,11 +310,9 @@ function copy(id, what) {
     let value = what === 'login' ? entry.login : entry.password
     clipboard.writeText(value)
     if (what !== 'login') {
-        const written = value
+        lastCopied = value
         clearTimeout(clipboardTimer)
-        clipboardTimer = setTimeout(() => {
-            try { if (clipboard.readText() === written) clipboard.clear() } catch { /* clipboard busy */ }
-        }, CLIPBOARD_CLEAR_MS)
+        clipboardTimer = setTimeout(wipeClipboardIfOurs, CLIPBOARD_CLEAR_MS)
     }
     value = null
     return { success: true, clearsInSeconds: what === 'login' ? 0 : CLIPBOARD_CLEAR_MS / 1000 }
@@ -299,6 +348,9 @@ async function autofill(id, messengerId) {
 function registerCapture({ messengerId, url, title, login, password }) {
     const host = hostOfUrl(url)
     if (!host || !password || settings().never.includes(host)) return null
+    if (password.length > pmVault.LIMITS.password) return null
+    let pageUrl = url
+    try { const u = new URL(url); pageUrl = u.origin + u.pathname } catch { /* keep as is */ } // no query/fragment: OAuth codes do not belong in a vault
     let kind = 'new'
     if (!current) kind = 'no-vault'
     else if (!current.dek) kind = 'locked'
@@ -309,8 +361,9 @@ function registerCapture({ messengerId, url, title, login, password }) {
     }
     const now = Date.now()
     captures.forEach((c, key) => { if (now - c.at > CAPTURE_TTL_MS) captures.delete(key) })
+    while (captures.size >= MAX_CAPTURES) captures.delete(captures.keys().next().value) // a page cannot flood memory with offers
     const captureId = crypto.randomUUID()
-    captures.set(captureId, { messengerId, url, title: String(title || host).slice(0, pmVault.LIMITS.title), login: String(login || ''), password, at: now })
+    captures.set(captureId, { messengerId, url: pageUrl, title: String(title || host).slice(0, pmVault.LIMITS.title), login: String(login || ''), password, at: now })
     return { captureId, kind, host, login: String(login || '') }
 }
 
@@ -345,8 +398,16 @@ function exportBlob() {
 }
 
 /** Merges the cloud copy into the local one. Resolves { success, changed } or { success:false, error:'VAULT_MISMATCH' }. */
-function mergeRemote(remote) {
-    if (!pmVault.isValidVault(remote)) return { success: false, error: 'INVALID' }
+function mergeRemote(remoteBlob) {
+    if (!pmVault.isValidVault(remoteBlob)) return { success: false, error: 'INVALID' }
+    // timestamps from the cloud are plain data: a far-future value must not win every merge forever
+    const limit = Date.now() + MAX_CLOCK_SKEW_MS
+    const remote = {
+        ...remoteBlob,
+        keyUpdatedAt: Math.min(Number(remoteBlob.keyUpdatedAt) || 0, limit),
+        updatedAt: Math.min(Number(remoteBlob.updatedAt) || 0, limit),
+        entries: remoteBlob.entries.map((r) => ({ ...r, updatedAt: Math.min(Number(r.updatedAt) || 0, limit) }))
+    }
     const loaded = loadVault()
     if (!loaded) {
         current = { vault: remote, dek: null }
@@ -356,7 +417,7 @@ function mergeRemote(remote) {
     if (loaded.vault.vaultId === remote.vaultId) {
         const merged = pmVault.mergeSameVault(loaded.vault, remote)
         const changed = JSON.stringify(merged) !== JSON.stringify(loaded.vault)
-        if (changed) { loaded.vault = merged; persist() }
+        if (changed) { store.set(BACKUP_KEY, loaded.vault); loaded.vault = merged; persist() }
         pendingRemote = null
         return { success: true, changed }
     }
@@ -372,17 +433,22 @@ function mergeRemote(remote) {
 }
 
 /** The user chose the cloud vault: opens it with ITS master password and carries the local entries over. */
-async function adoptRemote(remoteMaster) {
-    if (!pendingRemote) return { success: false, error: 'NOTHING_PENDING' }
-    const remoteDek = await pmVault.unlock(pendingRemote, remoteMaster)
-    if (!remoteDek) return { success: false, error: 'WRONG_MASTER' }
-    let merged = pendingRemote
-    if (isUnlocked()) merged = pmVault.importForeign(pendingRemote, remoteDek, current.vault, current.dek, hostOfUrl)
-    current = { vault: merged, dek: remoteDek }
-    pendingRemote = null
-    persist()
-    touch()
-    return { success: true }
+function adoptRemote(remoteMaster) {
+    return serial(async () => {
+        if (!pendingRemote) return { success: false, error: 'NOTHING_PENDING' }
+        await throttleWrongMaster()
+        const remoteDek = await pmVault.unlock(pendingRemote, remoteMaster)
+        if (!remoteDek) { failedAttempts += 1; return { success: false, error: 'WRONG_MASTER' } }
+        failedAttempts = 0
+        if (current) store.set(BACKUP_KEY, current.vault) // keep the local copy until the user is sure about the merge
+        let merged = pendingRemote
+        if (isUnlocked()) merged = pmVault.importForeign(pendingRemote, remoteDek, current.vault, current.dek, hostOfUrl)
+        current = { vault: merged, dek: remoteDek }
+        pendingRemote = null
+        persist()
+        touch()
+        return { success: true }
+    })
 }
 
 function discardRemote() {
@@ -390,7 +456,84 @@ function discardRemote() {
     return { success: true }
 }
 
+// ── import from a browser / another password manager ─────────────────────────────────────────────────────
+const IMPORT_TTL_MS = 10 * 60 * 1000
+const imports = new Map() // token -> { rows, filePath, at }
+
+const entryKey = (url, login) => hostOfUrl(url) + '|' + String(login || '').toLowerCase()
+
+/** Reads the exported text (already read by the IPC layer) and says what an import would do. No passwords leave. */
+function importPrepare(text, filePath) {
+    const blocked = requireUnlocked()
+    if (blocked) return blocked
+    const parsed = pmImport.parseImport(text, normalizeUrl)
+    if (parsed.error) return { success: false, error: parsed.error }
+    const existing = new Map(readEntries().map((e) => [entryKey(e.url, e.login), e]))
+    let add = 0
+    let update = 0
+    let same = 0
+    const rows = []
+    const seen = new Set()
+    for (const row of parsed.entries) {
+        const key = entryKey(row.url, row.login)
+        if (seen.has(key)) { same += 1; continue } // the file lists the same site+login twice
+        seen.add(key)
+        const known = existing.get(key)
+        if (!known) { add += 1; rows.push({ ...row, kind: 'add' }) } else if (known.password !== row.password) { update += 1; rows.push({ ...row, kind: 'update', id: known.id }) } else same += 1
+    }
+    const now = Date.now()
+    imports.forEach((v, k) => { if (now - v.at > IMPORT_TTL_MS) imports.delete(k) })
+    const token = crypto.randomUUID()
+    imports.set(token, { rows, filePath, at: now })
+    const sample = rows.slice(0, 5).map((r) => ({ title: r.title, host: hostOfUrl(r.url), login: r.login }))
+    return { success: true, token, found: parsed.entries.length, add, update, same, skipped: parsed.skipped, sample }
+}
+
+/** Overwrites the file with zeros, then deletes it: the export holds every password in plain text. */
+function eraseFile(filePath) {
+    try {
+        const size = fs.statSync(filePath).size
+        fs.writeFileSync(filePath, Buffer.alloc(size))
+        fs.unlinkSync(filePath)
+        return true
+    } catch {
+        return false
+    }
+}
+
+function importCommit(token, deleteFile) {
+    const blocked = requireUnlocked()
+    if (blocked) return blocked
+    const job = imports.get(token)
+    if (!job) return { success: false, error: 'EXPIRED' }
+    imports.delete(token)
+    const records = new Map(current.vault.entries.map((r) => [r.id, r]))
+    const now = Date.now()
+    let added = 0
+    let updated = 0
+    const room = pmVault.MAX_ENTRIES - liveRecords().length
+    for (const row of job.rows) {
+        if (row.kind === 'add' && added >= room) continue
+        const id = row.kind === 'update' ? row.id : crypto.randomUUID()
+        records.set(id, pmVault.encryptEntry(current.dek, current.vault.vaultId, { id, title: row.title, url: row.url, login: row.login, password: row.password, updatedAt: now }))
+        if (row.kind === 'update') updated += 1; else added += 1
+    }
+    job.rows.length = 0
+    current.vault = { ...current.vault, entries: [...records.values()], updatedAt: now }
+    persist()
+    const erased = deleteFile ? eraseFile(job.filePath) : null
+    return { success: true, added, updated, erased }
+}
+
+function importCancel(token) {
+    const job = imports.get(token)
+    if (job) job.rows.length = 0
+    imports.delete(token)
+    return { success: true }
+}
+
 module.exports = {
+    importPrepare, importCommit, importCancel,
     setEmitter, status, setup, unlock, lock, changeMaster, reset, setAutoLock,
     list, save, remove, reveal, copy, matches, autofill,
     registerCapture, saveCapture, dismissCapture,
