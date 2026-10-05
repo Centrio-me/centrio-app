@@ -166,8 +166,8 @@ async function request(method, path, body, token) {
 }
 
 module.exports = {
-    register(email, password, name) {
-        return request('POST', '/api/auth/register', { email, password, name })
+    register(email, password, name, consent) {
+        return request('POST', '/api/auth/register', { email, password, name, consent: consent === true })
     },
 
     login(email, password) {
@@ -305,6 +305,15 @@ module.exports = {
 
     orgGetMessengerAssignments(token, orgId) {
         return request('GET', `/api/org/${orgId}/messenger-assignments`, null, token)
+    },
+
+    // Team password vault (2026-10-05): register this device's PUBLIC key; download the ciphertext for this device.
+    orgRegisterDeviceKey(token, orgId, body) {
+        return request('POST', `/api/org/${encodeURIComponent(orgId)}/device-keys`, body, token)
+    },
+
+    orgGetCredential(token, orgId, assignmentId, deviceKeyId) {
+        return request('GET', `/api/org/${encodeURIComponent(orgId)}/messenger-assignments/${encodeURIComponent(assignmentId)}/credential?deviceKeyId=${encodeURIComponent(deviceKeyId)}`, null, token)
     },
 
     // FEATURE (2026-09-17, live request — "Даже галка нужна - может

@@ -172,7 +172,11 @@ const UNREAD_DETECT_SCRIPT = `(function() {
     }
     var hostname = location.hostname || ''
     var titleCount = fromTitle(document.title || '')
-    var selectors = hostname.indexOf('telegram') !== -1
+    var isVk = /(^|\\.)vk\\.(com|ru)$/.test(hostname) || hostname.indexOf('vkontakte') !== -1
+    // ВКонтакте: счётчик диалогов лежит в левом меню («Сообщения») и в списке диалогов; общие селекторы его не находили.
+    var selectors = isVk
+        ? ['#l_msg .left_count', '#l_msg [class*="left_count" i]', '[class*="LeftMenu"] [class*="counter" i]', '.left_count', '.nim-dialog--unread', '.nim-dialog_unread .nim-dialog--unread', '.ui_tab_count']
+        : hostname.indexOf('telegram') !== -1
         ? ['[aria-label*="unread" i]', '.ListItem-badge', '.badge', '.Badge', '.counter', '.Counter', '[class*="unread" i]', '[class*="badge" i]', '[data-testid*="unread" i]', '[data-testid*="badge" i]']
         : ['.unread-count', '.badge-counter', '.chat-unread-count', '.conversations-badge', '[aria-label*="unread" i]', '[class*="unread" i]', '[class*="badge-count" i]', '[class*="unreadcount" i]', '[data-testid*="unread" i]', '[data-testid*="badge" i]']
     var domCount = scanSelectors(selectors)
@@ -182,6 +186,71 @@ const UNREAD_DETECT_SCRIPT = `(function() {
 })()`
 
 const UNREAD_POLL_MS = 5000
+
+// ── Состояние входа в мессенджер (2026-10-05) ───────────────────────────────
+// 'in' | 'out' | 'unknown' — по самой странице. Работает тем же каналом, что счётчик непрочитанных
+// (executeJavaScript из главного процесса: preload у <webview> на этой версии Electron не исполняется).
+// Функция самодостаточна: её исходный текст целиком уходит в гостевую страницу.
+function detectLoginStateInPage() {
+    function visible(el) {
+        try {
+            var s = window.getComputedStyle(el)
+            if (s.display === 'none' || s.visibility === 'hidden') return false
+            return !!(el.getClientRects && el.getClientRects().length)
+        } catch (e) { return false }
+    }
+    function has(selector) {
+        try { return !!document.querySelector(selector) } catch (e) { return false }
+    }
+    function hasVisible(selector) {
+        try {
+            var list = document.querySelectorAll(selector)
+            for (var i = 0; i < list.length; i++) if (visible(list[i])) return true
+        } catch (e) { /* невалидный селектор */ }
+        return false
+    }
+    var host = location.hostname || ''
+    var path = (location.pathname || '').toLowerCase()
+    var route = path + ' ' + (location.hash || '').toLowerCase()
+
+    if (host.indexOf('telegram') !== -1) {
+        if (has('#auth-pages, .auth-form, .page-sign, canvas.qr-canvas, .qr-description') || hasVisible('input[type="tel"]')) return 'out'
+        if (has('.chatlist, .chatlist-container, #folders-container, .sidebar-left, #column-left')) return 'in'
+        return 'unknown'
+    }
+    if (host.indexOf('whatsapp') !== -1) {
+        if (has('canvas[aria-label*="QR" i], [data-ref], div[data-testid="qrcode"], [aria-label*="Scan" i]')) return 'out'
+        if (has('#pane-side, [data-testid="chat-list"], div[aria-label="Chat list" i]')) return 'in'
+        return 'unknown'
+    }
+    if (/(^|\.)vk\.(com|ru)$/.test(host) || host.indexOf('vkontakte') !== -1) {
+        if (host.indexOf('id.') === 0 || has('#index_login, #index_email, input[name="login"], [class*="VkIdForm"], .vkc__AuthRoot')) return 'out'
+        if (has('#l_msg, #side_bar, #page_header_cont, [class*="LeftMenu"]')) return 'in'
+        return 'unknown'
+    }
+    if (host.indexOf('max.ru') !== -1) {
+        if (has('[class*="qr" i]') || hasVisible('input[type="tel"]')) return 'out'
+        if (has('[class*="chatList" i], [class*="dialogList" i], [class*="chat-list" i]')) return 'in'
+        return 'unknown'
+    }
+    if (/mail\.ru$/.test(host)) {
+        if (host.indexOf('account.') === 0 || host.indexOf('auth.') === 0 || route.indexOf('/login') !== -1) return 'out'
+        if (host.indexOf('e.') === 0) return has('[class*="letter-list" i], [class*="dataset__items" i], [data-qa-id]') ? 'in' : 'unknown'
+        return 'unknown'
+    }
+    // Остальные сайты (кабинеты, CRM, почта): страница входа / видимое поле пароля
+    var loginRoute = /(^|[\/#])(login|log-in|signin|sign-in|logon|auth|authorize|passport|sso|enter)([\/?#.]|$)/i.test(route)
+    var passwordVisible = hasVisible('input[type="password"]')
+    if (passwordVisible && (loginRoute || document.querySelectorAll('input').length <= 6)) return 'out'
+    if (loginRoute) return 'out'
+    var textLength = document.body && document.body.innerText ? document.body.innerText.trim().length : 0
+    if (document.readyState !== 'complete' || textLength < 40) return 'unknown'
+    return 'in'
+}
+
+const LOGIN_STATE_DETECT_SCRIPT = '(' + detectLoginStateInPage.toString() + ')()'
+const LOGIN_POLL_MS = 8000
+
 
 // ── Детект site-уведомлений (Notification / SW showNotification) ───────────
 // Тот же баг, что и с непрочитанными выше: изначально перехват
@@ -681,6 +750,35 @@ function startUnreadPolling(contents, getMainWindow) {
     contents.once('destroyed', () => clearInterval(timer))
 }
 
+// Состояние входа: два одинаковых замера подряд (страницы входа и загрузки мигают), 'unknown' не отправляем.
+function startLoginStatePolling(contents, getMainWindow) {
+    const messengerId = findMessengerIdForSession(contents.session)
+    if (!messengerId) return
+
+    let candidate = null
+    let candidateCount = 0
+    let lastSent = null
+    let inFlight = false
+
+    const handle = (value) => {
+        if (value !== 'in' && value !== 'out' && value !== 'unknown') return
+        if (value === candidate) candidateCount += 1
+        else { candidate = value; candidateCount = 1 }
+        if (candidateCount < 2 || value === 'unknown' || value === lastSent) return
+        lastSent = value
+        const win = getMainWindow()
+        if (win && !win.isDestroyed()) win.webContents.send('messenger-login-state', messengerId, value)
+    }
+    const poll = () => {
+        if (contents.isDestroyed() || inFlight) return
+        inFlight = true
+        contents.executeJavaScript(LOGIN_STATE_DETECT_SCRIPT).then(handle).catch(() => {}).finally(() => { inFlight = false })
+    }
+
+    const timer = setInterval(poll, LOGIN_POLL_MS)
+    contents.once('destroyed', () => clearInterval(timer))
+}
+
 // ── Детект "играет ли сейчас медиа" (мини-плеер в правом сайдбаре) ─────────
 // BUGFIX (2026-08-28, "когда играет Яндекс музыка - он не определяет, что
 // музыка играет"): изначально детект жил в webview-preload.js
@@ -1110,6 +1208,7 @@ function registerAppEvents({
                 if (!unreadPollingStarted) {
                     unreadPollingStarted = true
                     startUnreadPolling(contents, getMainWindow)
+                    startLoginStatePolling(contents, getMainWindow)
                 }
 
                 // Мини-плеер в правом сайдбаре ("играет ли сейчас медиа" +

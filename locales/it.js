@@ -366,6 +366,7 @@ module.exports = {
     },
 
     notifications: {
+        newMessagesCount: "Nuovi messaggi: {count}",
         messageTitle:  'Messaggio',
         newMessage:    'Nuovo messaggio',
         muteAll:       'Silenzia tutte le notifiche',
@@ -523,6 +524,10 @@ module.exports = {
         emailPh:      'Email',
         passwordPh:   'Password',
         namePh:       'Il tuo nome',
+        consentText: "Do {consent} e accetto i {terms}",
+        consentLinkConsent: "il mio consenso al trattamento dei dati personali",
+        consentLinkTerms: "termini di utilizzo",
+        consentRequired: "Spunta il consenso per creare un account",
         fillAll:      'Compila tutti i campi',
         invalidEmail: 'Inserisci un\'email valida',
         changePhoto:  'Cambia',
@@ -662,7 +667,22 @@ module.exports = {
         deleteText: "La risposta «{title}» verrà eliminata."
     },
 
+    vault: {
+        barText: "Non hai effettuato l’accesso a «{name}»",
+        barButton: "Accedi automaticamente",
+        working: "Accesso in corso…",
+        errNotShared: "Il tuo responsabile non ha ancora condiviso l’accesso per questo dispositivo.",
+        errOrigin: "Questa pagina non appartiene al sito assegnato: accesso interrotto per sicurezza.",
+        errNoForm: "Modulo di accesso non trovato. Apri la pagina di accesso e riprova.",
+        errSecure: "L’archivio password del sistema non è disponibile, accesso automatico impossibile.",
+        errDecrypt: "Impossibile decifrare l’accesso. Chiedi al tuo responsabile di salvarlo di nuovo.",
+        errFailed: "Accesso automatico non riuscito.",
+    },
     orgAlerts: {
+        loginTitle: "Accesso necessario",
+        loginBody: "Accedi a «{name}»: finché non lo fai, i messaggi non arrivano.",
+        loginMissing: "accesso non eseguito",
+        minShort: "min",
         title: "Ci sono clienti in attesa di risposta",
         minutes: "{m} min",
         hours: "{h} h",

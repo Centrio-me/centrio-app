@@ -27,6 +27,7 @@ const { createCloudUiApi } = require('./renderer/cloud-ui')
 const { bindSupportTicketsUi } = require('./renderer/support-tickets-ui')
 const { applyOrgLogo } = require('./renderer/org-branding')
 const { createOrgTeamApi } = require('./renderer/org-team')
+const { createVaultLoginBar } = require('./renderer/vault-login-bar')
 const { createTeamTasksUi } = require('./renderer/team-tasks')
 const { bindRightbarCustom } = require('./renderer/rightbar-custom')
 const { bindProWindow } = require('./renderer/pro-window')
@@ -2600,9 +2601,22 @@ function applyTabZoom(level) {
         foldersModernRef?.refreshAll()
     }
 
+    // The owner/admin chooses per assignment whether the messenger works through the VPN
+    // (2026-10-02, "при добавлении сотрудникам мессенджеров нужно помечать — с VPN или без").
+    // Applied on every poll, so an employee's local toggle cannot drift from the owner's choice.
+    function applyOwnerVpnFlag(id, want) {
+        const modes = store.get('vpnAppModes', {}) || {}
+        if ((modes[id] !== false) === want) return
+        invokeIpc('vpn-set-app-vpn', id, want)
+            .then(() => refreshAllVpnBadges(!!state.vpnActive))
+            .catch(() => {})
+    }
+
     async function addOrgAssignedMessenger(messenger) {
         const existingMessenger = state.activeMessengers.find(m => m.id === messenger.id)
         if (existingMessenger) {
+            if (messenger.useVpn !== undefined) applyOwnerVpnFlag(messenger.id, messenger.useVpn !== false)
+            if (messenger.credentialAvailable !== undefined) existingMessenger.credentialAvailable = messenger.credentialAvailable
             const target = managedFolderTarget(messenger.managedFolderId)
             if (target) { existingMessenger.managedFolder = true; relocateOrgAssigned(existingMessenger, target) }
             else if (existingMessenger.managedFolder) { existingMessenger.managedFolder = false; relocateOrgAssigned(existingMessenger, null) }
@@ -2615,7 +2629,7 @@ function applyTabZoom(level) {
             document.getElementById(`folder-children-${savedFolderId}`) ? savedFolderId : null
 
         const managedTarget = managedFolderTarget(messenger.managedFolderId)
-        const { managedFolderId: _managedFolderId, ...messengerFields } = messenger
+        const { managedFolderId: _managedFolderId, useVpn: ownerUseVpn, ...messengerFields } = messenger
         const newMessenger = {
             ...messengerFields,
             orgAssigned: true,
@@ -2668,8 +2682,9 @@ function applyTabZoom(level) {
         // genuinely new id to "on" (mirrors the identical
         // already-tracked-vs-fresh check for unreadCounts right below).
         const vpnModes = store.get('vpnAppModes', {}) || {}
-        if (vpnModes[newMessenger.id] === undefined) {
-            invokeIpc('vpn-set-app-vpn', newMessenger.id, true).catch(() => {})
+        const wantVpn = ownerUseVpn !== false
+        if (vpnModes[newMessenger.id] === undefined || (ownerUseVpn !== undefined && (vpnModes[newMessenger.id] !== false) !== wantVpn)) {
+            invokeIpc('vpn-set-app-vpn', newMessenger.id, wantVpn).catch(() => {})
         }
 
         if (state.unreadCounts[newMessenger.id] === undefined) {
@@ -3243,7 +3258,7 @@ function applyTabZoom(level) {
         // 3s. Repaint is idempotent and cheap (skips messengers with no
         // tracked unread count), so retry a few times at increasing delays
         // instead of gambling on one fixed timeout.
-        [3000, 6000, 10000].forEach(delay => setTimeout(repaintAllUnreadBadges, delay))
+        ;[3000, 6000, 10000].forEach(delay => setTimeout(repaintAllUnreadBadges, delay))
 
         // SECURITY / BUGFIX (retroactive FREE-limit enforcement): re-derive
         // locks against whatever entitlement state was cached at last
@@ -3862,6 +3877,8 @@ function applyTabZoom(level) {
         },
         tGet
     })
+    // "Войти автоматически": login saved by the team owner, typed in by the main process (never shown to the employee)
+    createVaultLoginBar({ state, tGet, autoLogin: (id) => orgTeamApi.vaultAutoLogin(id) })
     bindFoldersPromo({
         state,
         tGet,

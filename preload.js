@@ -59,6 +59,8 @@ const validReceiveChannels = new Set([
     // Same audit, same file (renderer/webview-notify.js) — the unread-badge
     // counterpart of the notification pipeline above, also never added.
     'messenger-unread-count',
+    // Sign-in state of a messenger page (main-process poll, see startLoginStatePolling).
+    'messenger-login-state',
     // Same audit — main/ipc/appNotifications.js sends this for live updates
     // to the in-app "Уведомления" (admin/changelog) history; renderer/
     // app-notif-bind.js subscribes but this was missing too, so that panel
@@ -129,6 +131,10 @@ const validInvokeChannels = new Set([
     'api-org-create-task',
     'api-org-get-alerts',
     'api-org-get-my-structure',
+    'api-org-register-device-key',
+    'api-org-get-credential',
+    'vault:get-public-key',
+    'vault:autofill',
     'api-org-get-task-comments',
     'api-org-get-tasks',
     'api-org-mark-tasks-seen',

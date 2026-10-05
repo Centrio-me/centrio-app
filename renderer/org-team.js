@@ -40,6 +40,7 @@ function createOrgTeamApi({
     let pollTimer = null
     let statsHeartbeatTimer = null
     let alertsTimer = null
+    let loginRemindTimer = null
     let tasksTimer = null
     let statsPushTimer = null
     const reportedMessengerIds = new Set()
@@ -113,7 +114,11 @@ function createOrgTeamApi({
                     url: a.url,
                     icon: a.icon || null,
                     color: a.color || null,
-                    managedFolderId: a.folderId || null
+                    managedFolderId: a.folderId || null,
+                    // a saved login+password exists for this messenger (never the secret itself)
+                    credentialAvailable: a.credentialAvailable === true,
+                    // Owner decides whether this messenger must work through the VPN.
+                    useVpn: a.useVpn !== false
                 })
             }
 
@@ -186,13 +191,15 @@ function createOrgTeamApi({
     // right after launch a not-yet-loaded webview reads as 0, and pushing
     // that would make the server reset how long a client has been waiting.
     function buildStatsPayload() {
-        return state.activeMessengers.filter(m => m.orgAssigned && reportedMessengerIds.has(m.id)).map(m => {
+        return state.activeMessengers.filter(m => m.orgAssigned && (reportedMessengerIds.has(m.id) || state.loginStates?.[m.id])).map(m => {
             const unreadCount = Math.max(0, Number(state.rawUnreadCounts?.[m.id] ?? state.unreadCounts[m.id]) || 0)
             return {
                 messengerKey: m.id.replace(/^org:/, ''),
                 messengerName: m.name,
                 unreadCount,
-                lastReadAt: unreadCount === 0 ? new Date().toISOString() : undefined,
+                loginState: state.loginStates?.[m.id],
+                // Not signed in: nothing loaded, so "0 unread" must not be reported as "read".
+                lastReadAt: unreadCount === 0 && state.loginStates?.[m.id] !== 'out' ? new Date().toISOString() : undefined,
                 lastMessageAt: unreadCount > 0 ? new Date().toISOString() : undefined
             }
         })
@@ -233,6 +240,41 @@ function createOrgTeamApi({
     // count before start() runs, and those reports must still be recorded.
     document.addEventListener('unread-count-changed', onUnreadChanged)
 
+    // "Вход в мессенджер" (2026-10-05): the page reports whether the employee is signed in. Pushed to the
+    // org right away, and used for the local reminder below.
+    const signedOutSince = new Map() // messengerId -> ms timestamp
+    const loginRemindedAt = new Map() // messengerId -> { at, count }
+    document.addEventListener('login-state-changed', (e) => {
+        const id = e?.detail?.messengerId
+        const messenger = id && state.activeMessengers.find(m => m.id === id)
+        if (!messenger?.orgAssigned) return
+        if (e.detail.state === 'out') { if (!signedOutSince.has(id)) signedOutSince.set(id, Date.now()) }
+        else { signedOutSince.delete(id); loginRemindedAt.delete(id) }
+        schedulePushStats()
+    })
+
+    // Reminder for the EMPLOYEE: an assigned messenger that has been signed out for a while. First after 5 min,
+    // then once an hour, at most 3 times; resets as soon as they sign in.
+    const LOGIN_REMIND_AFTER_MS = 5 * 60 * 1000
+    const LOGIN_REMIND_EVERY_MS = 60 * 60 * 1000
+    const LOGIN_REMIND_MAX = 3
+    function checkLoginReminders() {
+        if (isOrgManager()) return
+        const now = Date.now()
+        for (const [id, since] of signedOutSince) {
+            const messenger = state.activeMessengers.find(m => m.id === id && m.orgAssigned)
+            if (!messenger) { signedOutSince.delete(id); continue }
+            if (now - since < LOGIN_REMIND_AFTER_MS) continue
+            const done = loginRemindedAt.get(id) || { at: 0, count: 0 }
+            if (done.count >= LOGIN_REMIND_MAX || (done.count > 0 && now - done.at < LOGIN_REMIND_EVERY_MS)) continue
+            loginRemindedAt.set(id, { at: now, count: done.count + 1 })
+            notifyOwnerAlert({
+                title: tGet('orgAlerts.loginTitle') || 'Нужен вход в мессенджер',
+                body: (tGet('orgAlerts.loginBody', { name: messenger.name }) || `Войдите в «${messenger.name}»: пока вход не выполнен, сообщения не приходят.`)
+            })
+        }
+    }
+
     function isOrgManager() {
         const role = cloudStore.getUser()?.orgSummary?.orgRole
         return role === 'OWNER' || role === 'ADMIN'
@@ -258,10 +300,20 @@ function createOrgTeamApi({
             const newest = feed.items.reduce((max, a) => (a.createdAt > max ? a.createdAt : max), seenAt)
             writeAlertsSeenAt(newest)
             if (!feed.channelEnabled || feed.items.length === 0) return
-            const lines = feed.items.slice(0, 5).map(a =>
-                `${a.memberName} — ${a.messengerName}: ${formatWaited(a.waitedMinutes)}`)
-            if (feed.items.length > 5) lines.push(`+${feed.items.length - 5}`)
-            notifyOwnerAlert({ title: tGet('orgAlerts.title') || 'Клиенты ждут ответа', body: lines.join('\n') })
+            const loginItems = feed.items.filter(a => a.kind === 'login')
+            const waitItems = feed.items.filter(a => a.kind !== 'login')
+            if (waitItems.length > 0) {
+                const lines = waitItems.slice(0, 5).map(a =>
+                    `${a.memberName} — ${a.messengerName}: ${formatWaited(a.waitedMinutes)}`)
+                if (waitItems.length > 5) lines.push(`+${waitItems.length - 5}`)
+                notifyOwnerAlert({ title: tGet('orgAlerts.title') || 'Клиенты ждут ответа', body: lines.join('\n') })
+            }
+            if (loginItems.length > 0) {
+                const lines = loginItems.slice(0, 5).map(a =>
+                    `${a.memberName} — ${a.messengerName}: ${tGet('orgAlerts.loginMissing') || 'вход не выполнен'} ${a.waitedMinutes} ${tGet('orgAlerts.minShort') || 'мин'}`)
+                if (loginItems.length > 5) lines.push(`+${loginItems.length - 5}`)
+                notifyOwnerAlert({ title: tGet('orgAlerts.loginTitle') || 'Нужен вход в мессенджер', body: lines.join('\n') })
+            }
         } catch {}
     }
 
@@ -277,10 +329,61 @@ function createOrgTeamApi({
         return tGet('orgAlerts.waits', { time: duration }) || `ждёт ${duration}`
     }
 
+    // ── Team password vault (2026-10-05) ───────────────────────────────────────────────────────────────
+    // This device registers its PUBLIC key once per account; the matching private key stays in the OS secure
+    // storage (main/services/vault.js). When the owner saved a login for an assigned messenger, the encrypted
+    // blob for this device is downloaded on demand and decrypted by the main process only.
+    const vaultKeyStorage = (orgId) => 'centrio-vault-key-' + orgId
+    let vaultRegistering = false
+
+    function readVaultKeyCache(orgId, userId) {
+        try {
+            const cached = JSON.parse(localStorage.getItem(vaultKeyStorage(orgId)) || 'null')
+            return cached && cached.userId === userId && cached.deviceKeyId ? cached.deviceKeyId : null
+        } catch { return null }
+    }
+
+    async function ensureVaultDeviceKey(orgId) {
+        const user = cloudStore.getUser()
+        if (!orgId || !user?.id) return null
+        const cached = readVaultKeyCache(orgId, user.id)
+        if (cached) return cached
+        if (vaultRegistering) return null
+        vaultRegistering = true
+        try {
+            const key = await invokeIpc('vault:get-public-key', user.id)
+            if (!key?.success) return null
+            const registered = unwrap(await authorizedInvoke('api-org-register-device-key', orgId, {
+                deviceId: key.deviceId, publicKey: key.publicKey, name: key.name || undefined
+            }))
+            if (!registered?.id) return null
+            try { localStorage.setItem(vaultKeyStorage(orgId), JSON.stringify({ userId: user.id, deviceKeyId: registered.id })) } catch {}
+            return registered.id
+        } catch { return null } finally { vaultRegistering = false }
+    }
+
+    // Resolves with a status only: { success: true } | { success: false, error: CODE }. The password stays in main.
+    async function vaultAutoLogin(messengerId) {
+        const orgId = getOrgId()
+        const user = cloudStore.getUser()
+        const messenger = state.activeMessengers.find(m => m.id === messengerId && m.orgAssigned)
+        if (!orgId || !user?.id || !messenger) return { success: false, error: 'NO_MESSENGER' }
+        const deviceKeyId = await ensureVaultDeviceKey(orgId)
+        if (!deviceKeyId) return { success: false, error: 'NO_SECURE_STORAGE' }
+        const assignmentId = messenger.id.replace(/^org:/, '')
+        const credential = unwrap(await authorizedInvoke('api-org-get-credential', orgId, assignmentId, deviceKeyId))
+        if (!credential?.blob) {
+            try { localStorage.removeItem(vaultKeyStorage(orgId)) } catch {} // the key may have been replaced: register again next time
+            return { success: false, error: 'NOT_SHARED' }
+        }
+        return invokeIpc('vault:autofill', { userId: user.id, messengerId, blob: credential.blob, aad: credential.aad, assignedUrl: messenger.url })
+    }
+
     async function tick() {
         const orgId = getOrgId()
         if (!orgId) return
         await Promise.allSettled([
+            ensureVaultDeviceKey(orgId),
             syncForcedSettings(orgId),
             syncAssignments(orgId),
             syncMemberPermission(orgId),
@@ -298,6 +401,7 @@ function createOrgTeamApi({
             if (orgId) pushStats(orgId)
         }, STATS_HEARTBEAT_MS)
         alertsTimer = setInterval(pollAlerts, ALERTS_POLL_MS)
+        loginRemindTimer = setInterval(checkLoginReminders, 60 * 1000)
         tasksTimer = setInterval(() => { if (getOrgId()) refreshTeamTasks() }, TASKS_POLL_MS)
         ;[4000, 12000].forEach(ms => setTimeout(() => { if (getOrgId()) refreshTeamTasks() }, ms))
         setTimeout(pollAlerts, 10000)
@@ -330,6 +434,7 @@ function createOrgTeamApi({
         if (pollTimer) clearInterval(pollTimer)
         clearInterval(statsHeartbeatTimer)
         clearInterval(alertsTimer)
+        clearInterval(loginRemindTimer)
         clearInterval(tasksTimer)
         clearTimeout(statsPushTimer)
         pollTimer = null
@@ -337,7 +442,7 @@ function createOrgTeamApi({
         alertsTimer = null
     }
 
-    return { start, stop, tick }
+    return { start, stop, tick, vaultAutoLogin }
 }
 
 module.exports = { createOrgTeamApi }

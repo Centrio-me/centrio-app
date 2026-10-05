@@ -128,7 +128,8 @@ function createFoldersUiApi({
             // The tail points at the middle of the open folder.
             const headerHeight = header ? header.getBoundingClientRect().height : 44
             folderPanel.style.setProperty('--tail-y', `${Math.max(22, Math.min(height - 22, anchorTop + headerHeight / 2 - top))}px`)
-            const color = (store.get('folderColors', {}) || {})[folderId]
+            const savedColor = (store.get('folderColors', {}) || {})[folderId]
+            const color = savedColor === 'none' ? null : (savedColor || '#6366f1')
             folderPanel.classList.toggle('tinted', !!color)
             if (color) folderPanel.style.setProperty('--folder-color', color)
             else folderPanel.style.removeProperty('--folder-color')

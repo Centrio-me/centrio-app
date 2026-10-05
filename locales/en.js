@@ -377,6 +377,7 @@ module.exports = {
     },
 
     notifications: {
+        newMessagesCount: "New messages: {count}",
         messageTitle:  'Message',
         newMessage:    'New message',
         muteAll:       'Mute all notifications',
@@ -548,6 +549,10 @@ module.exports = {
         emailPh:      'Email',
         passwordPh:   'Password',
         namePh:       'Your name',
+        consentText: "I give {consent} and accept the {terms}",
+        consentLinkConsent: "consent to the processing of my personal data",
+        consentLinkTerms: "terms of use",
+        consentRequired: "Tick the consent box to create an account",
         fillAll:      'Fill in all fields',
         invalidEmail: 'Please enter a valid email',
         changePhoto:  'Change',
@@ -687,7 +692,22 @@ module.exports = {
         deleteText: "The reply \"{title}\" will be deleted."
     },
 
+    vault: {
+        barText: "You are not signed in to “{name}”",
+        barButton: "Sign in automatically",
+        working: "Signing in…",
+        errNotShared: "Your manager has not shared access for this device yet.",
+        errOrigin: "This page does not belong to the assigned site: sign-in stopped for your safety.",
+        errNoForm: "Could not find the sign-in form. Open the sign-in page and try again.",
+        errSecure: "The system password storage is unavailable, automatic sign-in is not possible.",
+        errDecrypt: "Could not decrypt the access. Ask your manager to save it again.",
+        errFailed: "Automatic sign-in failed.",
+    },
     orgAlerts: {
+        loginTitle: "Sign-in needed",
+        loginBody: "Sign in to “{name}”: until you do, no messages arrive.",
+        loginMissing: "not signed in",
+        minShort: "min",
         title: "Clients are waiting for a reply",
         minutes: "{m} min",
         hours: "{h} h",

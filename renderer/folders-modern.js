@@ -13,6 +13,10 @@
 const { getCaption } = require('./add-modal-catalog')
 
 const COLORS = ['#6366f1', '#f59e0b', '#22c55e', '#ef4444', '#06b6d4', '#ec4899']
+// A folder with no saved colour (new, or created by the team owner) gets the default one, so every
+// folder looks the same out of the box. "No colour" is an explicit choice, stored as NO_COLOR.
+const DEFAULT_COLOR = COLORS[0]
+const NO_COLOR = 'none'
 const MOSAIC_MAX = 4
 
 function createFoldersModern({ state, store, tGet, getLanguage, updateMuteIcon, saveData, pushToCloud, closeFolderPanel, openFolderMenu }) {
@@ -25,6 +29,10 @@ function createFoldersModern({ state, store, tGet, getLanguage, updateMuteIcon, 
     const isModern = () => (store.get('foldersStyle', 'modern') || 'modern') !== 'classic'
     const isSidebarExpanded = () => !!document.getElementById('activityBar')?.classList.contains('sidebar-expanded')
     const colors = () => store.get('folderColors', {}) || {}
+    const colorOf = (folderId) => {
+        const saved = colors()[folderId]
+        return saved === NO_COLOR ? null : (saved || DEFAULT_COLOR)
+    }
     const members = (folderId) => state.activeMessengers.filter((m) => m.folderId === folderId)
     const unreadOf = (folderId) => members(folderId).reduce((sum, m) => sum + (state.unreadCounts[m.id] || 0), 0)
 
@@ -85,7 +93,7 @@ function createFoldersModern({ state, store, tGet, getLanguage, updateMuteIcon, 
         decorateHeader(folderEl)
         const list = members(folderId)
         folderEl.classList.toggle('has-members', list.length > 0)
-        const color = colors()[folderId]
+        const color = colorOf(folderId)
         folderEl.classList.toggle('tinted', !!color)
         if (color) folderEl.style.setProperty('--folder-color', color)
         else folderEl.style.removeProperty('--folder-color')
@@ -124,7 +132,7 @@ function createFoldersModern({ state, store, tGet, getLanguage, updateMuteIcon, 
         const list = members(folderId)
         const unread = unreadOf(folderId)
         const head = node('div', 'fp-head')
-        const color = colors()[folderId]
+        const color = colorOf(folderId)
         if (color) head.style.setProperty('--folder-color', color)
 
         const mosaic = node('div', 'fp-mosaic')
@@ -186,8 +194,7 @@ function createFoldersModern({ state, store, tGet, getLanguage, updateMuteIcon, 
 
     function setColor(folderId, color) {
         const map = { ...colors() }
-        if (color) map[folderId] = color
-        else delete map[folderId]
+        map[folderId] = color || NO_COLOR
         store.set('folderColors', map)
         refreshFolder(folderId)
         if (state.activeFolderPanelId === folderId) {

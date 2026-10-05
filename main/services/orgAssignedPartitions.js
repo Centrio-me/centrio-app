@@ -39,4 +39,8 @@ function isRegisteredPartition(partition) {
     return false
 }
 
-module.exports = { register, isRegisteredPartition }
+function list() {
+    return [...registeredIds]
+}
+
+module.exports = { register, isRegisteredPartition, list }

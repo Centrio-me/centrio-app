@@ -1,3 +1,4 @@
+const { renderConsentLabels, bindConsentLinks } = require('./consent-ui')
 // Локализация рендерера
 // ВАЖНО: статические импорты всех локалей — esbuild не умеет бандлить динамический require с переменной
 
@@ -73,6 +74,8 @@ function tGet (key, params = {}) {
 
 function applyI18n (root = document) {
     if (!root || typeof root.querySelectorAll !== 'function') return
+    renderConsentLabels(tGet)
+    bindConsentLinks()
 
     root.querySelectorAll('[data-i18n]').forEach((el) => {
         const key = el.dataset.i18n

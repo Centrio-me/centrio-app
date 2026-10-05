@@ -599,47 +599,110 @@ function buildTransportFromParams (params) {
 
 // ── Подписки (subscription URLs) ─────────────────────────────────
 // Принимает http(s):// URL, возвращает [{ parsed, link }]
-function fetchSubscription (url) {
+// Подписки: разные провайдеры (Marzban, Remnawave, 3x-ui, Hiddify...) по-разному реагируют на
+// User-Agent и редиректы, а раньше любая ошибка тут превращалась в молчаливое «конфигурации не
+// найдены». Теперь: несколько User-Agent по очереди (в том числе как у Happ), редиректы 301/302/
+// 303/307/308, таймаут, внятные ошибки по коду ответа и отдельное сообщение для зашифрованных
+// ссылок Happ (happ://crypt...), которые Centrio прочитать не может (2026-10-02, "у клиентки
+// не работает VPN, хотя через HAPP всё работает").
+const SUBSCRIPTION_USER_AGENTS = ['v2rayN/6.0', 'Happ/2.0.0', 'sing-box/1.11.4']
+const SUBSCRIPTION_MAX_REDIRECTS = 5
+const SUBSCRIPTION_TIMEOUT_MS = 20000
+const SUBSCRIPTION_MAX_BYTES = 5 * 1024 * 1024
+
+function subscriptionError (code, message) {
+  const err = new Error(message)
+  err.code = code
+  return err
+}
+
+function fetchSubscriptionOnce (url, userAgent, redirectsLeft = SUBSCRIPTION_MAX_REDIRECTS) {
   return new Promise((resolve, reject) => {
-    const mod = url.startsWith('https') ? https : http
-    const opts = { headers: { 'User-Agent': 'v2rayN/6.0' } }
-
-    function doGet (urlStr) {
-      const m = urlStr.startsWith('https') ? https : http
-      m.get(urlStr, opts, (res) => {
-        if (res.statusCode === 301 || res.statusCode === 302) {
-          doGet(res.headers.location); return
-        }
-        let raw = ''
-        res.on('data', chunk => { raw += chunk })
-        res.on('end', () => {
-          let text = raw.trim()
-          // Пробуем base64-декодирование
-          try {
-            const decoded = Buffer.from(text, 'base64').toString('utf8')
-            if (decoded.includes('://')) text = decoded
-          } catch (e) {}
-
-          const lines = text.split(/[\r\n]+/).map(l => l.trim()).filter(l => l.includes('://'))
-          const results = []
-          for (const line of lines) {
-            // Пропускаем http(s):// — не рекурсируем
-            if (line.startsWith('http://') || line.startsWith('https://')) continue
-            try {
-              const parsed = parseVpnLink(line)
-              results.push({ parsed, link: line })
-            } catch (e) {
-              // Пропускаем нераспознанные строки
-            }
-          }
-          resolve(results)
-        })
-        res.on('error', reject)
-      }).on('error', reject)
+    let parsedUrl
+    try { parsedUrl = new URL(url) } catch (e) {
+      reject(subscriptionError('VPN_SUBSCRIPTION_BAD_URL', 'Некорректная ссылка подписки'))
+      return
     }
-
-    doGet(url)
+    if (parsedUrl.protocol !== 'https:') {
+      reject(subscriptionError('VPN_SUBSCRIPTION_HTTP_ONLY', 'Subscription URL must use HTTPS (plain HTTP is not allowed)'))
+      return
+    }
+    const req = https.get(parsedUrl, { headers: { 'User-Agent': userAgent, Accept: '*/*' }, timeout: SUBSCRIPTION_TIMEOUT_MS }, (res) => {
+      const status = res.statusCode || 0
+      if ([301, 302, 303, 307, 308].includes(status) && res.headers.location) {
+        res.resume()
+        if (redirectsLeft <= 0) {
+          reject(subscriptionError('VPN_SUBSCRIPTION_REDIRECTS', 'Слишком много перенаправлений у сервера подписки'))
+          return
+        }
+        let next
+        try { next = new URL(res.headers.location, parsedUrl).toString() } catch (e) {
+          reject(subscriptionError('VPN_SUBSCRIPTION_BAD_URL', 'Сервер подписки вернул некорректное перенаправление'))
+          return
+        }
+        resolve(fetchSubscriptionOnce(next, userAgent, redirectsLeft - 1))
+        return
+      }
+      if (status < 200 || status >= 300) {
+        res.resume()
+        reject(subscriptionError('VPN_SUBSCRIPTION_HTTP_' + status, 'Сервер подписки ответил кодом ' + status))
+        return
+      }
+      let raw = ''
+      res.setEncoding('utf8')
+      res.on('data', (chunk) => {
+        raw += chunk
+        if (raw.length > SUBSCRIPTION_MAX_BYTES) req.destroy(subscriptionError('VPN_SUBSCRIPTION_TOO_LARGE', 'Подписка слишком большая'))
+      })
+      res.on('end', () => resolve(raw))
+      res.on('error', reject)
+    })
+    req.on('timeout', () => req.destroy(subscriptionError('VPN_SUBSCRIPTION_TIMEOUT', 'Сервер подписки не ответил вовремя')))
+    req.on('error', reject)
   })
+}
+
+function parseSubscriptionBody (raw) {
+  let text = String(raw || '').trim()
+  // base64 (обычный или url-safe): берём расшифровку только если внутри ссылки
+  try {
+    const decoded = Buffer.from(text.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8')
+    if (decoded.includes('://')) text = decoded
+  } catch (e) { /* не base64 — разбираем как есть */ }
+
+  const lines = text.split(/[\r\n]+/).map((l) => l.trim()).filter((l) => l.includes('://'))
+  const results = []
+  let hasHappLinks = false
+  for (const line of lines) {
+    if (/^happ:\/\//i.test(line)) { hasHappLinks = true; continue }
+    // http(s):// — не рекурсируем
+    if (line.startsWith('http://') || line.startsWith('https://')) continue
+    try {
+      results.push({ parsed: parseVpnLink(line), link: line })
+    } catch (e) { /* пропускаем нераспознанные строки */ }
+  }
+  return { results, hasHappLinks }
+}
+
+async function fetchSubscription (url) {
+  let lastError = null
+  let sawHappLinks = false
+  for (const userAgent of SUBSCRIPTION_USER_AGENTS) {
+    try {
+      const raw = await fetchSubscriptionOnce(url, userAgent)
+      const { results, hasHappLinks } = parseSubscriptionBody(raw)
+      if (results.length > 0) return results
+      if (hasHappLinks) sawHappLinks = true
+    } catch (e) {
+      lastError = e
+      if (e.code === 'VPN_SUBSCRIPTION_BAD_URL' || e.code === 'VPN_SUBSCRIPTION_HTTP_ONLY') break
+    }
+  }
+  if (sawHappLinks) {
+    throw subscriptionError('VPN_SUBSCRIPTION_HAPP_CRYPT', 'Эта подписка в формате Happ (happ://crypt…), Centrio её прочитать не может. Попросите у провайдера обычную ссылку подписки: https://… со списком vless://, vmess://, trojan://.')
+  }
+  if (lastError) throw lastError
+  return []
 }
 
 // ── Генерация конфига sing-box ────────────────────────────────────

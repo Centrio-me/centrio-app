@@ -1155,6 +1155,20 @@
     </div>
     <div class="changelog-popup-body">
         <div class="changelog-entry">
+            <div class="changelog-version">v2.9.16</div>
+            <ul class="changelog-list">
+                <li>Приносим извинения за частые обновления: так мы делаем Centrio лучше с каждым днём, и это часть разработки. Спасибо за понимание!</li>
+                <li>Новое (Centrio TEAM): командное хранилище доступов. Руководитель сохраняет логин и пароль от сервиса на странице команды, а у сотрудника над мессенджером появляется кнопка «Войти автоматически». Пароль шифруется на устройстве и сотруднику не показывается</li>
+                <li>Новое (Centrio TEAM): видно, вошли ли сотрудники в назначенные мессенджеры. Статус «Вход выполнен» или «Нужен вход» на странице команды, напоминания сотруднику и руководителю</li>
+                <li>Новое (Centrio TEAM): при назначении мессенджера руководитель выбирает, работает ли он через VPN или напрямую</li>
+                <li>Новое: папки можно перетаскивать в рабочие пространства, список пространств раскрывается сам</li>
+                <li>Новое: всплывающие уведомления Windows для ВКонтакте при новых сообщениях</li>
+                <li>Улучшено: у папок по умолчанию фирменный цвет, а «Сбросить все настройки» теперь выходит и из всех мессенджеров</li>
+                <li>Улучшено: подключение VPN по подписке стало надёжнее, при ошибках приложение подсказывает, что делать</li>
+                <li>Улучшено: при регистрации появилось отдельное согласие на обработку персональных данных</li>
+            </ul>
+        </div>
+        <div class="changelog-entry">
             <div class="changelog-version">v2.9.15</div>
             <ul class="changelog-list">
                 <li>Приносим извинения за частые обновления: так мы делаем Centrio лучше с каждым днём, и это часть разработки. Спасибо за понимание!</li>
@@ -3333,6 +3347,7 @@
                 <input type="email" id="onbEmail" class="vsc-input" data-i18n-placeholder="cloud.emailPh" placeholder="Email">
                 <input type="password" id="onbPassword" class="vsc-input" data-i18n-placeholder="cloud.passwordPh" placeholder="Пароль">
                 <div id="onbLoginError" class="cloud-login-error" style="display:none;"></div>
+                <label class="app-consent" for="onbConsent"><input type="checkbox" id="onbConsent"><span data-consent-text></span></label>
                 <button id="onbLoginBtn" class="vsc-btn" data-i18n="cloud.login">Войти</button>
                 <button id="onbRegisterBtn" class="vsc-btn-secondary" data-i18n="cloud.register">Зарегистрироваться</button>
             </div>
@@ -3527,6 +3542,7 @@
     <input type="password" id="cloudPassword" class="vsc-input"
            data-i18n-placeholder="cloud.passwordPh">
     <div id="cloudLoginError" class="cloud-login-error" style="display:none;"></div>
+    <label class="app-consent" for="cloudConsent"><input type="checkbox" id="cloudConsent"><span data-consent-text></span></label>
     <button id="cloudLoginBtn" class="vsc-btn" data-i18n="cloud.login"></button>
     <button id="cloudRegisterBtn" class="vsc-btn-secondary" data-i18n="cloud.register"></button>
     <a href="#" id="cloudForgotPasswordLink" class="cloud-forgot-link" data-i18n="cloud.forgotPassword"></a>

@@ -366,6 +366,7 @@ module.exports = {
     },
 
     notifications: {
+        newMessagesCount: "Neue Nachrichten: {count}",
         messageTitle:  'Nachricht',
         newMessage:    'Neue Nachricht',
         muteAll:       'Alle Benachrichtigungen stummschalten',
@@ -523,6 +524,10 @@ module.exports = {
         emailPh:      'E-Mail',
         passwordPh:   'Passwort',
         namePh:       'Ihr Name',
+        consentText: "Ich erteile {consent} und akzeptiere die {terms}",
+        consentLinkConsent: "meine Einwilligung zur Verarbeitung personenbezogener Daten",
+        consentLinkTerms: "Nutzungsbedingungen",
+        consentRequired: "Bitte stimmen Sie der Datenverarbeitung zu, um ein Konto zu erstellen",
         fillAll:      'Alle Felder ausfüllen',
         invalidEmail: 'Bitte eine gültige E-Mail-Adresse eingeben',
         changePhoto:  'Ändern',
@@ -662,7 +667,22 @@ module.exports = {
         deleteText: "Die Antwort „{title}“ wird gelöscht."
     },
 
+    vault: {
+        barText: "Sie sind nicht bei „{name}“ angemeldet",
+        barButton: "Automatisch anmelden",
+        working: "Anmeldung läuft…",
+        errNotShared: "Ihr Vorgesetzter hat den Zugang für dieses Gerät noch nicht freigegeben.",
+        errOrigin: "Diese Seite gehört nicht zur zugewiesenen Website: Anmeldung aus Sicherheitsgründen gestoppt.",
+        errNoForm: "Anmeldeformular nicht gefunden. Öffnen Sie die Anmeldeseite und versuchen Sie es erneut.",
+        errSecure: "Der Passwortspeicher des Systems ist nicht verfügbar, automatische Anmeldung nicht möglich.",
+        errDecrypt: "Zugang konnte nicht entschlüsselt werden. Bitten Sie Ihren Vorgesetzten, ihn neu zu speichern.",
+        errFailed: "Automatische Anmeldung fehlgeschlagen.",
+    },
     orgAlerts: {
+        loginTitle: "Anmeldung erforderlich",
+        loginBody: "Melden Sie sich bei „{name}“ an: bis dahin kommen keine Nachrichten an.",
+        loginMissing: "nicht angemeldet",
+        minShort: "Min.",
         title: "Kunden warten auf Antwort",
         minutes: "{m} Min.",
         hours: "{h} Std.",

@@ -5,6 +5,8 @@ const state = {
     activeTabId: null,
     unreadCounts: {},
     rawUnreadCounts: {},
+    loginStates: {}, // messengerId -> 'in' | 'out' (main-process poll, see startLoginStatePolling)
+    lastSiteNotifyAt: {}, // messengerId -> ms of the last notification the site itself produced
     mutedMessengers: {},
     globalMuteAll: false,
     contextTargetId: null,

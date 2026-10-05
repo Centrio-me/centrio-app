@@ -78,6 +78,15 @@ function createMessengersApi({
                 return
             }
 
+            if (e.channel === 'login-state') {
+                const value = e.args[0] === 'in' || e.args[0] === 'out' ? e.args[0] : null
+                if (value && state.loginStates[messenger.id] !== value) {
+                    state.loginStates[messenger.id] = value
+                    document.dispatchEvent(new CustomEvent('login-state-changed', { detail: { messengerId: messenger.id, state: value } }))
+                }
+                return
+            }
+
             if (e.channel === 'site-notification') {
                 const payload = e.args[0] || {}
                 sendPushNotificationFromSite(messenger, payload)

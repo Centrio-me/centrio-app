@@ -366,6 +366,7 @@ module.exports = {
     },
 
     notifications: {
+        newMessagesCount: "新消息：{count}",
         messageTitle:  '消息',
         newMessage:    '新消息',
         muteAll:       '静音所有通知',
@@ -523,6 +524,10 @@ module.exports = {
         emailPh:      '电子邮件',
         passwordPh:   '密码',
         namePh:       '您的姓名',
+        consentText: "我同意{consent}，并接受{terms}",
+        consentLinkConsent: "个人数据处理",
+        consentLinkTerms: "使用条款",
+        consentRequired: "请勾选同意以创建账户",
         fillAll:      '请填写所有字段',
         invalidEmail: '请输入有效的邮箱地址',
         changePhoto:  '更换',
@@ -662,7 +667,22 @@ module.exports = {
         deleteText: "回复“{title}”将被删除。"
     },
 
+    vault: {
+        barText: "您尚未登录“{name}”",
+        barButton: "自动登录",
+        working: "正在登录…",
+        errNotShared: "管理员尚未为此设备共享访问权限。",
+        errOrigin: "此页面不属于分配的网站：为了安全已停止登录。",
+        errNoForm: "未找到登录表单。请打开登录页面后重试。",
+        errSecure: "系统密码存储不可用，无法自动登录。",
+        errDecrypt: "无法解密访问信息。请让管理员重新保存。",
+        errFailed: "自动登录失败。",
+    },
     orgAlerts: {
+        loginTitle: "需要登录",
+        loginBody: "请登录“{name}”：在此之前不会收到任何消息。",
+        loginMissing: "未登录",
+        minShort: "分钟",
         title: "有客户在等待回复",
         minutes: "{m} 分钟",
         hours: "{h} 小时",

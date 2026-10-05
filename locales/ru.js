@@ -45,6 +45,9 @@ module.exports = {
         rename: 'Переименовать',
         renameTitle: 'Переименовать пространство',
         delete: 'Удалить',
+        movedFolder: "Папка «{folder}» перенесена в «{ws}»",
+        removedFolder: "Папка «{folder}» убрана из пространств",
+        dropAllHint: "Бросьте сюда, чтобы убрать папку из пространства",
         assignLabel: 'Рабочее пространство'
     },
 
@@ -394,6 +397,7 @@ module.exports = {
     },
 
     notifications: {
+        newMessagesCount: "Новых сообщений: {count}",
         messageTitle: 'Сообщение',
         newMessage: 'Новое сообщение',
         muteAll: 'Отключить все уведомления',
@@ -567,6 +571,10 @@ module.exports = {
         emailPh: 'Email',
         passwordPh: 'Пароль',
         namePh: 'Ваше имя',
+        consentText: "Я даю {consent} и принимаю {terms}",
+        consentLinkConsent: "согласие на обработку персональных данных",
+        consentLinkTerms: "условия использования",
+        consentRequired: "Отметьте согласие на обработку персональных данных, чтобы создать аккаунт",
         fillAll: 'Заполните все поля',
         invalidEmail: 'Введите корректный email',
         changePhoto: 'Сменить',
@@ -706,7 +714,22 @@ module.exports = {
         deleteText: "Ответ «{title}» будет удалён."
     },
 
+    vault: {
+        barText: "Вы не вошли в «{name}»",
+        barButton: "Войти автоматически",
+        working: "Входим…",
+        errNotShared: "Руководитель ещё не передал доступ для этого устройства.",
+        errOrigin: "Эта страница не принадлежит назначенному сайту: вход остановлен ради безопасности.",
+        errNoForm: "Не нашли форму входа. Откройте страницу входа и попробуйте ещё раз.",
+        errSecure: "Системное хранилище паролей недоступно, автовход невозможен.",
+        errDecrypt: "Не удалось расшифровать доступ. Попросите руководителя сохранить его заново.",
+        errFailed: "Не удалось войти автоматически.",
+    },
     orgAlerts: {
+        loginTitle: 'Нужен вход в мессенджер',
+        loginBody: 'Войдите в «{name}»: пока вход не выполнен, сообщения не приходят.',
+        loginMissing: 'вход не выполнен',
+        minShort: 'мин',
         title: "Клиенты ждут ответа",
         minutes: "{m} мин",
         hours: "{h} ч",

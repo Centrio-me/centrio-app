@@ -1,3 +1,5 @@
+const { requireConsent } = require('./consent-ui')
+
 function bindCloudUi({
     cloudStore,
     cloudApi,
@@ -77,10 +79,12 @@ function bindCloudUi({
     }
 
     document.getElementById('oauthGoogleBtn').addEventListener('click', () => {
+        if (!requireConsent('cloudConsent', document.getElementById('cloudLoginError'), tGet)) return
         handleSystemOAuth(() => cloudApi.oauthGoogle(), 'Google')
     })
 
     document.getElementById('oauthYandexBtn').addEventListener('click', () => {
+        if (!requireConsent('cloudConsent', document.getElementById('cloudLoginError'), tGet)) return
         handleSystemOAuth(() => cloudApi.oauthYandex(), 'Yandex')
     })
 
@@ -124,7 +128,9 @@ function bindCloudUi({
             return
         }
 
-        const result = await cloudApi.register(email, password, email.split('@')[0])
+        if (!requireConsent('cloudConsent', errorEl, tGet)) return
+
+        const result = await cloudApi.register(email, password, email.split('@')[0], true)
         if (!result.success) {
             errorEl.textContent = result.error
             errorEl.style.display = 'block'

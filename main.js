@@ -593,6 +593,17 @@ safeHandle('store:set', async (_event, key, value) => {
 
 safeHandle('store:clear-all', async () => {
     try {
+        // "Сбросить все настройки" must also drop the logins kept inside the messengers' own sessions
+        // (cookies, local storage, IndexedDB under Partitions/persist:<id>). Before, only the settings file
+        // was wiped, so a reset on a shared computer left every messenger signed in on disk.
+        try {
+            const { session } = require('electron')
+            const ids = new Set((store.get('messengers', []) || []).map((m) => m && m.id).filter(Boolean))
+            for (const id of require('./main/services/orgAssignedPartitions').list()) ids.add(id)
+            for (const id of ids) {
+                try { await session.fromPartition('persist:' + id).clearStorageData() } catch (e) { console.warn('[reset] could not clear session', id, e.message) }
+            }
+        } catch (e) { console.warn('[reset] session cleanup failed:', e.message) }
         store.clear()
         return { success: true }
     } catch (error) {

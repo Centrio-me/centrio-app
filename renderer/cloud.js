@@ -256,8 +256,8 @@ function createCloudApi({
         return result
     }
 
-    async function register(email, password, name) {
-        const result = await invokeIpc('api-register', email, password, name)
+    async function register(email, password, name, consent) {
+        const result = await invokeIpc('api-register', email, password, name, consent === true)
         if (!result.success) return result
 
         const data = result.data || {}

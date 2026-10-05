@@ -106,8 +106,8 @@ function registerApiIpc() {
         return wrapApiAndPersistUser(() => api.login(email, password))
     })
 
-    ipcMain.handle('api-register', async (event, email, password, name) => {
-        return wrapApiAndPersistUser(() => api.register(email, password, name))
+    ipcMain.handle('api-register', async (event, email, password, name, consent) => {
+        return wrapApiAndPersistUser(() => api.register(email, password, name, consent === true))
     })
 
     ipcMain.handle('api-me', async (event, token) => {
@@ -196,6 +196,14 @@ function registerApiIpc() {
 
     ipcMain.handle('api-org-get-messenger-assignments', async (event, token, orgId) => {
         return wrapApi(() => api.orgGetMessengerAssignments(token, orgId))
+    })
+
+    ipcMain.handle('api-org-register-device-key', async (event, token, orgId, body) => {
+        return wrapApi(() => api.orgRegisterDeviceKey(token, orgId, body))
+    })
+
+    ipcMain.handle('api-org-get-credential', async (event, token, orgId, assignmentId, deviceKeyId) => {
+        return wrapApi(() => api.orgGetCredential(token, orgId, assignmentId, deviceKeyId))
     })
 
     ipcMain.handle('api-org-get-members', async (event, token, orgId) => {

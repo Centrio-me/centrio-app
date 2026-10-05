@@ -366,6 +366,7 @@ module.exports = {
     },
 
     notifications: {
+        newMessagesCount: "Mensajes nuevos: {count}",
         messageTitle:  'Mensaje',
         newMessage:    'Nuevo mensaje',
         muteAll:       'Silenciar todas las notificaciones',
@@ -523,6 +524,10 @@ module.exports = {
         emailPh:      'Correo electrónico',
         passwordPh:   'Contraseña',
         namePh:       'Tu nombre',
+        consentText: "Doy {consent} y acepto los {terms}",
+        consentLinkConsent: "mi consentimiento para el tratamiento de mis datos personales",
+        consentLinkTerms: "términos de uso",
+        consentRequired: "Marca el consentimiento para crear una cuenta",
         fillAll:      'Completa todos los campos',
         invalidEmail: 'Introduce un email válido',
         changePhoto:  'Cambiar',
@@ -662,7 +667,22 @@ module.exports = {
         deleteText: "Se eliminará la respuesta «{title}»."
     },
 
+    vault: {
+        barText: "No has iniciado sesión en «{name}»",
+        barButton: "Iniciar sesión automáticamente",
+        working: "Iniciando sesión…",
+        errNotShared: "Tu responsable aún no ha compartido el acceso para este dispositivo.",
+        errOrigin: "Esta página no pertenece al sitio asignado: inicio de sesión detenido por seguridad.",
+        errNoForm: "No se encontró el formulario de acceso. Abre la página de acceso e inténtalo de nuevo.",
+        errSecure: "El almacén de contraseñas del sistema no está disponible; no es posible el acceso automático.",
+        errDecrypt: "No se pudo descifrar el acceso. Pide a tu responsable que lo guarde de nuevo.",
+        errFailed: "Falló el inicio de sesión automático.",
+    },
     orgAlerts: {
+        loginTitle: "Falta iniciar sesión",
+        loginBody: "Inicia sesión en «{name}»: hasta entonces no llegan mensajes.",
+        loginMissing: "sin iniciar sesión",
+        minShort: "min",
         title: "Hay clientes esperando respuesta",
         minutes: "{m} min",
         hours: "{h} h",

@@ -366,6 +366,7 @@ module.exports = {
     },
 
     notifications: {
+        newMessagesCount: "Nouveaux messages : {count}",
         messageTitle:  'Message',
         newMessage:    'Nouveau message',
         muteAll:       'Désactiver toutes les notifications',
@@ -523,6 +524,10 @@ module.exports = {
         emailPh:      'Email',
         passwordPh:   'Mot de passe',
         namePh:       'Votre nom',
+        consentText: "Je donne {consent} et j’accepte les {terms}",
+        consentLinkConsent: "mon consentement au traitement de mes données personnelles",
+        consentLinkTerms: "conditions d’utilisation",
+        consentRequired: "Cochez le consentement pour créer un compte",
         fillAll:      'Remplissez tous les champs',
         invalidEmail: 'Veuillez saisir un email valide',
         changePhoto:  'Modifier',
@@ -662,7 +667,22 @@ module.exports = {
         deleteText: "La réponse « {title} » sera supprimée."
     },
 
+    vault: {
+        barText: "Vous n’êtes pas connecté à « {name} »",
+        barButton: "Se connecter automatiquement",
+        working: "Connexion…",
+        errNotShared: "Votre responsable n’a pas encore partagé l’accès pour cet appareil.",
+        errOrigin: "Cette page n’appartient pas au site attribué : connexion arrêtée par sécurité.",
+        errNoForm: "Formulaire de connexion introuvable. Ouvrez la page de connexion et réessayez.",
+        errSecure: "Le stockage de mots de passe du système est indisponible, connexion automatique impossible.",
+        errDecrypt: "Impossible de déchiffrer l’accès. Demandez à votre responsable de l’enregistrer à nouveau.",
+        errFailed: "Échec de la connexion automatique.",
+    },
     orgAlerts: {
+        loginTitle: "Connexion requise",
+        loginBody: "Connectez-vous à « {name} » : tant que ce n’est pas fait, aucun message n’arrive.",
+        loginMissing: "non connecté",
+        minShort: "min",
         title: "Des clients attendent une réponse",
         minutes: "{m} min",
         hours: "{h} h",

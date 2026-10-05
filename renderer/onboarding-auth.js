@@ -8,6 +8,7 @@
 // не станет true (флаг ставится только на финальном шаге, чтобы прерванный
 // на середине флоу запуск в следующий раз начинался заново, а не завис в
 // промежуточном состоянии).
+const { requireConsent } = require('./consent-ui')
 const RECOMMENDED_COUNT = 11
 
 function bindOnboardingScreen({
@@ -118,6 +119,8 @@ function bindOnboardingScreen({
     document.getElementById('onbOauthCancelBtn')?.addEventListener('click', hideOAuthWait)
 
     async function handleOAuth(oauthFn, providerLabel) {
+        // Вход через Google/Яндекс создаёт аккаунт — согласие нужно до начала.
+        if (!requireConsent('onbConsent', document.getElementById('onbLoginError'), tGet)) return
         showOAuthWait(providerLabel)
         try {
             const result = await oauthFn()
@@ -155,8 +158,10 @@ function bindOnboardingScreen({
             return
         }
 
+        if (mode === 'register' && !requireConsent('onbConsent', errorEl, tGet)) return
+
         const result = mode === 'register'
-            ? await cloudApi.register(email, password, email.split('@')[0])
+            ? await cloudApi.register(email, password, email.split('@')[0], true)
             : await cloudApi.login(email, password)
 
         if (!result.success) {

@@ -39,6 +39,7 @@ function createWorkspacesUiApi({
     let menuEl = null
     let menuOpen = false
     let enabled = false
+    let openSwitcherMenu = () => {}
 
     // Иконка по умолчанию для "Все" (пространство не выбрано) — та же
     // сетка 2×2, что была раньше единственной иконкой кнопки.
@@ -146,6 +147,61 @@ function createWorkspacesUiApi({
         applyWorkspaceFilter()
     }
 
+    // FEATURE (2026-10-02, запрос владельца TEAM: "папки можно было бы
+    // переносить драг энд дропом в пространства"): пространство группирует
+    // ПАПКИ (folder.workspaceId), а раскладывать подтянутые мессенджеры
+    // сотрудников можно было только по папкам. Теперь свою папку можно
+    // перетащить на пункт пространства в переключателе — список раскрывается
+    // сам на время перетаскивания. Бросок на «Все» снимает папку с
+    // пространства. Папки, созданные руководителем для сотрудника (orgManaged),
+    // не перетаскиваются — они управляются владельцем.
+    let openedByDrag = false
+
+    function ownFolderBeingDragged() {
+        if (!enabled || state.dragSrcType !== 'folder') return null
+        const folder = state.folders.find((f) => f.id === state.dragSrcId)
+        return folder && !folder.orgManaged ? folder : null
+    }
+
+    function showMoveToast(text) {
+        const old = document.getElementById('wsMoveToast')
+        if (old) old.remove()
+        const el = document.createElement('div')
+        el.id = 'wsMoveToast'
+        el.className = 'ws-toast'
+        el.textContent = text
+        document.body.appendChild(el)
+        setTimeout(() => el.classList.add('show'), 10)
+        setTimeout(() => { el.classList.remove('show'); setTimeout(() => el.remove(), 300) }, 2600)
+    }
+
+    function moveFolderToWorkspace(folderId, workspaceId) {
+        const folder = state.folders.find((f) => f.id === folderId)
+        if (!folder || folder.orgManaged) return
+        if ((folder.workspaceId || null) === (workspaceId || null)) return
+        folder.workspaceId = workspaceId || null
+        applyWorkspaceFilter()
+        saveData()
+        renderSwitcherMenu()
+        const ws = workspaceId ? getWorkspaceById(workspaceId) : null
+        const template = ws ? tGet('workspaces.movedFolder') : tGet('workspaces.removedFolder')
+        showMoveToast(String(template).replace('{folder}', folder.name || '').replace('{ws}', ws ? ws.name : ''))
+    }
+
+    document.addEventListener('dragstart', () => {
+        if (!ownFolderBeingDragged() || !state.workspaces.length) return
+        // после dragstart: иначе браузер может отменить перетаскивание из-за смены раскладки
+        setTimeout(() => {
+            if (!ownFolderBeingDragged()) return
+            if (!menuOpen) { openedByDrag = true; openSwitcherMenu() }
+        }, 50)
+    })
+
+    document.addEventListener('dragend', () => {
+        menuEl?.querySelectorAll('.ws-drop-target').forEach((el) => el.classList.remove('ws-drop-target'))
+        if (openedByDrag) { openedByDrag = false; closeSwitcherMenu() }
+    })
+
     function renderSwitcherMenu() {
         const menu = menuEl
         if (!menu) return
@@ -182,6 +238,24 @@ function createWorkspacesUiApi({
         `
 
         menu.querySelectorAll('.workspace-switcher-item').forEach((item) => {
+            // Перетаскивание папки на пространство (см. moveFolderToWorkspace)
+            if (!item.dataset.id) item.title = tGet('workspaces.dropAllHint') || ''
+            item.addEventListener('dragover', (e) => {
+                if (!ownFolderBeingDragged()) return
+                e.preventDefault()
+                e.dataTransfer.dropEffect = 'move'
+                item.classList.add('ws-drop-target')
+            })
+            item.addEventListener('dragleave', (e) => {
+                if (!item.contains(e.relatedTarget)) item.classList.remove('ws-drop-target')
+            })
+            item.addEventListener('drop', (e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                item.classList.remove('ws-drop-target')
+                const folder = ownFolderBeingDragged()
+                if (folder) moveFolderToWorkspace(folder.id, item.dataset.id || null)
+            })
             item.addEventListener('click', (e) => {
                 e.stopPropagation()
                 setActiveWorkspace(item.dataset.id || null)
@@ -349,6 +423,29 @@ function createWorkspacesUiApi({
             btn.addEventListener('mouseleave', hideTooltip)
         }
 
+        openSwitcherMenu = function () {
+            renderSwitcherMenu()
+            const isExpanded = !!activityTop.closest('#activityBar')?.classList.contains('sidebar-expanded')
+            if (isExpanded) {
+                menuEl.classList.add('workspace-switcher-menu-inline')
+                menuEl.style.position = ''
+                menuEl.style.top = ''
+                menuEl.style.left = ''
+                switcherEl.insertAdjacentElement('afterend', menuEl)
+            } else {
+                menuEl.classList.remove('workspace-switcher-menu-inline')
+                document.body.appendChild(menuEl)
+                menuEl.style.position = 'fixed'
+                const rect = btn.getBoundingClientRect()
+                menuEl.style.top = `${Math.round(rect.top)}px`
+                menuEl.style.left = `${Math.round(rect.right + 6)}px`
+            }
+            menuEl.style.display = 'block'
+            menuOpen = true
+            switcherEl.classList.add('open')
+            document.dispatchEvent(new CustomEvent('popup-opened'))
+        }
+
         btn.addEventListener('click', (e) => {
             e.stopPropagation()
             const opening = !menuOpen
@@ -362,28 +459,7 @@ function createWorkspacesUiApi({
             // open must close it explicitly here instead, or it would never
             // close via the button at all.
             if (!opening) closeSwitcherMenu()
-            if (opening) {
-                renderSwitcherMenu()
-                const isExpanded = !!activityTop.closest('#activityBar')?.classList.contains('sidebar-expanded')
-                if (isExpanded) {
-                    menuEl.classList.add('workspace-switcher-menu-inline')
-                    menuEl.style.position = ''
-                    menuEl.style.top = ''
-                    menuEl.style.left = ''
-                    switcherEl.insertAdjacentElement('afterend', menuEl)
-                } else {
-                    menuEl.classList.remove('workspace-switcher-menu-inline')
-                    document.body.appendChild(menuEl)
-                    menuEl.style.position = 'fixed'
-                    const rect = btn.getBoundingClientRect()
-                    menuEl.style.top = `${Math.round(rect.top)}px`
-                    menuEl.style.left = `${Math.round(rect.right + 6)}px`
-                }
-                menuEl.style.display = 'block'
-                menuOpen = true
-                switcherEl.classList.add('open')
-                document.dispatchEvent(new CustomEvent('popup-opened'))
-            }
+            if (opening) openSwitcherMenu()
         })
 
         activityTop.insertBefore(switcherEl, activityTop.querySelector('.activity-divider')?.nextSibling || null)

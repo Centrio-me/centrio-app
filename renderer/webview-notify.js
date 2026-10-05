@@ -10,6 +10,7 @@ function createWebviewNotifyApi({
     addMessengerNotification
 }) {
     async function sendPushNotificationFromSite(messenger, payload = {}) {
+        if (payload.tag !== 'unread-fallback') state.lastSiteNotifyAt[messenger.id] = Date.now()
         const settings = store.get('settings', {})
         if (settings.notifications === false) return
         if (isMessengerMuted(messenger.id)) return
@@ -125,10 +126,41 @@ function createWebviewNotifyApi({
     // каждую гостевую страницу через executeJavaScript (см.
     // main/bootstrap/registerAppEvents.js, startUnreadPolling) и шлёт сюда
     // результат напрямую, в обход preload/webview 'ipc-message' выше.
+    // "Количество выросло, а сайт промолчал" (2026-10-05, "во ВКонтакте не приходит всплывающее уведомление
+    // Windows"): часть сайтов (ВК) не вызывает Notification API, пока считает окно активным, поэтому
+    // всплывашки не было, хотя бейдж рос. Если число непрочитанных выросло и сайт сам не присылал
+    // уведомлений последние 10 минут, показываем своё. Первый замер после загрузки страницы не считается.
+    const lastUnreadSeen = {}
+    const FALLBACK_DELAY_MS = 3500
+    const SITE_SILENT_MS = 10 * 60 * 1000
+
+    function scheduleUnreadFallback(messengerId, delta) {
+        setTimeout(() => {
+            if (Date.now() - (state.lastSiteNotifyAt[messengerId] || 0) < SITE_SILENT_MS) return
+            const messenger = (state.activeMessengers || []).find(m => m.id === messengerId)
+            if (!messenger) return
+            const body = delta > 1
+                ? (tGet('notifications.newMessagesCount', { count: delta }) || `Новых сообщений: ${delta}`)
+                : (tGet('notifications.newMessage') || 'Новое сообщение')
+            sendPushNotificationFromSite(messenger, { title: messenger.name, body, tag: 'unread-fallback' })
+        }, FALLBACK_DELAY_MS)
+    }
+
     ipcRenderer?.on?.('messenger-unread-count', (messengerId, count) => {
         if (!messengerId) return
         const n = Number.isFinite(count) && count >= 0 ? count : 0
         updateUnreadCount(messengerId, n)
+        const before = lastUnreadSeen[messengerId]
+        lastUnreadSeen[messengerId] = n
+        if (before !== undefined && n > before) scheduleUnreadFallback(messengerId, n - before)
+    })
+
+    // Sign-in state of the page (see startLoginStatePolling in main); org-team.js reports it to the owner.
+    ipcRenderer?.on?.('messenger-login-state', (messengerId, value) => {
+        if (!messengerId || (value !== 'in' && value !== 'out')) return
+        if (state.loginStates[messengerId] === value) return
+        state.loginStates[messengerId] = value
+        document.dispatchEvent(new CustomEvent('login-state-changed', { detail: { messengerId, state: value } }))
     })
 
     // ── Site-уведомления (Notification/SW showNotification), пойманные
