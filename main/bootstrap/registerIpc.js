@@ -16,6 +16,7 @@ const registerExtensionsIpc = require('../ipc/extensions')
 const { registerLockBackgroundIpc } = require('../ipc/lockBackground')
 const { registerAssistantIpc } = require('../ipc/assistant')
 const registerVaultIpc = require('../ipc/vault')
+const registerPasswordManagerIpc = require('../ipc/passwordManager')
 
 function registerIpc({ getMainWindow, showMainWindow, updateTrayMenu, isQuittingRef }) {
     registerWindowIpc({ getMainWindow, isQuittingRef })
@@ -36,6 +37,7 @@ function registerIpc({ getMainWindow, showMainWindow, updateTrayMenu, isQuitting
     registerLockBackgroundIpc({ getMainWindow })
     registerAssistantIpc({ getMainWindow })
     registerVaultIpc()
+    registerPasswordManagerIpc({ getMainWindow })
 }
 
 module.exports = registerIpc

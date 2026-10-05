@@ -1205,6 +1205,12 @@ function registerAppEvents({
                     if (adblock.isEnabled()) contents.insertCSS(adblock.COSMETIC_CSS).catch(() => {})
                 } catch {}
 
+                // Password manager: sign-in form detection and "save this password?" for every tab.
+                try {
+                    const pmMessengerId = findMessengerIdForSession(contents.session)
+                    if (pmMessengerId) require('../services/pmWatcher').attach(contents, pmMessengerId, getMainWindow)
+                } catch {}
+
                 if (!unreadPollingStarted) {
                     unreadPollingStarted = true
                     startUnreadPolling(contents, getMainWindow)

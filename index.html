@@ -34,6 +34,7 @@
                    frame-src 'none';">
     <title>Centrio</title>
     <link rel="stylesheet" href="./styles.css">
+    <link rel="stylesheet" href="assets/fonts/site/fonts.css">
 </head>
 <body>
 
@@ -43,39 +44,31 @@
 </div>
 
 <div id="startupSplash" class="startup-splash">
-    <div class="startup-splash-bg"></div>
-    <div class="startup-splash-noise"></div>
-    <div class="startup-orb startup-orb-1"></div>
-    <div class="startup-orb startup-orb-2"></div>
-    <div class="startup-orb startup-orb-3"></div>
+    <div class="sp-mesh"></div>
+    <div class="sp-grain"></div>
+    <div class="sp-ring"></div>
 
-    <div class="startup-splash-content">
-        <div class="startup-logo-glow"></div>
-        <div class="startup-logo-ring"></div>
-
-        <div class="startup-logo-wrap">
-            <img src="assets/logo.png" alt="Centrio" class="startup-logo">
-        </div>
-
-        <div class="startup-brand">
-            <div class="startup-title">Centrio<span class="brand-period"></span></div>
-            <div class="startup-subtitle" data-i18n="startup.subtitle"></div>
-        </div>
-
-        <div class="startup-progress-wrap">
-            <div class="startup-stage-row">
-                <div id="startupStageText" class="startup-stage-text">Initializing</div>
-                <div id="startupProgressText" class="startup-progress-text">0%</div>
+    <div class="sp-main">
+        <div class="sp-col">
+            <div class="sp-brand">
+                <img src="assets/logo.png" alt="Centrio" class="sp-logo" width="44" height="44">
+                <div class="sp-word">Centrio<span class="brand-period"></span></div>
             </div>
 
-            <div class="startup-progress-bar">
-                <div id="startupProgressFill" class="startup-progress-fill"></div>
-                <div class="startup-progress-shimmer"></div>
-            </div>
+            <div id="startupFact" class="sp-fact" aria-live="polite"></div>
 
-            <div id="startupHintText" class="startup-hint-text">Starting core services...</div>
+            <div class="sp-progress">
+                <div class="sp-row">
+                    <div id="startupStageText" class="sp-stage">Initializing</div>
+                    <div id="startupProgressText" class="sp-pct">0%</div>
+                </div>
+                <div class="sp-bar"><div id="startupProgressFill" class="sp-fill"></div></div>
+                <div id="startupHintText" class="sp-hint">Starting core services...</div>
+                <div id="startupSlow" class="sp-slow"></div>
+            </div>
         </div>
     </div>
+    <div class="sp-foot"><div id="startupDots" class="sp-dots"></div></div>
 </div>
 
 <div id="appRoot" class="app-root app-root-hidden"></div>
@@ -754,6 +747,26 @@
             <div id="quickRepliesList" class="app-notif-list qr-list"></div>
             <div id="quickRepliesHint" class="qr-hint"></div>
         </div>
+        <div id="passwordsPanel" class="right-panel-section passwords-panel">
+            <div class="app-notif-header">
+                <span id="passwordsTitle"></span>
+                <div class="app-notif-header-actions">
+                    <button type="button" id="passwordsAddBtn" class="app-notif-mute-btn">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+                    </button>
+                </div>
+            </div>
+            <div class="app-notif-search">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="11" cy="11" r="8"/>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                </svg>
+                <input type="text" id="passwordsSearch" class="app-notif-search-input" maxlength="80" autocomplete="off" spellcheck="false">
+            </div>
+            <div id="passwordsEditor" class="pm-editor" style="display:none;"></div>
+            <div id="passwordsList" class="app-notif-list pm-list"></div>
+            <div id="passwordsNote" class="pm-note"></div>
+        </div>
         <div id="notesPanel" class="right-panel-section notes-panel">
             <div id="notesListView" class="notes-list-view">
                 <div class="app-notif-header">
@@ -923,6 +936,14 @@
                     <path d="M13 6.5l-3 4h4l-3 4"/>
                 </svg>
                 <span class="activity-btn-label" data-i18n="rightbar.quickReplies"></span>
+            </button>
+            <button id="passwordsBtn" class="activity-btn" data-i18n-title="rightbar.passwords">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="4" y="10.5" width="16" height="10" rx="2.5"/>
+                    <path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/>
+                    <circle cx="12" cy="15.5" r="1.3"/>
+                </svg>
+                <span class="activity-btn-label" data-i18n="rightbar.passwords"></span>
             </button>
         </div>
         <div class="activity-bottom">
@@ -1154,6 +1175,21 @@
         <button class="changelog-popup-close" id="changelogPopupClose">✕</button>
     </div>
     <div class="changelog-popup-body">
+        <div class="changelog-entry">
+            <div class="changelog-version">v3.0.0</div>
+            <ul class="changelog-list">
+                <li>Centrio 3.0 — большое обновление. Спасибо, что вы с нами!</li>
+                <li>Новое: менеджер паролей. Иконка «Пароли» в правом меню. Пароли хранятся под мастер-паролем и шифруются. Centrio предлагает сохранить пароль после входа на сайт, подставляет его в форму входа одним нажатием, ищет по названию и сайту, умеет генерировать пароли. Один сайт с разными адресами (например letyshops.com и letyshops.com/us) считается одним. Включается и выключается в «Настройки → Панель»</li>
+                <li>Новое (Pro): пароли на всех ваших устройствах. Синхронизация идёт только в зашифрованном виде: прочитать пароли без мастер-пароля нельзя</li>
+                <li>Новое: экран блокировки. Крупные часы, приветствие по имени, погода, «Пока вас не было» со счётчиками по мессенджерам (без текста сообщений; можно скрыть в «Настройки → Безопасность»). После трёх неверных PIN подряд включается пауза, чтобы PIN нельзя было подобрать</li>
+                <li>Новое: экран загрузки. Показывает, что именно загружается, и короткие факты о возможностях Centrio. Язык интерфейса при первом запуске берётся из языка системы</li>
+                <li>Новое: у папок новый вид. На значке видны иконки сервисов и счётчик непрочитанных, у папки можно выбрать цвет и заглушить её целиком. Старый вид остаётся: «Настройки → Внешний вид → Папки»</li>
+                <li>Новое: фирменный стиль. Логотип и шрифты, как на сайте centrio.me</li>
+                <li>Улучшено: запуск стал быстрее. При большом числе мессенджеров с расширениями приложение теперь открывается за несколько секунд вместо десятков секунд</li>
+                <li>Улучшено: при добавлении мессенджера выбор «Без VPN» сохраняется сразу, значок VPN на иконке показывается правильно</li>
+                <li>Улучшено: кнопка «Войти» на экране входа занимает всю ширину</li>
+            </ul>
+        </div>
         <div class="changelog-entry">
             <div class="changelog-version">v2.9.16</div>
             <ul class="changelog-list">
@@ -2186,14 +2222,6 @@
                 <!-- Внешний вид -->
                 <div class="settings-section" id="section-appearance">
                     <div class="settings-group">
-                        <div class="settings-group-title" data-i18n="foldersView.title"></div>
-                        <div class="settings-hint" style="margin-bottom:12px" data-i18n="foldersView.hint"></div>
-                        <div class="settings-view-switch">
-                            <button type="button" class="settings-view-option" data-folders-style="modern"><span data-i18n="foldersView.modern"></span></button>
-                            <button type="button" class="settings-view-option" data-folders-style="classic"><span data-i18n="foldersView.classic"></span></button>
-                        </div>
-                    </div>
-                    <div class="settings-group">
                         <div class="settings-group-title" data-i18n="settings.theme"></div>
                         <div class="theme-picker">
                             <div class="theme-item active" data-theme="embedded">
@@ -2333,6 +2361,16 @@
                                 <input type="checkbox" id="settingFolderLabel" checked>
                                 <span class="toggle-slider"></span>
                             </label>
+                        </div>
+                        <div class="settings-row">
+                            <div class="settings-label">
+                                <span data-i18n="foldersView.title"></span>
+                                <span class="settings-hint" data-i18n="foldersView.hint"></span>
+                            </div>
+                            <div class="settings-view-switch">
+                                <button type="button" class="settings-view-option" data-folders-style="modern"><span data-i18n="foldersView.modern"></span></button>
+                                <button type="button" class="settings-view-option" data-folders-style="classic"><span data-i18n="foldersView.classic"></span></button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -2643,6 +2681,18 @@
                         </div>
                     </div>
                     <div id="passwordFields" style="display:none;">
+                        <div class="settings-group">
+                            <div class="settings-row">
+                                <div class="settings-label">
+                                    <span data-i18n="lock.activitySetting"></span>
+                                    <span class="settings-hint" data-i18n="lock.activitySettingHint"></span>
+                                </div>
+                                <label class="toggle">
+                                    <input type="checkbox" id="settingLockActivity" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                        </div>
                         <div class="settings-group">
                             <div class="settings-group-title" data-i18n="lock.pinSet"></div>
                             <div class="pin-setup-card">
@@ -3010,81 +3060,93 @@
          скролл при этом не убираем, оставлен запасным путём ниже
          минимального читаемого масштаба. -->
     <div class="lock-stack" id="lockStack">
-    <div class="lock-clock-wrap">
-        <div class="lock-clock-time" id="lockClockTime">--:--</div>
-        <div class="lock-clock-date" id="lockClockDate"></div>
-    </div>
+    <section class="lock-left">
+        <div class="lock-brand">
+            <img src="assets/logo.png" alt="Centrio" class="lock-brand-logo" width="44" height="44">
+            <span class="lock-brand-name">Centrio<i class="lock-brand-dot"></i></span>
+        </div>
 
-    <div class="lock-box">
-        <div class="lock-logo-wrap">
-            <div class="lock-logo-circle">
-                <svg width="36" height="36" viewBox="0 0 24 24" fill="none">
-                    <rect x="3" y="11" width="18" height="11" rx="2" stroke="currentColor" stroke-width="1.8"/>
-                    <path d="M7 11V7a5 5 0 0 1 10 0v4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-                </svg>
+        <div class="lock-hero">
+            <div class="lock-clock-wrap">
+                <div class="lock-clock-time" id="lockClockTime">--:--</div>
+                <div class="lock-clock-meta">
+                    <div class="lock-clock-date" id="lockClockDate"></div>
+                    <div class="lock-widget lock-widget-weather" id="lockWidgetWeather" style="display:none;">
+                        <div class="lock-weather-icon" id="lockWeatherIcon"></div>
+                        <div class="lock-weather-info">
+                            <span class="lock-weather-temp" id="lockWeatherTemp"></span>
+                            <span class="lock-weather-city" id="lockWeatherCity"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="lock-greeting" id="lockGreeting"></div>
+
+            <!-- Только сводки (счётчики), НИКОГДА текст сообщений: пользователь ещё не аутентифицирован. -->
+            <div class="lock-widgets" id="lockWidgets">
+                <div class="lock-widget lock-widget-activity" id="lockWidgetActivity" style="display:none;">
+                    <div class="lock-widget-title" data-i18n="lock.widgetActivity"></div>
+                    <div class="lock-widget-activity-list" id="lockActivityList"></div>
+                </div>
             </div>
         </div>
-        <h2 class="lock-title" data-i18n="lock.title"></h2>
-        <p class="lock-sub" data-i18n="lock.sub"></p>
-        <div class="lock-pin-wrap">
-            <div class="lock-pin-dot" id="lockDot0"></div>
-            <div class="lock-pin-dot" id="lockDot1"></div>
-            <div class="lock-pin-dot" id="lockDot2"></div>
-            <div class="lock-pin-dot" id="lockDot3"></div>
-        </div>
-        <input type="password" id="lockInput" class="lock-input-hidden" maxlength="4" inputmode="numeric" pattern="[0-9]*" autocomplete="off">
-        <div class="lock-numpad">
-            <button class="lock-key" data-digit="1">1</button>
-            <button class="lock-key" data-digit="2">2</button>
-            <button class="lock-key" data-digit="3">3</button>
-            <button class="lock-key" data-digit="4">4</button>
-            <button class="lock-key" data-digit="5">5</button>
-            <button class="lock-key" data-digit="6">6</button>
-            <button class="lock-key" data-digit="7">7</button>
-            <button class="lock-key" data-digit="8">8</button>
-            <button class="lock-key" data-digit="9">9</button>
-            <!-- BUGFIX (2026-09-21, "иконка удалить символ из пин кода - кривая.
-                 Нужно сделать ровную" — live user report): the old backspace-key
-                 shape (a pointed-left outline) with an X drawn inside it read as
-                 lopsided at this size — the outline itself isn't symmetric left
-                 -to-right, so it never looks "even" no matter the stroke tuning.
-                 Swapped for the same plain, perfectly symmetric X already used
-                 for "remove" elsewhere in the app (see context-menus.js's
-                 folder-pick "remove from folder" icon) — unambiguous as "clear"
-                 and trivially centered. -->
-            <button class="lock-key lock-key-clear" id="lockClearBtn">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                    <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                </svg>
-            </button>
-            <button class="lock-key" data-digit="0">0</button>
-            <button class="lock-key lock-key-enter" id="lockSubmitBtn">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                    <path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-            </button>
-        </div>
-        <p id="lockError" class="lock-error" style="display:none;" data-i18n="lock.error"></p>
-        <button id="forgotPinBtn" class="forgot-pin-btn" data-i18n="lock.forgot"></button>
-    </div>
+    </section>
 
-    <!-- Виджеты экрана блокировки (см. renderer/lock.js renderWeatherWidget/
-         renderActivityWidget) — только сводки (счётчики/иконки/время), НИКОГДА
-         текст сообщений или тему письма: пользователь ещё не аутентифицирован.
-         По фидбеку пользователя размещены под окном ввода PIN, а не сбоку. -->
-    <div class="lock-widgets" id="lockWidgets">
-        <div class="lock-widget lock-widget-weather" id="lockWidgetWeather" style="display:none;">
-            <div class="lock-weather-icon" id="lockWeatherIcon"></div>
-            <div class="lock-weather-info">
-                <div class="lock-weather-temp" id="lockWeatherTemp"></div>
-                <div class="lock-weather-city" id="lockWeatherCity"></div>
+    <section class="lock-right">
+        <div class="lock-box">
+            <div class="lock-logo-wrap">
+                <div class="lock-logo-circle">
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+                        <rect x="4" y="10.5" width="16" height="10" rx="2.5" stroke="currentColor" stroke-width="1.8"/>
+                        <path d="M8 10.5V7.5a4 4 0 0 1 8 0v3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                    </svg>
+                </div>
             </div>
+            <h2 class="lock-title" data-i18n="lock.title"></h2>
+            <p class="lock-sub" id="lockSub" data-i18n="lock.sub"></p>
+            <div class="lock-pin-wrap">
+                <div class="lock-pin-dot" id="lockDot0"></div>
+                <div class="lock-pin-dot" id="lockDot1"></div>
+                <div class="lock-pin-dot" id="lockDot2"></div>
+                <div class="lock-pin-dot" id="lockDot3"></div>
+            </div>
+            <input type="password" id="lockInput" class="lock-input-hidden" maxlength="4" inputmode="numeric" pattern="[0-9]*" autocomplete="off">
+            <div class="lock-numpad">
+            <button class="lock-key" data-digit="1">1</button>
+            <button class="lock-key" data-digit="2">2</button>
+            <button class="lock-key" data-digit="3">3</button>
+            <button class="lock-key" data-digit="4">4</button>
+            <button class="lock-key" data-digit="5">5</button>
+            <button class="lock-key" data-digit="6">6</button>
+            <button class="lock-key" data-digit="7">7</button>
+            <button class="lock-key" data-digit="8">8</button>
+            <button class="lock-key" data-digit="9">9</button>
+            <!-- BUGFIX (2026-09-21, "иконка удалить символ из пин кода - кривая.
+                 Нужно сделать ровную" — live user report): the old backspace-key
+                 shape (a pointed-left outline) with an X drawn inside it read as
+                 lopsided at this size — the outline itself isn't symmetric left
+                 -to-right, so it never looks "even" no matter the stroke tuning.
+                 Swapped for the same plain, perfectly symmetric X already used
+                 for "remove" elsewhere in the app (see context-menus.js's
+                 folder-pick "remove from folder" icon) — unambiguous as "clear"
+                 and trivially centered. -->
+            <button class="lock-key lock-key-clear" id="lockClearBtn">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                    <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+            </button>
+            <button class="lock-key" data-digit="0">0</button>
+            <button class="lock-key lock-key-enter" id="lockSubmitBtn">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                    <path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </button>
         </div>
-        <div class="lock-widget lock-widget-activity" id="lockWidgetActivity" style="display:none;">
-            <div class="lock-widget-title" data-i18n="lock.widgetActivity"></div>
-            <div class="lock-widget-activity-list" id="lockActivityList"></div>
+            <p id="lockError" class="lock-error" style="display:none;" data-i18n="lock.error"></p>
+            <div id="lockAttempts" class="lock-attempts"></div>
+            <button id="forgotPinBtn" class="forgot-pin-btn" data-i18n="lock.forgot"></button>
         </div>
-    </div>
+    </section>
     </div><!-- /.lock-stack -->
 
     <!-- Кнопка выбора фона экрана блокировки — по фидбеку пользователя,

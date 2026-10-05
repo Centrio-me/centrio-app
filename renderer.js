@@ -32,7 +32,6 @@ const { createTeamTasksUi } = require('./renderer/team-tasks')
 const { bindRightbarCustom } = require('./renderer/rightbar-custom')
 const { bindProWindow } = require('./renderer/pro-window')
 const { createFoldersModern } = require('./renderer/folders-modern')
-const { bindFoldersPromo } = require('./renderer/folders-promo')
 const { createContextMenusApi } = require('./renderer/context-menus')
 const { bindPopupBackdrop } = require('./renderer/popup-backdrop-bind')
 const { createFoldersUiApi } = require('./renderer/folders-ui')
@@ -67,6 +66,9 @@ const { bindSidebarShellUi } = require('./renderer/sidebar-shell-bind')
 const { bindAppNotifUi } = require('./renderer/app-notif-bind')
 const { bindTodosUi } = require('./renderer/todos-bind')
 const { bindQuickRepliesUi } = require('./renderer/quick-replies-bind')
+const { bindPasswordsUi } = require('./renderer/passwords-ui')
+const { createPmBar } = require('./renderer/pm-bar')
+const { startSplashFacts, stopSplashFacts } = require('./renderer/splash-facts')
 const { bindNotesUi } = require('./renderer/notes-bind')
 const { bindDownloadsUi } = require('./renderer/downloads-bind')
 const { bindVpnUi, bindVpnSettings } = require('./renderer/vpn-bind')
@@ -95,8 +97,11 @@ const SYNCED_STORE_KEYS = new Set([
     'messengers', 'folders', 'settings', 'security', 'lockOnStartup',
     'globalProxy', 'sidebarOrder', 'menuCollapsed', 'appZoomLevel',
     'vpnAppModes', 'extensionsState', 'splitLeftPctPref', 'splitPresets',
-    'mutedMessengers', 'quickReplies', 'rightbarLayout', 'orgAssignedFolders', 'dividers', 'foldersStyle', 'folderColors'
+    'mutedMessengers', 'quickReplies', 'pmVault', 'rightbarLayout', 'orgAssignedFolders', 'dividers', 'foldersStyle', 'folderColors'
 ])
+
+// Password manager sync (PRO): the encrypted vault rides along with the settings; `apply` is set once the panel exists.
+const pmSync = { blocked: false, apply: null, pending: null }
 
 let suppressAutoCloudSync = false
 let scheduleAutoCloudSync = null // назначается ниже, после создания cloudApi
@@ -425,6 +430,7 @@ function showAppRoot() {
 function hideStartupSplash() {
     const { splash } = getStartupUi()
     if (!splash) return
+    stopSplashFacts()
 
     splash.classList.add('hidden')
 }
@@ -471,7 +477,10 @@ function animateProgress(from, to, duration = 320) {
     })
 }
 
-async function fakeProgressTo(target, { minStepTime = 180 } = {}) {
+// The per-stage minimum used to add ~2.5 s of pure waiting to EVERY launch; the stages now pass as fast as the real work does.
+const MAX_STAGE_PAUSE_MS = 80
+async function fakeProgressTo(target, { minStepTime: requestedStepTime = 180 } = {}) {
+    const minStepTime = Math.min(requestedStepTime, MAX_STAGE_PAUSE_MS)
     const currentText = document.getElementById('startupProgressText')?.textContent || '0%'
     const current = parseInt(currentText, 10) || 0
     const finalTarget = Math.max(current, Math.min(100, target))
@@ -482,7 +491,7 @@ async function fakeProgressTo(target, { minStepTime = 180 } = {}) {
     }
 
     await Promise.all([
-        animateProgress(current, finalTarget, Math.max(minStepTime, (finalTarget - current) * 18)),
+        animateProgress(current, finalTarget, Math.max(minStepTime, (finalTarget - current) * 4)),
         new Promise((resolve) => setTimeout(resolve, minStepTime))
     ])
 }
@@ -493,6 +502,9 @@ async function advanceStartup(stageKey, percent, options = {}) {
 }
 
 async function bootstrap() {
+    // The language comes first: the splash (stages, hints, facts) must already speak it.
+    await initI18n()
+    startSplashFacts({ tGet })
     setStartupStage('boot')
     setStartupProgress(2)
     await advanceStartup('boot', 10, { minStepTime: 220 })
@@ -527,6 +539,7 @@ async function bootstrap() {
         ['split.saved', null],
         ['splitPresets', []],
         ['quickReplies', []],
+        ['pmVault', null],
         ['splitLeftPctPref', 50],
         ['gridRowPctPref', 50],
         ['gridSidePctPref', 50],
@@ -764,6 +777,9 @@ async function bootstrap() {
                         splitLeftPctPref: store.get('splitLeftPctPref', 50),
                         splitPresets:     store.get('splitPresets', []) || [],
                         quickReplies:     store.get('quickReplies', []) || [],
+                        // Only the ENCRYPTED vault (useless without the master password); the key is left out entirely
+                        // when not syncing, because a null would wipe the cloud copy.
+                        ...((typeof hasEffectivePro === 'function' && hasEffectivePro() && !pmSync.blocked && store.get('pmVault', null)) ? { pmVault: store.get('pmVault', null) } : {}),
                         rightbarLayout:   store.get('rightbarLayout', null),
                         // Folder of each team-assigned messenger and the sidebar
                         // dividers must follow the account to every computer too.
@@ -893,6 +909,7 @@ async function bootstrap() {
                         if (extra.splitLeftPctPref !== undefined) await store.setAsync('splitLeftPctPref', extra.splitLeftPctPref)
                         if (extra.splitPresets !== undefined) await store.setAsync('splitPresets', extra.splitPresets)
                         if (Array.isArray(extra.quickReplies)) await store.setAsync('quickReplies', extra.quickReplies)
+                        if (extra.pmVault) { pmSync.pending = extra.pmVault; if (typeof pmSync.apply === 'function') pmSync.apply(extra.pmVault) }
                         if (extra.rightbarLayout !== undefined) await store.setAsync('rightbarLayout', extra.rightbarLayout)
                         if (extra.orgAssignedFolders && typeof extra.orgAssignedFolders === 'object') await store.setAsync('orgAssignedFolders', extra.orgAssignedFolders)
                         if (Array.isArray(extra.dividers)) await store.setAsync('dividers', extra.dividers)
@@ -2454,6 +2471,11 @@ function applyTabZoom(level) {
             zoomLevel: state.tabZoomLevel || store.get('tabZoomLevel', 1) || 1
         }
 
+        // The sidebar icon reads the per-app VPN mode from the renderer store when it is created, so the
+        // choice made in the add dialog ("Без VPN") must be there BEFORE the item is drawn; the IPC call below
+        // only persists it in the main process and applies the proxy.
+        store.set('vpnAppModes', { ...(store.get('vpnAppModes', {}) || {}), [id]: options.vpn !== false })
+
         if (isChatWidgetMessenger(newMessenger)) {
             state.activeMessengers.unshift(newMessenger)
             addToSidebarPinned(newMessenger)
@@ -3088,6 +3110,7 @@ function applyTabZoom(level) {
                 if (extra.splitLeftPctPref !== undefined) store.set('splitLeftPctPref', extra.splitLeftPctPref)
                 if (extra.splitPresets !== undefined) store.set('splitPresets', extra.splitPresets)
                 if (Array.isArray(extra.quickReplies)) store.set('quickReplies', extra.quickReplies)
+                if (extra.pmVault) { pmSync.pending = extra.pmVault; if (typeof pmSync.apply === 'function') pmSync.apply(extra.pmVault) }
                 if (extra.rightbarLayout !== undefined) store.set('rightbarLayout', extra.rightbarLayout)
                 if (extra.orgAssignedFolders && typeof extra.orgAssignedFolders === 'object') store.set('orgAssignedFolders', extra.orgAssignedFolders)
                 if (Array.isArray(extra.dividers)) store.set('dividers', extra.dividers)
@@ -3693,6 +3716,7 @@ function applyTabZoom(level) {
         todos: document.getElementById('todosBtn'),
         notes: document.getElementById('notesBtn'),
         quickReplies: document.getElementById('quickRepliesBtn'),
+        passwords: document.getElementById('passwordsBtn'),
         notifications: document.getElementById('appNotifBtn')
     }
     const rightPanelSections = {
@@ -3700,6 +3724,7 @@ function applyTabZoom(level) {
         todos: document.getElementById('todosPanel'),
         notes: document.getElementById('notesPanel'),
         quickReplies: document.getElementById('quickRepliesPanel'),
+        passwords: document.getElementById('passwordsPanel'),
         notifications: document.getElementById('appNotifPanel')
     }
     let rightPanelActiveKey = null
@@ -3769,6 +3794,28 @@ function applyTabZoom(level) {
         closeRightPanel,
         getUserIsPro: hasEffectivePro,
         requirePro
+    })
+
+    const passwordsApi = bindPasswordsUi({
+        store,
+        state,
+        invokeIpc,
+        openRightPanel: () => toggleRightPanel('passwords'),
+        closeRightPanel,
+        getActivePanelKey: () => rightPanelActiveKey,
+        isPro: hasEffectivePro,
+        pmSync
+    })
+    pmSync.apply = passwordsApi.applyRemote
+    if (pmSync.pending) passwordsApi.applyRemote(pmSync.pending) // a pull that finished before the panel existed
+    // Over the open tab: "Вставить" for a saved password, master-password prompt, "Сохранить пароль?"
+    createPmBar({
+        state,
+        store,
+        ipcRenderer,
+        invokeIpc,
+        openPanel: () => openRightPanel('passwords'),
+        onVaultChanged: (sync) => passwordsApi.vaultChanged(sync !== false)
     })
 
     rightbarCustomApiRef = bindRightbarCustom({
@@ -3879,14 +3926,6 @@ function applyTabZoom(level) {
     })
     // "Войти автоматически": login saved by the team owner, typed in by the main process (never shown to the employee)
     createVaultLoginBar({ state, tGet, autoLogin: (id) => orgTeamApi.vaultAutoLogin(id) })
-    bindFoldersPromo({
-        state,
-        tGet,
-        openAppearanceSettings: () => {
-            document.getElementById('settingsBtn')?.click()
-            setTimeout(() => document.querySelector('.settings-nav-item[data-section="appearance"]')?.click(), 80)
-        }
-    })
     orgTeamApi.start()
     orgTeamTickRef = () => {
         orgTeamApi.tick()
@@ -3959,6 +3998,12 @@ function applyTabZoom(level) {
     window.addEventListener('offline', updateStatusBar)
       await advanceStartup('data', 82, { minStepTime: 300 })
     // Slow creep so bar doesn't freeze at 82% during cloud sync
+    // Say WHAT is being loaded: the messengers of this account, by name
+    try {
+        const names = (store.get('messengers', []) || []).map((m) => m && m.name).filter(Boolean).slice(0, 5).join(', ')
+        const hintEl = document.getElementById('startupHintText')
+        if (names && hintEl) hintEl.textContent = tGet('startup.loadingMessengers', { names })
+    } catch {}
     let _dataProgress = 82
     const _dataCreep = setInterval(() => {
         if (_dataProgress < 91) { _dataProgress += 0.4; setStartupProgress(_dataProgress) }

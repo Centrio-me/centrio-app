@@ -939,6 +939,35 @@ function isExtensionEnabledInStore(key) {
     return state[key] === true
 }
 
+// Patching walks and rewrites EVERY .js file of an extension, synchronously. It used to run again for every
+// messenger session on every launch (10 messengers x 3.4 s = ~40 s of a frozen main process at startup), although
+// the result never changes. Now it runs once per extension per shim version: a marker file next to the extension
+// remembers the fingerprint of the patch code that was applied, and a session-level set skips even the marker read.
+const patchedThisRun = new Set()
+const PATCH_MARKER = '.centrio-patched'
+
+function patchFingerprint() {
+    return crypto.createHash('sha1')
+        .update([CONTEXT_MENUS_SHIM, STORAGE_SYNC_SHIM, TABS_CREATE_SHIM, JSON.stringify(CONSENT_MODAL_RELIABILITY_PATCHES), applySameLanguageHintPatch.toString(), 'v1'].join(' '))
+        .digest('hex')
+}
+
+function patchExtensionOnce(key, dir) {
+    if (patchedThisRun.has(dir)) return
+    const markerPath = path.join(dir, PATCH_MARKER)
+    const fingerprint = patchFingerprint()
+    try {
+        if (fs.readFileSync(markerPath, 'utf8') === fingerprint) { patchedThisRun.add(dir); return }
+    } catch { /* no marker yet: patch below */ }
+
+    const manifest = JSON.parse(fs.readFileSync(path.join(dir, 'manifest.json'), 'utf8'))
+    applyChromeApiShim(dir, manifest)
+    applySameLanguageHintPatch(key, dir, manifest)
+    applyConsentModalReliabilityPatch(key, dir, manifest)
+    try { fs.writeFileSync(markerPath, fingerprint) } catch { /* read-only dir: it will just be re-checked next time */ }
+    patchedThisRun.add(dir)
+}
+
 // Загружает уже установленное расширение в конкретную сессию (persist:<messengerId>),
 // если оно ещё не загружено туда. Безопасно вызывать многократно (идемпотентно).
 async function loadIntoSession(ses, key) {
@@ -951,11 +980,7 @@ async function loadIntoSession(ses, key) {
     // На случай, если расширение было установлено до появления applyChromeApiShim()
     // (старая копия на диске) — шим идемпотентен, повторный вызов безопасен.
     try {
-        const manifestPath = path.join(dir, 'manifest.json')
-        const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'))
-        applyChromeApiShim(dir, manifest)
-        applySameLanguageHintPatch(key, dir, manifest)
-        applyConsentModalReliabilityPatch(key, dir, manifest)
+        patchExtensionOnce(key, dir)
     } catch (err) {
         log.error(`[extensions] applyChromeApiShim retro-patch failed for "${key}":`, err.message)
     }

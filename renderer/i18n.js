@@ -24,12 +24,33 @@ function setCurrentLanguage (lang) {
     }
 }
 
+// First launch only: follow the language of the system, so a foreign user sees their own language from the very
+// first screen. Anyone who already has settings, messengers or has seen the sign-in screen keeps what they have.
+const SYSTEM_LANGUAGE_FALLBACK = 'en'
+function detectSystemLanguage () {
+    const list = (typeof navigator !== 'undefined' && (navigator.languages?.length ? navigator.languages : [navigator.language])) || []
+    for (const tag of list) {
+        const base = String(tag || '').toLowerCase().split('-')[0]
+        if (DICTIONARIES[base]) return base
+    }
+    return SYSTEM_LANGUAGE_FALLBACK
+}
+
 async function initI18n () {
     try {
         if (window.electronAPI?.storeGet) {
             const settings = await window.electronAPI.storeGet('settings', {})
             if (settings?.language && typeof settings.language === 'string') {
                 currentLanguage = settings.language
+            } else {
+                const messengers = await window.electronAPI.storeGet('messengers', [])
+                const seenAuth = await window.electronAPI.storeGet('onboardingAuthSeen', false)
+                if (!(Array.isArray(messengers) && messengers.length) && !seenAuth) {
+                    currentLanguage = detectSystemLanguage()
+                    cachedDictionary = null
+                    cachedLanguage = null
+                    await window.electronAPI.storeSet('settings', { ...(settings || {}), language: currentLanguage })
+                }
             }
         }
     } catch (error) {

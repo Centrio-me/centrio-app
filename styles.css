@@ -16586,7 +16586,213 @@ body.onb-active #titlebarMenu {
 .ws-toast.show { opacity: 1; transform: translate(-50%, 0); }
 
 /* Войти автоматически (командное хранилище паролей) */
-.vault-login-bar { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); z-index: 60; display: flex; align-items: center; gap: 12px; max-width: 86%; padding: 9px 10px 9px 16px; border-radius: 999px; background: var(--bg-elevated, #1c1914); color: var(--text-primary, #f5f1e8); border: 1px solid var(--accent); box-shadow: 0 10px 34px #0009; font-size: 13px; }
+.vault-login-bar { pointer-events: auto; position: absolute; top: 12px; left: 50%; transform: translateX(-50%); z-index: 60; display: flex; align-items: center; gap: 12px; max-width: 86%; padding: 9px 10px 9px 16px; border-radius: 999px; background: var(--bg-elevated, #1c1914); color: var(--text-primary, #f5f1e8); border: 1px solid var(--accent); box-shadow: 0 10px 34px #0009; font-size: 13px; }
 .vault-login-text { line-height: 1.3; }
 .vault-login-btn { flex: none; padding: 7px 14px; border: 0; border-radius: 999px; background: var(--accent); color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
 .vault-login-btn:hover { filter: brightness(1.1); }
+
+/* ===== Менеджер паролей (renderer/passwords-ui.js, renderer/pm-bar.js) ===== */
+.settings-view-switch { flex: none; align-self: center; }
+.settings-view-option { padding: 5px 12px; font-size: 12px; }
+.pm-list { padding: 4px 8px 8px; }
+.pm-group { padding: 10px 8px 4px; font-size: 11px; letter-spacing: .04em; text-transform: uppercase; color: var(--text-muted); }
+.pm-item { border-radius: 10px; }
+.pm-item.open { background: var(--bg-tertiary); }
+.pm-item-head { display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 10px; cursor: pointer; }
+.pm-item-head:hover { background: var(--bg-tertiary); }
+.pm-item-head:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.pm-avatar { position: relative; flex: none; width: 32px; height: 32px; border-radius: 9px; display: grid; place-items: center; overflow: hidden; font-weight: 600; font-size: 14px; color: #fff; background: hsl(var(--pm-hue, 210) 45% 42%); }
+.pm-avatar.has-icon { background: #fff; }
+.pm-avatar-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; padding: 4px; box-sizing: border-box; }
+.pm-info { min-width: 0; flex: 1; }
+.pm-name { font-size: 13px; font-weight: 600; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pm-sub { font-size: 11.5px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pm-detail { padding: 2px 10px 12px 50px; display: flex; flex-direction: column; gap: 8px; }
+.pm-detail-row { display: flex; flex-direction: column; gap: 2px; }
+.pm-detail-label { font-size: 11px; color: var(--text-muted); }
+.pm-detail-body { display: flex; align-items: center; gap: 4px; min-width: 0; }
+.pm-value { flex: 1; min-width: 0; font-size: 13px; color: var(--text-primary); overflow-wrap: anywhere; word-break: break-all; user-select: text; }
+.pm-secret.shown { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 12.5px; letter-spacing: .02em; }
+.pm-detail-actions { display: flex; gap: 8px; margin-top: 4px; }
+.pm-icon-btn { flex: none; width: 26px; height: 26px; border: 0; border-radius: 7px; background: transparent; color: var(--text-secondary); display: grid; place-items: center; cursor: pointer; }
+.pm-icon-btn:hover { background: var(--bg-primary); color: var(--text-primary); }
+.pm-header-btn { width: 28px; height: 28px; }
+.pm-fill-btn { flex: none; border: 0; border-radius: 7px; padding: 4px 10px; font: inherit; font-size: 12px; cursor: pointer; background: var(--accent); color: #fff; }
+.pm-danger-btn { border: 1px solid #e5534b66; border-radius: 8px; padding: 6px 12px; background: transparent; color: #e5534b; font: inherit; font-size: 12.5px; cursor: pointer; }
+.pm-danger-btn:hover { background: #e5534b1f; }
+.pm-empty { padding: 28px 14px; text-align: center; }
+.pm-empty-title { font-size: 13px; font-weight: 600; color: var(--text-primary); margin-bottom: 6px; }
+.pm-empty-hint { font-size: 12px; line-height: 1.5; color: var(--text-muted); }
+.pm-note { padding: 8px 14px 12px; font-size: 11.5px; color: var(--text-muted); }
+.pm-note:empty { display: none; }
+.pm-note-err { color: #e5534b; }
+.pm-gate { padding: 26px 16px; display: flex; flex-direction: column; gap: 10px; }
+.pm-gate-icon { width: 48px; height: 48px; border-radius: 14px; display: grid; place-items: center; background: var(--accent-dim, #5aa9ff22); color: var(--accent); margin-bottom: 4px; }
+.pm-gate-title { font-size: 15px; font-weight: 600; color: var(--text-primary); }
+.pm-gate-text { font-size: 12.5px; line-height: 1.5; color: var(--text-secondary); }
+.pm-gate-warn { font-size: 11.5px; line-height: 1.5; color: var(--text-muted); border-left: 2px solid var(--accent); padding-left: 10px; }
+.pm-gate-btn { width: 100%; }
+.pm-settings { padding: 8px 10px 14px; display: flex; flex-direction: column; gap: 10px; }
+.pm-back { align-self: flex-start; }
+.pm-sync { padding: 10px 12px; border-radius: 10px; background: var(--bg-tertiary); }
+.pm-sync-title { font-size: 12.5px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px; }
+.pm-sync-text { font-size: 12px; line-height: 1.5; color: var(--text-secondary); }
+.pm-danger-zone { margin-top: 8px; padding-top: 12px; border-top: 1px solid var(--border-light); display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+.pm-banner { margin: 4px 0 8px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--accent); background: var(--bg-tertiary); }
+.pm-banner-text { font-size: 12.5px; line-height: 1.5; color: var(--text-primary); margin-bottom: 8px; }
+.pm-editor { padding: 8px 14px; display: none; }
+.pm-editor-title { font-size: 13px; font-weight: 600; margin-bottom: 10px; color: var(--text-primary); }
+.pm-field { display: block; margin-bottom: 10px; }
+.pm-field-label { display: block; font-size: 11.5px; color: var(--text-muted); margin-bottom: 4px; }
+.pm-input { width: 100%; box-sizing: border-box; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border-light); background: var(--bg-primary); color: var(--text-primary); font: inherit; font-size: 13px; }
+.pm-input:focus { outline: none; border-color: var(--accent); }
+.pm-editor-row { display: flex; gap: 14px; margin-bottom: 8px; }
+.pm-link-btn { border: 0; background: transparent; color: var(--accent); font: inherit; font-size: 12px; cursor: pointer; padding: 0; }
+.pm-editor-error { min-height: 16px; font-size: 12px; color: #e5534b; margin-bottom: 6px; }
+.pm-editor-error:empty { min-height: 0; margin: 0; }
+.pm-editor-buttons { display: flex; justify-content: flex-end; gap: 8px; }
+
+.pm-bar { position: absolute; top: 0; left: 50%; transform: translateX(-50%); z-index: 60; pointer-events: auto; width: max-content; max-width: 78%; display: flex; align-items: center; flex-wrap: wrap; justify-content: center; gap: 10px; padding: 9px 18px 11px; border-radius: 0 0 16px 16px; background: var(--pm-bar-bg, var(--bg-primary)); color: var(--text-primary, #f5f1e8); box-shadow: 0 10px 24px #0007; font-size: 13px; animation: pm-bar-in .22s cubic-bezier(.2, .8, .2, 1); }
+/* the top corners flow into the panel above, like a tab hanging from it */
+.pm-bar::before, .pm-bar::after { content: ""; position: absolute; top: 0; width: 16px; height: 16px; pointer-events: none; }
+.pm-bar::before { right: 100%; background: radial-gradient(circle at 0 100%, transparent 15.5px, var(--pm-bar-bg, var(--bg-primary)) 16px); }
+.pm-bar::after { left: 100%; background: radial-gradient(circle at 100% 100%, transparent 15.5px, var(--pm-bar-bg, var(--bg-primary)) 16px); }
+@keyframes pm-bar-in { from { transform: translate(-50%, -100%); opacity: .5; } to { transform: translate(-50%, 0); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .pm-bar { animation: none; } }
+.pm-bar-text { line-height: 1.3; }
+.pm-bar-sub { display: block; font-size: 11.5px; color: var(--text-muted); }
+.pm-bar-btn { flex: none; padding: 7px 14px; border: 0; border-radius: 999px; background: var(--accent); color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
+.pm-bar-btn:hover { filter: brightness(1.1); }
+.pm-bar-ghost { flex: none; padding: 7px 10px; border: 0; border-radius: 999px; background: transparent; color: var(--text-secondary); font: inherit; cursor: pointer; }
+.pm-bar-ghost:hover { color: var(--text-primary); background: var(--bg-tertiary); }
+.pm-bar-x { flex: none; width: 24px; height: 24px; border: 0; border-radius: 50%; background: transparent; color: var(--text-muted); font-size: 16px; line-height: 1; cursor: pointer; }
+.pm-bar-x:hover { color: var(--text-primary); background: var(--bg-tertiary); }
+.pm-bar-input, .pm-bar-select { padding: 7px 10px; border-radius: 8px; border: 1px solid var(--border-light); background: var(--bg-primary); color: var(--text-primary); font: inherit; font-size: 13px; min-width: 150px; }
+.pm-bar-input:focus { outline: none; border-color: var(--accent); }
+
+#cloudLoginBtn { width: 100%; box-sizing: border-box; }
+
+/* ===== Экран загрузки (2026-10-06): шрифты и логотип сайта centrio.me, факты о программе ===== */
+#startupSplash { display: grid; grid-template-rows: 1fr auto; align-items: stretch; justify-content: stretch; background: #0b0a08; color: #f5f1e8; font-family: 'Geist', 'Golos Text', system-ui, sans-serif; isolation: isolate; }
+#startupSplash .sp-mesh { position: absolute; inset: 0; z-index: -2; background: radial-gradient(60% 55% at 18% 12%, #7b68ee33, transparent 70%), radial-gradient(50% 50% at 88% 92%, #5aa9ff26, transparent 70%), #0b0a08; }
+#startupSplash .sp-mesh::after { content: ""; position: absolute; inset: -20%; background: radial-gradient(40% 40% at 70% 20%, #7b68ee22, transparent 70%); animation: spDrift 18s ease-in-out infinite alternate; }
+@keyframes spDrift { to { transform: translate(-8%, 10%) scale(1.15); } }
+#startupSplash .sp-grain { position: absolute; inset: 0; z-index: -1; opacity: .07; mix-blend-mode: overlay; background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence baseFrequency='.9' numOctaves='2'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"); }
+#startupSplash .sp-ring { position: absolute; right: -6vmin; bottom: -14vmin; width: 62vmin; height: 62vmin; border-radius: 50%; border: 1px solid #f5f1e810; z-index: -1; }
+#startupSplash .sp-ring::after { content: ""; position: absolute; inset: 14%; border-radius: 50%; border: 1px solid #f5f1e80c; }
+#startupSplash .sp-main { display: grid; place-items: center; padding: 6vh 6vw; }
+#startupSplash .sp-col { width: min(540px, 100%); display: flex; flex-direction: column; gap: 42px; }
+#startupSplash .sp-brand { display: flex; align-items: center; gap: 12px; }
+#startupSplash .sp-logo { width: 44px; height: 44px; object-fit: contain; }
+#startupSplash .sp-word { font-family: 'Bricolage Grotesque', 'Geist', sans-serif; font-weight: 700; font-size: 28px; letter-spacing: -.02em; color: #fff; }
+#startupSplash .sp-fact { min-height: 190px; }
+#startupSplash .sp-eyebrow { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: #5aa9ff; }
+#startupSplash .sp-eyebrow::before { content: ""; width: 22px; height: 1px; background: #5aa9ff; }
+#startupSplash .sp-fact-title { margin: 0; font-family: 'Bricolage Grotesque', 'Geist', sans-serif; font-weight: 700; font-size: clamp(24px, 3.4vw, 34px); line-height: 1.16; letter-spacing: -.02em; text-wrap: balance; }
+#startupSplash .sp-fact-text { margin: 14px 0 0; max-width: 46ch; font-size: 15px; line-height: 1.55; color: #9b958a; }
+#startupSplash .sp-fact > * { animation: spRise .5s cubic-bezier(.2, .7, .2, 1) both; }
+#startupSplash .sp-fact-text { animation-delay: .08s; }
+@keyframes spRise { from { opacity: 0; transform: translateY(10px); } }
+#startupSplash .sp-progress { display: flex; flex-direction: column; gap: 10px; }
+#startupSplash .sp-row { display: flex; justify-content: space-between; gap: 16px; font-size: 14px; font-variant-numeric: tabular-nums; transition: opacity .2s; }
+#startupSplash .sp-stage { color: #f5f1e8; font-weight: 500; transition: opacity .2s, transform .2s; }
+#startupSplash .sp-pct { color: #9b958a; }
+#startupSplash .sp-bar { height: 3px; border-radius: 3px; background: #26231d; overflow: hidden; }
+#startupSplash .sp-fill { height: 100%; width: 0; border-radius: 3px; background: linear-gradient(90deg, #7b68ee, #5aa9ff); }
+#startupSplash .sp-hint { min-height: 18px; font-size: 13px; color: #9b958a; transition: opacity .2s, transform .2s; }
+#startupSplash .sp-slow { min-height: 17px; font-size: 12.5px; color: #6f695e; }
+#startupSplash .sp-foot { display: flex; justify-content: center; padding: 18px 6vw 24px; border-top: 1px solid #f5f1e80d; }
+#startupSplash .sp-dots { display: flex; gap: 6px; }
+#startupSplash .sp-dots i { width: 6px; height: 6px; border-radius: 50%; background: #f5f1e822; transition: .3s; }
+#startupSplash .sp-dots i.on { background: #5aa9ff; transform: scale(1.25); }
+@media (prefers-reduced-motion: reduce) { #startupSplash * { animation: none !important; } }
+
+/* ===== Экран блокировки 3.0: две колонки, часы с точками, карточка PIN (шрифты и логотип сайта centrio.me) ===== */
+#lockScreen { font-family: 'Geist', 'Golos Text', system-ui, sans-serif; }
+#lockScreen .lock-stack { display: grid; grid-template-columns: minmax(0, 1.08fr) minmax(0, 1fr); align-items: stretch; gap: 0 clamp(24px, 6vw, 96px); width: min(1180px, calc(100vw - 48px)); min-height: min(660px, calc(100vh - 64px)); }
+#lockScreen .lock-left { display: flex; flex-direction: column; justify-content: space-between; gap: 28px; padding: 8px 0 8px clamp(28px, 6vw, 88px); min-width: 0; }
+#lockScreen .lock-brand { display: flex; align-items: center; gap: 12px; }
+#lockScreen .lock-brand-logo { width: 56px; height: 56px; object-fit: contain; }
+#lockScreen .lock-brand-name { font-weight: 700; font-size: 30px; letter-spacing: -.02em; color: #fff; }
+#lockScreen .lock-brand .brand-period { width: .15em; height: .15em; min-width: 7px; min-height: 7px; align-self: flex-end; margin: 0 0 9px -4px; font-size: 30px; }
+#lockScreen .lock-hero { display: flex; flex-direction: column; gap: 20px; }
+#lockScreen .lock-clock-wrap { align-items: flex-start; margin: 0; gap: 14px; animation: none; }
+#lockScreen .lock-clock-time { font-family: 'Bricolage Grotesque', 'Geist', sans-serif; font-weight: 700; font-size: clamp(72px, 11vw, 150px); line-height: .92; letter-spacing: -.04em; text-shadow: none; display: flex; align-items: center; }
+.lock-colon { display: inline-flex; flex-direction: column; justify-content: center; gap: .14em; width: .3em; align-items: center; }
+.lock-colon i { width: .13em; height: .13em; border-radius: 50%; background: var(--accent); }
+#lockScreen .lock-clock-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 14px; }
+#lockScreen .lock-clock-date { font-size: 17px; font-weight: 500; color: var(--text-secondary); letter-spacing: 0; }
+#lockScreen .lock-widget-weather { display: flex; align-items: center; gap: 6px; padding: 4px 11px; border-radius: 999px; background: color-mix(in srgb, var(--text-primary) 7%, transparent); border: 0; box-shadow: none; }
+#lockScreen .lock-widget-weather:hover { transform: none; }
+#lockScreen .lock-weather-icon { font-size: 15px; }
+#lockScreen .lock-weather-info { display: flex; gap: 6px; align-items: baseline; font-size: 13px; }
+#lockScreen .lock-weather-temp { font-weight: 600; }
+#lockScreen .lock-weather-city { color: var(--text-secondary); }
+#lockScreen .lock-greeting { font-family: 'Bricolage Grotesque', 'Geist', sans-serif; font-weight: 500; font-size: clamp(22px, 2.6vw, 30px); letter-spacing: -.01em; }
+#lockScreen .lock-widgets { display: block; margin: 0; padding: 0; background: none; }
+#lockScreen .lock-widget-activity { background: none; border: 0; box-shadow: none; padding: 0; max-width: 460px; }
+#lockScreen .lock-widget-title { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; font-size: 12px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); }
+#lockScreen .lock-widget-title::before { content: ""; width: 22px; height: 1px; background: var(--accent); }
+#lockScreen .lock-widget-activity-list { display: flex; flex-wrap: wrap; gap: 8px; }
+#lockScreen .lock-activity-item { display: flex; align-items: center; gap: 8px; padding: 6px 12px 6px 7px; border-radius: 12px; background: color-mix(in srgb, var(--text-primary) 6%, transparent); border: 1px solid color-mix(in srgb, var(--text-primary) 9%, transparent); font-size: 13px; }
+#lockScreen .lock-activity-icon { width: 22px; height: 22px; border-radius: 7px; object-fit: contain; }
+#lockScreen .lock-activity-count { font-weight: 700; font-variant-numeric: tabular-nums; }
+#lockScreen .lock-activity-time { display: none; }
+#lockScreen .lock-privacy-note { margin-top: 10px; font-size: 12px; color: var(--text-muted); }
+#lockScreen .lock-right { display: grid; place-items: center; min-width: 0; }
+#lockScreen .lock-box { width: min(380px, 100%); min-width: 0; padding: 28px 26px 22px; gap: 0; border-radius: 26px; text-align: center; }
+#lockScreen .lock-logo-wrap { margin-bottom: 14px; }
+#lockScreen .lock-logo-circle { width: 52px; height: 52px; border-radius: 16px; background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); }
+#lockScreen .lock-title { font-family: 'Bricolage Grotesque', 'Geist', sans-serif; font-weight: 700; font-size: 22px; letter-spacing: -.01em; margin: 0; }
+#lockScreen .lock-sub { margin: 6px 0 0; min-height: 20px; font-size: 13.5px; color: var(--text-secondary); }
+#lockScreen .lock-pin-wrap { gap: 16px; margin: 22px 0 20px; }
+#lockScreen .lock-pin-dot { width: 14px; height: 14px; border-radius: 50%; background: transparent; border: 1.5px solid color-mix(in srgb, var(--text-primary) 30%, transparent); box-shadow: none; }
+#lockScreen .lock-pin-dot::after { display: none !important; }
+#lockScreen .lock-pin-dot.filled { background: var(--accent); border-color: var(--accent); transform: scale(1.15); box-shadow: 0 0 18px var(--accent-glow); }
+#lockScreen .lock-pin-dot.error { background: var(--danger); border-color: var(--danger); box-shadow: 0 0 18px rgba(239, 68, 68, .45); }
+#lockScreen .lock-numpad { width: 100%; gap: 10px; margin: 0; }
+#lockScreen .lock-key { width: 100%; height: clamp(44px, 7.2vh, 58px); border-radius: 16px; font-size: 22px; font-weight: 500; font-variant-numeric: tabular-nums; }
+#lockScreen .lock-key-enter { background: linear-gradient(145deg, var(--accent), var(--accent-hover, var(--accent))); border-color: transparent; }
+#lockScreen .lock-error { margin: 12px 0 0; }
+#lockScreen .lock-attempts { min-height: 16px; margin-top: 10px; font-size: 12px; color: var(--text-muted); }
+#lockScreen .lock-box.is-locked .lock-numpad, #lockScreen .lock-box.is-locked .lock-pin-wrap { opacity: .25; pointer-events: none; }
+#lockScreen .lock-box.is-locked .lock-logo-circle { color: var(--danger); background: rgba(239, 68, 68, .14); }
+#lockScreen .lock-box.is-locked .lock-sub { color: var(--danger); }
+#lockScreen .forgot-pin-btn { margin-top: 4px; }
+@media (max-width: 860px) {
+    #lockScreen .lock-stack { grid-template-columns: 1fr; width: min(440px, calc(100vw - 32px)); gap: 28px; }
+    #lockScreen .lock-left { padding-left: 0; }
+    #lockScreen .lock-clock-time { font-size: clamp(64px, 20vw, 110px); }
+}
+/* the background layers of the lock screen are positioned, so everything above them must be positioned too */
+#lockScreen .lock-stack { position: relative; z-index: 1; }
+#lockScreen .lock-left, #lockScreen .lock-right { position: relative; z-index: 1; }
+#lockScreen .lock-brand-name { display: inline-flex; align-items: flex-end; }
+#lockScreen .lock-brand-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #74a0ff; margin: 0 0 8px 3px; }
+#lockScreen .lock-clock-meta { flex-wrap: nowrap; }
+#lockScreen .lock-clock-date { white-space: nowrap; text-transform: none; }
+#lockScreen .lock-widget-weather { flex: none; }
+#lockScreen .lock-weather-temp, #lockScreen .lock-weather-city { font-size: 13px; line-height: 1.2; }
+#lockScreen .lock-weather-info { flex-direction: row; }
+#lockScreen .lock-left-foot { font-size: 12px; color: var(--text-muted); }
+#lockScreen .lock-brand-logo { width: 38px; height: 38px; }
+#lockScreen .lock-brand-name { font-size: 28px; }
+#lockScreen .lock-brand-dot { width: 6px; height: 6px; margin: 0 0 7px 3px; }
+#lockScreen .lock-widget-activity { flex: none; max-width: 460px; width: auto; backdrop-filter: none; -webkit-backdrop-filter: none; animation: none; }
+#lockScreen .lock-widget-activity:hover { transform: none; box-shadow: none; }
+#lockScreen .lock-activity-item { flex: none; width: auto; margin: 0; padding: 6px 12px 6px 7px; border-radius: 12px; background: color-mix(in srgb, var(--bg-primary) 55%, transparent); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+#lockScreen .lock-activity-item:hover { background: color-mix(in srgb, var(--bg-primary) 70%, transparent); }
+#lockScreen .lock-activity-name { flex: none; font-size: 13px; font-weight: 500; }
+#lockScreen .lock-activity-count { font-size: 13px; font-weight: 700; color: var(--text-primary); background: none; padding: 0; }
+#lockScreen .lock-activity-icon { box-shadow: none; object-fit: contain; }
+#lockScreen .lock-widget-title { font-size: 12px; letter-spacing: .14em; color: var(--accent); margin-bottom: 12px; }
+#lockScreen .lock-left { text-shadow: 0 1px 16px rgba(0, 0, 0, .45); }
+#lockScreen .lock-clock-date, #lockScreen .lock-privacy-note, #lockScreen .lock-left-foot { color: color-mix(in srgb, var(--text-primary) 72%, transparent); }
+#lockScreen .lock-widget-activity-list { flex-direction: row; align-items: center; }
+#lockScreen .lock-widget-title { color: var(--text-primary); }
+#lockScreen .lock-weather-city { color: color-mix(in srgb, var(--text-primary) 78%, transparent); }
+#lockScreen .lock-box { width: min(332px, 100%); padding: 26px 22px 20px; }
+/* brand pinned to the top, clock block centred against the PIN card (the old third row, the footer, is gone) */
+#lockScreen .lock-left { display: grid; grid-template-rows: 1fr auto 1fr; justify-content: stretch; }
+#lockScreen .lock-brand { align-self: start; }
+#lockScreen .lock-hero { grid-row: 2; }

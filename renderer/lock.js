@@ -50,8 +50,32 @@ function createLockApi({
         // бессмысленных перерисовок 60 раз/мин.
         if (timeStr === lastClockTimeStr) return
         lastClockTimeStr = timeStr
-        timeEl.textContent = timeStr
+        renderClockDigits(timeEl, timeStr)
         dateEl.textContent = formatClockDate(now)
+        renderGreeting(now)
+    }
+
+    // 21:47 -> "21" "47" with two round dots between the digits (no ":" glyph).
+    function renderClockDigits(el, timeStr) {
+        const [hours, minutes] = String(timeStr).split(':')
+        el.textContent = ''
+        if (minutes === undefined) { el.textContent = timeStr; return }
+        const dots = document.createElement('span')
+        dots.className = 'lock-colon'
+        dots.appendChild(document.createElement('i'))
+        dots.appendChild(document.createElement('i'))
+        el.append(document.createTextNode(hours), dots, document.createTextNode(minutes))
+    }
+
+    function renderGreeting(now) {
+        const el = document.getElementById('lockGreeting')
+        if (!el) return
+        const hour = now.getHours()
+        const part = hour < 5 ? 'Night' : hour < 12 ? 'Morning' : hour < 18 ? 'Day' : 'Evening'
+        const base = tGet('lock.greet' + part)
+        const user = store.get('cloud.user', null)
+        const firstName = String((user && (user.name || user.displayName)) || '').trim().split(/\s+/)[0]
+        el.textContent = firstName ? base + ', ' + firstName : base
     }
 
     function startClock() {
@@ -119,6 +143,7 @@ function createLockApi({
         const list = document.getElementById('lockActivityList')
         const widget = document.getElementById('lockWidgetActivity')
         if (!list || !widget) return
+        if ((store.get('settings', {}) || {}).lockShowActivity === false) { widget.style.display = 'none'; return }
 
         let history = []
         try {
@@ -438,6 +463,61 @@ function createLockApi({
         }
     }
 
+    // ── Ограничение попыток ───────────────────────────────────────────────
+    // 3 ошибки подряд — пауза 30 с, дальше каждая следующая тройка вдвое дольше (до 5 мин). Хранится в localStorage,
+    // чтобы перезапуск приложения не обнулял счётчик.
+    const THROTTLE_KEY = 'centrio.lockThrottle'
+    const MAX_FREE_ATTEMPTS = 3
+    const BASE_LOCKOUT_S = 30
+    const MAX_LOCKOUT_S = 300
+    let throttleTimer = null
+
+    function readThrottle() {
+        try { return JSON.parse(localStorage.getItem(THROTTLE_KEY) || '{}') || {} } catch { return {} }
+    }
+    function writeThrottle(value) {
+        try { localStorage.setItem(THROTTLE_KEY, JSON.stringify(value)) } catch {}
+    }
+    function clearThrottle() {
+        try { localStorage.removeItem(THROTTLE_KEY) } catch {}
+        if (throttleTimer) { clearInterval(throttleTimer); throttleTimer = null }
+        applyThrottleUi()
+    }
+    function throttleRemainingMs() {
+        const until = Number(readThrottle().until) || 0
+        return Math.max(0, until - Date.now())
+    }
+    function registerFailedAttempt() {
+        const data = readThrottle()
+        const fails = (Number(data.fails) || 0) + 1
+        const next = { fails, until: 0 }
+        if (fails % MAX_FREE_ATTEMPTS === 0) {
+            const rounds = Math.floor(fails / MAX_FREE_ATTEMPTS) - 1
+            next.until = Date.now() + Math.min(MAX_LOCKOUT_S, BASE_LOCKOUT_S * 2 ** rounds) * 1000
+        }
+        writeThrottle(next)
+        applyThrottleUi()
+    }
+    function applyThrottleUi() {
+        const box = document.querySelector('#lockScreen .lock-box')
+        const sub = document.getElementById('lockSub')
+        const attempts = document.getElementById('lockAttempts')
+        if (!box || !sub || !attempts) return
+        const remaining = throttleRemainingMs()
+        if (remaining > 0) {
+            box.classList.add('is-locked')
+            sub.textContent = tGet('lock.tooMany', { s: Math.ceil(remaining / 1000) })
+            attempts.textContent = ''
+            if (!throttleTimer) throttleTimer = setInterval(applyThrottleUi, 1000)
+            return
+        }
+        box.classList.remove('is-locked')
+        if (throttleTimer) { clearInterval(throttleTimer); throttleTimer = null }
+        sub.textContent = tGet('lock.sub')
+        const fails = (Number(readThrottle().fails) || 0) % MAX_FREE_ATTEMPTS
+        attempts.textContent = fails > 0 ? tGet('lock.attemptsOf', { n: fails, max: MAX_FREE_ATTEMPTS }) : ''
+    }
+
     function showLockScreen() {
         const lockScreen = document.getElementById('lockScreen')
         const lockInput = document.getElementById('lockInput')
@@ -450,6 +530,7 @@ function createLockApi({
         document.getElementById('lockError').style.display = 'none'
         applyLockAvatar()
         applyLockBackground()
+        applyThrottleUi()
         // bindLockUi() (renderer/lock-bind.js) wires the digit keys etc. once
         // at startup but was written before the bg-picker existed, so it never
         // attaches the picker's listeners — bindLockBgPicker() is idempotent
@@ -493,6 +574,7 @@ function createLockApi({
 
         const password = input.value
         if (password.length !== 4) return
+        if (throttleRemainingMs() > 0) { input.value = ''; updateLockDots(''); return }
 
         let valid = false
         try {
@@ -503,10 +585,12 @@ function createLockApi({
         }
 
         if (valid) {
+            clearThrottle()
             hideLockScreen()
             input.value = ''
             updateLockDots('')
         } else {
+            registerFailedAttempt()
             showLockDotsError()
             const errorEl = document.getElementById('lockError')
             if (errorEl) errorEl.style.display = 'block'
@@ -848,6 +932,20 @@ function createLockApi({
         if (err) err.style.display = 'none'
         setTimeout(() => input?.focus(), 100)
     }
+
+    // Settings -> Security: show or hide the "while you were away" counters on this screen.
+    function bindLockActivityToggle() {
+        const toggle = document.getElementById('settingLockActivity')
+        if (!toggle || toggle.dataset.bound) return
+        toggle.dataset.bound = '1'
+        const sync = () => { toggle.checked = (store.get('settings', {}) || {}).lockShowActivity !== false }
+        sync()
+        document.querySelector('.settings-nav-item[data-section="security"]')?.addEventListener('click', sync)
+        toggle.addEventListener('change', () => {
+            store.set('settings', { ...(store.get('settings', {}) || {}), lockShowActivity: toggle.checked })
+        })
+    }
+    bindLockActivityToggle()
 
     return {
         isPasswordEnabled,

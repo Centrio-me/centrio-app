@@ -11,6 +11,7 @@ const ITEMS = [
     { id: 'todos', buttonId: 'todosBtn', labelKey: 'rightbar.todos', labelFallback: 'Задачи', panelKey: 'todos' },
     { id: 'notes', buttonId: 'notesBtn', labelKey: 'rightbar.notes', labelFallback: 'Заметки', panelKey: 'notes' },
     { id: 'quickReplies', buttonId: 'quickRepliesBtn', labelKey: 'rightbar.quickReplies', labelFallback: 'Быстрые ответы', panelKey: 'quickReplies' },
+    { id: 'passwords', buttonId: 'passwordsBtn', labelKey: 'rightbar.passwords', labelFallback: 'Пароли', panelKey: 'passwords' },
     { id: 'mediaPlayer', buttonId: 'mediaPlayerBtn', labelKey: 'rightbar.mediaPlayer', labelFallback: 'Медиаплеер', panelKey: null }
 ]
 const KNOWN_IDS = new Set(ITEMS.map((item) => item.id))
@@ -33,6 +34,10 @@ function bindRightbarCustom({ store, tGet, hasEffectivePro, requirePro, closeRig
 
     const label = (item) => tGet(item.labelKey) || item.labelFallback
 
+    // The password manager is not a PRO perk: everyone can switch it on or off (settings.passwordManager).
+    const isFreeToggle = (id) => id === 'passwords'
+    const isPasswordManagerOn = () => (store.get('settings', {}) || {}).passwordManager !== false
+
     function getLayout() {
         return normalizeLayout(store.get('rightbarLayout', null))
     }
@@ -53,7 +58,7 @@ function bindRightbarCustom({ store, tGet, hasEffectivePro, requirePro, closeRig
             const item = ITEMS.find((candidate) => candidate.id === id)
             const button = document.getElementById(item.buttonId)
             if (!button) return
-            const hide = pro && layout.hidden.includes(id)
+            const hide = isFreeToggle(id) ? !isPasswordManagerOn() : (pro && layout.hidden.includes(id))
             button.classList.toggle('rb-user-hidden', hide)
             button.style.order = pro ? String(index) : ''
             if (hide && item.panelKey && getActivePanelKey() === item.panelKey) closeRightPanel()
@@ -65,6 +70,13 @@ function bindRightbarCustom({ store, tGet, hasEffectivePro, requirePro, closeRig
     }
 
     function toggleItem(id, visible) {
+        if (isFreeToggle(id)) {
+            const settings = store.get('settings', {}) || {}
+            store.set('settings', { ...settings, passwordManager: visible })
+            apply()
+            render()
+            return
+        }
         if (!guardPro()) { render(); return }
         const layout = getLayout()
         const hidden = visible ? layout.hidden.filter((x) => x !== id) : [...layout.hidden, id]
@@ -126,7 +138,7 @@ function bindRightbarCustom({ store, tGet, hasEffectivePro, requirePro, closeRig
             toggle.className = 'toggle'
             const input = document.createElement('input')
             input.type = 'checkbox'
-            input.checked = !(pro && layout.hidden.includes(id))
+            input.checked = isFreeToggle(id) ? isPasswordManagerOn() : !(pro && layout.hidden.includes(id))
             input.setAttribute('aria-label', label(item))
             input.addEventListener('change', () => toggleItem(id, input.checked))
             const slider = document.createElement('span')

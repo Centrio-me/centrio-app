@@ -61,6 +61,8 @@ const validReceiveChannels = new Set([
     'messenger-unread-count',
     // Sign-in state of a messenger page (main-process poll, see startLoginStatePolling).
     'messenger-login-state',
+    // Password manager: sign-in form seen / "save this password?" / auto-lock (main/services/pmWatcher.js).
+    'pm:event',
     // Same audit — main/ipc/appNotifications.js sends this for live updates
     // to the in-app "Уведомления" (admin/changelog) history; renderer/
     // app-notif-bind.js subscribes but this was missing too, so that panel
@@ -135,6 +137,26 @@ const validInvokeChannels = new Set([
     'api-org-get-credential',
     'vault:get-public-key',
     'vault:autofill',
+    'pm:status',
+    'pm:setup',
+    'pm:unlock',
+    'pm:lock',
+    'pm:change-master',
+    'pm:reset',
+    'pm:set-autolock',
+    'pm:list',
+    'pm:save',
+    'pm:delete',
+    'pm:reveal',
+    'pm:copy',
+    'pm:matches',
+    'pm:autofill',
+    'pm:capture-save',
+    'pm:capture-dismiss',
+    'pm:export',
+    'pm:merge-remote',
+    'pm:adopt-remote',
+    'pm:discard-remote',
     'api-org-get-task-comments',
     'api-org-get-tasks',
     'api-org-mark-tasks-seen',

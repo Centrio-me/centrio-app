@@ -128,10 +128,36 @@ function fillLoginFormInPage(username, password, passwordOnly) {
         })
     }
     const USER_SELECTOR = 'input[type="email"], input[type="tel"], input[type="text"], input:not([type])'
-    const passwordField = firstVisible('input[type="password"]')
+    // A page can show several password forms at once (sign-in AND registration, e.g. letyshops.com): pick the
+    // sign-in one — "current-password", a sign-in looking button, a single password field — not simply the first.
+    function scoreSignIn(field) {
+        let score = 0
+        const autocomplete = (field.getAttribute('autocomplete') || '').toLowerCase()
+        if (autocomplete.indexOf('current-password') >= 0) score += 10
+        if (autocomplete.indexOf('new-password') >= 0) score -= 10
+        const scope = field.form || field.closest('form') || document.body
+        let text = ''
+        const buttons = scope.querySelectorAll('button, input[type="submit"], [role="button"]')
+        for (let i = 0; i < buttons.length; i++) text += ' ' + (buttons[i].textContent || buttons[i].value || '')
+        text = text.toLowerCase()
+        if (/log ?in|sign ?in|войти|вход/.test(text)) score += 3
+        if (/sign ?up|register|регистр|создать|зарегистр/.test(text)) score -= 3
+        if (scope.querySelectorAll('input[type="password"]').length > 1) score -= 4 // a confirm field means registration
+        const rect = field.getBoundingClientRect()
+        if (rect.top >= 0 && rect.bottom <= window.innerHeight) score += 1
+        return score
+    }
+    let passwordField = null
+    let bestScore = -Infinity
+    const passwordFields = document.querySelectorAll('input[type="password"]')
+    for (let i = 0; i < passwordFields.length; i++) {
+        if (!visible(passwordFields[i])) continue
+        const score = scoreSignIn(passwordFields[i])
+        if (score > bestScore) { bestScore = score; passwordField = passwordFields[i] }
+    }
     if (passwordField) {
         const scope = passwordField.form || document
-        const userField = firstVisible(USER_SELECTOR + ', input[autocomplete="username"]', scope)
+        const userField = firstVisible('input[autocomplete="username"]', scope) || firstVisible(USER_SELECTOR, scope)
         if (userField && username && !userField.value) setValue(userField, username)
         setValue(passwordField, password)
         setTimeout(function () { submit(passwordField) }, 250)
@@ -159,6 +185,32 @@ function findMessengerContents(messengerId) {
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
 /**
+ * Types a login+password into the sign-in form of messenger , but only while the page belongs to
+ * 's site (or its known sign-in provider). Shared by the team vault and the personal password manager.
+ * Resolves with a status only: { success: true } | { success: false, error: 'NO_PAGE' | 'ORIGIN_MISMATCH' | 'NO_FORM' }.
+ */
+async function fillSecretIntoMessenger({ messengerId, assignedUrl, secret }) {
+    const contents = findMessengerContents(messengerId)
+    if (!contents) return { success: false, error: 'NO_PAGE' }
+    if (!secret || typeof secret.p !== 'string') return { success: false, error: 'NO_FORM' }
+
+    // Up to ~15 s: the password field of a two-step form only appears after the first step.
+    let usernameDone = false
+    for (let attempt = 0; attempt < 22; attempt++) {
+        if (contents.isDestroyed()) return { success: false, error: 'NO_PAGE' }
+        if (!hostIsAllowed(contents.getURL(), assignedUrl)) return { success: false, error: 'ORIGIN_MISMATCH' }
+        let status = 'no-form'
+        try {
+            status = await contents.executeJavaScript(`(${fillLoginFormInPage.toString()})(${JSON.stringify(String(secret.u || ''))}, ${JSON.stringify(secret.p)}, ${usernameDone})`)
+        } catch { /* the page is navigating: try again */ }
+        if (status === 'password-filled') return { success: true, status: 'ok' }
+        if (status === 'username-filled') usernameDone = true
+        await sleep(status === 'username-filled' ? 1500 : 700)
+    }
+    return { success: false, error: 'NO_FORM' }
+}
+
+/**
  * Decrypts the saved login for `messengerId` and types it into the page. Resolves with a status word only:
  * 'ok' | 'ORIGIN_MISMATCH' | 'NO_PAGE' | 'NO_FORM' | 'DECRYPT_FAILED' | 'NO_SECURE_STORAGE'.
  */
@@ -175,22 +227,9 @@ async function autofill({ userId, messengerId, blob, aad, assignedUrl }) {
         return { success: false, error: 'DECRYPT_FAILED' }
     }
     if (!secret || typeof secret.p !== 'string') return { success: false, error: 'DECRYPT_FAILED' }
-
-    // Up to ~15 s: the password field of a two-step form only appears after the first step.
-    let usernameDone = false
-    for (let attempt = 0; attempt < 22; attempt++) {
-        if (contents.isDestroyed()) return { success: false, error: 'NO_PAGE' }
-        if (!hostIsAllowed(contents.getURL(), assignedUrl)) return { success: false, error: 'ORIGIN_MISMATCH' }
-        let status = 'no-form'
-        try {
-            status = await contents.executeJavaScript(`(${fillLoginFormInPage.toString()})(${JSON.stringify(String(secret.u || ''))}, ${JSON.stringify(secret.p)}, ${usernameDone})`)
-        } catch { /* the page is navigating: try again */ }
-        if (status === 'password-filled') { secret = null; return { success: true, status: 'ok' } }
-        if (status === 'username-filled') usernameDone = true
-        await sleep(status === 'username-filled' ? 1500 : 700)
-    }
+    const result = await fillSecretIntoMessenger({ messengerId, assignedUrl, secret })
     secret = null
-    return { success: false, error: 'NO_FORM' }
+    return result
 }
 
-module.exports = { getPublicKey, autofill, secureStorageAvailable, hostIsAllowed, allowedBaseDomains, fillLoginFormInPage }
+module.exports = { getPublicKey, autofill, fillSecretIntoMessenger, secureStorageAvailable, hostIsAllowed, allowedBaseDomains, fillLoginFormInPage }
