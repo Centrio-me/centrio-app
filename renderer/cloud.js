@@ -113,30 +113,44 @@ function createCloudApi({
         if (typeof onAuthUpdated === 'function') onAuthUpdated(null)
     }
 
+    // Resolves 'ok' | 'rejected' | 'transient'.
+    //  - 'rejected': the server itself says this session is invalid or expired (401/403) — the only case that signs the user out;
+    //  - 'transient': no connection, a timeout, a busy server (429/5xx) or an unreadable answer — the session may well be fine,
+    //    so the user stays signed in and we simply try again. (Before, ANY failure here signed the user out for good: a
+    //    laptop that woke up before its network, or a VPN that was still connecting, cost the employee their whole account.)
     async function cloudRefreshToken() {
         if (refreshPromise) return refreshPromise
 
         refreshPromise = (async () => {
             try {
                 const refresh = cloudStore.getRefresh()
-                if (!refresh) return false
+                if (!refresh) return 'rejected'
 
                 const result = await invokeIpc('api-refresh', refresh)
-                if (!result.success) return false
+                if (!result.success) return (result.status === 401 || result.status === 403) ? 'rejected' : 'transient'
 
                 const data = result.data || {}
-                if (!data.accessToken) return false
+                if (!data.accessToken) return 'transient'
 
                 applyAuthData(data)
-                return true
+                return 'ok'
             } catch {
-                return false
+                return 'transient'
             } finally {
                 refreshPromise = null
             }
         })()
 
         return refreshPromise
+    }
+
+    let retryTimer = null
+    function scheduleRefreshRetry() {
+        if (retryTimer) return
+        retryTimer = setTimeout(() => {
+            retryTimer = null
+            if (cloudStore.getRefresh()) cloudRefreshToken().catch(() => {})
+        }, 30 * 1000)
     }
 
     async function authorizedInvoke(channel, ...args) {
@@ -154,8 +168,13 @@ function createCloudApi({
 
         if (!isUnauthorizedResult(result)) return result
 
-        const refreshed = await cloudRefreshToken()
-        if (!refreshed) {
+        const outcome = await cloudRefreshToken()
+        if (outcome === 'transient') {
+            window.__centrioSync?.report('account', false, { code: 'network', message: 'could not reach the server to renew the session; staying signed in' })
+            scheduleRefreshRetry()
+            return { success: false, error: 'Server unreachable', code: 'network' }
+        }
+        if (outcome !== 'ok') {
             forceLogout()
             return {
                 success: false,

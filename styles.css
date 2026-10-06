@@ -16884,3 +16884,80 @@ body.onb-active #titlebarMenu {
 .sync-ok .sync-status { color: #4ade80; }
 .sync-bad { background: rgba(239, 106, 98, .12); border: 1px solid rgba(239, 106, 98, .35); }
 .sync-bad .sync-status { color: #ef6a62; }
+
+/* ===== WELCOME SCREEN (empty state: pick the first messenger) =====
+ * Lives inside #contentArea, so the sidebar and window controls stay usable. */
+#welcomeScreen {
+    position: absolute;
+    inset: 0;
+    z-index: 9995;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: auto;
+    background: var(--bg-primary);
+    pointer-events: auto;
+}
+#welcomeScreen::before { display: none; }
+.wl-glow {
+    position: absolute; inset: -20%; pointer-events: none;
+    background:
+        radial-gradient(40% 35% at 78% 28%, color-mix(in srgb, var(--accent) 30%, transparent), transparent 70%),
+        radial-gradient(35% 40% at 92% 85%, rgba(155,107,255,0.18), transparent 70%),
+        radial-gradient(45% 40% at 8% 95%, rgba(255,154,90,0.14), transparent 70%);
+    animation: wlDrift 22s ease-in-out infinite alternate;
+}
+#welcomeScreen::after {
+    content: ''; position: absolute; inset: 0; pointer-events: none;
+    background-image: radial-gradient(color-mix(in srgb, var(--text-bright) 14%, transparent) 1px, transparent 1.3px);
+    background-size: 28px 28px;
+    -webkit-mask-image: radial-gradient(70% 70% at 70% 40%, #000, transparent 85%);
+    mask-image: radial-gradient(70% 70% at 70% 40%, #000, transparent 85%);
+}
+@keyframes wlDrift { to { transform: translate3d(-4%, 3%, 0) scale(1.08); } }
+@media (prefers-reduced-motion: reduce) { .wl-glow { animation: none; } }
+.wl-wrap {
+    position: relative; z-index: 1; width: 100%; max-width: 1180px; margin: auto;
+    display: grid; grid-template-columns: minmax(280px, 5fr) 7fr; gap: clamp(28px, 5vw, 80px);
+    align-items: center; padding: clamp(24px, 4vw, 56px);
+}
+.wl-kicker { color: var(--text-muted); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 16px; }
+.wl-title {
+    font-size: clamp(30px, 4.2vw, 56px); line-height: 1.08; letter-spacing: -0.8px; font-weight: 800;
+    color: var(--text-bright); margin: 0 0 18px; text-wrap: balance;
+}
+.wl-title i {
+    font-style: normal;
+    background: linear-gradient(135deg, var(--accent) 20%, #22c55e 80%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+}
+.wl-lead { color: var(--text-secondary); max-width: 34ch; margin: 0 0 24px; font-size: 14px; line-height: 1.6; }
+.wl-note { color: var(--text-secondary); font-size: 12.5px; max-width: 36ch; padding-top: 18px; border-top: 1px solid var(--border); line-height: 1.55; }
+.wl-note b { color: var(--text-primary); font-weight: 600; }
+.wl-wait { display: none; color: var(--text-secondary); font-size: 14px; margin-top: 18px; max-width: 36ch; }
+.wl-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.wl-tile {
+    position: relative; display: flex; flex-direction: column; align-items: center; gap: 10px;
+    padding: 22px 6px 18px; font: inherit; color: var(--text-primary); cursor: pointer;
+    background: color-mix(in srgb, var(--bg-secondary) 85%, transparent); border: 1px solid var(--border);
+    border-radius: 18px; backdrop-filter: blur(6px);
+    transition: transform .2s, border-color .2s, background .2s;
+}
+.wl-tile img { width: 48px; height: 48px; border-radius: 12px; transition: transform .25s; }
+.wl-tile span { font-size: 13px; font-weight: 600; transition: transform .2s; }
+.wl-tile em { position: absolute; left: 0; right: 0; bottom: 9px; text-align: center; font-style: normal; font-size: 11px; color: var(--accent); opacity: 0; transition: opacity .2s; }
+.wl-tile:hover, .wl-tile:focus-visible { transform: translateY(-3px); border-color: var(--border-light); background: var(--bg-tertiary); outline: 0; }
+.wl-tile:hover img { transform: scale(1.08); }
+.wl-tile:hover span, .wl-tile:focus-visible span { transform: translateY(-6px); }
+.wl-tile:hover em, .wl-tile:focus-visible em { opacity: 1; }
+.wl-link { margin-top: 14px; display: flex; gap: 10px; align-items: center; padding: 7px 7px 7px 16px; border: 1px dashed var(--border-light); border-radius: 16px; }
+.wl-link:focus-within { border-color: var(--accent); }
+.wl-link input { flex: 1; min-width: 0; background: none; border: 0; outline: 0; color: var(--text-primary); font: inherit; font-size: 13.5px; }
+.wl-link button { background: var(--text-bright); color: var(--bg-primary); border: 0; border-radius: 11px; padding: 9px 16px; font: inherit; font-weight: 600; cursor: pointer; }
+/* Team member whose messengers come from the owner: nothing to pick, just a short note. */
+#welcomeScreen.wl-locked .wl-pick, #welcomeScreen.wl-locked .wl-lead { display: none; }
+#welcomeScreen.wl-locked .wl-wait { display: block; }
+@media (max-width: 820px) {
+    .wl-wrap { grid-template-columns: 1fr; }
+    .wl-grid { grid-template-columns: repeat(2, 1fr); }
+}

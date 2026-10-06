@@ -53,6 +53,7 @@ const { bindSettingsUi } = require('./renderer/settings-bind')
 const { bindLockUi } = require('./renderer/lock-bind')
 const { bindCloudUi } = require('./renderer/cloud-bind')
 const { bindOnboardingScreen } = require('./renderer/onboarding-auth')
+const { bindWelcomeScreen } = require('./renderer/welcome-screen')
 const { bindMenuUi } = require('./renderer/menu-bind')
 const { bindTitlebarQuickMenuUi } = require('./renderer/titlebar-quickmenu-bind')
 const { bindWindowUi } = require('./renderer/window-bind')
@@ -580,8 +581,11 @@ async function bootstrap() {
 
     // Hydrate auth tokens via encrypted channel (safeStorage)
     // Migration-safe: decryptValue() returns plain value if not yet encrypted
-    await store.secureGetAsync('cloud.accessToken', null)
-    await store.secureGetAsync('cloud.refreshToken', null)
+    const _bootAccess = await store.secureGetAsync('cloud.accessToken', null)
+    const _bootRefresh = await store.secureGetAsync('cloud.refreshToken', null)
+    // A signed-in account whose saved sign-in cannot be read any more (e.g. the OS secure storage lost it) looks like "the app
+    // forgot me": remember it so the sync status can say so instead of leaving a silent empty app.
+    if (store.get('cloud.user', null) && !_bootAccess && !_bootRefresh) window.__centrioAuthLost = true
 
     await advanceStartup('store', 24, { minStepTime: 240 })
 
@@ -3459,12 +3463,6 @@ function applyTabZoom(level) {
     updateAddButtonState()
     updateTrialStatusBar()
 
-    // Кнопка "Войти в аккаунт" на приветственном экране
-    document.getElementById('welcomeLoginBtn')?.addEventListener('click', () => {
-        if (cloudStore.isLoggedIn()) openCloudProfile()
-        else openCloudLogin()
-    })
-
     bindMenuUi({
         state,
         store,
@@ -3538,6 +3536,8 @@ function applyTabZoom(level) {
         tGet,
         freeMessengerLimit: FREE_MESSENGER_LIMIT
     })
+
+    bindWelcomeScreen({ state, cloudStore, popularMessengers, addMessenger, openModal, onSearchInput, onSearchEnter, tGet })
 
     // enabled — предпочтение пользователя ("использовать VPN для этого мессенджера"),
     // не факт реального подключения. Реально показываем щит только если VPN ещё и подключён

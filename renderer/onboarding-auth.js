@@ -76,6 +76,25 @@ function bindOnboardingScreen({
         showScreen(name)
     }
 
+    // A team member who signs in here already has everything waiting for them (messengers and folders from the
+    // owner): the setup wizard has nothing to offer, so drop the overlay and show the app right away.
+    function leaveOnboarding() {
+        Object.values(SCREENS).forEach(s => { if (s) s.style.display = 'none' })
+        document.body.classList.remove('onb-active')
+        if (store.setAsync) store.setAsync('onboardingAuthSeen', true)
+        else store.set('onboardingAuthSeen', true)
+        track('onboarding_done', { team: true })
+    }
+
+    window.__centrioLeaveOnboarding = leaveOnboarding // also used when team messengers arrive while the wizard is still open
+
+    function continueAfterLogin() {
+        ;(cloudSyncAfterLogin || cloudSyncPush)()
+        const user = cloudStore.getUser()
+        if (user && user.orgSummary && user.orgSummary.orgId) { leaveOnboarding(); return }
+        goTo('services')
+    }
+
     function goBack() {
         if (navHistory.length <= 1) return
         navHistory.pop()
@@ -133,8 +152,7 @@ function bindOnboardingScreen({
                 errorEl.style.display = 'block'
                 return
             }
-            ;(cloudSyncAfterLogin || cloudSyncPush)()
-            goTo('services')
+            continueAfterLogin()
         } catch (e) {
             hideOAuthWait()
             console.error('Onboarding OAuth error:', e)
@@ -175,8 +193,7 @@ function bindOnboardingScreen({
         }
 
         errorEl.style.display = 'none'
-        ;(cloudSyncAfterLogin || cloudSyncPush)()
-        goTo('services')
+        continueAfterLogin()
     }
 
     document.getElementById('onbLoginBtn')?.addEventListener('click', () => { track('onboarding_login_click'); submitEmail('login') })

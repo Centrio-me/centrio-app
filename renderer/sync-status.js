@@ -6,7 +6,7 @@ const copy = {
         title: 'Синхронизация', statusTitle: 'Синхронизация с облаком и командой', syncNow: 'Синхронизировать сейчас', syncing: 'Синхронизируем…',
         ok: 'Всё в порядке', problem: 'Есть проблема', never: 'Ещё не выполнялась', at: 'в {time}', notLoggedIn: 'Вы не вошли в аккаунт: синхронизировать нечего.',
         team: 'Мессенджеры и папки команды', teamOk: 'Мессенджеров: {n}', push: 'Отправка настроек в облако', pull: 'Загрузка из облака при запуске', session: 'Вход в аккаунт', account: 'Данные аккаунта',
-        reasonUnauthorized: 'Нужно войти заново', reasonSession: 'Сессия истекла, пришлось выйти из аккаунта', reasonTimeout: 'Облако не ответило вовремя, работаем с локальными данными',
+        reasonTokenLost: 'Сохранённый вход не удалось прочитать, нужно войти заново', reasonUnauthorized: 'Нужно войти заново', reasonSession: 'Сессия истекла, пришлось выйти из аккаунта', reasonTimeout: 'Облако не ответило вовремя, работаем с локальными данными',
         reasonNetwork: 'Нет связи с сервером', reasonServer: 'Ошибка на сервере', reasonLimit: 'Слишком много запросов, попробуйте позже', reasonBadResponse: 'Сервер вернул неожиданный ответ',
         sent: 'Подробности о проблеме отправлены разработчикам.', done: 'Готово', close: 'Закрыть', hint: 'Если здесь красным написана проблема, нажмите «Синхронизировать сейчас». Если не помогает, пришлите нам скриншот.'
     },
@@ -14,7 +14,7 @@ const copy = {
         title: 'Sync', statusTitle: 'Sync with the cloud and your team', syncNow: 'Sync now', syncing: 'Syncing…',
         ok: 'All good', problem: 'There is a problem', never: 'Not run yet', at: 'at {time}', notLoggedIn: 'You are not signed in: nothing to sync.',
         team: 'Team messengers and folders', teamOk: 'Messengers: {n}', push: 'Sending settings to the cloud', pull: 'Loading from the cloud at startup', session: 'Account sign-in', account: 'Account data',
-        reasonUnauthorized: 'Please sign in again', reasonSession: 'The session expired and you were signed out', reasonTimeout: 'The cloud did not answer in time, using local data',
+        reasonTokenLost: 'The saved sign-in could not be read, please sign in again', reasonUnauthorized: 'Please sign in again', reasonSession: 'The session expired and you were signed out', reasonTimeout: 'The cloud did not answer in time, using local data',
         reasonNetwork: 'No connection to the server', reasonServer: 'Server error', reasonLimit: 'Too many requests, try again later', reasonBadResponse: 'The server returned an unexpected answer',
         sent: 'The details of the problem were sent to the developers.', done: 'Done', close: 'Close', hint: 'If a problem is shown in red, press “Sync now”. If it does not help, send us a screenshot.'
     }
@@ -44,6 +44,7 @@ function createSyncStatus({ state, store, authorizedInvoke, isLoggedIn, runSyncN
         if (c === 'session_expired') return t('reasonSession')
         if (c === 'unauthorized' || c === '401') return t('reasonUnauthorized')
         if (c === 'timeout') return t('reasonTimeout')
+        if (c === 'token_lost') return t('reasonTokenLost')
         if (c === '429') return t('reasonLimit')
         if (c === 'bad_response') return t('reasonBadResponse')
         if (/^5\d\d$/.test(c)) return t('reasonServer')
@@ -213,7 +214,11 @@ function createSyncStatus({ state, store, authorizedInvoke, isLoggedIn, runSyncN
     document.getElementById('statusSync')?.addEventListener('click', () => (overlay ? close() : open()))
     document.addEventListener('keydown', (event) => { if (event.key === 'Escape' && overlay) close() })
     setInterval(updateBadge, 15000)
-    setTimeout(() => { updateBadge(); flushOutbox().catch(() => {}) }, 4000)
+    setTimeout(() => {
+        if (window.__centrioAuthLost) report('account', false, { code: 'token_lost', message: 'saved sign-in could not be read at startup' })
+        updateBadge()
+        flushOutbox().catch(() => {})
+    }, 4000)
 
     window.__centrioSync = { report }
     return { report, open, close, syncNow }

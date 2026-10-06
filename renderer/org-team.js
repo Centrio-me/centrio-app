@@ -111,6 +111,8 @@ function createOrgTeamApi({
                 return
             }
             window.__centrioSync?.report('team', true, { detail: assignments.length })
+            // Messengers from the owner are here: the first-run wizard must not keep covering them.
+            if (assignments.length > 0 && document.body.classList.contains('onb-active')) window.__centrioLeaveOnboarding?.()
 
             const serverIds = new Set()
             for (const a of assignments) {

@@ -241,43 +241,6 @@ function bindCloudUi({
         if (e.key === 'Enter') submitPromoCode()
     })
 
-    document.getElementById('cloudSyncNowBtn').addEventListener('click', async () => {
-        const btn = document.getElementById('cloudSyncNowBtn')
-        const spanEl = btn.querySelector('span')
-        const svgEl = btn.querySelector('svg')
-        const originalSvg = svgEl ? svgEl.innerHTML : null
-
-        // FEATURE (2026-09-21, "было бы приятнее живой статус (крутилка при
-        // синке, зелёная галочка после)" — live user idea, approved for
-        // 2.9): the icon already existed (the circular-arrows svg below) but
-        // just sat there unanimated — only the button's TEXT changed to
-        // "Синхронизация...". Spins it for real via CSS (.is-syncing, see
-        // styles.css), then swaps to a checkmark for a beat on success
-        // before reverting, instead of just going straight back to idle.
-        if (spanEl) spanEl.textContent = tGet('cloud.syncing')
-        btn.classList.add('is-syncing')
-        btn.disabled = true
-        const ok = await cloudSyncPush().then(() => true).catch(() => false)
-        btn.classList.remove('is-syncing')
-
-        if (ok && svgEl) {
-            svgEl.innerHTML = '<path d="M20 6L9 17L4 12" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>'
-            btn.classList.add('is-synced')
-            if (spanEl) spanEl.textContent = tGet('cloud.synced')
-            setTimeout(() => {
-                if (svgEl && originalSvg) svgEl.innerHTML = originalSvg
-                btn.classList.remove('is-synced')
-                if (spanEl) spanEl.textContent = tGet('cloud.sync')
-            }, 1400)
-        } else if (spanEl) {
-            spanEl.textContent = tGet('cloud.sync')
-        }
-
-        btn.disabled = false
-        // Обновить время синхронизации после завершения
-        if (renderLocalStats) renderLocalStats()
-    })
-
     document.getElementById('cloudLogoutBtn').addEventListener('click', () => {
         cloudApi.logout()
         const content = document.querySelector('.cloud-modal-content')
