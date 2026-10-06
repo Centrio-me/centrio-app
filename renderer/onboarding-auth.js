@@ -9,6 +9,7 @@
 // на середине флоу запуск в следующий раз начинался заново, а не завис в
 // промежуточном состоянии).
 const { requireConsent } = require('./consent-ui')
+const { track } = require('./stats')
 const RECOMMENDED_COUNT = 11
 
 function bindOnboardingScreen({
@@ -67,6 +68,7 @@ function bindOnboardingScreen({
     function showScreen(name) {
         Object.values(SCREENS).forEach(s => { if (s) s.style.display = 'none' })
         SCREENS[name].style.display = 'flex'
+        track(`onboarding_screen_${name}`, {}, { once: true })
     }
 
     function goTo(name) {
@@ -100,7 +102,7 @@ function bindOnboardingScreen({
         })
     }
 
-    document.getElementById('onbSkipBtn')?.addEventListener('click', () => goTo('services'))
+    document.getElementById('onbSkipBtn')?.addEventListener('click', () => { track('onboarding_skip'); goTo('services') })
 
     function showOAuthWait(providerLabel) {
         document.getElementById('onbOauthWait').style.display = 'flex'
@@ -140,10 +142,12 @@ function bindOnboardingScreen({
     }
 
     document.getElementById('onbOauthGoogleBtn')?.addEventListener('click', () => {
+        track('onboarding_google_click')
         handleOAuth(() => cloudApi.oauthGoogle(), 'Google')
     })
 
     document.getElementById('onbOauthYandexBtn')?.addEventListener('click', () => {
+        track('onboarding_yandex_click')
         handleOAuth(() => cloudApi.oauthYandex(), 'Yandex')
     })
 
@@ -175,8 +179,8 @@ function bindOnboardingScreen({
         goTo('services')
     }
 
-    document.getElementById('onbLoginBtn')?.addEventListener('click', () => submitEmail('login'))
-    document.getElementById('onbRegisterBtn')?.addEventListener('click', () => submitEmail('register'))
+    document.getElementById('onbLoginBtn')?.addEventListener('click', () => { track('onboarding_login_click'); submitEmail('login') })
+    document.getElementById('onbRegisterBtn')?.addEventListener('click', () => { track('onboarding_register_click'); submitEmail('register') })
 
     // ── Шаг 2: выбор сервисов ────────────────────────────────────
     // Популярные всегда остаются наверху; «Показать все» дописывает
@@ -283,6 +287,7 @@ function bindOnboardingScreen({
     document.getElementById('onbTrialContinueBtn')?.addEventListener('click', goToReady)
 
     document.getElementById('onbLaunchBtn')?.addEventListener('click', () => {
+        track('onboarding_done')
         Object.values(SCREENS).forEach(s => { if (s) s.style.display = 'none' })
         document.body.classList.remove('onb-active')
         if (store.setAsync) store.setAsync('onboardingAuthSeen', true)

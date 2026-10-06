@@ -15,6 +15,28 @@ const PING_INTERVAL = 5 * 60 * 1000  // 5 минут
 
 let _interval = null
 
+// Launches made by development, tests or QA must never reach the statistics: an unpackaged app, a debugging port,
+// a throw-away profile folder or CENTRIO_NO_STATS all mean "not a real person".
+function countsAsVisitor () {
+    if (!app.isPackaged) return false
+    if (process.env.CENTRIO_NO_STATS) return false
+    return !process.argv.some((arg) => /^--(remote-debugging-port|user-data-dir|inspect)/.test(arg))
+}
+
+// Anonymous product events (what people do in the first minutes). Names only, no content; allow-listed on both sides.
+const EVENT_NAME = /^[a-z0-9_]{3,40}$/
+function track (event, props) {
+    if (!countsAsVisitor()) return Promise.resolve(null)
+    if (typeof event !== 'string' || !EVENT_NAME.test(event)) return Promise.resolve(null)
+    const safeProps = {}
+    if (props && typeof props === 'object') {
+        for (const [key, value] of Object.entries(props).slice(0, 5)) {
+            if (/^[a-z0-9_]{1,20}$/.test(key) && (typeof value === 'boolean' || typeof value === 'number' || (typeof value === 'string' && value.length <= 40))) safeProps[key] = value
+        }
+    }
+    return post('/api/visitors/event', { visitorId: getVisitorId(), event, props: safeProps, platform: process.platform, appVersion: app.getVersion() })
+}
+
 // ── Получить или создать анонимный ID ─────────────────────────────
 function getVisitorId () {
     let id = store.get('visitorId')
@@ -76,6 +98,7 @@ function post (endpoint, body) {
 
 // ── Пинг ──────────────────────────────────────────────────────────
 async function ping () {
+    if (!countsAsVisitor()) return
     if (isLoggedIn()) return   // авторизованные пользователи не нужны здесь
     try {
         await post('/api/visitors/ping', {
@@ -89,6 +112,7 @@ async function ping () {
 
 // ── Регистрация новой сессии ──────────────────────────────────────
 async function registerSession () {
+    if (!countsAsVisitor()) return
     if (isLoggedIn()) return
     try {
         await post('/api/visitors/session', {
@@ -126,4 +150,4 @@ function onAuthStateChange () {
     }
 }
 
-module.exports = { start, stop, onAuthStateChange, getVisitorId }
+module.exports = { start, stop, onAuthStateChange, getVisitorId, track, countsAsVisitor }

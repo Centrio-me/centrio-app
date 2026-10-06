@@ -92,9 +92,13 @@ function createOrgTeamApi({
     async function syncStructure(orgId) {
         if (isOrgManager()) return
         try {
-            const structure = unwrap(await authorizedInvoke('api-org-get-my-structure', orgId))
+            const raw = await authorizedInvoke('api-org-get-my-structure', orgId)
+            const structure = unwrap(raw)
             if (structure && Array.isArray(structure.folders) && Array.isArray(structure.workspaces)) applyOrgStructure(structure)
-        } catch {}
+            else window.__centrioSync?.report('team', false, { code: (raw && (raw.code || raw.status)) || 'bad_response', message: (raw && raw.error) || 'structure' })
+        } catch (error) {
+            window.__centrioSync?.report('team', false, { code: 'error', message: error && error.message })
+        }
     }
 
     async function syncAssignments(orgId) {
@@ -102,7 +106,11 @@ function createOrgTeamApi({
             await syncStructure(orgId)
             const result = await authorizedInvoke('api-org-get-messenger-assignments', orgId)
             const assignments = unwrap(result)
-            if (!Array.isArray(assignments)) return
+            if (!Array.isArray(assignments)) {
+                window.__centrioSync?.report('team', false, { code: (result && (result.code || result.status)) || 'bad_response', message: (result && result.error) || 'assignments' })
+                return
+            }
+            window.__centrioSync?.report('team', true, { detail: assignments.length })
 
             const serverIds = new Set()
             for (const a of assignments) {
@@ -128,7 +136,9 @@ function createOrgTeamApi({
                 .filter(m => m.orgAssigned && !serverIds.has(m.id))
                 .map(m => m.id)
             toRemove.forEach(removeOrgAssignedMessenger)
-        } catch {}
+        } catch (error) {
+            window.__centrioSync?.report('team', false, { code: 'error', message: error && error.message })
+        }
     }
 
     // Fetches the org's shared VPN once and, if present, connects to it the

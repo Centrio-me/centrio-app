@@ -299,6 +299,11 @@ module.exports = {
         return request('GET', `/api/org/${orgId}/vpn`, null, token)
     },
 
+    // Sync diagnostics (2026-10-06): which sync step failed and why (a short code, never content).
+    syncReport(token, payload) {
+        return request('POST', '/api/sync/report', payload, token)
+    },
+
     orgGetSettings(token, orgId) {
         return request('GET', `/api/org/${orgId}/settings`, null, token)
     },

@@ -4,6 +4,7 @@
 const { passwordsTexts } = require('./passwords-texts')
 const { generatePassword } = require('./passwords-gen')
 const { createImportView } = require('./passwords-import-ui')
+const { track } = require('./stats')
 
 const REVEAL_MS = 15000
 const FEEDBACK_MS = 2400
@@ -136,7 +137,7 @@ function bindPasswordsUi({ store, state, invokeIpc, openRightPanel, closeRightPa
         lang: () => (store.get('settings', {}) || {}).language || 'ru',
         invokeIpc,
         onClose: () => { importView.reset(); importMounted = false; view = 'main'; refresh() },
-        onImported: () => { syncVaultQuietly() }
+        onImported: () => { track('password_import_done'); syncVaultQuietly() }
     })
 
     function openImport() {
@@ -177,7 +178,7 @@ function bindPasswordsUi({ store, state, invokeIpc, openRightPanel, closeRightPa
             const result = await invokeIpc('pm:setup', first.input.value)
             first.input.value = ''
             second.input.value = ''
-            if (result && result.success) await vaultChanged(true)
+            if (result && result.success) { track('password_manager_setup'); await vaultChanged(true) }
             else error.textContent = t('errSetup')
         }
         second.input.addEventListener('keydown', (event) => { if (event.key === 'Enter') submit() })

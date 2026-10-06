@@ -69,6 +69,8 @@ const { bindQuickRepliesUi } = require('./renderer/quick-replies-bind')
 const { bindPasswordsUi } = require('./renderer/passwords-ui')
 const { createPmBar } = require('./renderer/pm-bar')
 const { createTabManager } = require('./renderer/tab-manager')
+const { track } = require('./renderer/stats')
+const { createSyncStatus } = require('./renderer/sync-status')
 const { dedupeFolders } = require('./renderer/folders-dedupe')
 const { startSplashFacts, stopSplashFacts } = require('./renderer/splash-facts')
 const { bindNotesUi } = require('./renderer/notes-bind')
@@ -2556,6 +2558,8 @@ function applyTabZoom(level) {
         // harmless no-op that just persists the default mode.
         invokeIpc('vpn-set-app-vpn', id, options.vpn !== false).catch(() => {})
 
+        track('messenger_added', { first: state.activeMessengers.length === 1 })
+
         welcomeScreen.style.display = 'none'
         tabsContent.style.pointerEvents = 'auto'
         state.rawUnreadCounts[id] = 0
@@ -3844,6 +3848,20 @@ function applyTabZoom(level) {
     })
 
     createTabManager({ state, store, invokeIpc, switchTab, sleepTab, wakeTab })
+
+    // What the cloud/team sync did last, a manual "Sync now" and a record of failures (shown here and in the admin panel)
+    createSyncStatus({
+        state,
+        store,
+        authorizedInvoke,
+        isLoggedIn: () => cloudStore.isLoggedIn(),
+        runSyncNow: async () => {
+            const refreshed = await cloudApi.refreshUser().then(() => true).catch(() => false)
+            window.__centrioSync?.report('account', refreshed, refreshed ? {} : { code: 'network', message: 'could not refresh account data' })
+            await orgTeamApi.tick()
+            await cloudSyncPush()
+        }
+    })
 
     const passwordsApi = bindPasswordsUi({
         store,

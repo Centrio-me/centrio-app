@@ -107,6 +107,8 @@ function createCloudApi({
     }
 
     function forceLogout() {
+        // The most confusing failure of all: the app signs out by itself and everything from the account disappears.
+        window.__centrioSync?.report('account', false, { code: 'session_expired', message: 'forced logout (token refresh failed)' })
         cloudStore.clear()
         if (typeof onAuthUpdated === 'function') onAuthUpdated(null)
     }
@@ -211,14 +213,17 @@ function createCloudApi({
                 // edit — see getPendingLocalChanges() above for why this
                 // matters on the next boot.
                 cloudStore.setPendingLocalChanges(false)
+                window.__centrioSync?.report('push', true)
             } else {
                 cloudStore.setLastSyncError(result.error || 'Sync push failed')
+                window.__centrioSync?.report('push', false, { code: result.code || result.status || 'error', message: result.error })
             }
 
             return result
         } catch (e) {
             console.error('cloudSyncPush error:', e)
             cloudStore.setLastSyncError(e?.message || 'Sync push failed')
+            window.__centrioSync?.report('push', false, { code: 'network', message: e?.message })
             return {
                 success: false,
                 error: e?.message || 'Sync push failed'
@@ -233,14 +238,17 @@ function createCloudApi({
             const result = await authorizedInvoke('api-sync-pull')
             if (!result.success) {
                 cloudStore.setLastSyncError(result.error || 'Sync pull failed')
+                window.__centrioSync?.report('pull', false, { code: result.code || result.status || 'error', message: result.error })
                 return null
             }
 
             cloudStore.setLastSyncAt(new Date().toISOString())
             cloudStore.setLastSyncError(null)
+            window.__centrioSync?.report('pull', true)
             return result.data
         } catch (e) {
             cloudStore.setLastSyncError(e?.message || 'Sync pull failed')
+            window.__centrioSync?.report('pull', false, { code: 'network', message: e?.message })
             return null
         }
     }

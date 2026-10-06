@@ -1074,6 +1074,11 @@
             <span id="statusMemoryText">…</span>
         </span>
         <div class="status-divider"></div>
+        <span class="status-item status-sync-btn" id="statusSync" style="display:none" title="">
+            <div class="status-dot status-online" id="statusSyncDot"></div>
+            <span id="statusSyncText"></span>
+        </span>
+        <div class="status-divider"></div>
         <span class="status-item" id="statusUnread">
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
                 <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" stroke="currentColor" stroke-width="2"/>
@@ -1183,6 +1188,15 @@
         <button class="changelog-popup-close" id="changelogPopupClose">✕</button>
     </div>
     <div class="changelog-popup-body">
+        <div class="changelog-entry">
+            <div class="changelog-version">v3.0.2</div>
+            <ul class="changelog-list">
+                <li>Приносим извинения за частые обновления: так мы делаем Centrio лучше с каждым днём, и это часть разработки. Спасибо за понимание!</li>
+                <li>Новое: синхронизация стала прозрачной. В строке состояния появился значок «Синхронизация»: он показывает, что сейчас с мессенджерами и папками команды, настройками и облаком, а если что-то не получилось, объясняет причину понятными словами. Кнопка «Синхронизировать сейчас» обновляет всё в один клик</li>
+                <li>Улучшено: если синхронизация не удалась, Centrio передаёт нам короткий код ошибки (без содержимого), чтобы мы быстрее находили и исправляли причину</li>
+                <li>Улучшено: анонимная статистика первого запуска помогает нам понять, где людям трудно начать работу, и сделать это проще. Содержимое переписок и паролей в ней не участвует</li>
+            </ul>
+        </div>
         <div class="changelog-entry">
             <div class="changelog-version">v3.0.1</div>
             <ul class="changelog-list">

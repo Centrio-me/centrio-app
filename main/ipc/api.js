@@ -190,6 +190,10 @@ function registerApiIpc() {
         return wrapApi(() => api.orgGetVpn(token, orgId))
     })
 
+    ipcMain.handle('api-sync-report', async (event, token, payload) => {
+        return wrapApi(() => api.syncReport(token, payload))
+    })
+
     ipcMain.handle('api-org-get-settings', async (event, token, orgId) => {
         return wrapApi(() => api.orgGetSettings(token, orgId))
     })

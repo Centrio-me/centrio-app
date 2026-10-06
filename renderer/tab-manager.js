@@ -1,6 +1,8 @@
 // "Диспетчер вкладок" (2026-10-06): how much memory and CPU every messenger tab uses, with "reload" and "sleep".
 // A sleeping tab is unloaded from memory (its <webview> is removed) and wakes up with a fresh load when opened.
 // The numbers come from the main process (main/ipc/tabManager.js); here we only draw them.
+const { track } = require('./stats')
+
 const copy = {
     ru: {
         title: 'Диспетчер вкладок', statusTitle: 'Память приложения: открыть диспетчер вкладок (Ctrl+Shift+M)',
@@ -179,6 +181,7 @@ function createTabManager({ state, store, invokeIpc, switchTab, sleepTab, wakeTa
 
     function open() {
         if (overlay) return
+        track('tab_manager_open')
         overlay = el('div', 'tm-overlay')
         overlay.appendChild(el('div', 'tm-panel'))
         overlay.addEventListener('mousedown', (event) => { if (event.target === overlay) close() })
