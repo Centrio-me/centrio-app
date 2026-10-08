@@ -1,3 +1,5 @@
+const { getVisualMessengerOrder } = require('./tab-order')
+
 function bindWindowUi({
     store,
     state,
@@ -33,21 +35,24 @@ function bindWindowUi({
     })
 
     ipcRenderer.on('switch-messenger-index', (index) => {
-        if (state.activeMessengers[index]) switchTab(state.activeMessengers[index].id)
+        const target = getVisualMessengerOrder(state)[index]
+        if (target) switchTab(target.id)
     })
 
     ipcRenderer.on('switch-messenger-next', () => {
-        if (!state.activeMessengers.length) return
-        const idx = state.activeMessengers.findIndex(m => m.id === state.activeTabId)
+        const order = getVisualMessengerOrder(state)
+        if (!order.length) return
+        const idx = order.findIndex(m => m.id === state.activeTabId)
         if (idx === -1) return
-        switchTab(state.activeMessengers[(idx + 1) % state.activeMessengers.length].id)
+        switchTab(order[(idx + 1) % order.length].id)
     })
 
     ipcRenderer.on('switch-messenger-prev', () => {
-        if (!state.activeMessengers.length) return
-        const idx = state.activeMessengers.findIndex(m => m.id === state.activeTabId)
+        const order = getVisualMessengerOrder(state)
+        if (!order.length) return
+        const idx = order.findIndex(m => m.id === state.activeTabId)
         if (idx === -1) return
-        switchTab(state.activeMessengers[(idx - 1 + state.activeMessengers.length) % state.activeMessengers.length].id)
+        switchTab(order[(idx - 1 + order.length) % order.length].id)
     })
 
     ipcRenderer.on('reload-active', () => {

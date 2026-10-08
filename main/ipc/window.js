@@ -1249,6 +1249,16 @@ function registerWindowIpc({ getMainWindow, isQuittingRef }) {
         }
     })
 
+    // The PIN screens type into a hidden field of the app window. If a messenger tab (a separate web contents) holds
+    // the keyboard, the digits go to that chat instead: the renderer asks for the keyboard back with this.
+    safeOn('focus-host', (event) => {
+        const win = BrowserWindow.fromWebContents(event.sender) || getMainWindow()
+        if (!win || win.isDestroyed()) return
+        if (win.isMinimized()) win.restore()
+        win.focus()
+        win.webContents.focus()
+    })
+
     safeOn('toggle-fullscreen', (event) => {
         const win = BrowserWindow.fromWebContents(event.sender) || getMainWindow()
         if (win && !win.isDestroyed()) {

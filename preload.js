@@ -110,6 +110,7 @@ const invokeChannelMap = {
 // не попадают вообще (у них свой отдельный preload, см.
 // webview-preload.js) — это только про код самого главного окна.
 const validInvokeChannels = new Set([
+    'battery:has',
     'shortcuts:list',
     'shortcuts:set',
     'shortcuts:reset',

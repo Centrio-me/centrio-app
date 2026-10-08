@@ -3,7 +3,7 @@
 // Failures are shown here and sent to the admin panel (the server keeps the reason, never any content).
 const copy = {
     ru: {
-        title: 'Синхронизация', statusTitle: 'Синхронизация с облаком и командой', syncNow: 'Синхронизировать сейчас', syncing: 'Синхронизируем…',
+        title: 'Синхронизация', synced: 'Синхронизировано', statusTitle: 'Синхронизация с облаком и командой', syncNow: 'Синхронизировать сейчас', syncing: 'Синхронизируем…',
         ok: 'Всё в порядке', problem: 'Есть проблема', never: 'Ещё не выполнялась', at: 'в {time}', notLoggedIn: 'Вы не вошли в аккаунт: синхронизировать нечего.',
         team: 'Мессенджеры и папки команды', teamOk: 'Мессенджеров: {n}', push: 'Отправка настроек в облако', pull: 'Загрузка из облака при запуске', session: 'Вход в аккаунт', account: 'Данные аккаунта',
         reasonTokenLost: 'Сохранённый вход не удалось прочитать, нужно войти заново', reasonUnauthorized: 'Нужно войти заново', reasonSession: 'Сессия истекла, пришлось выйти из аккаунта', reasonTimeout: 'Облако не ответило вовремя, работаем с локальными данными',
@@ -11,7 +11,7 @@ const copy = {
         sent: 'Подробности о проблеме отправлены разработчикам.', done: 'Готово', close: 'Закрыть', hint: 'Если здесь красным написана проблема, нажмите «Синхронизировать сейчас». Если не помогает, пришлите нам скриншот.'
     },
     en: {
-        title: 'Sync', statusTitle: 'Sync with the cloud and your team', syncNow: 'Sync now', syncing: 'Syncing…',
+        title: 'Sync', synced: 'Synced', statusTitle: 'Sync with the cloud and your team', syncNow: 'Sync now', syncing: 'Syncing…',
         ok: 'All good', problem: 'There is a problem', never: 'Not run yet', at: 'at {time}', notLoggedIn: 'You are not signed in: nothing to sync.',
         team: 'Team messengers and folders', teamOk: 'Messengers: {n}', push: 'Sending settings to the cloud', pull: 'Loading from the cloud at startup', session: 'Account sign-in', account: 'Account data',
         reasonTokenLost: 'The saved sign-in could not be read, please sign in again', reasonUnauthorized: 'Please sign in again', reasonSession: 'The session expired and you were signed out', reasonTimeout: 'The cloud did not answer in time, using local data',
@@ -97,17 +97,17 @@ function createSyncStatus({ state, store, authorizedInvoke, isLoggedIn, runSyncN
         return false
     }
 
+    // One item on the right of the status bar shows both "is the app active / online" and the sync state
+    // (renderer/status-bar.js composes the text from these two data attributes).
     function updateBadge() {
-        const dot = document.getElementById('statusSyncDot')
-        const text = document.getElementById('statusSyncText')
-        const btn = document.getElementById('statusSync')
-        if (!btn) return
+        const el = document.getElementById('statusActive')
+        if (!el) return
         const loggedIn = isLoggedIn()
-        btn.style.display = loggedIn ? '' : 'none'
-        btn.title = t('statusTitle')
         const problem = anyProblem()
-        if (dot) dot.className = `status-dot ${busy ? 'status-sync-busy' : problem ? 'status-sync-bad' : 'status-online'}`
-        if (text) text.textContent = busy ? t('syncing') : problem ? t('problem') : t('title')
+        el.classList.toggle('status-sync-btn', loggedIn)
+        el.dataset.sync = !loggedIn ? '' : busy ? 'busy' : problem ? 'bad' : 'ok'
+        el.dataset.syncText = !loggedIn ? '' : busy ? t('syncing') : problem ? t('problem') : t('synced')
+        document.dispatchEvent(new Event('centrio-status-refresh'))
     }
 
     function stepText(step, r) {
@@ -211,7 +211,9 @@ function createSyncStatus({ state, store, authorizedInvoke, isLoggedIn, runSyncN
         overlay = null
     }
 
-    document.getElementById('statusSync')?.addEventListener('click', () => (overlay ? close() : open()))
+    document.getElementById('statusActive')?.addEventListener('click', () => {
+        if (isLoggedIn()) overlay ? close() : open()
+    })
     document.addEventListener('keydown', (event) => { if (event.key === 'Escape' && overlay) close() })
     setInterval(updateBadge, 15000)
     setTimeout(() => {

@@ -1,4 +1,7 @@
 function createStatusBarApi({ store, state, tGet, getCurrentLocale }) {
+    // The sync status (renderer/sync-status.js) asks for a redraw of the shared activity item.
+    document.addEventListener('centrio-status-refresh', () => updateStatusBar())
+
     function updateStatusBar() {
         const total = state.activeMessengers.length
         const totalUnread = Object.values(state.unreadCounts).reduce((a, b) => a + b, 0)
@@ -25,19 +28,28 @@ function createStatusBarApi({ store, state, tGet, getCurrentLocale }) {
         const offlineNet = (typeof navigator !== 'undefined' && navigator.onLine === false)
 
         if (statusActiveText) {
+            // One item: activity (online / inactive / no internet) plus, for a signed-in user, the sync state.
             const statusActive = document.getElementById('statusActive')
             const statusDot = statusActive?.querySelector('.status-dot')
+            const sync = (statusActive && statusActive.dataset.sync) || ''
+            const syncText = (statusActive && statusActive.dataset.syncText) || ''
+            // The dot says whether the app is active (green online, grey idle, red no network); the only words
+            // are the sync state, and only for a signed-in user (or "no network" when it matters).
+            const activity = total > 0 ? tGet('status.online') : tGet('status.offline')
+            let dotState = total > 0 ? 'status-online' : 'status-idle'
+            let label = sync ? syncText : ''
             if (offlineNet) {
-                statusActiveText.textContent = tGet('status.noInternet')
-                statusActive?.classList.add('status-no-internet-item')
-                statusDot?.classList.remove('status-online')
-                statusDot?.classList.add('status-no-internet')
-            } else {
-                statusActiveText.textContent = total > 0 ? tGet('status.online') : tGet('status.offline')
-                statusActive?.classList.remove('status-no-internet-item')
-                statusDot?.classList.remove('status-no-internet')
-                statusDot?.classList.add('status-online')
+                label = tGet('status.noInternet')
+                dotState = 'status-no-internet'
+            } else if (sync === 'busy') {
+                dotState = 'status-sync-busy'
+            } else if (sync === 'bad') {
+                dotState = 'status-sync-bad'
             }
+            statusActiveText.textContent = label
+            statusActive?.classList.toggle('status-no-internet-item', offlineNet)
+            if (statusDot) statusDot.className = `status-dot ${dotState}`
+            if (statusActive) statusActive.title = [offlineNet ? tGet('status.noInternet') : activity, sync ? syncText : ''].filter(Boolean).join(' · ')
         }
 
         const offlineOverlay = document.getElementById('offlineOverlay')

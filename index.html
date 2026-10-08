@@ -998,11 +998,6 @@
             <span id="statusMemoryText">…</span>
         </span>
         <div class="status-divider"></div>
-        <span class="status-item status-sync-btn" id="statusSync" style="display:none" title="">
-            <div class="status-dot status-online" id="statusSyncDot"></div>
-            <span id="statusSyncText"></span>
-        </span>
-        <div class="status-divider"></div>
         <span class="status-item" id="statusUnread">
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
                 <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" stroke="currentColor" stroke-width="2"/>
@@ -1012,21 +1007,34 @@
         </span>
         <div id="statusSubSep" class="status-divider" style="display:none"></div>
         <span class="status-item status-sub" id="statusSub" style="display:none">
+            <span class="sub-plan" id="statusSubPlan"></span>
             <span class="status-sub-progress" id="statusSubProgress" title="">
                 <span class="status-sub-progress-fill" id="statusSubProgressFill"></span>
             </span>
-            <span id="statusSubText"></span>
+            <span class="sub-left" id="statusSubText"></span>
             <a href="#" id="statusSubRenew" class="status-sub-renew" data-i18n="cloud.extend"></a>
         </span>
         <div id="statusExtSep" class="status-divider" style="display:none"></div>
         <span class="status-item" id="statusExtIcons" style="gap:3px;display:none"></span>
     </div>
     <div class="status-right">
-        <span class="status-item status-accent" id="statusActive">
+        <span class="status-item" id="statusActive">
             <div class="status-dot status-online"></div>
             <span id="statusActiveText"></span>
         </span>
         <div class="status-divider"></div>
+        <span class="status-item status-battery" id="statusBattery" style="display:none" title="">
+            <svg width="18" height="11" viewBox="0 0 18 11" fill="none" aria-hidden="true">
+                <rect x="0.5" y="0.5" width="14.5" height="10" rx="2.2" stroke="currentColor"/>
+                <rect x="16" y="3.5" width="1.6" height="4" rx="0.8" fill="currentColor"/>
+                <rect id="statusBatteryFill" x="2" y="2" width="0" height="7" rx="1.2" fill="currentColor"/>
+            </svg>
+            <span id="statusBatteryBolt" style="display:none">
+                <svg width="9" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg>
+            </span>
+            <span id="statusBatteryText"></span>
+        </span>
+        <div class="status-divider" id="statusBatterySep" style="display:none"></div>
         <span class="status-item status-date-btn" id="statusDate" title="Показать календарь"></span>
         <div class="status-divider"></div>
         <span class="status-item" id="statusTime"></span>
@@ -1112,6 +1120,16 @@
         <button class="changelog-popup-close" id="changelogPopupClose">✕</button>
     </div>
     <div class="changelog-popup-body">
+        <div class="changelog-entry">
+            <div class="changelog-version">v3.0.5</div>
+            <ul class="changelog-list">
+                <li>Новое: на ноутбуках в нижней строке рядом с датой показывается заряд батареи (значок, процент, молния при зарядке, красный при низком заряде). На стационарном компьютере ничего не появляется</li>
+                <li>Новое: нижняя строка стала спокойнее. Синхронизация и состояние активности объединены в один значок с короткой подписью справа, а подписка показана аккуратной подписью «PRO · осталось N дн.» с тонкой линией остатка</li>
+                <li>Исправлено: Ctrl+1…9 и переход к следующему/предыдущему мессенджеру теперь идут в том порядке, в котором сервисы видны в боковой панели, а не в порядке добавления</li>
+                <li>Исправлено: в новом виде папок снова работает перетаскивание: можно менять сервисы местами внутри папки, переносить их в папку и вытаскивать из неё</li>
+                <li>Исправлено: PIN-код всегда вводится с клавиатуры при установке и на экране блокировки, даже если до этого курсор стоял внутри мессенджера</li>
+            </ul>
+        </div>
         <div class="changelog-entry">
             <div class="changelog-version">v3.0.4</div>
             <ul class="changelog-list">

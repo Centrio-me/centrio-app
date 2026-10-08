@@ -103,6 +103,10 @@ function bindLockUi({
         }
     })
 
+    // Clicking the dots must always bring the typing back to that field.
+    document.getElementById('setPinDotsNew')?.addEventListener('click', () => setActivePinBlock('new'))
+    document.getElementById('setPinDotsConfirm')?.addEventListener('click', () => setActivePinBlock('confirm'))
+
     pinInputNew?.addEventListener('blur', () => {
         setTimeout(() => {
             const focused = document.activeElement

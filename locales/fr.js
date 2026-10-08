@@ -261,6 +261,8 @@ module.exports = {
     },
 
     status: {
+        battery: "Batterie : {n} %",
+        batteryCharging: "Batterie en charge : {n} %",
         noMessengers:   'Aucun messenger',
         oneMessenger:   '1 messenger',
         fewMessengers:  '{n} messengers',

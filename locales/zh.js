@@ -261,6 +261,8 @@ module.exports = {
     },
 
     status: {
+        battery: "电池电量：{n}%",
+        batteryCharging: "电池充电中：{n}%",
         noMessengers:   '没有应用',
         oneMessenger:   '1 个应用',
         fewMessengers:  '{n} 个应用',

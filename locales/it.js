@@ -261,6 +261,8 @@ module.exports = {
     },
 
     status: {
+        battery: "Batteria: {n}%",
+        batteryCharging: "Batteria in carica: {n}%",
         noMessengers:   'Nessun messenger',
         oneMessenger:   '1 messenger',
         fewMessengers:  '{n} messenger',

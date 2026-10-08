@@ -3,6 +3,7 @@ function createSidebarDndApi({
     store,
     messengerList,
     moveMessengerToFolder,
+    saveData,
     // BUGFIX ("сайдбар не сохраняется" / порядок откатывается после
     // перезапуска): saveOrder() used to only write the local store. On every
     // startup where the user is logged into cloud sync, loadData()'s
@@ -76,6 +77,27 @@ function createSidebarDndApi({
             return
         }
 
+        // Target is a service inside a folder: the dragged service joins that folder at this spot, or is reordered
+        // inside it (the order is the order of state.activeMessengers, the same one the classic folder card edits).
+        if (sourceType === 'messenger' && targetType === 'messenger' && targetEl.closest('.folder-children')) {
+            const target = state.activeMessengers.find(m => m.id === targetId)
+            const source = state.activeMessengers.find(m => m.id === sourceId)
+            if (!target || !source || !target.folderId || target.managedFolder || source.managedFolder) return
+            if (source.folderId !== target.folderId) moveMessengerToFolder(sourceId, target.folderId)
+            const movedEl = document.getElementById(`sidebar-${sourceId}`)
+            const anchorEl = document.getElementById(`sidebar-${targetId}`)
+            if (!movedEl || !anchorEl || !anchorEl.parentElement) return
+            anchorEl.parentElement.insertBefore(movedEl, insertBefore ? anchorEl : anchorEl.nextSibling)
+            const from = state.activeMessengers.findIndex(m => m.id === sourceId)
+            if (from !== -1) {
+                const [moved] = state.activeMessengers.splice(from, 1)
+                const to = state.activeMessengers.findIndex(m => m.id === targetId)
+                state.activeMessengers.splice(insertBefore ? to : to + 1, 0, moved)
+            }
+            if (typeof saveData === 'function') saveData()
+            return
+        }
+
         // Мессенджер, лежащий внутри папки, бросили на элемент корня
         // (мессенджер/папку/разделитель) → сначала извлекаем его из папки
         if (sourceType === 'messenger' && targetEl.parentElement === messengerList) {
@@ -109,6 +131,9 @@ function createSidebarDndApi({
         el.style.cursor = 'grab'
 
         el.addEventListener('dragstart', (e) => {
+            // In the new folder view the services sit INSIDE the folder element (which is draggable too): without
+            // this the folder's own handler ran next and replaced the dragged service with the folder.
+            e.stopPropagation()
             state.dragSrcId = id
             state.dragSrcType = type
             setTimeout(() => el.classList.add('dragging'), 0)
@@ -120,7 +145,8 @@ function createSidebarDndApi({
             }
         })
 
-        el.addEventListener('dragend', () => {
+        el.addEventListener('dragend', (e) => {
+            e.stopPropagation()
             el.classList.remove('dragging')
             clearDragState()
             state.dragSrcId = null
@@ -130,9 +156,14 @@ function createSidebarDndApi({
 
     // ── Зона drop для мессенджеров/папок (переупорядочение) ───────────────
     function initDropTarget(el, targetId, targetType) {
+        const isNestedInFolder = () => targetType === 'messenger' && !!el.closest('.folder-children')
+
         el.addEventListener('dragover', (e) => {
             e.preventDefault()
+            if (isNestedInFolder()) e.stopPropagation()
             if (!state.dragSrcId || state.dragSrcId === targetId) return
+            // Folders and dividers cannot go inside a folder.
+            if (isNestedInFolder() && state.dragSrcType !== 'messenger') return
 
             // Если тащим мессенджер на заголовок папки → отдельный обработчик
             if (state.dragSrcType === 'messenger' && targetType === 'folder') {
@@ -157,6 +188,7 @@ function createSidebarDndApi({
 
         el.addEventListener('drop', (e) => {
             e.preventDefault()
+            if (isNestedInFolder()) e.stopPropagation()
             const dropIntoFolder = el.classList.contains('folder-drop-target')
             el.classList.remove('drop-indicator-top', 'drop-indicator-bottom', 'folder-drop-target')
             if (!state.dragSrcId || state.dragSrcId === targetId) return

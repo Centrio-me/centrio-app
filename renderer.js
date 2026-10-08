@@ -55,6 +55,7 @@ const { bindCloudUi } = require('./renderer/cloud-bind')
 const { bindOnboardingScreen } = require('./renderer/onboarding-auth')
 const { bindWelcomeScreen } = require('./renderer/welcome-screen')
 const { bindShortcutsSettings } = require('./renderer/shortcuts-settings')
+const { bindBatteryStatus } = require('./renderer/battery-status')
 const { bindMenuUi } = require('./renderer/menu-bind')
 const { bindTitlebarQuickMenuUi } = require('./renderer/titlebar-quickmenu-bind')
 const { bindWindowUi } = require('./renderer/window-bind')
@@ -2125,10 +2126,11 @@ function applyTabZoom(level) {
         const sep    = document.getElementById('statusSubSep')
         const item   = document.getElementById('statusSub')
         const text   = document.getElementById('statusSubText')
+        const planEl = document.getElementById('statusSubPlan')
         const renew  = document.getElementById('statusSubRenew')
         const bar    = document.getElementById('statusSubProgress')
         const fill   = document.getElementById('statusSubProgressFill')
-        if (!sep || !item || !text || !renew || !bar || !fill) return
+        if (!sep || !item || !text || !planEl || !renew || !bar || !fill) return
 
         const user = cloudStore.getUser()
         const plan = (user?.plan || 'FREE').toUpperCase()
@@ -2156,9 +2158,9 @@ function applyTabZoom(level) {
                     const started = user?.planStartedAt || null
                     const totalDays = started ? Math.round((new Date(expiry) - new Date(started)) / 86400000) : 30
                     info = {
-                        text: started
-                            ? `${fmtShortDate(started)} — ${left} ${tGet('sidebar.daysShort') || 'дн.'}`
-                            : `${left} ${tGet('sidebar.daysShort') || 'дн.'}`,
+                        plan: plan,
+                        left,
+                        since: started ? fmtShortDate(started) : '',
                         showRenew: true,
                         percent: percentLeft(left, totalDays)
                     }
@@ -2172,7 +2174,9 @@ function applyTabZoom(level) {
                     const started = new Date(trialExpiresAt)
                     started.setDate(started.getDate() - 14)
                     info = {
-                        text: `${tGet('sidebar.trialDaysLeft') || 'Триал'}: ${fmtShortDate(started.toISOString())} — ${left} ${tGet('sidebar.daysShort') || 'дн.'}`,
+                        plan: 'TRIAL',
+                        left,
+                        since: fmtShortDate(started.toISOString()),
                         showRenew: false,
                         percent: percentLeft(left, 14)
                     }
@@ -2184,8 +2188,21 @@ function applyTabZoom(level) {
         item.style.display = info ? '' : 'none'
         if (!info) return
 
-        text.textContent = info.text
-        renew.style.display = info.showRenew ? '' : 'none'
+        // "PRO · Осталось 24 дн." — the plan as a badge, the number of days emphasised, the colour of the whole
+        // pill follows how much is left (green → orange → red, same blend as the bar).
+        const unit = tGet('sidebar.daysShort') || 'дн.'
+        planEl.textContent = info.plan === 'TRIAL' ? 'PRO · TRIAL' : info.plan
+        text.textContent = ''
+        text.appendChild(document.createTextNode(`${tGet('sidebar.daysLeftTooltip') || 'Осталось'} `))
+        const days = document.createElement('b')
+        days.textContent = `${info.left} ${unit}`
+        text.appendChild(days)
+        item.title = info.since ? `${info.since} — ${info.left} ${unit}` : ''
+        item.style.setProperty('--sub-color', progressColorForPercent(info.percent))
+        item.style.setProperty('--fill-w', `${info.percent}%`)
+        item.classList.toggle('sub-urgent', info.left <= 7)
+        item.classList.toggle('sub-trial', info.plan === 'TRIAL')
+        renew.style.display = info.showRenew || info.left <= 7 ? '' : 'none'
         fill.style.setProperty('--fill-w', `${info.percent}%`)
         fill.style.background = progressColorForPercent(info.percent)
         bar.title = `${tGet('sidebar.daysLeftTooltip') || 'Осталось'}: ${info.percent}%`
@@ -2859,6 +2876,7 @@ function applyTabZoom(level) {
         store,
         messengerList,
         moveMessengerToFolder,
+        saveData,
         cloudSyncPush,
         isCloudLoggedIn: () => cloudStore.isLoggedIn()
     })
@@ -3542,6 +3560,7 @@ function applyTabZoom(level) {
 
     ipcRenderer.on('shortcut-action', (payload) => document.dispatchEvent(new CustomEvent('centrio-shortcut', { detail: payload })))
     bindShortcutsSettings({ invokeIpc, tGet })
+    bindBatteryStatus({ invokeIpc, tGet })
 
     // enabled — предпочтение пользователя ("использовать VPN для этого мессенджера"),
     // не факт реального подключения. Реально показываем щит только если VPN ещё и подключён

@@ -1,3 +1,5 @@
+const { getVisualMessengerOrder } = require('./tab-order')
+
 function bindAppEvents({
     state,
     quickSearch,
@@ -51,7 +53,8 @@ function bindAppEvents({
         if (e.ctrlKey && !e.shiftKey && e.code >= 'Digit1' && e.code <= 'Digit9') {
             e.preventDefault()
             const idx = parseInt(e.code.replace('Digit', '')) - 1
-            if (state.activeMessengers[idx]) switchTab(state.activeMessengers[idx].id)
+            const target = getVisualMessengerOrder(state)[idx]
+            if (target) switchTab(target.id)
             return
         }
 

@@ -518,6 +518,16 @@ function createLockApi({
         attempts.textContent = fails > 0 ? tGet('lock.attemptsOf', { n: fails, max: MAX_FREE_ATTEMPTS }) : ''
     }
 
+    // Typing a PIN needs the keyboard on the app window itself: a messenger <webview> that was focused keeps it
+    // otherwise (and the digits would land in that chat).
+    function grabKeyboard(input) {
+        document.querySelectorAll('webview').forEach((w) => { try { w.blur() } catch (e) { /* tab may be gone */ } })
+        ipcRenderer.send('focus-host')
+        const focusInput = () => { if (input && document.activeElement !== input) input.focus() }
+        setTimeout(focusInput, 30)
+        setTimeout(focusInput, 350)
+    }
+
     function showLockScreen() {
         const lockScreen = document.getElementById('lockScreen')
         const lockInput = document.getElementById('lockInput')
@@ -540,7 +550,11 @@ function createLockApi({
         scheduleFitLockStack()
         startClock()
         startWidgetRefresh()
-        setTimeout(() => lockInput.focus(), 150)
+        setTimeout(() => grabKeyboard(lockInput), 150)
+        if (!lockScreen.dataset.keyboardBound) {
+            lockScreen.dataset.keyboardBound = '1'
+            lockScreen.addEventListener('mousedown', () => grabKeyboard(document.getElementById('lockInput')))
+        }
 
         // Сообщаем main-процессу, что экран заблокирован — он держит это в
         // памяти и на этом основании глушит нативные всплывающие уведомления
@@ -642,8 +656,7 @@ function createLockApi({
         updateSetPinDots(state.pinConfirmVal, 'setConfirmDot')
 
         setTimeout(() => {
-            if (which === 'new') pinInputNew.focus()
-            if (which === 'confirm') pinInputConfirm.focus()
+            grabKeyboard(which === 'new' ? pinInputNew : pinInputConfirm)
         }, 50)
     }
 
@@ -930,7 +943,7 @@ function createLockApi({
 
         const err = document.getElementById('lockError')
         if (err) err.style.display = 'none'
-        setTimeout(() => input?.focus(), 100)
+        setTimeout(() => grabKeyboard(input), 100)
     }
 
     // Settings -> Security: show or hide the "while you were away" counters on this screen.
