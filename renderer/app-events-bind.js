@@ -16,21 +16,11 @@ function bindAppEvents({
         const tag = document.activeElement?.tagName
         const isInput = tag === 'INPUT' || tag === 'TEXTAREA'
 
-        if (e.ctrlKey && !e.shiftKey && !e.altKey && e.code === 'Comma') {
-            e.preventDefault()
-            if (typeof openSettings === 'function') openSettings()
-            return
-        }
-
-        if (e.ctrlKey && (e.code === 'KeyP' || e.code === 'KeyK')) {
+        // Ctrl+K stays as a fixed second key for the quick search; the main key is the rebindable
+        // "quickSearch" action (see the 'centrio-shortcut' listener below).
+        if (e.ctrlKey && !e.shiftKey && !e.altKey && e.code === 'KeyK') {
             e.preventDefault()
             quickSearch.classList.contains('show') ? closeQuickSearch() : openQuickSearch()
-            return
-        }
-
-        if (e.ctrlKey && e.code === 'KeyF') {
-            e.preventDefault()
-            findBar.classList.contains('show') ? closeFindBar() : openFindBar()
             return
         }
 
@@ -57,30 +47,6 @@ function bindAppEvents({
         }
 
         if (isInput) return
-
-        if (e.ctrlKey && e.code === 'KeyR') {
-            e.preventDefault()
-            if (state.activeTabId) document.getElementById(`webview-${state.activeTabId}`)?.reload()
-            return
-        }
-
-        if (e.ctrlKey && !e.shiftKey && e.code === 'Tab') {
-            e.preventDefault()
-            if (!state.activeMessengers.length) return
-            const idx = state.activeMessengers.findIndex(m => m.id === state.activeTabId)
-            if (idx === -1) return
-            switchTab(state.activeMessengers[(idx + 1) % state.activeMessengers.length].id)
-            return
-        }
-
-        if (e.ctrlKey && e.shiftKey && e.code === 'Tab') {
-            e.preventDefault()
-            if (!state.activeMessengers.length) return
-            const idx = state.activeMessengers.findIndex(m => m.id === state.activeTabId)
-            if (idx === -1) return
-            switchTab(state.activeMessengers[(idx - 1 + state.activeMessengers.length) % state.activeMessengers.length].id)
-            return
-        }
 
         if (e.ctrlKey && !e.shiftKey && e.code >= 'Digit1' && e.code <= 'Digit9') {
             e.preventDefault()
@@ -152,6 +118,13 @@ function bindAppEvents({
             e.preventDefault()
             applyTabZoom(state.tabZoomLevel - 0.25)
         }
+    })
+
+    // Rebindable shortcuts arrive from the main process (it matches keys for the app and for every webview).
+    document.addEventListener('centrio-shortcut', (e) => {
+        const action = e.detail && e.detail.action
+        if (action === 'quickSearch') quickSearch.classList.contains('show') ? closeQuickSearch() : openQuickSearch()
+        else if (action === 'findInPage') findBar.classList.contains('show') ? closeFindBar() : openFindBar()
     })
 
     document.addEventListener('mousedown', (e) => {

@@ -35,6 +35,8 @@ const validReceiveChannels = new Set([
     'oauth-add-as-service',
     'oauth-popup-started',
     'oauth-popup-done',
+    'shortcut-action',
+    'oauth-signin-finished',
     'oauth-popup-closed',
     'auto-launch-result',
     // BUGFIX (2026-09-09, "VPN постоянно отваливается") — see main/ipc/vpn.js
@@ -108,6 +110,9 @@ const invokeChannelMap = {
 // не попадают вообще (у них свой отдельный preload, см.
 // webview-preload.js) — это только про код самого главного окна.
 const validInvokeChannels = new Set([
+    'shortcuts:list',
+    'shortcuts:set',
+    'shortcuts:reset',
     'api-assistant-usage',
     'api-chat-site-conversations',
     'api-chat-site-create',

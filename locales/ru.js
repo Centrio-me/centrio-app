@@ -357,6 +357,20 @@ module.exports = {
     },
 
     shortcuts: {
+        customTitle: "Настраиваемые",
+        customHint: "Нажмите «Изменить» и затем нужное сочетание. Esc отменяет.",
+        tabManager: "Диспетчер вкладок",
+        fullscreen: "Во весь экран",
+        openSettings: "Открыть настройки",
+        change: "Изменить",
+        cancel: "Отмена",
+        reset: "Сбросить",
+        resetAll: "Сбросить все",
+        pressKeys: "Нажмите сочетание…",
+        disabled: "Отключено",
+        errConflict: "Это сочетание уже занято: {name}.",
+        errReserved: "Это сочетание нельзя использовать: оно нужно для текста или масштаба.",
+        errInvalid: "Нужна клавиша с Ctrl, Alt или Shift (или F1–F12).",
         btnTitle: 'Горячие клавиши',
         navigationTitle: 'Навигация',
         next: 'Следующий мессенджер',
@@ -1203,6 +1217,10 @@ module.exports = {
         removeBtn: 'Удалить',
         cancelBtn: 'Отмена',
         removeTabLabel: 'Удалить {name}',
+        oauthFinishingTitle: "Выполняется вход в «{name}»…",
+
+        oauthFinishingHint: "Это займёт несколько секунд.",
+
         oauthOverlayTitle: 'Вход в «{name}» открыт в отдельном окне',
         oauthOverlayHint: 'Введите данные там — эта вкладка обновится сама, как только вход завершится.'
     },

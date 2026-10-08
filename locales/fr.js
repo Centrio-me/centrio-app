@@ -326,6 +326,20 @@ module.exports = {
     },
 
     shortcuts: {
+        customTitle: "Personnalisables",
+        customHint: "Cliquez sur « Modifier », puis appuyez sur la combinaison voulue. Échap annule.",
+        tabManager: "Gestionnaire d’onglets",
+        fullscreen: "Plein écran",
+        openSettings: "Ouvrir les paramètres",
+        change: "Modifier",
+        cancel: "Annuler",
+        reset: "Réinitialiser",
+        resetAll: "Tout réinitialiser",
+        pressKeys: "Appuyez sur une combinaison…",
+        disabled: "Désactivé",
+        errConflict: "Cette combinaison est déjà utilisée : {name}.",
+        errReserved: "Cette combinaison est inutilisable : elle sert à la saisie ou au zoom.",
+        errInvalid: "Utilisez une touche avec Ctrl, Alt ou Maj (ou F1–F12).",
         btnTitle:        'Raccourcis clavier',
         navigationTitle: 'Navigation',
         next:            'Messenger suivant',
@@ -1089,6 +1103,10 @@ module.exports = {
         removeBtn:      'Supprimer',
         cancelBtn:      'Annuler',
         removeTabLabel: 'Supprimer {name}',
+        oauthFinishingTitle: "Connexion à « {name} » en cours…",
+
+        oauthFinishingHint: "Cela ne prend que quelques secondes.",
+
         oauthOverlayTitle: 'Connexion à « {name} » dans une fenêtre séparée',
         oauthOverlayHint: 'Saisissez vos informations là-bas — cet onglet se rechargera automatiquement une fois la connexion terminée.',
     },

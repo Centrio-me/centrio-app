@@ -326,6 +326,20 @@ module.exports = {
     },
 
     shortcuts: {
+        customTitle: "Anpassbar",
+        customHint: "Auf „Ändern“ klicken und dann die gewünschte Kombination drücken. Esc bricht ab.",
+        tabManager: "Tab-Manager",
+        fullscreen: "Vollbild",
+        openSettings: "Einstellungen öffnen",
+        change: "Ändern",
+        cancel: "Abbrechen",
+        reset: "Zurücksetzen",
+        resetAll: "Alle zurücksetzen",
+        pressKeys: "Kombination drücken …",
+        disabled: "Aus",
+        errConflict: "Diese Kombination ist bereits belegt: {name}.",
+        errReserved: "Diese Kombination ist nicht verwendbar: Sie wird für Text oder Zoom benötigt.",
+        errInvalid: "Eine Taste mit Strg, Alt oder Umschalt (oder F1–F12) verwenden.",
         btnTitle:        'Tastenkürzel',
         navigationTitle: 'Navigation',
         next:            'Nächster Messenger',
@@ -1089,6 +1103,10 @@ module.exports = {
         removeBtn:      'Entfernen',
         cancelBtn:      'Abbrechen',
         removeTabLabel: '{name} entfernen',
+        oauthFinishingTitle: "Anmeldung bei „{name}\" läuft …",
+
+        oauthFinishingHint: "Das dauert nur einen Moment.",
+
         oauthOverlayTitle: 'Anmeldung bei „{name}" läuft in einem separaten Fenster',
         oauthOverlayHint: 'Geben Sie Ihre Daten dort ein — dieser Tab aktualisiert sich automatisch, sobald die Anmeldung abgeschlossen ist.',
     },

@@ -337,6 +337,20 @@ module.exports = {
     },
 
     shortcuts: {
+        customTitle: "Customizable",
+        customHint: "Click “Change”, then press the combination you want. Esc cancels.",
+        tabManager: "Tab manager",
+        fullscreen: "Full screen",
+        openSettings: "Open settings",
+        change: "Change",
+        cancel: "Cancel",
+        reset: "Reset",
+        resetAll: "Reset all",
+        pressKeys: "Press a combination…",
+        disabled: "Off",
+        errConflict: "This combination is already used by: {name}.",
+        errReserved: "This combination cannot be used: it is needed for text editing or zoom.",
+        errInvalid: "Use a key with Ctrl, Alt or Shift (or F1–F12).",
         btnTitle:        'Keyboard shortcuts',
         navigationTitle: 'Navigation',
         next:            'Next messenger',
@@ -1119,6 +1133,10 @@ module.exports = {
         removeBtn:      'Remove',
         cancelBtn:      'Cancel',
         removeTabLabel: 'Remove {name}',
+        oauthFinishingTitle: "Signing in to \"{name}\"…",
+
+        oauthFinishingHint: "This takes a few seconds.",
+
         oauthOverlayTitle: 'Signing in to "{name}" in a separate window',
         oauthOverlayHint: 'Enter your details there — this tab will refresh itself once sign-in finishes.',
     },

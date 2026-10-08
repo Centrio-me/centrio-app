@@ -326,6 +326,20 @@ module.exports = {
     },
 
     shortcuts: {
+        customTitle: "Personalizzabili",
+        customHint: "Clicca «Cambia» e poi premi la combinazione desiderata. Esc annulla.",
+        tabManager: "Gestione schede",
+        fullscreen: "Schermo intero",
+        openSettings: "Apri impostazioni",
+        change: "Cambia",
+        cancel: "Annulla",
+        reset: "Ripristina",
+        resetAll: "Ripristina tutto",
+        pressKeys: "Premi una combinazione…",
+        disabled: "Disattivato",
+        errConflict: "Questa combinazione è già usata da: {name}.",
+        errReserved: "Questa combinazione non è utilizzabile: serve per il testo o lo zoom.",
+        errInvalid: "Usa un tasto con Ctrl, Alt o Maiusc (o F1–F12).",
         btnTitle:        'Scorciatoie da tastiera',
         navigationTitle: 'Navigazione',
         next:            'Messenger successivo',
@@ -1089,6 +1103,10 @@ module.exports = {
         removeBtn:      'Rimuovi',
         cancelBtn:      'Annulla',
         removeTabLabel: 'Rimuovi {name}',
+        oauthFinishingTitle: "Accesso a \"{name}\" in corso…",
+
+        oauthFinishingHint: "Ci vorranno pochi secondi.",
+
         oauthOverlayTitle: 'Accesso a "{name}" in una finestra separata',
         oauthOverlayHint: 'Inserisci i tuoi dati lì — questa scheda si aggiornerà da sola al termine dell\'accesso.',
     },

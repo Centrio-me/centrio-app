@@ -326,6 +326,20 @@ module.exports = {
     },
 
     shortcuts: {
+        customTitle: "Personalizables",
+        customHint: "Pulsa «Cambiar» y luego la combinación que quieras. Esc cancela.",
+        tabManager: "Administrador de pestañas",
+        fullscreen: "Pantalla completa",
+        openSettings: "Abrir ajustes",
+        change: "Cambiar",
+        cancel: "Cancelar",
+        reset: "Restablecer",
+        resetAll: "Restablecer todo",
+        pressKeys: "Pulsa una combinación…",
+        disabled: "Desactivado",
+        errConflict: "Esta combinación ya está en uso: {name}.",
+        errReserved: "Esta combinación no se puede usar: hace falta para escribir o para el zoom.",
+        errInvalid: "Usa una tecla con Ctrl, Alt o Mayús (o F1–F12).",
         btnTitle:        'Atajos de teclado',
         navigationTitle: 'Navegación',
         next:            'Siguiente messenger',
@@ -1089,6 +1103,10 @@ module.exports = {
         removeBtn:      'Eliminar',
         cancelBtn:      'Cancelar',
         removeTabLabel: 'Eliminar {name}',
+        oauthFinishingTitle: "Iniciando sesión en \"{name}\"…",
+
+        oauthFinishingHint: "Tardará unos segundos.",
+
         oauthOverlayTitle: 'Iniciando sesión en "{name}" en una ventana aparte',
         oauthOverlayHint: 'Introduce tus datos allí — esta pestaña se actualizará sola cuando termine el inicio de sesión.',
     },

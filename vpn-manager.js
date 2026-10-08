@@ -605,7 +605,22 @@ function buildTransportFromParams (params) {
 // 303/307/308, таймаут, внятные ошибки по коду ответа и отдельное сообщение для зашифрованных
 // ссылок Happ (happ://crypt...), которые Centrio прочитать не может (2026-10-02, "у клиентки
 // не работает VPN, хотя через HAPP всё работает").
-const SUBSCRIPTION_USER_AGENTS = ['v2rayN/6.0', 'Happ/2.0.0', 'sing-box/1.11.4']
+const SUBSCRIPTION_USER_AGENTS = ['Happ/2.0.0', 'v2rayN/6.0', 'sing-box/1.11.4']
+
+// Many providers (Remnawave and others) bind a subscription to a device and answer a client that does not send a
+// device id with a single placeholder entry ("Приложение не поддерживается", server 0.0.0.0). Happ sends these
+// headers, so we do too. The id is stable per computer and carries nothing personal (a hash).
+function subscriptionDeviceHeaders () {
+  const os = require('os')
+  const crypto = require('crypto')
+  const seed = [os.hostname(), os.platform(), os.arch(), (os.cpus()[0] || {}).model || '', os.homedir()].join('|')
+  return {
+    'x-hwid': crypto.createHash('sha256').update('centrio-vpn|' + seed).digest('hex').slice(0, 16),
+    'x-device-os': process.platform === 'win32' ? 'Windows' : (process.platform === 'darwin' ? 'macOS' : 'Linux'),
+    'x-ver-os': os.release(),
+    'x-device-model': 'Centrio Desktop'
+  }
+}
 const SUBSCRIPTION_MAX_REDIRECTS = 5
 const SUBSCRIPTION_TIMEOUT_MS = 20000
 const SUBSCRIPTION_MAX_BYTES = 5 * 1024 * 1024
@@ -627,7 +642,7 @@ function fetchSubscriptionOnce (url, userAgent, redirectsLeft = SUBSCRIPTION_MAX
       reject(subscriptionError('VPN_SUBSCRIPTION_HTTP_ONLY', 'Subscription URL must use HTTPS (plain HTTP is not allowed)'))
       return
     }
-    const req = https.get(parsedUrl, { headers: { 'User-Agent': userAgent, Accept: '*/*' }, timeout: SUBSCRIPTION_TIMEOUT_MS }, (res) => {
+    const req = https.get(parsedUrl, { headers: { 'User-Agent': userAgent, Accept: '*/*', ...subscriptionDeviceHeaders() }, timeout: SUBSCRIPTION_TIMEOUT_MS }, (res) => {
       const status = res.statusCode || 0
       if ([301, 302, 303, 307, 308].includes(status) && res.headers.location) {
         res.resume()
@@ -662,8 +677,72 @@ function fetchSubscriptionOnce (url, userAgent, redirectsLeft = SUBSCRIPTION_MAX
   })
 }
 
+// ── Xray-JSON подписки ──────────────────────────────────────────
+// Some providers answer a Happ-like client with an array of full Xray configs instead of vless:// lines. Each one is
+// turned back into a share link so the rest of the pipeline (saving, parsing, connecting) stays unchanged.
+function xrayConfigToLink (cfg) {
+  const out = (cfg && Array.isArray(cfg.outbounds) ? cfg.outbounds : []).find(o => o && (o.protocol === 'vless' || o.protocol === 'hysteria'))
+  if (!out) return null
+  const name = encodeURIComponent(String(cfg.remarks || 'server').trim())
+  const ss = out.streamSettings || {}
+  if (out.protocol === 'hysteria') {
+    const st = out.settings || {}
+    const auth = (ss.hysteriaSettings || {}).auth
+    if (!st.address || !auth) return null
+    const tls = ss.tlsSettings || {}
+    const q = new URLSearchParams()
+    if (tls.serverName) q.set('sni', tls.serverName)
+    if (Array.isArray(tls.alpn) && tls.alpn.length) q.set('alpn', tls.alpn.join(','))
+    return `hysteria2://${encodeURIComponent(auth)}@${st.address}:${st.port || 443}?${q.toString()}#${name}`
+  }
+  const vnext = ((out.settings || {}).vnext || [])[0]
+  const user = vnext && (vnext.users || [])[0]
+  if (!vnext || !user || !user.id) return null
+  const q = new URLSearchParams()
+  q.set('encryption', user.encryption || 'none')
+  if (user.flow) q.set('flow', user.flow)
+  const network = ss.network || 'tcp'
+  q.set('type', network)
+  const security = ss.security || 'none'
+  q.set('security', security)
+  const tls = security === 'reality' ? (ss.realitySettings || {}) : (ss.tlsSettings || {})
+  if (tls.serverName) q.set('sni', tls.serverName)
+  if (tls.fingerprint) q.set('fp', tls.fingerprint)
+  if (security === 'reality') {
+    if (tls.publicKey) q.set('pbk', tls.publicKey)
+    q.set('sid', tls.shortId || '')
+    if (tls.spiderX) q.set('spx', tls.spiderX)
+  }
+  if (network === 'ws') {
+    const ws = ss.wsSettings || {}
+    if (ws.path) q.set('path', ws.path)
+    if (ws.headers && ws.headers.Host) q.set('host', ws.headers.Host)
+  } else if (network === 'grpc') {
+    if ((ss.grpcSettings || {}).serviceName) q.set('serviceName', ss.grpcSettings.serviceName)
+  }
+  return `vless://${user.id}@${vnext.address}:${vnext.port || 443}?${q.toString()}#${name}`
+}
+
+function xrayJsonToLinks (text) {
+  const trimmed = String(text || '').trim()
+  if (!(trimmed.startsWith('[') || trimmed.startsWith('{'))) return null
+  let data
+  try { data = JSON.parse(trimmed) } catch (e) { return null }
+  const list = Array.isArray(data) ? data : [data]
+  const links = list.map(xrayConfigToLink).filter(Boolean)
+  return links.length ? links : null
+}
+
+// The placeholder a provider returns to a client it does not serve: a dummy server on 0.0.0.0.
+function isSubscriptionStub (parsed) {
+  const o = parsed && parsed.outbound
+  return !!o && (o.server === '0.0.0.0' || /не поддерж|not supported|unsupported/i.test(parsed.name || ''))
+}
+
 function parseSubscriptionBody (raw) {
   let text = String(raw || '').trim()
+  const xrayLinks = xrayJsonToLinks(text)
+  if (xrayLinks) text = xrayLinks.join('\n')
   // base64 (обычный или url-safe): берём расшифровку только если внутри ссылки
   try {
     const decoded = Buffer.from(text.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8')
@@ -687,10 +766,13 @@ function parseSubscriptionBody (raw) {
 async function fetchSubscription (url) {
   let lastError = null
   let sawHappLinks = false
+  let sawStub = false
   for (const userAgent of SUBSCRIPTION_USER_AGENTS) {
     try {
       const raw = await fetchSubscriptionOnce(url, userAgent)
-      const { results, hasHappLinks } = parseSubscriptionBody(raw)
+      const { results: allResults, hasHappLinks } = parseSubscriptionBody(raw)
+      const results = allResults.filter(r => !isSubscriptionStub(r.parsed))
+      if (allResults.length > 0 && results.length === 0) sawStub = true
       if (results.length > 0) return results
       if (hasHappLinks) sawHappLinks = true
     } catch (e) {
@@ -700,6 +782,9 @@ async function fetchSubscription (url) {
   }
   if (sawHappLinks) {
     throw subscriptionError('VPN_SUBSCRIPTION_HAPP_CRYPT', 'Эта подписка в формате Happ (happ://crypt…), Centrio её прочитать не может. Попросите у провайдера обычную ссылку подписки: https://… со списком vless://, vmess://, trojan://.')
+  }
+  if (sawStub) {
+    throw subscriptionError('VPN_SUBSCRIPTION_UNSUPPORTED', 'Сервер подписки не принял Centrio как поддерживаемое приложение (вернул заглушку «Приложение не поддерживается»). Возможно, у подписки исчерпан лимит устройств: удалите ненужное устройство в личном кабинете провайдера или попросите другую ссылку.')
   }
   if (lastError) throw lastError
   return []

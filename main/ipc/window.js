@@ -275,8 +275,102 @@ function attachOAuthPopupChrome(popup, { mainWin, name }) {
 // строить вручную через `new BrowserWindow()` (opener всегда null), именно
 // так и делал старый брокер. Тот же паттерн — Franz's own bundled main-
 // process source, setupExternalLinkHandler/nativePopupOptions.
+// The guest <webview> of a messenger, found by its session partition.
+function findGuestByPartition(partition) {
+    try {
+        const target = session.fromPartition(partition)
+        return electronWebContents.getAllWebContents().find(wc => !wc.isDestroyed() && wc.getType() === 'webview' && wc.session === target) || null
+    } catch { return null }
+}
+
+const SESSION_KEY_RE = /oauth|verifier|pkce|csrf|state|nonce/i
+
+// Snapshot of the sign-in secrets a site keeps in sessionStorage (PKCE verifier etc.) while the popup is open.
+async function snapshotGuestSessionStorage(guest) {
+    if (!guest) return null
+    try {
+        const raw = await guest.executeJavaScript(
+            `JSON.stringify({ origin: location.origin, items: Object.entries(sessionStorage).filter(([k]) => ${SESSION_KEY_RE}.test(k)) })`
+        )
+        const parsed = JSON.parse(raw)
+        log.info(`[oauth-broker] sessionStorage snapshot: ${parsed.origin} keys=${parsed.items.map(([k]) => k.slice(0, 40)).join(',')}`)
+        return parsed.items.length ? parsed : null
+    } catch { return null }
+}
+
+async function restoreGuestSessionStorage(guest, snapshot) {
+    if (!guest || !snapshot) return
+    try {
+        log.info(`[oauth-broker] restoring sessionStorage on ${guest.getURL().slice(0, 80)}`)
+        await guest.executeJavaScript(
+            `(() => { const s = ${JSON.stringify(snapshot)}; if (location.origin !== s.origin) return false; s.items.forEach(([k, v]) => sessionStorage.setItem(k, v)); return true })()`
+        )
+    } catch {}
+}
+
+// After the callback is handed to the original tab, Todoist-style pages log in, start navigating on (/app/) and
+// then get thrown back onto the callback URL stripped of its code, which shows "something went wrong" although the
+// sign-in already succeeded. If that happens within a few seconds, replay the destination the page was heading to.
+const CALLBACK_REPLAY_WINDOW_MS = 15000
+const CALLBACK_REPLAY_DELAY_MS = 3500
+function guardCallbackReplay(guest, callbackUrl) {
+    if (!guest || guest.isDestroyed()) return
+    let base
+    try { const u = new URL(callbackUrl); base = u.origin + u.pathname } catch { return }
+    let intended = null
+    const stop = () => { clearTimeout(timer); if (!guest.isDestroyed()) guest.removeListener('did-start-navigation', onStart) }
+    const onStart = (details) => {
+        if (!details.isMainFrame || details.isSameDocument) return
+        if (details.url === base) {
+            if (intended) {
+                log.info(`[oauth-broker] callback replayed by the page, going on to ${intended}`)
+                // Let the misfired page finish its own redirect first, otherwise it overrides this navigation.
+                setTimeout(() => { if (!guest.isDestroyed()) guest.loadURL(intended).catch(() => {}) }, CALLBACK_REPLAY_DELAY_MS)
+            }
+            stop()
+            return
+        }
+        if (details.initiator && typeof details.initiator.url === 'string' && details.initiator.url.startsWith(base)) intended = details.url
+    }
+    const timer = setTimeout(stop, CALLBACK_REPLAY_WINDOW_MS)
+    guest.on('did-start-navigation', onStart)
+}
+
+// After a callback is handed to the original tab the page may still redirect a few times. The renderer keeps a
+// "signing in" cover over the tab until the guest has been quiet for this long, so no transient error page shows.
+const SIGNIN_QUIET_MS = 4500
+const SIGNIN_MAX_MS = 20000
+function trackSigninSettled(guest, mainWin, partition) {
+    let quietTimer = null
+    let maxTimer = null
+    const finish = () => {
+        clearTimeout(quietTimer)
+        clearTimeout(maxTimer)
+        if (!guest.isDestroyed()) {
+            guest.removeListener('did-start-navigation', onStart)
+            guest.removeListener('did-stop-loading', onStop)
+        }
+        if (mainWin && !mainWin.isDestroyed()) mainWin.webContents.send('oauth-signin-finished', { partition })
+    }
+    const onStart = (details) => {
+        if (details.isMainFrame && !details.isSameDocument) clearTimeout(quietTimer)
+    }
+    const onStop = () => {
+        clearTimeout(quietTimer)
+        quietTimer = setTimeout(finish, SIGNIN_QUIET_MS)
+    }
+    if (!guest || guest.isDestroyed()) {
+        if (mainWin && !mainWin.isDestroyed()) mainWin.webContents.send('oauth-signin-finished', { partition })
+        return
+    }
+    guest.on('did-start-navigation', onStart)
+    guest.on('did-stop-loading', onStop)
+    maxTimer = setTimeout(finish, SIGNIN_MAX_MS)
+}
+
 function wireOAuthPopup(popup, { url, mainWin, partition }) {
     popup.setMenuBarVisibility(false)
+    const sessionSnapshotPromise = snapshotGuestSessionStorage(findGuestByPartition(partition))
 
     let popupTitle = 'Авторизация'
     try { popupTitle = popup.getTitle() || popupTitle } catch {}
@@ -296,6 +390,34 @@ function wireOAuthPopup(popup, { url, mainWin, partition }) {
     if (mainWin && !mainWin.isDestroyed()) {
         mainWin.webContents.send('oauth-popup-started', { partition })
     }
+    // Some sites (Todoist) keep the PKCE code verifier in the sessionStorage of the tab that started the
+    // sign-in. The popup is a different browsing context with an empty sessionStorage, so letting it process the
+    // `?code=&state=` callback ends in "something went wrong". When the flow comes back to the site with a code,
+    // cancel that navigation in the popup and hand the callback URL to the original tab instead.
+    const handOffCallback = async (event, navUrl) => {
+        if (finishFired || popup.isDestroyed() || !navUrl) return
+        let parsed
+        try { parsed = new URL(navUrl) } catch { return }
+        if (parsed.protocol !== 'https:') return
+        if (isOAuthProviderUrl(navUrl) || isGoogleAccountsUrl(navUrl) || isYandexInternalSsoHost(navUrl)) return
+        if (!parsed.searchParams.has('code') || !parsed.searchParams.has('state')) return
+        event.preventDefault()
+        finishFired = true
+        if (finishSettleTimer) { clearTimeout(finishSettleTimer); finishSettleTimer = null }
+        log.info(`[oauth-broker] callback with code handed to the original tab: ${parsed.origin}${parsed.pathname}`)
+        // The site may have cleared its stored secrets while the popup was open: put them back first.
+        const guest = findGuestByPartition(partition)
+        await restoreGuestSessionStorage(guest, await sessionSnapshotPromise)
+        guardCallbackReplay(guest, parsed.href)
+        trackSigninSettled(guest, mainWin, partition)
+        if (mainWin && !mainWin.isDestroyed()) {
+            mainWin.webContents.send('oauth-popup-done', { partition, finalUrl: parsed.href })
+        }
+        if (!popup.isDestroyed()) popup.close()
+    }
+    popup.webContents.on('will-redirect', handOffCallback)
+    popup.webContents.on('will-navigate', handOffCallback)
+
     popup.once('closed', () => {
         if (mainWin && !mainWin.isDestroyed()) {
             mainWin.webContents.send('oauth-popup-closed', { partition })

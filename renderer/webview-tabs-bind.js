@@ -480,6 +480,12 @@ function createWebviewTabsApi({
         // symptom instead of only patching it via the generic timeout.
         clearOAuthOverlayTimer(messengerId)
         oauthPendingMessengerIds.delete(messengerId)
+        // The callback goes back into this tab: keep it covered ("signing in…") until the main process
+        // reports that the page stopped redirecting, so no intermediate error page is ever shown.
+        if (typeof payload.finalUrl === 'string') {
+            oauthFinishingMessengerIds.add(messengerId)
+            setTimeout(() => { oauthFinishingMessengerIds.delete(messengerId); updateOAuthOverlay() }, 30000)
+        }
         updateOAuthOverlay()
         const webview = document.getElementById(`webview-${messengerId}`)
         if (!webview) return
@@ -529,6 +535,8 @@ function createWebviewTabsApi({
     // вызова — MutationObserver за атрибутом class внутри tabsContent:
     // устойчиво к ЛЮБОМУ способу переключения активной вкладки.
     const oauthPendingMessengerIds = new Set()
+    // Messengers whose sign-in callback was handed back and is still settling: same cover, different wording.
+    const oauthFinishingMessengerIds = new Set()
     let oauthOverlayEl = null
 
     // BUGFIX (2026-08-25, live regression: "И ГРОК И ЯНДЕКС ТЕПЕРЬ ЗАВИСАЕТ
@@ -560,7 +568,9 @@ function createWebviewTabsApi({
     // force-clear it ourselves and reload the tab so it can pick up
     // whatever session state the popup actually left behind (mirrors the
     // legitimate 'oauth-popup-done' reload path above).
-    const OAUTH_OVERLAY_MAX_MS = 60000
+    // 10 minutes: a person typing a password or confirming 2FA easily takes over a minute, and the reload below
+    // would destroy the very page (and the sign-in secrets it holds) the popup is about to return to.
+    const OAUTH_OVERLAY_MAX_MS = 10 * 60 * 1000
     const oauthOverlayTimers = new Map()
 
     function clearOAuthOverlayTimer(messengerId) {
@@ -589,7 +599,8 @@ function createWebviewTabsApi({
             ? activeWebview.id.slice('webview-'.length)
             : null
 
-        if (!activeId || !oauthPendingMessengerIds.has(activeId)) {
+        const isFinishing = !!activeId && oauthFinishingMessengerIds.has(activeId)
+        if (!activeId || !(oauthPendingMessengerIds.has(activeId) || isFinishing)) {
             if (oauthOverlayEl) oauthOverlayEl.classList.remove('show')
             return
         }
@@ -615,9 +626,9 @@ function createWebviewTabsApi({
         // мутаций, и цепочка обрывается.
         setTextIfChanged(
             overlay.querySelector('[data-role="title"]'),
-            tGet('webview.oauthOverlayTitle', { name: messenger ? messenger.name : '' })
+            tGet(isFinishing ? 'webview.oauthFinishingTitle' : 'webview.oauthOverlayTitle', { name: messenger ? messenger.name : '' })
         )
-        setTextIfChanged(overlay.querySelector('[data-role="hint"]'), tGet('webview.oauthOverlayHint'))
+        setTextIfChanged(overlay.querySelector('[data-role="hint"]'), tGet(isFinishing ? 'webview.oauthFinishingHint' : 'webview.oauthOverlayHint'))
         overlay.classList.add('show')
     }
 
@@ -650,6 +661,13 @@ function createWebviewTabsApi({
             }
         }, OAUTH_OVERLAY_MAX_MS)
         oauthOverlayTimers.set(messengerId, timer)
+    })
+
+    ipcRenderer.on('oauth-signin-finished', (payload) => {
+        const messengerId = messengerIdFromOAuthPayload(payload)
+        if (!messengerId) return
+        oauthFinishingMessengerIds.delete(messengerId)
+        updateOAuthOverlay()
     })
 
     ipcRenderer.on('oauth-popup-closed', (payload) => {

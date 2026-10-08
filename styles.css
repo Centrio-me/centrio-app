@@ -16961,3 +16961,17 @@ body.onb-active #titlebarMenu {
     .wl-wrap { grid-template-columns: 1fr; }
     .wl-grid { grid-template-columns: repeat(2, 1fr); }
 }
+
+/* ===== Settings → Hotkeys: rebindable rows ===== */
+.shortcut-side { display: flex; align-items: center; gap: 8px; }
+.shortcut-btn {
+    font: inherit; font-size: 12px; color: var(--text-secondary); background: transparent;
+    border: 1px solid var(--border); border-radius: 8px; padding: 4px 10px; cursor: pointer;
+    transition: color .15s, border-color .15s, background .15s;
+}
+.shortcut-btn:hover { color: var(--text-bright); border-color: var(--border-light); background: var(--bg-hover); }
+.shortcut-btn-all { margin-top: 10px; }
+.shortcut-key-off { opacity: .6; }
+.shortcut-recording { font-size: 12px; color: var(--accent); }
+.shortcut-hint { margin: -4px 0 8px; }
+.shortcut-message { margin-top: 8px; font-size: 12px; color: var(--danger); }

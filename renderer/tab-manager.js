@@ -5,7 +5,7 @@ const { track } = require('./stats')
 
 const copy = {
     ru: {
-        title: 'Диспетчер вкладок', statusTitle: 'Память приложения: открыть диспетчер вкладок (Ctrl+Shift+M)',
+        title: 'Диспетчер вкладок', statusTitle: 'Память приложения: открыть диспетчер вкладок',
         total: 'Centrio использует {mem}', tabsLine: 'Вкладок: {n}, спит: {s}', cpuLine: 'Процессор: {cpu}%', other: 'Сам Centrio, окна и службы: {mem}',
         active: 'Открыта', background: 'Работает', sleeping: 'Спит', shared: 'делит процесс',
         reload: 'Перезагрузить', sleep: 'Усыпить', wake: 'Разбудить', open: 'Открыть', sleepAll: 'Усыпить неактивные', sleepAllHint: 'Не трогаем открытую вкладку, вкладки в разделённом экране и те, где есть непрочитанные.',
@@ -14,7 +14,7 @@ const copy = {
         empty: 'Пока нет вкладок.', close: 'Закрыть', heavy: 'тяжёлая', gb: 'ГБ', mb: 'МБ'
     },
     en: {
-        title: 'Tab manager', statusTitle: 'App memory: open the tab manager (Ctrl+Shift+M)',
+        title: 'Tab manager', statusTitle: 'App memory: open the tab manager',
         total: 'Centrio uses {mem}', tabsLine: 'Tabs: {n}, asleep: {s}', cpuLine: 'CPU: {cpu}%', other: 'Centrio itself, windows and services: {mem}',
         active: 'Open', background: 'Running', sleeping: 'Asleep', shared: 'shares a process',
         reload: 'Reload', sleep: 'Sleep', wake: 'Wake up', open: 'Open', sleepAll: 'Sleep inactive tabs', sleepAllHint: 'The open tab, tabs in split screen and tabs with unread messages are left alone.',
@@ -207,8 +207,11 @@ function createTabManager({ state, store, invokeIpc, switchTab, sleepTab, wakeTa
     }
 
     document.getElementById('statusMemory')?.addEventListener('click', () => (overlay ? close() : open()))
+    // The opening key is a rebindable shortcut (main/services/shortcutRegistry.js, action "tabManager").
+    document.addEventListener('centrio-shortcut', (event) => {
+        if (event.detail && event.detail.action === 'tabManager') overlay ? close() : open()
+    })
     document.addEventListener('keydown', (event) => {
-        if (event.ctrlKey && event.shiftKey && !event.altKey && (event.key === 'M' || event.key === 'm')) { event.preventDefault(); overlay ? close() : open() }
         if (event.key === 'Escape' && overlay) close()
     })
     setInterval(() => { if (!overlay && document.visibilityState === 'visible') measure().then(updateStatus) }, POLL_STATUS_MS)

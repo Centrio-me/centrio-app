@@ -1113,6 +1113,17 @@
     </div>
     <div class="changelog-popup-body">
         <div class="changelog-entry">
+            <div class="changelog-version">v3.0.4</div>
+            <ul class="changelog-list">
+                <li>Исправлено: вход через Google в сервисах вроде Todoist больше не заканчивается ошибкой «Что-то пошло не так». Пока идёт вход, вкладка показывает «Выполняется вход…», а затем сразу открывается ваш аккаунт</li>
+                <li>Исправлено: вкладка не перезагружается на середине входа, если вы вводите пароль дольше минуты</li>
+                <li>Исправлено: VPN-подписки в формате Happ (например, от ResetVPN) теперь читаются: Centrio передаёт идентификатор устройства и понимает конфигурации Xray, а если сервер подписки отказал, объясняет причину вместо несуществующего сервера</li>
+                <li>Новое: F11 — приложение на весь экран</li>
+                <li>Новое: сочетание для диспетчера вкладок стало короче — Ctrl+J (вместо Ctrl+Shift+M)</li>
+                <li>Новое: в Настройках → «Горячие клавиши» сочетания можно менять и сбрасывать. Они работают и когда курсор внутри мессенджера</li>
+            </ul>
+        </div>
+        <div class="changelog-entry">
             <div class="changelog-version">v3.0.3</div>
             <ul class="changelog-list">
                 <li>Новое: экран «Добавьте свой первый мессенджер». Выберите сервис одной плиткой или вставьте ссылку на любой другой, и всё. Экран больше не закрывает боковую панель и окно</li>
@@ -2488,27 +2499,10 @@
 
                 <!-- Горячие клавиши -->
                 <div class="settings-section" id="section-shortcuts">
+                    <div class="settings-group" id="shortcutsCustomGroup"></div>
                     <div class="settings-group">
                         <div class="settings-group-title" data-i18n="shortcuts.navigationTitle"></div>
                         <div class="shortcut-list">
-                            <div class="shortcut-row">
-                                <span class="shortcut-label" data-i18n="shortcuts.next"></span>
-                                <div class="shortcut-keys">
-                                    <span class="shortcut-key">Ctrl</span>
-                                    <span class="shortcut-sep">+</span>
-                                    <span class="shortcut-key">Tab</span>
-                                </div>
-                            </div>
-                            <div class="shortcut-row">
-                                <span class="shortcut-label" data-i18n="shortcuts.prev"></span>
-                                <div class="shortcut-keys">
-                                    <span class="shortcut-key">Ctrl</span>
-                                    <span class="shortcut-sep">+</span>
-                                    <span class="shortcut-key">Shift</span>
-                                    <span class="shortcut-sep">+</span>
-                                    <span class="shortcut-key">Tab</span>
-                                </div>
-                            </div>
                             <div class="shortcut-row">
                                 <span class="shortcut-label" data-i18n="shortcuts.byNumber"></span>
                                 <div class="shortcut-keys">
@@ -2538,46 +2532,9 @@
                         <div class="settings-group-title" data-i18n="shortcuts.searchTitle"></div>
                         <div class="shortcut-list">
                             <div class="shortcut-row">
-                                <span class="shortcut-label" data-i18n="shortcuts.quickSearch"></span>
-                                <div class="shortcut-keys">
-                                    <span class="shortcut-key">Ctrl</span>
-                                    <span class="shortcut-sep">+</span>
-                                    <span class="shortcut-key">P</span>
-                                </div>
-                            </div>
-                            <div class="shortcut-row">
-                                <span class="shortcut-label" data-i18n="shortcuts.findInPage"></span>
-                                <div class="shortcut-keys">
-                                    <span class="shortcut-key">Ctrl</span>
-                                    <span class="shortcut-sep">+</span>
-                                    <span class="shortcut-key">F</span>
-                                </div>
-                            </div>
-                            <div class="shortcut-row">
                                 <span class="shortcut-label" data-i18n="shortcuts.escClose"></span>
                                 <div class="shortcut-keys">
                                     <span class="shortcut-key">Esc</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="settings-group">
-                        <div class="settings-group-title" data-i18n="shortcuts.windowTitle"></div>
-                        <div class="shortcut-list">
-                            <div class="shortcut-row">
-                                <span class="shortcut-label" data-i18n="shortcuts.hideShow"></span>
-                                <div class="shortcut-keys">
-                                    <span class="shortcut-key">Ctrl</span>
-                                    <span class="shortcut-sep">+</span>
-                                    <span class="shortcut-key">M</span>
-                                </div>
-                            </div>
-                            <div class="shortcut-row">
-                                <span class="shortcut-label" data-i18n="shortcuts.reload"></span>
-                                <div class="shortcut-keys">
-                                    <span class="shortcut-key">Ctrl</span>
-                                    <span class="shortcut-sep">+</span>
-                                    <span class="shortcut-key">R</span>
                                 </div>
                             </div>
                         </div>

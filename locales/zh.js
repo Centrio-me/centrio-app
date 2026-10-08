@@ -326,6 +326,20 @@ module.exports = {
     },
 
     shortcuts: {
+        customTitle: "可自定义",
+        customHint: "点击“更改”，然后按下想要的组合键。按 Esc 取消。",
+        tabManager: "标签管理器",
+        fullscreen: "全屏",
+        openSettings: "打开设置",
+        change: "更改",
+        cancel: "取消",
+        reset: "重置",
+        resetAll: "全部重置",
+        pressKeys: "请按下组合键…",
+        disabled: "已关闭",
+        errConflict: "该组合键已被占用：{name}。",
+        errReserved: "该组合键不可用：它用于文字编辑或缩放。",
+        errInvalid: "请使用带 Ctrl、Alt 或 Shift 的按键（或 F1–F12）。",
         btnTitle:        '快捷键',
         navigationTitle: '导航',
         next:            '下一个应用',
@@ -1089,6 +1103,10 @@ module.exports = {
         removeBtn:      '删除',
         cancelBtn:      '取消',
         removeTabLabel: '删除 {name}',
+        oauthFinishingTitle: "正在登录\"{name}\"…",
+
+        oauthFinishingHint: "只需几秒钟。",
+
         oauthOverlayTitle: '正在另一个窗口中登录"{name}"',
         oauthOverlayHint: '请在那边输入登录信息——登录完成后此标签页会自动刷新。',
     },
