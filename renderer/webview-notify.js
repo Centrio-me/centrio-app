@@ -1,3 +1,5 @@
+const { adapterFor } = require('./notif-reply')
+
 const DUPLICATE_WINDOW_MS = 8000
 
 function createWebviewNotifyApi({
@@ -14,13 +16,15 @@ function createWebviewNotifyApi({
     async function sendPushNotificationFromSite(messenger, payload = {}) {
         if (payload.tag !== 'unread-fallback') state.lastSiteNotifyAt[messenger.id] = Date.now()
         const settings = store.get('settings', {})
-        if (settings.notifications === false) return
-        if (isMessengerMuted(messenger.id)) return
+        // What happened to every notification, without its content: a note for the log (main/ipc/notifications.js),
+        // so a "no notification came" report can be traced to the exact reason.
+        const note = (decision) => { try { ipcRenderer.send('notif-diag', { messenger: messenger.name || '', decision, tag: payload.tag === 'unread-fallback' ? 'fallback' : 'site' }) } catch {} }
+        if (settings.notifications === false) { note('off-in-settings'); return }
+        if (isMessengerMuted(messenger.id)) { note('messenger-muted'); return }
 
         const title = String(payload.title || messenger.name || tGet('notifications.messageTitle')).trim()
         const body = String(payload.body || tGet('notifications.newMessage')).trim()
         const tag = String(payload.tag || '')
-        const icon = payload.icon || messenger.icon || ''
 
         // The same message often arrives twice: a site fires Notification AND the service worker's
         // showNotification, usually with a different tag. Same sender (title) and same text within a few seconds is
@@ -30,7 +34,7 @@ function createWebviewNotifyApi({
             : `${messenger.id}::${title}::${body}`
         const now = Date.now()
         const prevTime = state.siteNotificationState[dedupeKey] || 0
-        if (now - prevTime < DUPLICATE_WINDOW_MS) return
+        if (now - prevTime < DUPLICATE_WINDOW_MS) { note('duplicate-within-8s'); return }
         state.siteNotificationState[dedupeKey] = now
 
         const isActiveTab = state.activeTabId === messenger.id
@@ -52,12 +56,21 @@ function createWebviewNotifyApi({
         let winState = { visible: true, focused: true, minimized: false }
         try {
             const result = await invokeIpc('get-window-visibility-state')
-            if (result.success && result.data) winState = result.data
+            // The main process answers with the state itself ({ visible, focused, minimized }), not wrapped in
+            // { success, data }. Reading it as wrapped made every window look "focused", so a minimized, hidden or
+            // covered app never showed a notification for the messenger tab that happened to be open.
+            const data = result && typeof result.visible === 'boolean' ? result : (result && result.success ? result.data : null)
+            if (data) winState = data
         } catch {}
 
         const appInForeground = winState.visible && !winState.minimized && winState.focused
         const shouldPlaySound = settings.notifSound !== false
-        const shouldShowNotification = !appInForeground || (!isActiveTab && !isVisibleInSplit)
+        // A notification the site itself raised is already the site's decision that this message needs attention
+        // (Telegram, for instance, raises one for another chat even while its tab is open and focused), and the
+        // site's own system toast is suppressed, so it is always shown. Only the app's own "unread count grew"
+        // fallback keeps the old rule of staying quiet while the tab is in front.
+        const isFallback = tag === 'unread-fallback'
+        const shouldShowNotification = !isFallback || !appInForeground || (!isActiveTab && !isVisibleInSplit)
 
         // ── Count notification regardless of whether we show OS popup ──
         // Tagged with the messenger's display name so it lines up with the
@@ -85,17 +98,24 @@ function createWebviewNotifyApi({
 
         // ── Добавляем в панель уведомлений как уведомление от мессенджера ──
         if (typeof addMessengerNotification === 'function') {
-            addMessengerNotification(title, body, messenger.name, messenger.id, actionUrl)
+            addMessengerNotification(title, body, messenger.name, messenger.id, actionUrl, payload.nid)
         }
 
         if (shouldPlaySound) playNotifSound(messenger.id)
-        if (!shouldShowNotification) return
+        if (!shouldShowNotification) { note('fallback-skipped-tab-in-front'); return }
+        note('shown')
 
+        // The toast carries the sender (the site's own title), the text, and the sender's picture when the site
+        // sent one; otherwise the messenger's icon. Same format for every message, whatever the site.
         ipcRenderer.send('show-notification', {
-            title: messenger.name || title,
+            title: title || messenger.name,
             body: body || tGet('notifications.newMessage'),
-            icon,
+            icon: payload.icon || messenger.icon || '',
             messengerId: messenger.id,
+            nid: payload.nid || '',
+            url: actionUrl || '',
+            app: messenger.name || '',
+            canReply: !!(payload.nid && adapterFor(messenger.url)),
             silent: true
         })
     }

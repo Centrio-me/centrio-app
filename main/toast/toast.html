@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data: file:; style-src 'self' 'unsafe-inline'; script-src 'self'">
+<title>Centrio</title>
+<link rel="stylesheet" href="toast.css">
+</head>
+<body>
+<div class="card" id="card" role="alert">
+    <button class="close" id="close" type="button" aria-label="×">×</button>
+    <div class="head">
+        <img class="avatar" id="avatar" alt="">
+        <div class="who">
+            <div class="title" id="title"></div>
+            <div class="app" id="app"></div>
+        </div>
+    </div>
+    <div class="body" id="body"></div>
+    <form class="reply" id="reply" hidden>
+        <input id="replyInput" type="text" autocomplete="off" spellcheck="false" maxlength="4000">
+        <button id="replySend" type="submit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg></button>
+    </form>
+    <div class="status" id="status" hidden></div>
+</div>
+<script src="toast.js"></script>
+</body>
+</html>

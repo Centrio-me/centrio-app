@@ -10,6 +10,9 @@ const RENDERER_CHANNELS = {
     settings: 'open-settings'
 }
 
+// Typed characters of Shift+1..9 on a US layout, used only when a key event carries no physical key code.
+const SHIFTED_DIGITS = { '!': 1, '@': 2, '#': 3, '$': 4, '%': 5, '^': 6, '&': 7, '*': 8, '(': 9 }
+
 let currentDeps = null
 
 function toggleWindowVisibility({ getMainWindow, showMainWindow }) {
@@ -40,11 +43,32 @@ function runAction(actionId) {
     })
 }
 
+// 1..9 of a Ctrl+digit combination: by the physical key, so it works on any layout.
+function digitOf(input) {
+    const physical = /^Digit([1-9])$/.exec(input.code || '')
+    if (physical) return Number(physical[1])
+    if (input.code) return 0
+    if (/^[1-9]$/.test(input.key || '')) return Number(input.key)
+    return SHIFTED_DIGITS[input.key] || 0
+}
+
 // Keys are matched in the main process for the app window and for every messenger webview, so a shortcut works
 // whichever of them has the focus.
 function attachShortcutHandling(contents) {
     contents.on('before-input-event', (event, input) => {
         if (input.type !== 'keyDown' || input.isAutoRepeat) return
+        // Ctrl+1..9 = Nth messenger, Ctrl+Shift+1..9 = Nth saved split screen (pressed again, it closes the split).
+        const digit = digitOf(input)
+        const ctrl = input.control || (process.platform === 'darwin' && input.meta)
+        if (digit && ctrl && !input.alt) {
+            event.preventDefault()
+            const index = digit - 1
+            withWindow(currentDeps.getMainWindow, (win) => {
+                if (input.shift) win.webContents.send('shortcut-action', { action: 'splitPreset', index })
+                else win.webContents.send('switch-messenger-index', index)
+            })
+            return
+        }
         const actionId = registry.actionForInput(input)
         if (!actionId) return
         event.preventDefault()

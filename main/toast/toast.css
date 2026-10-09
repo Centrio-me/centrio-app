@@ -1,0 +1,35 @@
+:root { --bg:#17181c; --bg2:#1d1e23; --line:#2c2e35; --tx:#f1f1f4; --tx2:#9a9ca6; --ok:#4cc38a; --bad:#ef6b6b; --btn:#ececf1; --btnTx:#15161a }
+* { box-sizing: border-box; }
+html, body { margin: 0; background: transparent; overflow: hidden; font: 14px/1.45 "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif; color: var(--tx); user-select: none; }
+body { padding: 6px 8px 10px; }
+.card {
+    position: relative; cursor: pointer; padding: 14px 16px 14px;
+    background: linear-gradient(180deg, #1b1c21 0%, var(--bg) 100%);
+    border: 1px solid var(--line); border-radius: 16px;
+    box-shadow: 0 3px 12px rgba(0,0,0,.32);
+    animation: in .2s ease-out;
+}
+@keyframes in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .card { animation: none; } }
+.head { display: flex; align-items: center; gap: 12px; padding-right: 26px; }
+.avatar { width: 46px; height: 46px; border-radius: 50%; object-fit: cover; flex: none; background: #26272d; }
+.who { min-width: 0; }
+.title { font-weight: 650; font-size: 15px; letter-spacing: .1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.app { margin-top: 1px; font-size: 11px; letter-spacing: .6px; text-transform: uppercase; color: var(--tx2); }
+.body { margin-top: 10px; font-size: 14px; color: #dcdce2; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; word-break: break-word; }
+.close { position: absolute; top: 9px; right: 10px; width: 24px; height: 24px; border: 0; border-radius: 50%; background: transparent; color: var(--tx2); font-size: 17px; line-height: 22px; cursor: pointer; opacity: 0; transition: opacity .15s, background .15s; }
+.card:hover .close, .close:focus-visible { opacity: 1; }
+.close:hover { background: #2a2b31; color: var(--tx); }
+.reply { display: flex; gap: 8px; margin-top: 12px; cursor: default; }
+.reply[hidden], .status[hidden] { display: none; }
+.reply input { flex: 1; min-width: 0; height: 38px; padding: 0 14px; border-radius: 19px; border: 1px solid var(--line); background: var(--bg2); color: var(--tx); font: inherit; outline: none; user-select: text; transition: border-color .15s; }
+.reply input::placeholder { color: #70727c; }
+.reply input:focus { border-color: #5b5e69; }
+.reply button { flex: none; width: 38px; height: 38px; padding: 0; border: 0; border-radius: 50%; background: var(--btn); color: var(--btnTx); cursor: pointer; display: grid; place-items: center; transition: transform .12s, opacity .15s; }
+.reply button svg { width: 17px; height: 17px; }
+.reply button:hover:not(:disabled) { transform: scale(1.06); }
+.reply button:disabled { opacity: .45; cursor: default; }
+.status { margin-top: 10px; font-size: 13px; cursor: default; }
+.status.ok { color: var(--ok); }
+.status.bad { color: var(--bad); }
+.status a { color: var(--tx); cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }

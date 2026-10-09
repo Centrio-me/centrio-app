@@ -3,7 +3,7 @@ const path = require('path')
 const store = require('./services/store')
 const { clearBadges } = require('./services/badge')
 const { PATHS, IPC_CHANNELS, API_URL } = require('./config/constants')
-const { isWindowAlive, safeSendToWindow } = require('./utils/window')
+const { isWindowAlive, safeSendToWindow, raiseWindow } = require('./utils/window')
 const { createMainBrowserWindow } = require('./factory/browserWindow')
 
 async function _tryRestoreVpn(win) {
@@ -352,15 +352,8 @@ function showMainWindow() {
         return createWindow()
     }
 
-    if (mainWindow.isMinimized()) {
-        mainWindow.restore()
-    }
-
-    if (!mainWindow.isVisible()) {
-        mainWindow.show()
-    }
-
-    mainWindow.focus()
+    // Used when the user clicks a notification or the tray icon: the window has to come in front of whatever covers it.
+    raiseWindow(mainWindow)
     return mainWindow
 }
 

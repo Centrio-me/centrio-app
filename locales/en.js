@@ -127,6 +127,10 @@ module.exports = {
         fontLarge:        'Large',
         showTabs:         'Show tabs',
         notifShow:        'Show notifications',
+
+        notifPopup: "Centrio pop-ups",
+
+        notifPopupHint: "With a reply field right in the notification. Turn off to use regular system notifications.",
         notifSound:       'Notification sound',
         notifSoundChoose: 'Choose sound',
         notifSoundUpload: 'Upload custom sound',
@@ -336,6 +340,17 @@ module.exports = {
             findInPage:  'Ctrl+F — find on page',
             switchNum:   'Ctrl+1..9 — switch',
         },
+    },
+
+    toast: {
+        replyPlaceholder: "Reply…",
+        send: "Send",
+        sent: "Sent",
+        failed: "Could not send.",
+
+        noInput: "This chat has no message box, so a reply is not possible.",
+        openChat: "Open chat",
+        close: "Close"
     },
 
     shortcuts: {

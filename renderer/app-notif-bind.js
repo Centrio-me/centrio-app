@@ -1,3 +1,5 @@
+const { openNotifiedChat } = require('./notif-open-chat')
+
 // Привязка уведомлений приложения (от администратора / changelog).
 // Панель встроена в раскладку правого сайдбара (см. #rightPanel в
 // renderer.js) — открытие/закрытие делает общий контроллер
@@ -161,21 +163,28 @@ function bindAppNotifUi({
             try { switchTab(n.messengerId) } catch {}
         }
 
-        if (!n.actionUrl || !n.messengerId) return
+        if (!n.messengerId) return
 
-        const messenger = (state?.activeMessengers || []).find(m => m.id === n.messengerId)
-        if (!messenger) return
+        const loadActionUrl = () => {
+            if (!n.actionUrl) return
+            const messenger = (state?.activeMessengers || []).find(m => m.id === n.messengerId)
+            if (!messenger) return
 
-        try {
-            const targetHost = new URL(n.actionUrl).hostname
-            const ownHost = new URL(messenger.url).hostname
-            if (targetHost !== ownHost) return
+            try {
+                const targetHost = new URL(n.actionUrl).hostname
+                const ownHost = new URL(messenger.url).hostname
+                if (targetHost !== ownHost) return
 
-            const webview = document.getElementById(`webview-${n.messengerId}`)
-            if (webview && typeof webview.loadURL === 'function') {
-                webview.loadURL(n.actionUrl)
-            }
-        } catch {}
+                const webview = document.getElementById(`webview-${n.messengerId}`)
+                if (webview && typeof webview.loadURL === 'function') {
+                    webview.loadURL(n.actionUrl)
+                }
+            } catch {}
+        }
+
+        // First ask the page to open the chat itself; the link from the notification data is the fallback.
+        if (n.nid) openNotifiedChat(n.messengerId, n.nid, loadActionUrl)
+        else loadActionUrl()
     }
 
     // ── Render ─────────────────────────────────────────────────────────────────
@@ -381,7 +390,7 @@ function bindAppNotifUi({
         } catch {}
     }
 
-    function addMessengerNotification(title, body, messengerName, messengerId, actionUrl) {
+    function addMessengerNotification(title, body, messengerName, messengerId, actionUrl, nid) {
         const fakeEntry = {
             id: `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
             title: messengerName ? `${messengerName}: ${title}` : title,
@@ -391,7 +400,8 @@ function bindAppNotifUi({
             messengerId: messengerId || null,
             imageUrl: null,
             actionLabel: null,
-            actionUrl: typeof actionUrl === 'string' ? actionUrl : null
+            actionUrl: typeof actionUrl === 'string' ? actionUrl : null,
+            nid: typeof nid === 'string' ? nid : ''
         }
         notifications.unshift(fakeEntry)
         sortNotifications()

@@ -147,6 +147,10 @@ module.exports = {
         fontLarge: 'Большой',
         showTabs: 'Показывать вкладки',
         notifShow: 'Показывать уведомления',
+
+        notifPopup: "Всплывающие окна Centrio",
+
+        notifPopupHint: "С ответом прямо в уведомлении. Выключите, чтобы показывать обычные уведомления Windows.",
         notifSound: 'Звук уведомлений',
         notifSoundChoose: 'Выбор звука',
         notifSoundUpload: 'Загрузить свой звук',
@@ -356,6 +360,17 @@ module.exports = {
             findInPage: 'Ctrl+F — поиск по странице',
             switchNum: 'Ctrl+1..9 — переключение'
         }
+    },
+
+    toast: {
+        replyPlaceholder: "Ответить…",
+        send: "Отправить",
+        sent: "Отправлено",
+        failed: "Не удалось отправить.",
+
+        noInput: "В этом чате нет поля ввода: ответить нельзя.",
+        openChat: "Открыть чат",
+        close: "Закрыть"
     },
 
     shortcuts: {

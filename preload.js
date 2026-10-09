@@ -13,6 +13,8 @@ const validReceiveChannels = new Set([
     'reload-active',
     'open-settings',
     'notification-clicked-id',
+    'notification-open-chat',
+    'notification-reply',
     'update-status',
     // BUGFIX (2026-09-06, live report "Центрио думает" — ассистент никогда
     // не получал ответ): этот allowlist не обновлялся по мере добавления

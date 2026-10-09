@@ -13,12 +13,13 @@ const LABEL_KEYS = {
     settings: 'shortcuts.openSettings'
 }
 
+const { shortcutKeyName } = require('../shared/shortcutKeys')
+
 const MODIFIER_KEYS = new Set(['Control', 'Shift', 'Alt', 'Meta', 'AltGraph'])
-const KEY_NAMES = { ' ': 'Space', Escape: 'Esc', ArrowUp: 'Up', ArrowDown: 'Down', ArrowLeft: 'Left', ArrowRight: 'Right' }
 
 function eventToAccel(event) {
     if (MODIFIER_KEYS.has(event.key)) return ''
-    const key = KEY_NAMES[event.key] || (event.key.length === 1 ? event.key.toUpperCase() : event.key)
+    const key = shortcutKeyName(event.key, event.code)
     return [event.ctrlKey || event.metaKey ? 'Ctrl' : '', event.altKey ? 'Alt' : '', event.shiftKey ? 'Shift' : '', key].filter(Boolean).join('+')
 }
 

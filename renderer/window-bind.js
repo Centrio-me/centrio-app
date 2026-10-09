@@ -1,4 +1,6 @@
 const { getVisualMessengerOrder } = require('./tab-order')
+const { openNotifiedChat } = require('./notif-open-chat')
+const { sendReply } = require('./notif-reply')
 
 function bindWindowUi({
     store,
@@ -80,6 +82,32 @@ function bindWindowUi({
     // first so switchTab() falls through to its normal single-tab path —
     // the clicked messenger is shown full-size and nothing else in the
     // (now closed) split/preset gets reassigned or lost.
+    // A reply typed into a notification pop-up: put it into the right chat and report whether it went out.
+    ipcRenderer.on('notification-reply', async (payload) => {
+        if (!payload || !payload.replyId) return
+        const messenger = (state.activeMessengers || []).find(m => m.id === payload.messengerId)
+        const result = await sendReply(messenger, payload.nid, payload.text)
+        ipcRenderer.send('notification-reply-result', payload.replyId, result)
+    })
+
+    ipcRenderer.on('notification-open-chat', (payload) => {
+        if (!payload || !payload.messengerId) return
+        const { messengerId, nid, url } = payload
+        const openByLink = () => {
+            if (!url) return
+            const messenger = (state.activeMessengers || []).find(m => m.id === messengerId)
+            const webview = document.getElementById(`webview-${messengerId}`)
+            if (!messenger || !webview || typeof webview.loadURL !== 'function') return
+            try {
+                // same site only: the link comes from the content of a third-party page
+                if (new URL(url).hostname !== new URL(messenger.url).hostname) return
+                webview.loadURL(url)
+            } catch {}
+        }
+        if (nid) openNotifiedChat(messengerId, nid, openByLink)
+        else openByLink()
+    })
+
     ipcRenderer.on('notification-clicked-id', (messengerId) => {
         if (!messengerId) return
         if (state.splitMode && typeof exitSplitMode === 'function') exitSplitMode()

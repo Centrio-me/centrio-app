@@ -82,7 +82,9 @@ function normalizeRecord(input) {
         // тяжёлой валидации: источник — наш собственный renderer-код, а
         // фактическая проверка same-origin перед навигацией делается на
         // стороне рендерера (app-notif-bind.js) непосредственно перед loadURL.
-        actionUrl: typeof input.actionUrl === 'string' ? input.actionUrl.slice(0, 2000) : null
+        actionUrl: typeof input.actionUrl === 'string' ? input.actionUrl.slice(0, 2000) : null,
+        // short id of the page-side notification object, valid only until that page reloads
+        nid: typeof input.nid === 'string' && /^n\d{1,9}$/.test(input.nid) ? input.nid : ''
     }
 }
 

@@ -304,6 +304,7 @@ function createSettingsUiApi({
             fontSize: document.getElementById('settingFontSize')?.value || currentSettings.fontSize || 13,
             showTabs: document.getElementById('settingShowTabs')?.checked ?? true,
             notifications: document.getElementById('settingNotifications')?.checked ?? true,
+            notifPopup: document.getElementById('settingNotifPopup')?.checked ?? true,
             notifSound: document.getElementById('settingNotifSound')?.checked ?? true,
             trayBadge: document.getElementById('settingTrayBadge')?.checked ?? true,
             notifHistoryLimit: Number(document.getElementById('settingNotifHistoryLimit')?.value) || currentSettings.notifHistoryLimit || 200,
@@ -334,6 +335,7 @@ function createSettingsUiApi({
         const settingFontSize = document.getElementById('settingFontSize')
         const settingShowTabs = document.getElementById('settingShowTabs')
         const settingNotifications = document.getElementById('settingNotifications')
+        const settingNotifPopup = document.getElementById('settingNotifPopup')
         const settingNotifSound = document.getElementById('settingNotifSound')
         const settingTrayBadge = document.getElementById('settingTrayBadge')
         const settingNotifHistoryLimit = document.getElementById('settingNotifHistoryLimit')
@@ -346,6 +348,7 @@ function createSettingsUiApi({
         if (settingFontSize) settingFontSize.value = settings.fontSize || '13'
         if (settingShowTabs) settingShowTabs.checked = settings.showTabs !== false
         if (settingNotifications) settingNotifications.checked = settings.notifications !== false
+        if (settingNotifPopup) settingNotifPopup.checked = settings.notifPopup !== false
         if (settingNotifSound) settingNotifSound.checked = settings.notifSound !== false
         if (settingTrayBadge) settingTrayBadge.checked = settings.trayBadge !== false
         if (settingNotifHistoryLimit) settingNotifHistoryLimit.value = String(settings.notifHistoryLimit || 200)

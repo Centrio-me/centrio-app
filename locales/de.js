@@ -127,6 +127,10 @@ module.exports = {
         fontLarge:        'Groß',
         showTabs:         'Tabs anzeigen',
         notifShow:        'Benachrichtigungen anzeigen',
+
+        notifPopup: "Centrio-Popups",
+
+        notifPopupHint: "Mit Antwortfeld direkt in der Benachrichtigung. Ausschalten, um normale Systembenachrichtigungen zu verwenden.",
         notifSound:       'Benachrichtigungston',
         notifSoundChoose: 'Ton auswählen',
         notifSoundUpload: 'Eigenen Ton hochladen',
@@ -325,6 +329,17 @@ module.exports = {
             findInPage:  'Ctrl+F — Auf Seite suchen',
             switchNum:   'Ctrl+1..9 — wechseln',
         },
+    },
+
+    toast: {
+        replyPlaceholder: "Antworten …",
+        send: "Senden",
+        sent: "Gesendet",
+        failed: "Senden fehlgeschlagen.",
+
+        noInput: "In diesem Chat gibt es kein Eingabefeld, eine Antwort ist nicht möglich.",
+        openChat: "Chat öffnen",
+        close: "Schließen"
     },
 
     shortcuts: {

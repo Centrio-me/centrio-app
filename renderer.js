@@ -1029,9 +1029,9 @@ async function bootstrap() {
         playNotifSound,
         isMessengerMuted,
         updateUnreadCount,
-        addMessengerNotification: (title, body, name, messengerId, actionUrl) => {
+        addMessengerNotification: (title, body, name, messengerId, actionUrl, nid) => {
             if (typeof addMessengerNotifRef === 'function') {
-                addMessengerNotifRef(title, body, name, messengerId, actionUrl)
+                addMessengerNotifRef(title, body, name, messengerId, actionUrl, nid)
             }
         }
     })
@@ -1342,9 +1342,9 @@ async function bootstrap() {
         // ~961) — bindAppNotifUi() (which owns the real implementation)
         // hasn't run yet at this point in init, so a ref that gets filled
         // in later is forwarded instead of the function itself.
-        addMessengerNotification: (title, body, name, messengerId, actionUrl) => {
+        addMessengerNotification: (title, body, name, messengerId, actionUrl, nid) => {
             if (typeof addMessengerNotifRef === 'function') {
-                addMessengerNotifRef(title, body, name, messengerId, actionUrl)
+                addMessengerNotifRef(title, body, name, messengerId, actionUrl, nid)
             }
         }
     })

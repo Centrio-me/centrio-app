@@ -273,7 +273,32 @@ const NOTIF_PATCH_SCRIPT = `(function() {
     window.__centrioNotifPatched = true
     window.__centrioPendingNotifs = window.__centrioPendingNotifs || []
 
-    function queue(title, options) {
+    // Every notification the page creates is kept under a short id so a click on our system toast can "click" the
+    // site's own notification, which is how the site opens the right chat. Only the latest ones are kept.
+    var __refs = {}
+    var __order = []
+    var __counter = 0
+    var MAX_REFS = 60
+    function keep(notification) {
+        var id = 'n' + (++__counter)
+        __refs[id] = notification
+        __order.push(id)
+        while (__order.length > MAX_REFS) delete __refs[__order.shift()]
+        return id
+    }
+    window.__centrioOpenNotif = function (id) {
+        var notification = __refs[id]
+        if (!notification) return false
+        try { window.focus() } catch (e) {}
+        try {
+            var click = new Event('click')
+            if (typeof notification.onclick === 'function') notification.onclick(click)
+            notification.dispatchEvent(click)
+            return true
+        } catch (e) { return false }
+    }
+
+    function queue(title, options, nid) {
         try {
             // options.data — многие PWA кладут туда путь/ссылку на конкретный
             // диалог/сообщение (используется в их же 'notificationclick'). Если
@@ -287,44 +312,97 @@ const NOTIF_PATCH_SCRIPT = `(function() {
                 url = rawData.url || rawData.link || rawData.deepLink || rawData.href || null
             }
 
-            window.__centrioPendingNotifs.push({
+            var rawIcon = (options && options.icon) || ''
+            var entry = {
                 title: String(title || ''),
                 body: String((options && options.body) || ''),
                 tag: String((options && options.tag) || ''),
-                icon: (options && options.icon) || '',
-                url: url ? String(url) : ''
+                icon: '',
+                url: url ? String(url) : '',
+                nid: nid || ''
+            }
+            toDataUrl(rawIcon).then(function (icon) {
+                entry.icon = icon
+                window.__centrioPendingNotifs.push(entry)
             })
         } catch (e) {}
+    }
+
+    // Why the site's own notification is never shown: Electron would draw a system toast for it AND we draw ours
+    // (sender, text, click to the right chat) — the "two or three toasts per message" and "sometimes from the
+    // centre, sometimes with the sender's name" complaints. So the page gets a stand-in that behaves like a
+    // Notification (events, close, onclick) but is shown only by the app.
+    function toDataUrl(src) {
+        return new Promise(function (resolve) {
+            if (!src) return resolve('')
+            src = String(src)
+            if (/^data:/i.test(src)) return resolve(src)
+            if (/^https?:/i.test(src)) return resolve(src)
+            var finished = false
+            var timer = setTimeout(function () { if (!finished) { finished = true; resolve('') } }, 1500)
+            fetch(src).then(function (r) { return r.blob() }).then(function (blob) {
+                if (blob.size > 300000) { finished = true; clearTimeout(timer); return resolve('') }
+                var reader = new FileReader()
+                reader.onload = function () { if (!finished) { finished = true; clearTimeout(timer); resolve(String(reader.result)) } }
+                reader.onerror = function () { if (!finished) { finished = true; clearTimeout(timer); resolve('') } }
+                reader.readAsDataURL(blob)
+            }).catch(function () { if (!finished) { finished = true; clearTimeout(timer); resolve('') } })
+        })
     }
 
     try {
         var OriginalNotification = window.Notification
         if (OriginalNotification) {
-            var PatchedNotification = function (title, options) {
-                queue(title, options)
-                return new OriginalNotification(title, options)
+            var CentrioNotification = class extends EventTarget {
+                constructor(title, options) {
+                    super()
+                    options = options || {}
+                    this.title = String(title || '')
+                    this.body = String(options.body || '')
+                    this.tag = String(options.tag || '')
+                    this.icon = String(options.icon || '')
+                    this.data = options.data
+                    this.silent = !!options.silent
+                    this.timestamp = Date.now()
+                    this.onclick = null
+                    this.onclose = null
+                    this.onerror = null
+                    this.onshow = null
+                    queue(title, options, keep(this))
+                    var self = this
+                    setTimeout(function () {
+                        try {
+                            var shown = new Event('show')
+                            if (typeof self.onshow === 'function') self.onshow(shown)
+                            self.dispatchEvent(shown)
+                        } catch (e) {}
+                    }, 0)
+                }
+                close() {
+                    try {
+                        var closed = new Event('close')
+                        if (typeof this.onclose === 'function') this.onclose(closed)
+                        this.dispatchEvent(closed)
+                    } catch (e) {}
+                }
+                static get permission() { return OriginalNotification.permission }
+                static get maxActions() { return 0 }
+                static requestPermission(callback) {
+                    var result = OriginalNotification.requestPermission
+                        ? OriginalNotification.requestPermission.call(OriginalNotification, callback)
+                        : Promise.resolve('granted')
+                    return result
+                }
             }
-            PatchedNotification.prototype = OriginalNotification.prototype
-            try {
-                Object.defineProperty(PatchedNotification, 'permission', {
-                    get: function () { return OriginalNotification.permission }
-                })
-            } catch (e) {
-                PatchedNotification.permission = OriginalNotification.permission
-            }
-            PatchedNotification.requestPermission = OriginalNotification.requestPermission
-                ? OriginalNotification.requestPermission.bind(OriginalNotification)
-                : function () { return Promise.resolve('granted') }
-            window.Notification = PatchedNotification
+            window.Notification = CentrioNotification
         }
     } catch (e) {}
 
     try {
         if (window.ServiceWorkerRegistration && ServiceWorkerRegistration.prototype.showNotification) {
-            var origShow = ServiceWorkerRegistration.prototype.showNotification
             ServiceWorkerRegistration.prototype.showNotification = function (title, options) {
                 queue(title, options)
-                return origShow.call(this, title, options)
+                return Promise.resolve()
             }
         }
     } catch (e) {}

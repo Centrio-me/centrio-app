@@ -2,6 +2,7 @@
 // on the app UI or inside a messenger's <webview> (the webview preload that used to forward keys does not run).
 // Overrides are stored as { actionId: 'Ctrl+Shift+K' } ('' disables an action).
 const store = require('./store')
+const { shortcutKeyName } = require('../../shared/shortcutKeys')
 
 const STORE_KEY = 'shortcuts'
 
@@ -25,7 +26,6 @@ const RESERVED = [
     /^Ctrl\+[CVXAZYK]$/, /^Alt\+F4$/, /^Ctrl\+Shift\+[ZV]$/
 ]
 
-const KEY_NAMES = { ' ': 'Space', Escape: 'Esc', ArrowUp: 'Up', ArrowDown: 'Down', ArrowLeft: 'Left', ArrowRight: 'Right', Delete: 'Delete', Backspace: 'Backspace', Enter: 'Enter', Tab: 'Tab' }
 const MODIFIER_KEYS = new Set(['Control', 'Shift', 'Alt', 'Meta', 'AltGraph'])
 
 function overrides() {
@@ -67,7 +67,7 @@ function normalize(accel) {
 
 function inputToAccel(input) {
     if (!input || MODIFIER_KEYS.has(input.key)) return ''
-    const key = KEY_NAMES[input.key] || (input.key && input.key.length === 1 ? input.key.toUpperCase() : input.key)
+    const key = shortcutKeyName(input.key, input.code)
     const ctrl = input.control || (process.platform === 'darwin' && input.meta)
     return normalize([ctrl ? 'Ctrl' : '', input.alt ? 'Alt' : '', input.shift ? 'Shift' : '', key].filter(Boolean).join('+'))
 }

@@ -127,6 +127,10 @@ module.exports = {
         fontLarge:        'Grande',
         showTabs:         'Mostra schede',
         notifShow:        'Mostra notifiche',
+
+        notifPopup: "Popup di Centrio",
+
+        notifPopupHint: "Con risposta direttamente nella notifica. Disattiva per usare le normali notifiche di sistema.",
         notifSound:       'Suono notifiche',
         notifSoundChoose: 'Scegli suono',
         notifSoundUpload: 'Carica suono personalizzato',
@@ -325,6 +329,17 @@ module.exports = {
             findInPage:  'Ctrl+F — cerca nella pagina',
             switchNum:   'Ctrl+1..9 — cambia',
         },
+    },
+
+    toast: {
+        replyPlaceholder: "Rispondi…",
+        send: "Invia",
+        sent: "Inviato",
+        failed: "Invio non riuscito.",
+
+        noInput: "Questa chat non ha un campo di scrittura, non si può rispondere.",
+        openChat: "Apri chat",
+        close: "Chiudi"
     },
 
     shortcuts: {

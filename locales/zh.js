@@ -127,6 +127,10 @@ module.exports = {
         fontLarge:        '大',
         showTabs:         '显示标签栏',
         notifShow:        '显示通知',
+
+        notifPopup: "Centrio 弹窗通知",
+
+        notifPopupHint: "可直接在通知中回复。关闭后将使用系统通知。",
         notifSound:       '通知声音',
         notifSoundChoose: '选择提示音',
         notifSoundUpload: '上传自定义声音',
@@ -325,6 +329,17 @@ module.exports = {
             findInPage:  'Ctrl+F — 页面内搜索',
             switchNum:   'Ctrl+1..9 — 切换',
         },
+    },
+
+    toast: {
+        replyPlaceholder: "回复…",
+        send: "发送",
+        sent: "已发送",
+        failed: "发送失败。",
+
+        noInput: "此聊天没有输入框，无法回复。",
+        openChat: "打开聊天",
+        close: "关闭"
     },
 
     shortcuts: {

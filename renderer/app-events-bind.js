@@ -1,5 +1,8 @@
 const { getVisualMessengerOrder } = require('./tab-order')
 
+// Ctrl+Shift+N opens the Nth saved split screen; pressed again while that very screen is open it closes the split.
+let presetOpenedByKey = null
+
 function bindAppEvents({
     state,
     quickSearch,
@@ -14,6 +17,20 @@ function bindAppEvents({
     openSettings,
     splitApi // (id) => void-ish API from renderer/split.js — getPresets()/applyPreset() back saved split screens (see Ctrl+Shift+1..9 below)
 }) {
+    function togglePreset(index) {
+        const presets = (splitApi && splitApi.getPresets && splitApi.getPresets()) || []
+        const preset = presets[index]
+        if (!preset) return false
+        if (state.splitMode && presetOpenedByKey === preset.id) {
+            presetOpenedByKey = null
+            splitApi.exitSplitMode()
+            return true
+        }
+        presetOpenedByKey = preset.id
+        splitApi.applyPreset(preset.id)
+        return true
+    }
+
     document.addEventListener('keydown', (e) => {
         const tag = document.activeElement?.tagName
         const isInput = tag === 'INPUT' || tag === 'TEXTAREA'
@@ -67,12 +84,8 @@ function bindAppEvents({
         // entirely, so it reads as "the same idea, one level up" instead of
         // an unrelated shortcut to memorize.
         if (e.ctrlKey && e.shiftKey && e.code >= 'Digit1' && e.code <= 'Digit9' && splitApi) {
-            const presets = splitApi.getPresets?.() || []
             const idx = parseInt(e.code.replace('Digit', '')) - 1
-            if (presets[idx]) {
-                e.preventDefault()
-                splitApi.applyPreset(presets[idx].id)
-            }
+            if (togglePreset(idx)) e.preventDefault()
         }
     })
 
@@ -126,7 +139,8 @@ function bindAppEvents({
     // Rebindable shortcuts arrive from the main process (it matches keys for the app and for every webview).
     document.addEventListener('centrio-shortcut', (e) => {
         const action = e.detail && e.detail.action
-        if (action === 'quickSearch') quickSearch.classList.contains('show') ? closeQuickSearch() : openQuickSearch()
+        if (action === 'splitPreset') togglePreset(Number(e.detail.index))
+        else if (action === 'quickSearch') quickSearch.classList.contains('show') ? closeQuickSearch() : openQuickSearch()
         else if (action === 'findInPage') findBar.classList.contains('show') ? closeFindBar() : openFindBar()
     })
 

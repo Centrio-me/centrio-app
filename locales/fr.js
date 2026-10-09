@@ -127,6 +127,10 @@ module.exports = {
         fontLarge:        'Grande',
         showTabs:         'Afficher les onglets',
         notifShow:        'Afficher les notifications',
+
+        notifPopup: "Fenêtres de notification Centrio",
+
+        notifPopupHint: "Avec réponse directement dans la notification. Désactivez pour utiliser les notifications système habituelles.",
         notifSound:       'Son des notifications',
         notifSoundChoose: 'Choisir un son',
         notifSoundUpload: 'Importer un son personnalisé',
@@ -325,6 +329,17 @@ module.exports = {
             findInPage:  'Ctrl+F — rechercher sur la page',
             switchNum:   'Ctrl+1..9 — changer',
         },
+    },
+
+    toast: {
+        replyPlaceholder: "Répondre…",
+        send: "Envoyer",
+        sent: "Envoyé",
+        failed: "Envoi impossible.",
+
+        noInput: "Cette discussion n’a pas de champ de saisie : impossible de répondre.",
+        openChat: "Ouvrir la discussion",
+        close: "Fermer"
     },
 
     shortcuts: {

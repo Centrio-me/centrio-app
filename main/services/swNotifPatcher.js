@@ -78,7 +78,8 @@ const SW_PATCH_SCRIPT = `(function() {
                             url: __url ? String(__url) : ''
                         })
                     } catch (e) {}
-                    return origShow.call(this, title, options)
+                    // Shown only by the app (our toast), never by the system: no second notification.
+                    return Promise.resolve()
                 }
             })
         }
