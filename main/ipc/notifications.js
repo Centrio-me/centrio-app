@@ -37,7 +37,7 @@ function registerNotificationsIpc({ getMainWindow, showMainWindow }) {
         sendReply: (payload) => safeSendToWindow(getMainWindow, 'notification-reply', payload)
     })
     ipcMain.removeAllListeners('notification-reply-result')
-    ipcMain.on('notification-reply-result', (_event, replyId, result) => toastManager.replyResult(String(replyId || ''), result === 'ok' ? 'ok' : (result === 'no-input' ? 'no-input' : 'failed')))
+    ipcMain.on('notification-reply-result', (_event, replyId, result) => toastManager.replyResult(String(replyId || ''), ['ok', 'no-input', 'not-opened'].includes(result) ? result : 'failed'))
 
     // Why a notification was or was not shown (messenger name and a reason only, never the message).
     ipcMain.on('notif-diag', (_event, info) => {
@@ -141,6 +141,7 @@ function registerNotificationsIpc({ getMainWindow, showMainWindow }) {
                             sent: t('toast.sent'),
                             failed: t('toast.failed'),
                             noInput: t('toast.noInput'),
+                            notOpened: t('toast.notOpened'),
                             openChat: t('toast.openChat'),
                             close: t('toast.close')
                         }

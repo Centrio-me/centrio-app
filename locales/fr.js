@@ -360,6 +360,8 @@ module.exports = {
         failed: "Envoi impossible.",
 
         noInput: "Cette discussion n’a pas de champ de saisie : impossible de répondre.",
+
+        notOpened: "Non envoyé : impossible d’ouvrir la bonne discussion. Cliquez pour l’ouvrir et répondez-y.",
         openChat: "Ouvrir la discussion",
         close: "Fermer"
     },

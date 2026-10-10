@@ -50,7 +50,7 @@ api.onReplyResult((result) => {
         setStatus('ok', strings.sent || '')
         api.done()
     } else {
-        setStatus('bad', result === 'no-input' ? (strings.noInput || strings.failed || '') : (strings.failed || ''), true)
+        setStatus('bad', result === 'no-input' ? (strings.noInput || strings.failed || '') : (result === 'not-opened' ? (strings.notOpened || strings.failed || '') : (strings.failed || '')), true)
         api.extend() // keep the failure readable for a while
         $('replyInput').focus()
     }

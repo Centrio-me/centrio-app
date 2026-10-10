@@ -5,23 +5,36 @@
 // A reply is reported as sent ONLY when it is proven: the text was really in the message box before sending and the box
 // was emptied afterwards. Anything else is reported as a failure, so the pop-up never says "sent" for a message that did
 // not go out.
+//
+// The reply must NEVER go to a different chat than the one the notification came from. Before anything is typed, the
+// open chat is checked against the notification itself (see chatVerdict): its header must carry the sender's name from
+// the notification, or the page must have navigated after the click and show the notified text. If the chat cannot be
+// proven, nothing is typed or sent, and the user is told to answer in the chat itself.
 const OPEN_SETTLE_MS = 700
 const SETTLE_AFTER_TYPING_MS = 250
 const SETTLE_AFTER_SEND_MS = 900
 const COMPOSER_WAIT_MS = 4000
+const CHAT_WAIT_MS = 6000 // the site may switch chats slowly on accounts with many chats
+const CHAT_POLL_MS = 150
+const CHAT_STABLE_MS = 250
 
 // Per site: where the message box and the send button are. Selectors are tried in order; the first match wins.
 const TELEGRAM = {
     chatKey: 'hash', // the address hash is the open chat; it can be put back without a reload
     composer: ['.chat-input .input-message-input[contenteditable="true"]', '.input-message-input[contenteditable="true"]', '#editable-message-text', 'div[contenteditable="true"].input-message-input'],
     send: ['.btn-send-container button.btn-send', 'button.btn-send', 'button.main-button.send', '.Button.send', 'button[aria-label="Send Message"]'],
-    outgoing: ['.bubble.is-out .message', '.Message.own .text-content', '.message.own .text-content']
+    outgoing: ['.bubble.is-out .message', '.Message.own .text-content', '.message.own .text-content'],
+    // the name of the open chat (Web K, Web A) and the incoming messages of it
+    header: ['.chat-info .peer-title', '#column-center .top .peer-title', '.MiddleHeader .ChatInfo .fullName', '.MiddleHeader .ChatInfo .title', '.chat-info-container .title h3'],
+    incoming: ['.bubble:not(.is-out) .message', '.Message:not(.own) .text-content', '.message:not(.own) .text-content']
 }
 const WHATSAPP = {
     chatKey: 'title',
     composer: ['footer div[contenteditable="true"][role="textbox"]', 'footer div[contenteditable="true"]', 'div[contenteditable="true"][data-tab="10"]'],
     send: ['footer button[aria-label="Send"]', 'footer button[aria-label="Отправить"]', 'footer span[data-icon="send"]'],
-    outgoing: ['div.message-out .copyable-text span.selectable-text']
+    outgoing: ['div.message-out .copyable-text span.selectable-text'],
+    header: ['#main header [data-testid="conversation-info-header-chat-title"]', '#main header span[title]', '#main header span[dir="auto"]'],
+    incoming: ['div.message-in .copyable-text span.selectable-text']
 }
 // MAX (checked on a live account, 2026-10-09): the message box is <div role="textbox" contenteditable=""> - note the
 // EMPTY attribute value, so [contenteditable="true"] does not match it - and the send button only exists once there is
@@ -31,6 +44,7 @@ const MAX = {
     composer: ['[data-testid="composer"] [role="textbox"][contenteditable]:not([contenteditable="false"])', '[role="textbox"][contenteditable]:not([contenteditable="false"])'],
     send: ['button[aria-label="Отправить сообщение"]', 'button[aria-label*="Отправить" i]'],
     outgoing: ['.message--isOut'],
+    incoming: ['.message:not(.message--isOut)'], // the chat header of MAX is not known: the open chat is proven by navigation and text
     sendWith: 'button'
 }
 // Any other site: the first message-box-looking element, and Enter.
@@ -80,6 +94,24 @@ function pageScript(selectors, action, arg) {
             for (const sel of cfg.outgoing) total += document.querySelectorAll(sel).length
             return total
         }
+        if (action === 'header') {
+            for (const sel of cfg.header || []) {
+                const node = document.querySelector(sel)
+                if (!node) continue
+                const value = norm(node.getAttribute('title') || node.innerText || node.textContent)
+                if (value) return value
+            }
+            return ''
+        }
+        if (action === 'incoming') {
+            const out = []
+            for (const sel of cfg.incoming || []) {
+                const nodes = document.querySelectorAll(sel)
+                for (let i = Math.max(0, nodes.length - 8); i < nodes.length; i++) out.push(norm(nodes[i].textContent))
+                if (out.length) break
+            }
+            return out
+        }
         if (action === 'restore') { if (kind === 'hash' && arg) { location.hash = arg; return true } return false }
         if (action === 'find') return !!el
         if (!el) return null
@@ -128,14 +160,52 @@ function pageScript(selectors, action, arg) {
 const ZERO_WIDTH = new RegExp('[' + String.fromCharCode(0x200b, 0x2060, 0xfeff) + ']', 'g')
 const normalize = (text) => String(text || '').replace(ZERO_WIDTH, '').replace(/[ \t\r\n]+/g, ' ').trim()
 
-const CHAT_CHANGE_WAIT_MS = 1500
-async function waitForChatChange(run, before) {
-    const until = Date.now() + CHAT_CHANGE_WAIT_MS
-    while (Date.now() < until) {
-        if ((await run('key')) !== before) return true
-        await sleep(150)
+// Same name, whatever the case, emoji or punctuation.
+const letters = (text) => normalize(text).toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '')
+const sameTitle = (a, b) => { const x = letters(a); return x !== '' && x === letters(b) }
+
+// Does one of the latest incoming messages carry the notified text? Group notifications read "Name: text".
+function incomingHas(messages, body) {
+    const text = normalize(body).replace(/(\.{3}|…)$/, '').trim()
+    if (!text || !Array.isArray(messages)) return false
+    const tail = text.includes(': ') ? text.slice(text.indexOf(': ') + 2) : ''
+    const needles = [text, tail].map((n) => n.slice(0, 60).toLowerCase()).filter((n) => n.length >= 3)
+    return messages.some((m) => { const low = normalize(m).toLowerCase(); return needles.some((n) => low.includes(n)) })
+}
+
+// Is the chat open in the page the one the notification is about? { ok, key }
+// `before` is what the page showed before our click: { key, header }.
+//  - the header of the chat carries the sender's name from the notification: yes;
+//  - the header differs: only when the page really moved on (new address AND a new header, so the text below is not
+//    the stale screen of the previous chat) and shows the notified text;
+//  - the header cannot be read: the page navigated after our click, or the notified text is right there.
+// Anything else is NOT proven, and nothing may be typed.
+async function chatVerdict(run, before, notice) {
+    const key = await run('key')
+    const changed = key !== '' && key !== before.key // an empty address is a page in transition, never proof
+    const header = normalize(await run('header'))
+    if (header && sameTitle(header, notice.title)) return { ok: true, key }
+    if (header) return { ok: changed && header !== before.header && incomingHas(await run('incoming'), notice.body), key }
+    if (changed) return { ok: true, key }
+    return { ok: incomingHas(await run('incoming'), notice.body), key }
+}
+
+// Waits until the open chat is proven to be the notified one (and stays so), or gives up.
+async function waitForNotifiedChat(run, before, notice, ctx) {
+    const until = Date.now() + CHAT_WAIT_MS
+    let stableKey = null
+    while (Date.now() < until && !ctx.cancelled) {
+        const verdict = await chatVerdict(run, before, notice)
+        if (verdict.ok) {
+            if (stableKey === verdict.key) return verdict
+            stableKey = verdict.key
+            await sleep(CHAT_STABLE_MS)
+            continue
+        }
+        stableKey = null
+        await sleep(CHAT_POLL_MS)
     }
-    return false // the chat was already open
+    return null
 }
 
 async function waitForComposer(run) {
@@ -148,30 +218,42 @@ async function waitForComposer(run) {
 }
 
 // Resolves 'ok' only when the message is proven to have gone out (see the top of this file). Otherwise a reason:
-// 'no-input' (the chat has no message box, e.g. a channel), or 'failed'.
-async function sendReply(messenger, nid, text) {
+// 'not-opened' (the notified chat could not be proven, nothing was sent), 'no-input' (the chat has no message box,
+// e.g. a channel), or 'failed'. `notice` is { title, body } of the notification the reply belongs to; `ctx.cancelled`
+// is set when the caller gave up waiting, after which nothing may be typed or sent any more.
+async function deliverReply(messenger, nid, text, notice, ctx) {
     const adapter = messenger && adapterFor(messenger.url)
     const webview = messenger && document.getElementById(`webview-${messenger.id}`)
     if (!adapter || !webview || typeof webview.executeJavaScript !== 'function') return 'failed'
     const wanted = normalize(text)
     if (!wanted) return 'failed'
+    const target = { title: normalize(notice.title), body: normalize(notice.body) }
+    let draft = ''
+    let hadDraft = false
+    let chatTarget = null
     const run = (action, arg) => webview.executeJavaScript(pageScript(adapter.selectors, action, arg))
+    // The page can move to another chat at any moment (the site is slow, or the user clicks): the message box and the
+    // draft are touched only while the notified chat is still the open one.
+    const stillThere = async () => chatTarget !== null && (await run('key')) === chatTarget
     try {
-        const chatBefore = await run('key')
+        const before = { key: await run('key'), header: normalize(await run('header')) }
         const opened = await webview.executeJavaScript(
             `window.__centrioOpenNotif ? window.__centrioOpenNotif(${JSON.stringify(String(nid))}) : false`
         )
-        if (!opened) return 'failed'
-        // The site switches chats asynchronously (slowly on accounts with many chats): wait until the open chat
-        // really changed, otherwise the text would be typed into the chat that was open before.
-        await waitForChatChange(run, chatBefore)
+        if (!opened) return 'not-opened'
+        // The site switches chats asynchronously (slowly on accounts with many chats). The message box of the chat
+        // that was open before is still there meanwhile, so its presence proves nothing: the notified chat itself
+        // must be proven open before a single character is typed.
+        const verified = await waitForNotifiedChat(run, before, target, ctx)
+        if (!verified || ctx.cancelled) return 'not-opened'
+        chatTarget = verified.key
         await sleep(OPEN_SETTLE_MS)
-        if (!(await waitForComposer(run))) return 'no-input'
-        const chatTarget = await run('key')
+        if (!(await waitForComposer(run))) { chatTarget = null; return 'no-input' }
+        if (ctx.cancelled || !(await stillThere())) { chatTarget = null; return 'not-opened' }
 
         // A draft the user already has in this chat is kept aside and put back afterwards.
-        const draft = await run('read')
-        const hadDraft = normalize(draft) !== ''
+        draft = await run('read')
+        hadDraft = normalize(draft) !== ''
         if (hadDraft && !(await run('clear'))) return 'failed'
         await run('focus')
         try { webview.focus() } catch { /* the tab may not be shown; the page-side focus above is enough */ }
@@ -185,13 +267,14 @@ async function sendReply(messenger, nid, text) {
         }
         if (typed !== wanted) typed = normalize(await run('set', text))
         if (typed !== wanted) {
-            await run('clear')
+            if (await stillThere()) await run('clear')
             return 'failed'
         }
         // The chat must still be the one the reply is meant for; never send into another conversation.
-        if ((await run('key')) !== chatTarget) {
-            await run('clear')
-            return 'failed'
+        const recheck = await chatVerdict(run, before, target)
+        if (ctx.cancelled || !recheck.ok || recheck.key !== chatTarget) {
+            if (await stillThere()) await run('clear')
+            return 'not-opened'
         }
         const sentBefore = Number(await run('count')) || 0
 
@@ -203,25 +286,46 @@ async function sendReply(messenger, nid, text) {
         }
         const pressButton = () => run('send')
         const attempts = adapter.selectors.sendWith === 'button' ? [pressButton, pressEnter] : [pressEnter, pressButton]
-        let left = typed
         let proven = false
         for (const attempt of attempts) {
+            if (ctx.cancelled || !(await stillThere())) break
             await attempt()
             await sleep(SETTLE_AFTER_SEND_MS)
-            left = normalize(await run('read'))
+            const left = normalize(await run('read'))
             // a new outgoing message counts as proof too: never press the second way when the first one worked
             proven = left === '' || (Number(await run('count')) || 0) > sentBefore
             if (proven) break
         }
-        const sent = proven
-        if (!sent) await run('clear')
-        // Put the user back where they were: a reply from the pop-up must not leave them in another chat.
-        if (sent && chatBefore && chatBefore !== chatTarget) await run('restore', chatBefore)
-        if (hadDraft) await run('set', draft)
-        return sent ? 'ok' : 'failed'
+        if (!proven && (await stillThere())) await run('clear')
+        // the draft belongs to the notified chat: it goes back BEFORE the user is returned to the chat they were in
+        if (hadDraft && (await stillThere())) await run('set', draft)
+        hadDraft = false
+        if (proven && before.key && before.key !== chatTarget) await run('restore', before.key)
+        return proven ? 'ok' : 'failed'
     } catch {
         return 'failed'
+    } finally {
+        // the user's own draft comes back whatever happened, but only into the chat it was taken from
+        if (hadDraft) { try { if (await stillThere()) await run('set', draft) } catch { /* the tab went away */ } }
     }
+}
+
+// Two replies to the same messenger must never overlap: each one switches the chat of the page, so they would
+// trample each other. One at a time per messenger, in the order they were sent.
+const REPLY_TIMEOUT_MS = 30000
+const queues = new Map()
+function sendReply(messenger, nid, text, notice = {}) {
+    const id = messenger && messenger.id
+    const turn = (queues.get(id) || Promise.resolve()).then(() => {
+        const ctx = { cancelled: false }
+        // A hung page must not block every later reply: give up after a while, and from then on touch nothing.
+        const giveUp = new Promise((resolve) => setTimeout(() => { ctx.cancelled = true; resolve('failed') }, REPLY_TIMEOUT_MS))
+        return Promise.race([deliverReply(messenger, nid, text, notice, ctx), giveUp])
+    })
+    const tail = turn.catch(() => {})
+    queues.set(id, tail)
+    tail.then(() => { if (queues.get(id) === tail) queues.delete(id) })
+    return turn
 }
 
 module.exports = { adapterFor, sendReply }

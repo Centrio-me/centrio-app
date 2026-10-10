@@ -360,6 +360,8 @@ module.exports = {
         failed: "No se pudo enviar.",
 
         noInput: "Este chat no tiene campo de mensaje, no se puede responder.",
+
+        notOpened: "No enviado: no se pudo abrir el chat correcto. Haz clic para abrirlo y responder allí.",
         openChat: "Abrir chat",
         close: "Cerrar"
     },

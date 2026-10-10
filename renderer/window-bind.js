@@ -86,7 +86,7 @@ function bindWindowUi({
     ipcRenderer.on('notification-reply', async (payload) => {
         if (!payload || !payload.replyId) return
         const messenger = (state.activeMessengers || []).find(m => m.id === payload.messengerId)
-        const result = await sendReply(messenger, payload.nid, payload.text)
+        const result = await sendReply(messenger, payload.nid, payload.text, { title: payload.title, body: payload.body })
         ipcRenderer.send('notification-reply-result', payload.replyId, result)
     })
 

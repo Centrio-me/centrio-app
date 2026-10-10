@@ -76,7 +76,7 @@ function show({ title, body, icon, app, messengerId, nid, url, canReply, strings
     })
     win.setAlwaysOnTop(true, 'screen-saver')
 
-    const toast = { id: nextId++, win, messengerId, nid, url, canReply: !!canReply, hover: false, timer: null, height: MIN_HEIGHT, replyId: null, meta: { title, icon, app, strings } }
+    const toast = { id: nextId++, win, messengerId, nid, url, canReply: !!canReply, hover: false, timer: null, height: MIN_HEIGHT, replyId: null, meta: { title, body, icon, app, strings } }
     toasts.push(toast)
 
     win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
@@ -131,9 +131,15 @@ function registerToastIpc(ipcMain, deps) {
         if (!toast.canReply || typeof text !== 'string' || !text.trim()) return
         const replyId = `r${toast.id}-${Date.now()}`
         pendingReplies.set(replyId, { messengerId: toast.messengerId, nid: toast.nid, url: toast.url, ...toast.meta })
-        handlers.sendReply({ replyId, messengerId: toast.messengerId, nid: toast.nid, text: text.slice(0, 4000) })
+        handlers.sendReply({ replyId, messengerId: toast.messengerId, nid: toast.nid, text: text.slice(0, 4000), title: String(toast.meta.title || '').slice(0, 300), body: String(toast.meta.body || '').slice(0, 1000) })
         dispose(toast)
     })
+}
+
+function failureText(result, strings) {
+    if (result === 'no-input') return strings.noInput || strings.failed || ''
+    if (result === 'not-opened') return strings.notOpened || strings.failed || ''
+    return strings.failed || ''
 }
 
 // The answer of the messenger page. Success is silent (the pop-up is already gone); a failure is shown honestly.
@@ -144,7 +150,7 @@ function replyResult(replyId, result) {
     const strings = info.strings || {}
     show({
         title: info.title,
-        body: result === 'no-input' ? (strings.noInput || strings.failed || '') : (strings.failed || ''),
+        body: failureText(result, strings),
         icon: info.icon,
         app: info.app,
         messengerId: info.messengerId,
