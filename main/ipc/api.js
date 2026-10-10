@@ -33,6 +33,26 @@ function normalizeError(error) {
     }
 }
 
+// Images attached to a support ticket arrive from the renderer as { name, mime, data }. The server
+// checks the real file type again; this keeps obviously wrong input from being sent at all.
+const TICKET_CATEGORIES = ['support', 'idea', 'bug', 'question']
+const TICKET_IMAGE_MIMES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif']
+const TICKET_IMAGE_MAX_COUNT = 4
+const TICKET_IMAGE_MAX_BYTES = 5 * 1024 * 1024
+
+function sanitizeTicketImages(images) {
+    if (images == null) return { images: [] }
+    if (!Array.isArray(images) || images.length > TICKET_IMAGE_MAX_COUNT) return { error: 'Too many images' }
+    const out = []
+    for (const image of images) {
+        const data = image && image.data ? Buffer.from(image.data) : null
+        if (!data || !data.length || data.length > TICKET_IMAGE_MAX_BYTES) return { error: 'Image is too large' }
+        if (!TICKET_IMAGE_MIMES.includes(image.mime)) return { error: 'Only images are allowed' }
+        out.push({ name: String(image.name || 'image').slice(0, 80), mime: image.mime, data })
+    }
+    return { images: out }
+}
+
 async function wrapApi(call) {
     try {
         const response = await call()
@@ -271,12 +291,20 @@ function registerApiIpc() {
         return wrapApi(() => api.ticketsGet(token, id))
     })
 
-    ipcMain.handle('api-tickets-create', async (event, token, subject, body) => {
-        return wrapApi(() => api.ticketsCreate(token, subject, body))
+    ipcMain.handle('api-tickets-create', async (event, token, subject, body, category, images) => {
+        const safe = sanitizeTicketImages(images)
+        if (safe.error) return { success: false, error: safe.error, code: 'bad_request' }
+        return wrapApi(() => api.ticketsCreate(token, subject, body, TICKET_CATEGORIES.includes(category) ? category : '', safe.images))
     })
 
-    ipcMain.handle('api-tickets-reply', async (event, token, id, body) => {
-        return wrapApi(() => api.ticketsReply(token, id, body))
+    ipcMain.handle('api-tickets-reply', async (event, token, id, body, images) => {
+        const safe = sanitizeTicketImages(images)
+        if (safe.error) return { success: false, error: safe.error, code: 'bad_request' }
+        return wrapApi(() => api.ticketsReply(token, id, body, safe.images))
+    })
+
+    ipcMain.handle('api-tickets-file', async (event, token, id, name) => {
+        return wrapApi(() => api.ticketsFile(token, String(id || ''), String(name || '')))
     })
 
     ipcMain.handle('api-payments-auto-renew-status', async (event, token) => {

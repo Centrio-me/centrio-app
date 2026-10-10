@@ -30,9 +30,10 @@ interface PromoCode {
   isActive: boolean; expiresAt: string | null; createdAt: string
   _count?: { redemptions: number }
 }
-interface TicketMessage { id: string; isAdmin: boolean; body: string; createdAt: string }
+interface TicketMessage { id: string; isAdmin: boolean; isBot?: boolean; body: string; attachments?: string[]; createdAt: string }
 interface Ticket {
   id: string; subject: string; status: 'OPEN' | 'ANSWERED' | 'CLOSED'
+  category?: 'support' | 'idea' | 'bug' | 'question' | null; botStage?: 'CLARIFYING' | 'ESCALATED' | null
   createdAt: string; updatedAt: string
   user: { id: string; email: string; name: string | null }
   _count?: { messages: number }
@@ -1065,6 +1066,47 @@ const TICKET_STATUS_STYLE: Record<string, React.CSSProperties> = {
   CLOSED:   { background: '#1e1e1e', color: '#555', border: '1px solid #2a2a2a' },
 }
 
+const TICKET_CATEGORY_LABEL: Record<string, string> = { support: 'Поддержка', idea: 'Идея', bug: 'Баг', question: 'Вопрос' }
+const TICKET_CATEGORY_STYLE: Record<string, React.CSSProperties> = {
+  support:  { background: 'rgba(99,102,241,0.16)', color: '#a5a8ff' },
+  idea:     { background: 'rgba(245,158,11,0.14)', color: '#fbbf4a' },
+  bug:      { background: 'rgba(239,68,68,0.14)',  color: '#fb8a8a' },
+  question: { background: 'rgba(56,189,248,0.13)', color: '#7dd3fc' },
+}
+
+function CategoryTag({ category }: { category?: string | null }) {
+  if (!category || !TICKET_CATEGORY_LABEL[category]) return null
+  return (
+    <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20, ...TICKET_CATEGORY_STYLE[category] }}>
+      {TICKET_CATEGORY_LABEL[category]}
+    </span>
+  )
+}
+
+// A customer's image: the file route is private, so it is fetched with the admin token and shown from a blob URL.
+function TicketImage({ token, ticketId, name }: { token: string; ticketId: string; name: string }) {
+  const [url, setUrl] = useState<string | null>(null)
+  useEffect(() => {
+    let revoked = false
+    let objectUrl: string | null = null
+    fetch(`${API}/api/admin/tickets/${ticketId}/files/${name}`, { headers: { 'x-admin-token': token } })
+      .then(r => (r.ok ? r.blob() : null))
+      .then(blob => {
+        if (!blob || revoked) return
+        objectUrl = URL.createObjectURL(blob)
+        setUrl(objectUrl)
+      })
+      .catch(() => {})
+    return () => { revoked = true; if (objectUrl) URL.revokeObjectURL(objectUrl) }
+  }, [token, ticketId, name])
+  if (!url) return <div style={{ width: 160, height: 110, borderRadius: 10, background: '#16161f' }} />
+  return (
+    <a href={url} target="_blank" rel="noreferrer">
+      <img src={url} alt="" style={{ width: 160, height: 110, objectFit: 'cover', borderRadius: 10, border: '1px solid #26263a', display: 'block' }} />
+    </a>
+  )
+}
+
 function TicketsTab({ token }: { token: string }) {
   const [tickets, setTickets]   = useState<Ticket[]>([])
   const [loading, setLoading]   = useState(false)
@@ -1128,9 +1170,13 @@ function TicketsTab({ token }: { token: string }) {
           <div style={{ background: '#0c0c14', border: '1px solid #141420', borderRadius: 12, padding: 24 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 4, flexWrap: 'wrap' }}>
               <h3 style={{ margin: 0, fontSize: 16, color: '#fff', fontWeight: 700 }}>{active.subject}</h3>
-              <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: 0.5, textTransform: 'uppercase', padding: '2px 8px', borderRadius: 20, ...TICKET_STATUS_STYLE[active.status] }}>
-                {TICKET_STATUS_LABEL[active.status] || active.status}
-              </span>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <CategoryTag category={active.category} />
+                {active.botStage === 'ESCALATED' && <span style={{ fontSize: 10, fontWeight: 700, color: '#fbbf4a' }}>бот передал человеку</span>}
+                <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: 0.5, textTransform: 'uppercase', padding: '2px 8px', borderRadius: 20, ...TICKET_STATUS_STYLE[active.status] }}>
+                  {TICKET_STATUS_LABEL[active.status] || active.status}
+                </span>
+              </div>
             </div>
             <div style={{ fontSize: 12, color: '#555', marginBottom: 18 }}>
               {active.user.email}{active.user.name ? ` · ${active.user.name}` : ''}
@@ -1146,9 +1192,15 @@ function TicketsTab({ token }: { token: string }) {
                   borderRadius: 12, padding: '10px 14px'
                 }}>
                   <div style={{ fontSize: 10, fontWeight: 700, color: m.isAdmin ? '#818cf8' : '#555', marginBottom: 4 }}>
-                    {m.isAdmin ? 'Админ' : active.user.email}
+                    {m.isAdmin ? (m.isBot ? 'Бот поддержки' : 'Админ') : active.user.email}
+                    {m.isBot && <span style={{ marginLeft: 6, fontSize: 9, letterSpacing: 0.6, background: 'rgba(56,189,248,0.15)', color: '#7dd3fc', padding: '1px 6px', borderRadius: 5 }}>БОТ</span>}
                   </div>
-                  <div style={{ fontSize: 13, color: '#ddd', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{m.body}</div>
+                  {m.body && <div style={{ fontSize: 13, color: '#ddd', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{m.body}</div>}
+                  {m.attachments && m.attachments.length > 0 && (
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
+                      {m.attachments.map(name => <TicketImage key={name} token={token} ticketId={active.id} name={name} />)}
+                    </div>
+                  )}
                   <div style={{ fontSize: 10, color: '#444', marginTop: 5 }}>{fmtDate(m.createdAt)}</div>
                 </div>
               ))}
@@ -1203,7 +1255,7 @@ function TicketsTab({ token }: { token: string }) {
             <tbody>
               {tickets.map(t => (
                 <tr key={t.id} onClick={() => openThread(t.id)} style={{ borderBottom: '1px solid #101018', cursor: 'pointer' }}>
-                  <td style={{ padding: '10px 16px', color: '#ddd', fontWeight: 600 }}>{t.subject}</td>
+                  <td style={{ padding: '10px 16px', color: '#ddd', fontWeight: 600 }}>{t.subject} <CategoryTag category={t.category} /></td>
                   <td style={{ padding: '10px 16px', color: '#888' }}>{t.user?.email}</td>
                   <td style={{ padding: '10px 16px', color: '#888' }}>{t._count?.messages ?? 0}</td>
                   <td style={{ padding: '10px 16px', color: '#888' }}>{fmtDate(t.updatedAt)}</td>

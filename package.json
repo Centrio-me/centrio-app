@@ -1,7 +1,7 @@
 {
 	"name": "messengerapp",
 	"productName": "Centrio",
-	"version": "3.1.0",
+	"version": "3.1.5",
 	"description": "All messengers in one app",
 	"author": {
 		"name": "Centrio",
@@ -69,6 +69,7 @@
 			"!.claude/**/*",
 			"!**/*.py",
 			"!telegram-claude/**/*",
+			"!android-admin/**/*",
 			"!scripts/**/*",
 			"!renderer/**/*.js",
 			"renderer/constants.js",

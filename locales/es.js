@@ -601,6 +601,84 @@ module.exports = {
         chartSection:         'Últimos 7 días',
         servicesSection:      'Por mensajero',
         supportSection:       'Soporte',
+
+        supportCount: 'Solicitudes: {n}',
+
+        supportPromise: 'Ninguna solicitud se queda sin respuesta.',
+
+        supportPromiseText: 'Primero responde el asistente y, si no puede ayudar, se suma una persona.',
+
+        supportIdleTitle: 'Estamos aquí',
+
+        supportIdleText: 'Elige una solicitud a la izquierda o crea una nueva. El asistente responde al instante y el equipo se suma si hace falta.',
+
+        supportNewTitle: '¿Qué [[ha pasado]]?',
+
+        supportNewLead: 'Elige un tema: el asistente ya conoce la aplicación y responde enseguida.',
+
+        supportTopicSupport: 'Soporte',
+
+        supportTopicSupportHint: 'Algo no funciona, necesito ayuda',
+
+        supportTopicIdea: 'Proponer una función',
+
+        supportTopicIdeaHint: 'Qué le falta a Centrio',
+
+        supportTopicBug: 'Encontré un error',
+
+        supportTopicBugHint: 'Algo funciona mal',
+
+        supportTopicQuestion: 'Pregunta sobre funciones',
+
+        supportTopicQuestionHint: 'Cómo funciona y cómo usarlo',
+
+        supportTopicRequired: 'Elige un tema para la solicitud',
+
+        supportTagSupport: 'Soporte',
+
+        supportTagIdea: 'Idea',
+
+        supportTagBug: 'Error',
+
+        supportTagQuestion: 'Pregunta',
+
+        supportAttach: 'Imagen',
+
+        supportAttachHint: 'PNG, JPG, WebP · hasta 5 MB · hasta 4',
+
+        supportAttachNote: 'Solo imágenes: PNG, JPG, WebP · hasta 5 MB cada una. Puedes pegarlas del portapapeles o arrastrarlas.',
+
+        supportAttachErrType: 'Solo se pueden adjuntar imágenes',
+
+        supportAttachErrSize: 'La imagen es demasiado grande, máximo 5 MB',
+
+        supportAttachErrCount: 'No se pueden adjuntar más de 4 imágenes',
+
+        supportStepAccepted: 'Recibida',
+
+        supportStepBot: 'El asistente respondió',
+
+        supportStepTeam: 'Con el equipo de soporte',
+
+        supportStepDone: 'Resuelta',
+
+        supportBotName: 'Asistente de Centrio',
+
+        supportBotBadge: 'Bot',
+
+        supportTeamName: 'Equipo de Centrio',
+
+        supportHandoff: 'El asistente pasó la solicitud al equipo. Solemos responder en unas horas',
+
+        supportRowBot: 'Responde el asistente',
+
+        supportRowClarify: 'El asistente pregunta',
+
+        supportRowTeam: 'Con el equipo',
+
+        supportRowAnswered: 'Respondida',
+
+        supportRowDone: 'Resuelta',
         supportNewTicket:     'Nueva solicitud',
         supportSubjectPh:     'Asunto',
         supportBodyPh:        'Describe tu consulta…',
@@ -758,6 +836,28 @@ module.exports = {
         inputPlaceholder: 'Pregunta al asistente…',
         send: 'Enviar',
         emptyState: 'Pregunta lo que quieras sobre tus mensajeros y tareas',
+
+        emptyHeadline: '¿En qué puedo [[ayudar]] en Centrio?',
+
+        emptyLead: 'Conozco la aplicación al detalle: abro un mensajero, busco un ajuste o explico cómo funciona algo.',
+
+        emptyTryLabel: 'Prueba a preguntar',
+
+        cap1Title: 'Abrir un chat',
+
+        cap1Prompt: 'Abre Telegram',
+
+        cap2Title: 'Ajustar',
+
+        cap2Prompt: 'Activa el tema oscuro',
+
+        cap3Title: 'Tareas y notas',
+
+        cap3Prompt: 'Añade una tarea: llamar al cliente',
+
+        cap4Title: 'Novedades',
+
+        cap4Prompt: '¿Cuántos mensajes sin leer tengo?',
         greetingMorning: 'Buenos días',
         greetingDay: 'Buenas tardes',
         greetingEvening: 'Buenas noches',

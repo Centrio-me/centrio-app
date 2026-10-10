@@ -52,6 +52,8 @@ function bindPasswordsUi({ store, state, invokeIpc, openRightPanel, closeRightPa
     const importWrap = document.createElement('div')
     let importMounted = false
     let openId = null
+    let recoveryCode = null // a recovery code that is being shown right now (it exists nowhere else)
+    let gateMode = 'unlock' // 'unlock' | 'recover'
     let flash = null // { text, kind, at }
     const revealed = new Map() // id -> { password, timer }
     const removing = new Map() // id -> timer
@@ -178,11 +180,76 @@ function bindPasswordsUi({ store, state, invokeIpc, openRightPanel, closeRightPa
             const result = await invokeIpc('pm:setup', first.input.value)
             first.input.value = ''
             second.input.value = ''
-            if (result && result.success) { track('password_manager_setup'); await vaultChanged(true) }
+            if (result && result.success) { track('password_manager_setup'); recoveryCode = result.recoveryCode || null; await vaultChanged(true) }
             else error.textContent = t('errSetup')
         }
         second.input.addEventListener('keydown', (event) => { if (event.key === 'Enter') submit() })
         box.append(first.wrap, second.wrap, error, textBtn(t('setupBtn'), 'qr-btn-primary pm-gate-btn', submit), el('div', 'pm-gate-warn', t('setupWarn')))
+        return box
+    }
+
+    // The recovery code is shown once; the user has to confirm that it is saved before the panel continues.
+    function renderRecoveryCode() {
+        const box = el('div', 'pm-gate')
+        gateIcon(box)
+        box.appendChild(el('div', 'pm-gate-title', t('recoveryTitle')))
+        box.appendChild(el('div', 'pm-gate-text', t('recoveryText')))
+        const groups = recoveryCode.split('-')
+        const codeEl = el('div', 'pm-recovery-code', `${groups.slice(0, 4).join('-')}
+${groups.slice(4).join('-')}`)
+        box.appendChild(codeEl)
+        const copyBtn = textBtn(t('recoveryCopy'), 'qr-btn-ghost pm-gate-btn', async () => {
+            try { await navigator.clipboard.writeText(recoveryCode); copyBtn.textContent = t('recoveryCopied') } catch { /* the code stays selectable */ }
+        })
+        const confirm = el('label', 'pm-recovery-confirm')
+        const check = el('input')
+        check.type = 'checkbox'
+        confirm.append(check, el('span', '', t('recoveryConfirm')))
+        const done = textBtn(t('recoveryDone'), 'qr-btn-primary pm-gate-btn', () => { recoveryCode = null; render() })
+        done.disabled = true
+        check.addEventListener('change', () => { done.disabled = !check.checked })
+        box.append(copyBtn, el('div', 'pm-gate-warn', t('recoveryWarn')), confirm, done)
+        return box
+    }
+
+    function renderRecover() {
+        const box = el('div', 'pm-gate')
+        gateIcon(box)
+        box.appendChild(el('div', 'pm-gate-title', t('recoverTitle')))
+        box.appendChild(el('div', 'pm-gate-text', t('recoverText')))
+        const code = field(t('recoverCode'), 'text', '', 'XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX')
+        const first = field(t('masterNew'), 'password', '', t('masterHint', { n: MIN_MASTER }))
+        const second = field(t('masterRepeat'), 'password', '')
+        const error = el('div', 'pm-editor-error')
+        const submit = async () => {
+            error.textContent = ''
+            if (first.input.value.length < MIN_MASTER) { error.textContent = t('errMasterShort', { n: MIN_MASTER }); return }
+            if (first.input.value !== second.input.value) { error.textContent = t('errMasterMismatch'); return }
+            const result = await invokeIpc('pm:recover', code.input.value, first.input.value)
+            first.input.value = ''
+            second.input.value = ''
+            if (result && result.success) {
+                code.input.value = ''
+                gateMode = 'unlock'
+                recoveryCode = result.recoveryCode || null
+                await vaultChanged(true)
+            } else if (result && result.error === 'WRONG_CODE') error.textContent = t('errWrongCode')
+            else if (result && result.error === 'NO_RECOVERY') error.textContent = t('errNoRecovery')
+            else error.textContent = t('errRecover')
+        }
+        second.input.addEventListener('keydown', (event) => { if (event.key === 'Enter') submit() })
+        box.append(code.wrap, first.wrap, second.wrap, error, textBtn(t('recoverBtn'), 'qr-btn-primary pm-gate-btn', submit))
+        box.appendChild(el('div', 'pm-gate-warn', t('recoverNone')))
+        let armed = false
+        const resetBtn = textBtn(t('resetBtn'), 'pm-danger-btn', async () => {
+            if (!armed) { armed = true; resetBtn.textContent = t('resetConfirm'); setTimeout(() => { armed = false; resetBtn.textContent = t('resetBtn') }, REMOVE_CONFIRM_MS); return }
+            await invokeIpc('pm:reset')
+            store.set('pmVault', null)
+            gateMode = 'unlock'
+            await refresh()
+        })
+        box.append(resetBtn, textBtn(t('recoverBack'), 'pm-link-btn pm-back', () => { gateMode = 'unlock'; render() }))
+        setTimeout(() => code.input.focus(), 30)
         return box
     }
 
@@ -201,6 +268,7 @@ function bindPasswordsUi({ store, state, invokeIpc, openRightPanel, closeRightPa
         }
         input.input.addEventListener('keydown', (event) => { if (event.key === 'Enter') submit() })
         box.append(input.wrap, error, textBtn(t('unlock'), 'qr-btn-primary pm-gate-btn', submit))
+        box.appendChild(textBtn(t('recoverLink'), 'pm-link-btn pm-back', () => { gateMode = 'recover'; render() }))
         setTimeout(() => input.input.focus(), 30)
         return box
     }
@@ -224,6 +292,16 @@ function bindPasswordsUi({ store, state, invokeIpc, openRightPanel, closeRightPa
         sync.appendChild(el('div', 'pm-sync-title', t('syncTitle')))
         sync.appendChild(el('div', 'pm-sync-text', isPro() ? t('syncOn') : t('syncPro')))
         box.appendChild(sync)
+
+        const recovery = el('div', 'pm-sync')
+        recovery.appendChild(el('div', 'pm-sync-title', t('recoverySettingsTitle')))
+        recovery.appendChild(el('div', 'pm-sync-text', status.hasRecovery ? t('recoverySettingsHas') : t('recoverySettingsNone')))
+        recovery.appendChild(textBtn(status.hasRecovery ? t('recoveryRenew') : t('recoveryCreate'), 'qr-btn-ghost', async () => {
+            const result = await invokeIpc('pm:recovery-create')
+            if (result && result.success) { recoveryCode = result.recoveryCode; view = 'main'; await vaultChanged(true) }
+            else setFlash(t('errSave'), 'err')
+        }))
+        box.appendChild(recovery)
 
         box.appendChild(el('div', 'pm-editor-title', t('changeMaster')))
         const oldM = field(t('masterOld'), 'password', '')
@@ -471,6 +549,7 @@ function bindPasswordsUi({ store, state, invokeIpc, openRightPanel, closeRightPa
         renderHeader()
         renderNote()
         if (searchInput) searchInput.placeholder = t('search')
+        if (status.state !== 'unlocked') recoveryCode = null // never keep the code while locked
         const unlocked = status.state === 'unlocked'
         const editing = editor.style.display === 'block'
         if (searchWrap) searchWrap.style.display = unlocked && view === 'main' && !editing ? '' : 'none'
@@ -480,7 +559,8 @@ function bindPasswordsUi({ store, state, invokeIpc, openRightPanel, closeRightPa
         listEl.style.display = ''
         listEl.textContent = ''
         if (status.state === 'none') { listEl.appendChild(renderSetup()); return }
-        if (status.state === 'locked') { listEl.appendChild(renderUnlock()); return }
+        if (recoveryCode && status.state === 'unlocked') { listEl.appendChild(renderRecoveryCode()); return }
+        if (status.state === 'locked') { listEl.appendChild(gateMode === 'recover' ? renderRecover() : renderUnlock()); return }
         if (view === 'import') {
             listEl.appendChild(importWrap)
             if (!importMounted) { importMounted = true; importView.mount(importWrap) }

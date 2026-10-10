@@ -601,6 +601,84 @@ module.exports = {
         chartSection:         '最近7天',
         servicesSection:      '按消息应用',
         supportSection:       '支持',
+
+        supportCount: '请求：{n}',
+
+        supportPromise: '每一个请求都会得到回复。',
+
+        supportPromiseText: '先由助手回复，如果它解决不了，会有真人接手。',
+
+        supportIdleTitle: '我们在这里',
+
+        supportIdleText: '在左侧选择一个请求，或新建一个。助手会立即回复，必要时团队会加入。',
+
+        supportNewTitle: '发生了[[什么]]？',
+
+        supportNewLead: '请选择主题：助手已经了解这个应用，会马上回复。',
+
+        supportTopicSupport: '支持',
+
+        supportTopicSupportHint: '有些功能不能用，需要帮助',
+
+        supportTopicIdea: '建议新功能',
+
+        supportTopicIdeaHint: 'Centrio 还缺什么',
+
+        supportTopicBug: '发现故障',
+
+        supportTopicBugHint: '某个功能工作不正常',
+
+        supportTopicQuestion: '功能问题',
+
+        supportTopicQuestionHint: '它是怎么工作的、怎么用',
+
+        supportTopicRequired: '请选择请求的主题',
+
+        supportTagSupport: '支持',
+
+        supportTagIdea: '建议',
+
+        supportTagBug: '故障',
+
+        supportTagQuestion: '问题',
+
+        supportAttach: '图片',
+
+        supportAttachHint: 'PNG、JPG、WebP · 最大 5 MB · 最多 4 张',
+
+        supportAttachNote: '仅限图片：PNG、JPG、WebP · 每张最大 5 MB。可从剪贴板粘贴或拖入。',
+
+        supportAttachErrType: '只能附加图片',
+
+        supportAttachErrSize: '图片太大，最大 5 MB',
+
+        supportAttachErrCount: '最多只能附加 4 张图片',
+
+        supportStepAccepted: '已收到',
+
+        supportStepBot: '助手已回复',
+
+        supportStepTeam: '支持团队处理中',
+
+        supportStepDone: '已解决',
+
+        supportBotName: 'Centrio 助手',
+
+        supportBotBadge: '机器人',
+
+        supportTeamName: 'Centrio 团队',
+
+        supportHandoff: '助手已把请求转交给团队。我们通常会在几小时内回复',
+
+        supportRowBot: '助手正在回复',
+
+        supportRowClarify: '助手在询问细节',
+
+        supportRowTeam: '团队处理中',
+
+        supportRowAnswered: '已回复',
+
+        supportRowDone: '已解决',
         supportNewTicket:     '新建工单',
         supportSubjectPh:     '主题',
         supportBodyPh:        '描述您的问题…',
@@ -758,6 +836,28 @@ module.exports = {
         inputPlaceholder: '向助手提问…',
         send: '发送',
         emptyState: '随时询问关于你的通讯软件和任务的任何问题',
+
+        emptyHeadline: '在 Centrio 里需要什么[[帮助]]？',
+
+        emptyLead: '我很熟悉这个应用：可以打开某个通讯软件、找到设置，或解释某项功能怎么用。',
+
+        emptyTryLabel: '试试这样问',
+
+        cap1Title: '打开聊天',
+
+        cap1Prompt: '打开 Telegram',
+
+        cap2Title: '调整设置',
+
+        cap2Prompt: '开启深色主题',
+
+        cap3Title: '任务和笔记',
+
+        cap3Prompt: '添加任务：给客户打电话',
+
+        cap4Title: '有什么新消息',
+
+        cap4Prompt: '我有多少条未读消息？',
         greetingMorning: '早上好',
         greetingDay: '下午好',
         greetingEvening: '晚上好',

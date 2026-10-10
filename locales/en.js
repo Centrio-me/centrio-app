@@ -626,6 +626,84 @@ module.exports = {
         chartSection:    'Last 7 days',
         servicesSection: 'By messenger',
         supportSection:       'Support',
+
+        supportCount: 'Tickets: {n}',
+
+        supportPromise: 'No request is left without an answer.',
+
+        supportPromiseText: 'The assistant replies first, and if it cannot help, a person joins in.',
+
+        supportIdleTitle: 'We are here',
+
+        supportIdleText: 'Pick a ticket on the left or start a new one. The assistant answers at once, and the team joins if needed.',
+
+        supportNewTitle: 'What [[happened]]?',
+
+        supportNewLead: 'Choose a topic: the assistant already knows the app and answers right away.',
+
+        supportTopicSupport: 'Support',
+
+        supportTopicSupportHint: 'Something does not work, I need help',
+
+        supportTopicIdea: 'Suggest a feature',
+
+        supportTopicIdeaHint: 'What Centrio is missing',
+
+        supportTopicBug: 'Found a bug',
+
+        supportTopicBugHint: 'Something works wrongly',
+
+        supportTopicQuestion: 'Question about features',
+
+        supportTopicQuestionHint: 'How it works and how to use it',
+
+        supportTopicRequired: 'Choose a topic for the ticket',
+
+        supportTagSupport: 'Support',
+
+        supportTagIdea: 'Idea',
+
+        supportTagBug: 'Bug',
+
+        supportTagQuestion: 'Question',
+
+        supportAttach: 'Image',
+
+        supportAttachHint: 'PNG, JPG, WebP · up to 5 MB · up to 4',
+
+        supportAttachNote: 'Images only: PNG, JPG, WebP · up to 5 MB each. You can paste from the clipboard or drag them in.',
+
+        supportAttachErrType: 'Only images can be attached',
+
+        supportAttachErrSize: 'The image is too large, 5 MB at most',
+
+        supportAttachErrCount: 'No more than 4 images can be attached',
+
+        supportStepAccepted: 'Received',
+
+        supportStepBot: 'Assistant replied',
+
+        supportStepTeam: 'With the support team',
+
+        supportStepDone: 'Resolved',
+
+        supportBotName: 'Centrio Assistant',
+
+        supportBotBadge: 'Bot',
+
+        supportTeamName: 'Centrio team',
+
+        supportHandoff: 'The assistant passed the ticket to the team. We usually reply within a few hours',
+
+        supportRowBot: 'Assistant is replying',
+
+        supportRowClarify: 'Assistant is asking',
+
+        supportRowTeam: 'With the team',
+
+        supportRowAnswered: 'Answered',
+
+        supportRowDone: 'Resolved',
         supportNewTicket:     'New ticket',
         supportSubjectPh:     'Subject',
         supportBodyPh:        'Describe your issue…',
@@ -783,6 +861,28 @@ module.exports = {
         inputPlaceholder: 'Ask the assistant…',
         send: 'Send',
         emptyState: 'Ask anything about your messengers and todos',
+
+        emptyHeadline: 'How can I [[help]] in Centrio?',
+
+        emptyLead: 'I know the app inside out: I can open a messenger, find a setting or explain how something works.',
+
+        emptyTryLabel: 'Try asking',
+
+        cap1Title: 'Open a chat',
+
+        cap1Prompt: 'Open Telegram',
+
+        cap2Title: 'Change settings',
+
+        cap2Prompt: 'Turn on the dark theme',
+
+        cap3Title: 'Tasks and notes',
+
+        cap3Prompt: 'Add a task: call the client',
+
+        cap4Title: 'What is new',
+
+        cap4Prompt: 'How many unread messages do I have?',
         greetingMorning: 'Good morning',
         greetingDay: 'Good afternoon',
         greetingEvening: 'Good evening',

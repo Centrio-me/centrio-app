@@ -601,6 +601,84 @@ module.exports = {
         chartSection:         '7 derniers jours',
         servicesSection:      'Par messagerie',
         supportSection:       'Support',
+
+        supportCount: 'Demandes : {n}',
+
+        supportPromise: 'Aucune demande ne reste sans réponse.',
+
+        supportPromiseText: 'L’assistant répond d’abord et, s’il ne peut pas aider, une personne prend le relais.',
+
+        supportIdleTitle: 'Nous sommes là',
+
+        supportIdleText: 'Choisissez une demande à gauche ou créez-en une nouvelle. L’assistant répond tout de suite, l’équipe intervient si besoin.',
+
+        supportNewTitle: 'Que s’est-il [[passé]] ?',
+
+        supportNewLead: 'Choisissez un sujet : l’assistant connaît déjà l’application et répond aussitôt.',
+
+        supportTopicSupport: 'Assistance',
+
+        supportTopicSupportHint: 'Quelque chose ne marche pas, j’ai besoin d’aide',
+
+        supportTopicIdea: 'Proposer une fonction',
+
+        supportTopicIdeaHint: 'Ce qui manque à Centrio',
+
+        supportTopicBug: 'Bug trouvé',
+
+        supportTopicBugHint: 'Quelque chose fonctionne mal',
+
+        supportTopicQuestion: 'Question sur les fonctions',
+
+        supportTopicQuestionHint: 'Comment ça marche et comment l’utiliser',
+
+        supportTopicRequired: 'Choisissez un sujet pour la demande',
+
+        supportTagSupport: 'Assistance',
+
+        supportTagIdea: 'Idée',
+
+        supportTagBug: 'Bug',
+
+        supportTagQuestion: 'Question',
+
+        supportAttach: 'Image',
+
+        supportAttachHint: 'PNG, JPG, WebP · jusqu’à 5 Mo · 4 maximum',
+
+        supportAttachNote: 'Images uniquement : PNG, JPG, WebP · jusqu’à 5 Mo chacune. Vous pouvez coller depuis le presse-papiers ou glisser-déposer.',
+
+        supportAttachErrType: 'Seules les images peuvent être jointes',
+
+        supportAttachErrSize: 'L’image est trop grande, 5 Mo maximum',
+
+        supportAttachErrCount: 'Vous ne pouvez joindre que 4 images au maximum',
+
+        supportStepAccepted: 'Reçue',
+
+        supportStepBot: 'L’assistant a répondu',
+
+        supportStepTeam: 'Chez l’équipe d’assistance',
+
+        supportStepDone: 'Résolue',
+
+        supportBotName: 'Assistant Centrio',
+
+        supportBotBadge: 'Bot',
+
+        supportTeamName: 'Équipe Centrio',
+
+        supportHandoff: 'L’assistant a transmis la demande à l’équipe. Nous répondons en général sous quelques heures',
+
+        supportRowBot: 'L’assistant répond',
+
+        supportRowClarify: 'L’assistant précise',
+
+        supportRowTeam: 'Chez l’équipe',
+
+        supportRowAnswered: 'Réponse reçue',
+
+        supportRowDone: 'Résolue',
         supportNewTicket:     'Nouvelle demande',
         supportSubjectPh:     'Sujet',
         supportBodyPh:        'Décrivez votre problème…',
@@ -758,6 +836,28 @@ module.exports = {
         inputPlaceholder: 'Interroger l\'assistant…',
         send: 'Envoyer',
         emptyState: 'Posez une question sur vos messageries et vos tâches',
+
+        emptyHeadline: 'Comment puis-je [[aider]] dans Centrio ?',
+
+        emptyLead: 'Je connais l’application sur le bout des doigts : j’ouvre une messagerie, je trouve un réglage ou j’explique une fonction.',
+
+        emptyTryLabel: 'Essayez de demander',
+
+        cap1Title: 'Ouvrir une discussion',
+
+        cap1Prompt: 'Ouvre Telegram',
+
+        cap2Title: 'Régler',
+
+        cap2Prompt: 'Active le thème sombre',
+
+        cap3Title: 'Tâches et notes',
+
+        cap3Prompt: 'Ajoute une tâche : appeler le client',
+
+        cap4Title: 'Du nouveau',
+
+        cap4Prompt: 'Combien ai-je de messages non lus ?',
         greetingMorning: 'Bonjour',
         greetingDay: 'Bon après-midi',
         greetingEvening: 'Bonsoir',

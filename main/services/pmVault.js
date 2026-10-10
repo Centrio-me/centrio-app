@@ -68,6 +68,56 @@ async function createVault(master) {
     return { vault: { v: VERSION, vaultId, keyUpdatedAt: now, updatedAt: now, kdf, wrapped, entries: [] }, dek }
 }
 
+// Recovery code: a second wrap of the same data key under a random 160-bit code that is shown ONCE when the vault is
+// created (or renewed in the settings) and kept by the user. Whoever has only the vault blob still cannot read anything:
+// the code is never stored anywhere, so Centrio and the cloud cannot recover the vault for the user.
+const RECOVERY_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'
+const RECOVERY_BYTES = 20
+const RECOVERY_INFO = 'centrio-pm-recovery-v1'
+
+function generateRecoveryCode() {
+    const bytes = crypto.randomBytes(RECOVERY_BYTES)
+    let bits = ''
+    for (const byte of bytes) bits += byte.toString(2).padStart(8, '0')
+    let text = ''
+    for (let i = 0; i < bits.length; i += 5) text += RECOVERY_ALPHABET[parseInt(bits.slice(i, i + 5), 2)]
+    return text.match(/.{4}/g).join('-')
+}
+
+/** Letters and digits only, any case, dashes and spaces ignored. Returns null for something that cannot be a code. */
+function normalizeRecoveryCode(code) {
+    const text = String(code == null ? '' : code).toUpperCase().replace(/[^A-Z2-7]/g, '')
+    return text.length === 32 ? text : null
+}
+
+function recoveryKey(normalized, salt) {
+    return Buffer.from(crypto.hkdfSync('sha256', Buffer.from(normalized, 'utf8'), salt, RECOVERY_INFO, KEY_BYTES))
+}
+
+/** @returns {{ vault: object, code: string }} the vault with a fresh recovery wrap and the code to show to the user. */
+function withRecovery(vault, dek) {
+    const code = generateRecoveryCode()
+    const salt = crypto.randomBytes(16)
+    const key = recoveryKey(normalizeRecoveryCode(code), salt)
+    const now = Date.now()
+    return {
+        code,
+        vault: { ...vault, recovery: { salt: b64(salt), wrapped: seal(key, dek, `${vault.vaultId}|recovery`) }, keyUpdatedAt: now, updatedAt: now }
+    }
+}
+
+/** Returns the data key, or null when the recovery code is wrong or the vault has none. */
+function unlockWithRecovery(vault, code) {
+    try {
+        const normalized = normalizeRecoveryCode(code)
+        if (!normalized || !vault.recovery) return null
+        const key = recoveryKey(normalized, fromB64(vault.recovery.salt))
+        return open(key, vault.recovery.wrapped, `${vault.vaultId}|recovery`)
+    } catch {
+        return null
+    }
+}
+
 /** Returns the data key, or null when the master password is wrong. */
 async function unlock(vault, master) {
     try {
@@ -117,6 +167,10 @@ function isValidVault(vault) {
         if (kdf.N < 1 << 14 || kdf.N > KDF_LIMITS.maxN || (kdf.N & (kdf.N - 1)) !== 0 || kdf.r < 1 || kdf.r > KDF_LIMITS.maxR || kdf.p < 1 || kdf.p > KDF_LIMITS.maxP) return false
         if (typeof kdf.salt !== 'string' || fromB64(kdf.salt).length < 16) return false
         if (!vault.wrapped || typeof vault.wrapped.iv !== 'string' || typeof vault.wrapped.ct !== 'string') return false
+        if (vault.recovery !== undefined) {
+            const r = vault.recovery
+            if (!r || typeof r.salt !== 'string' || fromB64(r.salt).length < 16 || !r.wrapped || typeof r.wrapped.iv !== 'string' || typeof r.wrapped.ct !== 'string') return false
+        }
         if (!Array.isArray(vault.entries) || vault.entries.length > MAX_ENTRIES) return false
         for (const record of vault.entries) {
             if (!record || typeof record.id !== 'string' || record.id.length > 64 || !Number.isFinite(record.updatedAt)) return false
@@ -138,7 +192,7 @@ function mergeSameVault(local, remote) {
     const keySource = remote.keyUpdatedAt > local.keyUpdatedAt ? remote : local
     return {
         ...local,
-        kdf: keySource.kdf, wrapped: keySource.wrapped, keyUpdatedAt: keySource.keyUpdatedAt,
+        kdf: keySource.kdf, wrapped: keySource.wrapped, recovery: keySource.recovery, keyUpdatedAt: keySource.keyUpdatedAt,
         entries: [...byId.values()].slice(0, MAX_ENTRIES),
         updatedAt: Math.max(local.updatedAt || 0, remote.updatedAt || 0)
     }
@@ -171,5 +225,5 @@ function importForeign(local, localDek, remote, remoteDek, normalize) {
 
 module.exports = {
     VERSION, LIMITS, MAX_ENTRIES, MIN_MASTER_LENGTH,
-    checkMaster, createVault, unlock, rewrap, encryptEntry, decryptEntry, tombstone, isValidVault, mergeSameVault, importForeign
+    checkMaster, createVault, unlock, rewrap, generateRecoveryCode, normalizeRecoveryCode, withRecovery, unlockWithRecovery, encryptEntry, decryptEntry, tombstone, isValidVault, mergeSameVault, importForeign
 }

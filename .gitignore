@@ -16,3 +16,6 @@ write_files.py
 generate-badges.js
 scripts/upload-v*.js
 dev/
+
+android-admin/
+dist-test*/

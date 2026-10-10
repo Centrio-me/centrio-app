@@ -113,7 +113,8 @@ function status() {
         autoLockMin: settings().autoLockMin,
         autoLockChoices: AUTO_LOCK_CHOICES,
         hasLegacy: Array.isArray(legacy) && legacy.length > 0,
-        mismatch: !!pendingRemote
+        mismatch: !!pendingRemote,
+        hasRecovery: !!(loaded && loaded.vault.recovery)
     }
 }
 
@@ -138,11 +139,13 @@ async function setup(master) {
     setupBusy = true
     try {
         const created = await pmVault.createVault(master)
-        current = { vault: created.vault, dek: created.dek }
+        const withCode = pmVault.withRecovery(created.vault, created.dek)
+        current = { vault: withCode.vault, dek: created.dek }
         await migrateLegacy()
         persist()
         touch()
-        return { success: true }
+        // The recovery code is returned this once; it is not stored anywhere.
+        return { success: true, recoveryCode: withCode.code }
     } finally {
         setupBusy = false
     }
@@ -189,6 +192,39 @@ function changeMaster(oldMaster, newMaster) {
         persist()
         touch()
         return { success: true }
+    })
+}
+
+// A new recovery code for an unlocked vault (vaults made before the recovery code existed, or a lost code).
+function createRecoveryCode() {
+    const loaded = loadVault()
+    if (!loaded || !loaded.dek) return { success: false, error: 'LOCKED' }
+    const withCode = pmVault.withRecovery(loaded.vault, loaded.dek)
+    loaded.vault = withCode.vault
+    persist()
+    touch()
+    return { success: true, recoveryCode: withCode.code }
+}
+
+// Forgotten master password: the recovery code opens the vault, the user sets a new master password, and the
+// used code is replaced by a new one (shown once, like at creation).
+function recover(code, newMaster) {
+    return serial(async () => {
+        const loaded = loadVault()
+        if (!loaded) return { success: false, error: 'NO_VAULT' }
+        const bad = pmVault.checkMaster(newMaster)
+        if (bad) return { success: false, error: bad }
+        await throttleWrongMaster()
+        const dek = pmVault.unlockWithRecovery(loaded.vault, code)
+        if (!dek) { failedAttempts += 1; return { success: false, error: loaded.vault.recovery ? 'WRONG_CODE' : 'NO_RECOVERY' } }
+        failedAttempts = 0
+        const rewrapped = await pmVault.rewrap(loaded.vault, dek, newMaster)
+        const withCode = pmVault.withRecovery(rewrapped, dek)
+        loaded.vault = withCode.vault
+        loaded.dek = dek
+        persist()
+        touch()
+        return { success: true, recoveryCode: withCode.code }
     })
 }
 
@@ -534,7 +570,7 @@ function importCancel(token) {
 
 module.exports = {
     importPrepare, importCommit, importCancel,
-    setEmitter, status, setup, unlock, lock, changeMaster, reset, setAutoLock,
+    setEmitter, status, setup, unlock, lock, changeMaster, createRecoveryCode, recover, reset, setAutoLock,
     list, save, remove, reveal, copy, matches, autofill,
     registerCapture, saveCapture, dismissCapture,
     exportBlob, mergeRemote, adoptRemote, discardRemote, normalizeUrl, hostOfUrl

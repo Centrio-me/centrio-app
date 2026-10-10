@@ -648,6 +648,84 @@ module.exports = {
         chartSection:   'За 7 дней',
         servicesSection:'По мессенджерам',
         supportSection:      'Поддержка',
+
+        supportCount: 'Обращений: {n}',
+
+        supportPromise: 'Ни одно обращение не останется без ответа.',
+
+        supportPromiseText: 'Сначала отвечает ассистент, а если он не справится, подключится человек.',
+
+        supportIdleTitle: 'Мы на связи',
+
+        supportIdleText: 'Выберите обращение слева или создайте новое. Ассистент ответит сразу, а команда подключится, если понадобится.',
+
+        supportNewTitle: 'Что у вас [[случилось]]?',
+
+        supportNewLead: 'Выберите тему: ассистент уже знает приложение и ответит сразу.',
+
+        supportTopicSupport: 'Поддержка',
+
+        supportTopicSupportHint: 'Что-то не получается, нужна помощь',
+
+        supportTopicIdea: 'Предложить функцию',
+
+        supportTopicIdeaHint: 'Чего не хватает в Centrio',
+
+        supportTopicBug: 'Найден баг',
+
+        supportTopicBugHint: 'Что-то работает неправильно',
+
+        supportTopicQuestion: 'Вопрос по функциям',
+
+        supportTopicQuestionHint: 'Как это устроено и как пользоваться',
+
+        supportTopicRequired: 'Выберите тему обращения',
+
+        supportTagSupport: 'Поддержка',
+
+        supportTagIdea: 'Идея',
+
+        supportTagBug: 'Баг',
+
+        supportTagQuestion: 'Вопрос',
+
+        supportAttach: 'Картинка',
+
+        supportAttachHint: 'PNG, JPG, WebP · до 5 МБ · до 4 шт.',
+
+        supportAttachNote: 'Только изображения: PNG, JPG, WebP · до 5 МБ каждое. Можно вставить из буфера или перетащить.',
+
+        supportAttachErrType: 'Можно прикреплять только изображения',
+
+        supportAttachErrSize: 'Картинка слишком большая, максимум 5 МБ',
+
+        supportAttachErrCount: 'Можно прикрепить не больше 4 картинок',
+
+        supportStepAccepted: 'Принято',
+
+        supportStepBot: 'Ассистент ответил',
+
+        supportStepTeam: 'У команды поддержки',
+
+        supportStepDone: 'Решено',
+
+        supportBotName: 'Ассистент Centrio',
+
+        supportBotBadge: 'Бот',
+
+        supportTeamName: 'Команда Centrio',
+
+        supportHandoff: 'Ассистент передал обращение команде. Обычно отвечаем за несколько часов',
+
+        supportRowBot: 'Отвечает ассистент',
+
+        supportRowClarify: 'Ассистент уточняет',
+
+        supportRowTeam: 'У команды',
+
+        supportRowAnswered: 'Есть ответ',
+
+        supportRowDone: 'Решено',
         supportNewTicket:    'Новое обращение',
         supportSubjectPh:    'Тема обращения',
         supportBodyPh:       'Опишите вопрос…',
@@ -853,6 +931,28 @@ module.exports = {
         inputPlaceholder: 'Спросите ассистента…',
         send: 'Отправить',
         emptyState: 'Спросите что угодно о ваших мессенджерах и задачах',
+
+        emptyHeadline: 'Чем [[помочь]] в Centrio?',
+
+        emptyLead: 'Я знаю приложение изнутри: открою нужный мессенджер, найду настройку, подскажу, как что работает.',
+
+        emptyTryLabel: 'Попробуйте спросить',
+
+        cap1Title: 'Перейти в чат',
+
+        cap1Prompt: 'Открой Telegram',
+
+        cap2Title: 'Настроить',
+
+        cap2Prompt: 'Включи тёмную тему',
+
+        cap3Title: 'Задачи и заметки',
+
+        cap3Prompt: 'Добавь задачу: позвонить клиенту',
+
+        cap4Title: 'Что нового',
+
+        cap4Prompt: 'Сколько у меня непрочитанных?',
         greetingMorning: 'Доброе утро',
         greetingDay: 'Добрый день',
         greetingEvening: 'Добрый вечер',

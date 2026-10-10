@@ -153,6 +153,24 @@ function requestOnce(method, path, body, token) {
     })
 }
 
+// multipart/form-data upload for tickets with images (global fetch/FormData/Blob of Electron's Node).
+async function ticketMultipart(token, path, fields, images) {
+    const form = new FormData()
+    for (const [key, value] of Object.entries(fields)) form.append(key, String(value == null ? '' : value))
+    images.forEach((image, index) => {
+        form.append('images', new Blob([image.data], { type: image.mime || 'application/octet-stream' }), image.name || `image-${index + 1}`)
+    })
+    const res = await fetch(API_URL + path, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, ...deviceHeaders() },
+        body: form,
+        signal: AbortSignal.timeout(60000)
+    })
+    const data = await res.json().catch(() => null)
+    if (!res.ok) throw createHttpError(res.status, data)
+    return { status: res.status, data }
+}
+
 async function request(method, path, body, token) {
     try {
         return await requestOnce(method, path, body, token)
@@ -416,12 +434,32 @@ module.exports = {
         return request('GET', `/api/tickets/${id}`, null, token)
     },
 
-    ticketsCreate(token, subject, body) {
-        return request('POST', '/api/tickets', { subject, body }, token)
+    // Since 3.2 a ticket has a topic (support / idea / bug / question) and a message can
+    // carry up to 4 images. Without images the old JSON request is used unchanged.
+    ticketsCreate(token, subject, body, category, images) {
+        if (Array.isArray(images) && images.length) {
+            return ticketMultipart(token, '/api/tickets', { subject, body, category: category || '' }, images)
+        }
+        return request('POST', '/api/tickets', { subject, body, category: category || undefined }, token)
     },
 
-    ticketsReply(token, id, body) {
+    ticketsReply(token, id, body, images) {
+        if (Array.isArray(images) && images.length) {
+            return ticketMultipart(token, `/api/tickets/${id}/messages`, { body }, images)
+        }
         return request('POST', `/api/tickets/${id}/messages`, { body }, token)
+    },
+
+    // An attached image, fetched with the session token (the file route is private).
+    async ticketsFile(token, id, name) {
+        const res = await fetch(`${API_URL}/api/tickets/${encodeURIComponent(id)}/files/${encodeURIComponent(name)}`, {
+            headers: { Authorization: `Bearer ${token}`, ...deviceHeaders() },
+            signal: AbortSignal.timeout(30000)
+        })
+        if (!res.ok) throw createHttpError(res.status, await res.json().catch(() => null))
+        const mime = res.headers.get('content-type') || 'image/png'
+        const buffer = Buffer.from(await res.arrayBuffer())
+        return { status: res.status, data: { mime, base64: buffer.toString('base64') } }
     },
 
     // FEATURE (2026-09-21, "для PRO-пользователя, у которого уже привязана

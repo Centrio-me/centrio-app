@@ -587,6 +587,7 @@
     <div class="right-panel" id="rightPanel">
         <div id="assistantPanel" class="right-panel-section assistant-panel">
             <div class="app-notif-header">
+                <img class="ph-logo" src="assets/logo.png" alt="">
                 <span data-i18n="rightbar.assistant"></span>
                 <div class="app-notif-header-actions">
                     <div class="assistant-quota-wrap">
@@ -632,6 +633,7 @@
         </div>
         <div id="appNotifPanel" class="right-panel-section">
             <div class="app-notif-header">
+                <span class="ph-tile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg></span>
                 <span data-i18n="notifications.appNotifTitle"></span>
                 <div class="app-notif-header-actions">
                     <button id="appNotifMuteToggle" class="app-notif-mute-btn" title="Отключить уведомления">
@@ -668,7 +670,7 @@
                             <line x1="2" y1="2" x2="22" y2="22" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
                         </svg>
                     </button>
-                    <button id="appNotifMarkAllRead" class="app-notif-clear-btn" data-i18n="notifications.markAllRead"></button>
+                    <button id="appNotifMarkAllRead" class="app-notif-clear-btn" data-i18n-title="notifications.markAllRead"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12l5 5L18 6"/><path d="M13 16l1 1L22 8"/></svg></button>
                     <button id="appNotifDeleteAll" class="app-notif-delete-btn" title="Удалить все уведомления из панели">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
                             <polyline points="3 6 5 6 21 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
@@ -697,6 +699,7 @@
         </div>
         <div id="todosPanel" class="right-panel-section todos-panel">
             <div class="app-notif-header">
+                <span class="ph-tile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span>
                 <span data-i18n="todos.title"></span>
             </div>
             <div class="todos-tabs">
@@ -719,6 +722,7 @@
         </div>
         <div id="quickRepliesPanel" class="right-panel-section quick-replies-panel">
             <div class="app-notif-header">
+                <span class="ph-tile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>
                 <span data-i18n="quickReplies.title"></span>
                 <div class="app-notif-header-actions">
                     <button type="button" id="quickRepliesAddBtn" class="app-notif-mute-btn" data-i18n-title="quickReplies.add">
@@ -749,6 +753,7 @@
         </div>
         <div id="passwordsPanel" class="right-panel-section passwords-panel">
             <div class="app-notif-header">
+                <span class="ph-tile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></span>
                 <span id="passwordsTitle"></span>
                 <div class="app-notif-header-actions">
                     <button type="button" id="passwordsAddBtn" class="app-notif-mute-btn">
@@ -770,6 +775,7 @@
         <div id="notesPanel" class="right-panel-section notes-panel">
             <div id="notesListView" class="notes-list-view">
                 <div class="app-notif-header">
+                    <span class="ph-tile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/></svg></span>
                     <span data-i18n="notes.panelTitle"></span>
                     <div class="app-notif-header-actions">
                         <button type="button" id="notesAddNoteBtn" class="app-notif-mute-btn" data-i18n-title="notes.newNote">
@@ -1120,6 +1126,16 @@
         <button class="changelog-popup-close" id="changelogPopupClose">✕</button>
     </div>
     <div class="changelog-popup-body">
+        <div class="changelog-entry">
+            <div class="changelog-version">v3.1.5</div>
+            <ul class="changelog-list">
+                <li>Новое: все окна справа теперь в одном стиле: ассистент, уведомления, задачи, заметки, пароли, быстрые ответы и плеер. Единая шапка с иконкой, аккуратный поиск и карточки в списках. Все прежние возможности на месте, в том числе поиск по уведомлениям</li>
+                <li>Новое: окно ассистента стало понятнее. В шапке логотип Centrio, на пустом экране карточки с готовыми запросами (открыть чат, настроить, задачи и заметки, непрочитанные) и подсказки, чем он может помочь</li>
+                <li>Новое: поддержка переделана в стиле ассистента. Перед обращением выбирается тема: поддержка, предложить функцию, найден баг или вопрос по функциям. К сообщению можно прикрепить до 4 картинок (скрепка, вставка из буфера или перетаскивание, только изображения до 5 МБ). В диалоге они показываются превью и увеличиваются по клику</li>
+                <li>Новое: бот поддержки обучен работе приложения и умеет читать присланные скриншоты. Он отвечает сразу, а если не может помочь, передаёт обращение команде. Каждое обращение сразу видно команде, и ни одно не остаётся без ответа. В окне поддержки видно, на каком этапе обращение: принято, ответил ассистент, у команды, решено</li>
+                <li>Новое: код восстановления для менеджера паролей. При создании хранилища Centrio показывает код: если забудете мастер-пароль, с этим кодом можно задать новый и вернуть доступ к паролям. У уже созданного хранилища код создаётся в настройках менеджера паролей. Код нигде не хранится, поэтому прочитать пароли без мастер-пароля или кода по-прежнему не может никто</li>
+            </ul>
+        </div>
         <div class="changelog-entry">
             <div class="changelog-version">v3.1.0</div>
             <ul class="changelog-list">
@@ -3867,69 +3883,120 @@
      внутри #cloudModal — просто в собственном модале вместо чужого.
      См. support-tickets-ui.js. -->
 <div id="supportModal" class="modal">
-    <div class="modal-content support-modal-content">
-        <div id="supportListView">
-            <div class="modal-header">
-                <h3 data-i18n="cloud.supportSection"></h3>
-                <button id="closeSupportModalBtn" class="modal-close">✕</button>
-            </div>
-            <div class="modal-body cp-support-section">
-                <button class="cp-support-new-btn" id="supportNewTicketBtn" data-i18n="cloud.supportNewTicket"></button>
-
-                <!-- Форма нового обращения — свёрнута по умолчанию -->
-                <div id="supportNewTicketForm" class="cp-support-new-form" style="display:none;">
-                    <input type="text" id="supportNewSubject" class="vsc-input" data-i18n-placeholder="cloud.supportSubjectPh" maxlength="200">
-                    <textarea id="supportNewBody" class="vsc-input cp-support-textarea" data-i18n-placeholder="cloud.supportBodyPh" maxlength="5000"></textarea>
-                    <div class="cp-support-new-actions">
-                        <button id="supportNewCancelBtn" class="cp-support-cancel-btn" data-i18n="cloud.supportCancel"></button>
-                        <button id="supportNewSubmitBtn" class="cp-support-submit-btn" data-i18n="cloud.supportSend"></button>
-                    </div>
-                    <div id="supportNewError" class="cp-support-error" style="display:none;"></div>
+    <div class="modal-content support-modal-content sp2">
+        <aside class="sp2-rail">
+            <div class="sp2-head">
+                <img class="sp2-logo" src="assets/logo.png" alt="">
+                <div class="sp2-head-text">
+                    <b data-i18n="cloud.supportSection"></b>
+                    <span id="supportCountLabel"></span>
                 </div>
-
-                <div id="supportTicketsLoading" class="cp-support-loading" data-i18n="cloud.supportLoading" style="display:none;"></div>
-                <div id="supportTicketsEmpty" class="cp-support-empty" data-i18n="cloud.supportEmpty" style="display:none;"></div>
-                <div id="supportTicketsList" class="cp-support-list"></div>
             </div>
-        </div>
-
-        <!-- Тред обращения — то же переключение видов, что раньше
-             (openThread/closeThread в support-tickets-ui.js), теперь
-             между supportListView и этим блоком вместо
-             cloudProfileView/ticketThreadView. -->
-        <div id="ticketThreadView" style="display:none;">
-            <div class="modal-header cp-thread-header">
-                <button id="ticketThreadBackBtn" class="cp-thread-back-btn">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M19 12H5M12 19l-7-7 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <div class="sp2-rail-top">
+                <button type="button" id="supportNewTicketBtn" class="sp2-btn sp2-btn-primary">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+                    <span data-i18n="cloud.supportNewTicket"></span>
                 </button>
-                <div class="cp-thread-title-wrap">
-                    <div id="ticketThreadSubject" class="cp-thread-subject">—</div>
-                    <span id="ticketThreadStatus" class="cp-ticket-status-pill">—</span>
-                </div>
-                <button id="closeSupportModalBtn2" class="modal-close">✕</button>
             </div>
-            <div class="modal-body cp-thread-body">
-                <div id="ticketThreadMessages" class="cp-thread-messages"></div>
-                <!-- "Печатает…" (2026-09-30, live request: "желательно с
-                     троеточием, типа — набор текста мною или ботом") —
-                     показывается/скрывается из support-tickets-ui.js:
-                     реально — пока идёт вызов LLM у бота (см.
-                     lib/support-bot.js) или пока админ печатает ответ в
-                     CentrioAdmin (см. admin-typing IPC ниже), а не
-                     фейковая анимация без повода. -->
-                <div id="ticketTypingIndicator" class="cp-typing-indicator" style="display:none;">
-                    <span class="cp-typing-dots"><i></i><i></i><i></i></span>
+            <div class="sp2-rail-body">
+                <div class="sp2-promise">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                    <div><b data-i18n="cloud.supportPromise"></b> <span data-i18n="cloud.supportPromiseText"></span></div>
+                </div>
+                <div id="supportTicketsLoading" class="sp2-note" data-i18n="cloud.supportLoading" style="display:none;"></div>
+                <div id="supportTicketsEmpty" class="sp2-note" data-i18n="cloud.supportEmpty" style="display:none;"></div>
+                <div id="supportTicketsList" class="sp2-list"></div>
+            </div>
+        </aside>
+
+        <section class="sp2-main">
+            <button type="button" id="closeSupportModalBtn" class="sp2-close" aria-label="Close">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            </button>
+
+            <!-- Ничего не выбрано -->
+            <div id="supportIdleView" class="sp2-idle">
+                <img class="sp2-idle-logo" src="assets/logo.png" alt="">
+                <h3 data-i18n="cloud.supportIdleTitle"></h3>
+                <p data-i18n="cloud.supportIdleText"></p>
+                <button type="button" id="supportIdleNewBtn" class="sp2-btn sp2-btn-primary" data-i18n="cloud.supportNewTicket"></button>
+            </div>
+
+            <!-- Новое обращение: тема, текст, картинки -->
+            <div id="supportNewTicketForm" class="sp2-new" style="display:none;">
+                <div class="sp2-pane-head">
+                    <img class="sp2-logo" src="assets/logo.png" alt="">
+                    <div class="sp2-head-text"><b data-i18n="cloud.supportNewTicket"></b></div>
+                </div>
+                <div class="sp2-scroll">
+                    <div class="sp2-greet">
+                        <h3 id="supportNewTitle"></h3>
+                        <p data-i18n="cloud.supportNewLead"></p>
+                    </div>
+                    <div class="sp2-topics" id="supportTopics">
+                        <button type="button" class="sp2-topic" data-topic="support"><span class="sp2-topic-ic sp2-c-help"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span><b data-i18n="cloud.supportTopicSupport"></b><span data-i18n="cloud.supportTopicSupportHint"></span></button>
+                        <button type="button" class="sp2-topic" data-topic="idea"><span class="sp2-topic-ic sp2-c-idea"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.2 1 2V17h6v-.3c0-.8.4-1.5 1-2A7 7 0 0 0 12 2z"/></svg></span><b data-i18n="cloud.supportTopicIdea"></b><span data-i18n="cloud.supportTopicIdeaHint"></span></button>
+                        <button type="button" class="sp2-topic" data-topic="bug"><span class="sp2-topic-ic sp2-c-bug"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2l1.5 2M16 2l-1.5 2M9 7h6a3 3 0 0 1 3 3v3a6 6 0 0 1-12 0v-3a3 3 0 0 1 3-3zM3 13h3M18 13h3M4 20l3-2M20 20l-3-2"/></svg></span><b data-i18n="cloud.supportTopicBug"></b><span data-i18n="cloud.supportTopicBugHint"></span></button>
+                        <button type="button" class="sp2-topic" data-topic="question"><span class="sp2-topic-ic sp2-c-ask"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 2.5-3 4M12 17h.01"/></svg></span><b data-i18n="cloud.supportTopicQuestion"></b><span data-i18n="cloud.supportTopicQuestionHint"></span></button>
+                    </div>
+                    <div class="sp2-fields">
+                        <input type="text" id="supportNewSubject" class="sp2-input" data-i18n-placeholder="cloud.supportSubjectPh" maxlength="200">
+                        <textarea id="supportNewBody" class="sp2-input sp2-textarea" data-i18n-placeholder="cloud.supportBodyPh" maxlength="5000"></textarea>
+                        <div id="supportNewShots" class="sp2-shots"></div>
+                        <div id="supportNewError" class="sp2-error" style="display:none;"></div>
+                    </div>
+                </div>
+                <div class="sp2-compose sp2-compose-row">
+                    <div class="sp2-attach-wrap">
+                        <button type="button" id="supportNewAttachBtn" class="sp2-btn sp2-btn-ghost">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21.4 11.1l-9.2 9.2a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7l-9.2 9.2a2 2 0 0 1-2.8-2.8l8.5-8.5"/></svg>
+                            <span data-i18n="cloud.supportAttach"></span>
+                        </button>
+                        <span class="sp2-hint" data-i18n="cloud.supportAttachHint"></span>
+                    </div>
+                    <div class="sp2-compose-actions">
+                        <button type="button" id="supportNewCancelBtn" class="sp2-btn sp2-btn-ghost" data-i18n="cloud.supportCancel"></button>
+                        <button type="button" id="supportNewSubmitBtn" class="sp2-btn sp2-btn-primary" data-i18n="cloud.supportSend"></button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Диалог по обращению -->
+            <div id="ticketThreadView" class="sp2-thread" style="display:none;">
+                <div class="sp2-pane-head">
+                    <img class="sp2-logo" src="assets/logo.png" alt="">
+                    <div class="sp2-head-text">
+                        <b id="ticketThreadSubject">—</b>
+                        <span><span id="ticketThreadCategory" class="sp2-tag"></span> <span id="ticketThreadStatus" class="sp2-state"></span></span>
+                    </div>
+                </div>
+                <div id="ticketThreadSteps" class="sp2-steps"></div>
+                <div id="ticketThreadMessages" class="sp2-messages"></div>
+                <div id="ticketTypingIndicator" class="sp2-typing" style="display:none;">
+                    <span class="sp2-typing-dots"><i></i><i></i><i></i></span>
                     <span id="ticketTypingLabel"></span>
                 </div>
+                <div class="sp2-compose">
+                    <div id="ticketReplyShots" class="sp2-shots"></div>
+                    <div class="sp2-cbox">
+                        <button type="button" id="ticketReplyAttachBtn" class="sp2-clip" data-i18n-title="cloud.supportAttach">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21.4 11.1l-9.2 9.2a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7l-9.2 9.2a2 2 0 0 1-2.8-2.8l8.5-8.5"/></svg>
+                        </button>
+                        <textarea id="ticketReplyInput" rows="1" data-i18n-placeholder="cloud.supportReplyPh" maxlength="5000"></textarea>
+                        <button type="button" id="ticketReplySendBtn" class="sp2-send" data-i18n-title="cloud.supportSend">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+                        </button>
+                    </div>
+                    <div class="sp2-hint-row"><span data-i18n="cloud.supportAttachNote"></span></div>
+                    <div id="ticketReplyError" class="sp2-error" style="display:none;"></div>
+                </div>
             </div>
-            <div class="cp-thread-reply">
-                <textarea id="ticketReplyInput" class="vsc-input cp-support-textarea" data-i18n-placeholder="cloud.supportReplyPh" maxlength="5000"></textarea>
-                <button id="ticketReplySendBtn" class="cp-support-submit-btn" data-i18n="cloud.supportSend"></button>
-            </div>
-            <div id="ticketReplyError" class="cp-support-error" style="display:none;"></div>
-        </div>
+        </section>
+        <input type="file" id="supportFileInput" accept="image/png,image/jpeg,image/webp,image/gif" multiple hidden>
+        <div id="supportLightbox" class="sp2-lightbox" style="display:none;"><img alt=""></div>
     </div>
 </div>
+
 
 <!-- Модал звука мессенджера -->
 <div id="messengerSoundModal" class="modal">

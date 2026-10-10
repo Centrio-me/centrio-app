@@ -601,6 +601,84 @@ module.exports = {
         chartSection:         'Ultimi 7 giorni',
         servicesSection:      'Per messenger',
         supportSection:       'Assistenza',
+
+        supportCount: 'Richieste: {n}',
+
+        supportPromise: 'Nessuna richiesta resta senza risposta.',
+
+        supportPromiseText: 'Risponde prima l’assistente e, se non riesce ad aiutare, interviene una persona.',
+
+        supportIdleTitle: 'Siamo qui',
+
+        supportIdleText: 'Scegli una richiesta a sinistra o creane una nuova. L’assistente risponde subito e il team interviene se serve.',
+
+        supportNewTitle: 'Cos’è [[successo]]?',
+
+        supportNewLead: 'Scegli un argomento: l’assistente conosce già l’app e risponde subito.',
+
+        supportTopicSupport: 'Assistenza',
+
+        supportTopicSupportHint: 'Qualcosa non funziona, mi serve aiuto',
+
+        supportTopicIdea: 'Proponi una funzione',
+
+        supportTopicIdeaHint: 'Cosa manca a Centrio',
+
+        supportTopicBug: 'Trovato un bug',
+
+        supportTopicBugHint: 'Qualcosa funziona male',
+
+        supportTopicQuestion: 'Domanda sulle funzioni',
+
+        supportTopicQuestionHint: 'Come funziona e come si usa',
+
+        supportTopicRequired: 'Scegli un argomento per la richiesta',
+
+        supportTagSupport: 'Assistenza',
+
+        supportTagIdea: 'Idea',
+
+        supportTagBug: 'Bug',
+
+        supportTagQuestion: 'Domanda',
+
+        supportAttach: 'Immagine',
+
+        supportAttachHint: 'PNG, JPG, WebP · fino a 5 MB · fino a 4',
+
+        supportAttachNote: 'Solo immagini: PNG, JPG, WebP · fino a 5 MB ciascuna. Puoi incollarle dagli appunti o trascinarle.',
+
+        supportAttachErrType: 'Si possono allegare solo immagini',
+
+        supportAttachErrSize: 'L’immagine è troppo grande, massimo 5 MB',
+
+        supportAttachErrCount: 'Si possono allegare al massimo 4 immagini',
+
+        supportStepAccepted: 'Ricevuta',
+
+        supportStepBot: 'L’assistente ha risposto',
+
+        supportStepTeam: 'Dal team di assistenza',
+
+        supportStepDone: 'Risolta',
+
+        supportBotName: 'Assistente Centrio',
+
+        supportBotBadge: 'Bot',
+
+        supportTeamName: 'Team Centrio',
+
+        supportHandoff: 'L’assistente ha passato la richiesta al team. Di solito rispondiamo entro poche ore',
+
+        supportRowBot: 'Risponde l’assistente',
+
+        supportRowClarify: 'L’assistente chiede dettagli',
+
+        supportRowTeam: 'Dal team',
+
+        supportRowAnswered: 'Risposta ricevuta',
+
+        supportRowDone: 'Risolta',
         supportNewTicket:     'Nuova richiesta',
         supportSubjectPh:     'Oggetto',
         supportBodyPh:        'Descrivi il tuo problema…',
@@ -758,6 +836,28 @@ module.exports = {
         inputPlaceholder: 'Chiedi all\'assistente…',
         send: 'Invia',
         emptyState: 'Chiedi qualsiasi cosa sui tuoi messenger e le tue attività',
+
+        emptyHeadline: 'Come posso [[aiutarti]] in Centrio?',
+
+        emptyLead: 'Conosco l’app a fondo: apro un messenger, trovo un’impostazione o spiego come funziona qualcosa.',
+
+        emptyTryLabel: 'Prova a chiedere',
+
+        cap1Title: 'Apri una chat',
+
+        cap1Prompt: 'Apri Telegram',
+
+        cap2Title: 'Impostare',
+
+        cap2Prompt: 'Attiva il tema scuro',
+
+        cap3Title: 'Attività e note',
+
+        cap3Prompt: 'Aggiungi un’attività: chiamare il cliente',
+
+        cap4Title: 'Novità',
+
+        cap4Prompt: 'Quanti messaggi non letti ho?',
         greetingMorning: 'Buongiorno',
         greetingDay: 'Buon pomeriggio',
         greetingEvening: 'Buonasera',

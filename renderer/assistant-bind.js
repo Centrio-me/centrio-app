@@ -109,25 +109,47 @@ function bindAssistantUi({ store, ipcRenderer, invokeIpc, tGet, toolsApi, openRi
         return 'assistant.greetingNight'
     }
 
+    const BOT_AVATAR = '<img class="assistant-msg-avatar" src="assets/logo.png" alt="">'
+
+    // Карточки возможностей на пустом экране: клик отправляет готовый запрос.
+    const CAPABILITY_CARDS = [
+        { key: 'cap1', icon: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>' },
+        { key: 'cap2', icon: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9L17 7M7 17l-2.1 2.1"/>' },
+        { key: 'cap3', icon: '<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>' },
+        { key: 'cap4', icon: '<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/>' }
+    ]
+
+    // Заголовок вида «Чем [[помочь]] в Centrio?»: слово в двойных скобках подчёркивается.
+    function headlineHtml(text) {
+        return escapeHtml(text).replace(/\[\[(.+?)\]\]/, '<span class="assistant-u">$1</span>')
+    }
+
     function renderEmptyState() {
         const examples = EXAMPLE_PROMPT_KEYS
             .map(key => tGet(`assistant.${key}`))
             .filter(Boolean)
+        const cards = CAPABILITY_CARDS
+            .map(c => ({ icon: c.icon, title: tGet(`assistant.${c.key}Title`), prompt: tGet(`assistant.${c.key}Prompt`) }))
+            .filter(c => c.title && c.prompt)
+        const cardsHtml = cards.map(c => `<button type="button" class="assistant-cap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${c.icon}</svg><b>${escapeHtml(c.title)}</b><span>«${escapeHtml(c.prompt)}»</span></button>`).join('')
         const examplesHtml = examples.length
-            ? `<div class="assistant-empty-examples">${examples.map(text => `<button type="button" class="assistant-example-chip">${escapeHtml(text)}</button>`).join('')}</div>`
+            ? `<div class="assistant-empty-label">${escapeHtml(tGet('assistant.emptyTryLabel'))}</div><div class="assistant-empty-examples">${examples.map(text => `<button type="button" class="assistant-example-chip">${escapeHtml(text)}</button>`).join('')}</div>`
             : ''
         const greeting = tGet(greetingKeyForHour(new Date().getHours()))
         messagesEl.innerHTML = `
             <div class="assistant-empty">
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M12 3l1.9 4.9L19 9l-5.1 1.9L12 16l-1.9-5.1L5 9l5.1-1.9L12 3z"/>
-                    <path d="M19 15l.8 2.1L22 18l-2.2.9L19 21l-.8-2.1L16 18l2.2-.9L19 15z"/>
-                </svg>
-                <span class="assistant-empty-greeting">${escapeHtml(greeting)}</span>
-                <span class="assistant-empty-subtitle">${escapeHtml(tGet('assistant.emptyState'))}</span>
+                <div class="assistant-empty-head">
+                    <span class="assistant-empty-greeting">${escapeHtml(greeting)}</span>
+                    <h3>${headlineHtml(tGet('assistant.emptyHeadline'))}</h3>
+                    <p>${escapeHtml(tGet('assistant.emptyLead'))}</p>
+                </div>
+                <div class="assistant-caps">${cardsHtml}</div>
                 ${examplesHtml}
             </div>
         `
+        messagesEl.querySelectorAll('.assistant-cap').forEach((card, i) => {
+            card.addEventListener('click', () => sendMessage(cards[i].prompt))
+        })
         messagesEl.querySelectorAll('.assistant-example-chip').forEach((chip, i) => {
             chip.addEventListener('click', () => sendMessage(examples[i]))
         })
@@ -136,7 +158,7 @@ function bindAssistantUi({ store, ipcRenderer, invokeIpc, tGet, toolsApi, openRi
     function renderHistory() {
         if (history.length === 0) { renderEmptyState(); return }
         messagesEl.innerHTML = history
-            .map(m => `<div class="assistant-msg assistant-msg-${m.role === 'user' ? 'user' : 'bot'}"><div class="assistant-msg-content">${escapeHtml(m.content)}</div></div>`)
+            .map(m => `<div class="assistant-msg assistant-msg-${m.role === 'user' ? 'user' : 'bot'}">${m.role === 'user' ? '' : BOT_AVATAR}<div class="assistant-msg-content">${escapeHtml(m.content)}</div></div>`)
             .join('')
         scrollToBottom()
     }
@@ -154,7 +176,7 @@ function bindAssistantUi({ store, ipcRenderer, invokeIpc, tGet, toolsApi, openRi
     function startAssistantBubble() {
         const el = document.createElement('div')
         el.className = 'assistant-msg assistant-msg-bot'
-        el.innerHTML = '<div class="assistant-msg-content"></div>'
+        el.innerHTML = BOT_AVATAR + '<div class="assistant-msg-content"></div>'
         messagesEl.appendChild(el)
         scrollToBottom()
         currentAssistantBubble = el.querySelector('.assistant-msg-content')
