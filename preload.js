@@ -116,6 +116,7 @@ const validInvokeChannels = new Set([
     'shortcuts:list',
     'shortcuts:set',
     'shortcuts:reset',
+    'shortcuts:recording',
     'api-assistant-usage',
     'api-chat-site-conversations',
     'api-chat-site-create',

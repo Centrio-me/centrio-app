@@ -55,6 +55,7 @@ const { bindCloudUi } = require('./renderer/cloud-bind')
 const { bindOnboardingScreen } = require('./renderer/onboarding-auth')
 const { bindWelcomeScreen } = require('./renderer/welcome-screen')
 const { bindShortcutsSettings } = require('./renderer/shortcuts-settings')
+const { bindSplitFocus } = require('./renderer/split-focus')
 const { bindBatteryStatus } = require('./renderer/battery-status')
 const { bindMenuUi } = require('./renderer/menu-bind')
 const { bindTitlebarQuickMenuUi } = require('./renderer/titlebar-quickmenu-bind')
@@ -3559,7 +3560,8 @@ function applyTabZoom(level) {
     bindWelcomeScreen({ state, cloudStore, popularMessengers, addMessenger, openModal, onSearchInput, onSearchEnter, tGet })
 
     ipcRenderer.on('shortcut-action', (payload) => document.dispatchEvent(new CustomEvent('centrio-shortcut', { detail: payload })))
-    bindShortcutsSettings({ invokeIpc, tGet })
+    bindSplitFocus({ state, getSettings: () => store.get('settings', {}) || {} })
+    bindShortcutsSettings({ invokeIpc, tGet, getPresets: () => (splitApi && splitApi.getPresets ? splitApi.getPresets() : []) })
     bindBatteryStatus({ invokeIpc, tGet })
 
     // enabled — предпочтение пользователя ("использовать VPN для этого мессенджера"),

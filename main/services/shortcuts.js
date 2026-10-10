@@ -15,6 +15,13 @@ const SHIFTED_DIGITS = { '!': 1, '@': 2, '#': 3, '$': 4, '%': 5, '^': 6, '&': 7,
 
 let currentDeps = null
 
+// While the settings wait for a new combination, every key must reach the page: an already taken combination
+// would otherwise run its action and never show the "taken" message. The pause expires by itself in case the
+// settings window is closed in the middle of recording.
+const RECORDING_MAX_MS = 30 * 1000
+let recordingUntil = 0
+function setRecording(on) { recordingUntil = on ? Date.now() + RECORDING_MAX_MS : 0 }
+
 function toggleWindowVisibility({ getMainWindow, showMainWindow }) {
     const focused = withWindow(getMainWindow, (win) => {
         if (win.isVisible() && win.isFocused()) {
@@ -37,6 +44,8 @@ function runAction(actionId) {
             win.setFullScreen(!win.isFullScreen())
             return
         }
+        const presetIndex = registry.splitPresetIndex(actionId)
+        if (presetIndex >= 0) { win.webContents.send('shortcut-action', { action: 'splitPreset', index: presetIndex }); return }
         const channel = RENDERER_CHANNELS[actionId]
         if (channel) win.webContents.send(channel)
         else win.webContents.send('shortcut-action', { action: actionId })
@@ -57,16 +66,13 @@ function digitOf(input) {
 function attachShortcutHandling(contents) {
     contents.on('before-input-event', (event, input) => {
         if (input.type !== 'keyDown' || input.isAutoRepeat) return
+        if (Date.now() < recordingUntil) return
         // Ctrl+1..9 = Nth messenger, Ctrl+Shift+1..9 = Nth saved split screen (pressed again, it closes the split).
         const digit = digitOf(input)
         const ctrl = input.control || (process.platform === 'darwin' && input.meta)
-        if (digit && ctrl && !input.alt) {
+        if (digit && ctrl && !input.alt && !input.shift) {
             event.preventDefault()
-            const index = digit - 1
-            withWindow(currentDeps.getMainWindow, (win) => {
-                if (input.shift) win.webContents.send('shortcut-action', { action: 'splitPreset', index })
-                else win.webContents.send('switch-messenger-index', index)
-            })
+            withWindow(currentDeps.getMainWindow, (win) => win.webContents.send('switch-messenger-index', digit - 1))
             return
         }
         const actionId = registry.actionForInput(input)
@@ -110,6 +116,7 @@ function unregisterShortcuts() {
 }
 
 module.exports = {
+    setRecording,
     registerShortcuts,
     unregisterShortcuts,
     registerGlobalShortcuts

@@ -83,10 +83,6 @@ function bindAppEvents({
         // to Nth tab" binding one modifier over, rather than a new key
         // entirely, so it reads as "the same idea, one level up" instead of
         // an unrelated shortcut to memorize.
-        if (e.ctrlKey && e.shiftKey && e.code >= 'Digit1' && e.code <= 'Digit9' && splitApi) {
-            const idx = parseInt(e.code.replace('Digit', '')) - 1
-            if (togglePreset(idx)) e.preventDefault()
-        }
     })
 
     // BUGFIX (2026-09-21, live report — "иногда Ctrl+ и Ctrl- не работают

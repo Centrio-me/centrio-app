@@ -291,6 +291,8 @@ function createSettingsUiApi({
         if (settings.language) {
             setCurrentLanguage(settings.language)
         }
+
+        document.dispatchEvent(new CustomEvent('centrio-settings-applied'))
     }
 
     function collectSettings() {
@@ -305,6 +307,11 @@ function createSettingsUiApi({
             showTabs: document.getElementById('settingShowTabs')?.checked ?? true,
             notifications: document.getElementById('settingNotifications')?.checked ?? true,
             notifPopup: document.getElementById('settingNotifPopup')?.checked ?? true,
+            splitFocus: document.getElementById('settingSplitFocus')?.checked ?? (currentSettings.splitFocus === true),
+            splitFocusSidebar: document.getElementById('settingSplitFocusSidebar')?.checked ?? (currentSettings.splitFocusSidebar !== false),
+            splitFocusRight: document.getElementById('settingSplitFocusRight')?.checked ?? (currentSettings.splitFocusRight !== false),
+            splitFocusStatusbar: document.getElementById('settingSplitFocusStatusbar')?.checked ?? (currentSettings.splitFocusStatusbar !== false),
+            splitFocusTitlebar: document.getElementById('settingSplitFocusTitlebar')?.checked ?? (currentSettings.splitFocusTitlebar === true),
             notifSound: document.getElementById('settingNotifSound')?.checked ?? true,
             trayBadge: document.getElementById('settingTrayBadge')?.checked ?? true,
             notifHistoryLimit: Number(document.getElementById('settingNotifHistoryLimit')?.value) || currentSettings.notifHistoryLimit || 200,
@@ -349,6 +356,12 @@ function createSettingsUiApi({
         if (settingShowTabs) settingShowTabs.checked = settings.showTabs !== false
         if (settingNotifications) settingNotifications.checked = settings.notifications !== false
         if (settingNotifPopup) settingNotifPopup.checked = settings.notifPopup !== false
+        const setChecked = (id, value) => { const input = document.getElementById(id); if (input) input.checked = value }
+        setChecked('settingSplitFocus', settings.splitFocus === true)
+        setChecked('settingSplitFocusSidebar', settings.splitFocusSidebar !== false)
+        setChecked('settingSplitFocusRight', settings.splitFocusRight !== false)
+        setChecked('settingSplitFocusStatusbar', settings.splitFocusStatusbar !== false)
+        setChecked('settingSplitFocusTitlebar', settings.splitFocusTitlebar === true)
         if (settingNotifSound) settingNotifSound.checked = settings.notifSound !== false
         if (settingTrayBadge) settingTrayBadge.checked = settings.trayBadge !== false
         if (settingNotifHistoryLimit) settingNotifHistoryLimit.value = String(settings.notifHistoryLimit || 200)

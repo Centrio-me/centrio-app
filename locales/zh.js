@@ -131,6 +131,28 @@ module.exports = {
         notifPopup: "Centrio 弹窗通知",
 
         notifPopupHint: "可直接在通知中回复。关闭后将使用系统通知。",
+
+
+        splitFocus: '分屏专注模式',
+
+
+        splitFocusHint: '分屏开启时隐藏多余的部分，让窗口有更大的空间。退出分屏后，面板会自动恢复。',
+
+
+
+        splitFocusWhat: '隐藏内容',
+
+
+        splitFocusSidebar: '左侧的标签面板',
+
+
+        splitFocusRight: '右侧的工具面板',
+
+
+        splitFocusStatusbar: '底部状态栏',
+
+
+        splitFocusTitlebar: '顶部栏（鼠标移到顶部边缘时会出现）',
         notifSound:       '通知声音',
         notifSoundChoose: '选择提示音',
         notifSoundUpload: '上传自定义声音',
@@ -364,6 +386,10 @@ module.exports = {
         byNumber:        '按编号切换',
         splitTitle:      '分屏',
         splitPreset:     '打开已保存的分屏',
+
+        splitPresetN: '分屏 {n}',
+
+        noPresets: '还没有保存的分屏。在分屏面板里保存一个布局，它的快捷键就会出现在这里。',
         searchTitle:     '搜索',
         quickSearch:     '快速搜索应用',
         findInPage:      '在页面中搜索',

@@ -131,6 +131,28 @@ module.exports = {
         notifPopup: "Centrio pop-ups",
 
         notifPopupHint: "With a reply field right in the notification. Turn off to use regular system notifications.",
+
+
+        splitFocus: 'Focus mode in split screen',
+
+
+        splitFocusHint: 'While a split screen is on, hides what is not needed so the windows get more room. The panels come back by themselves when you leave the split.',
+
+
+
+        splitFocusWhat: 'What to hide',
+
+
+        splitFocusSidebar: 'The left panel with tabs',
+
+
+        splitFocusRight: 'The right panel with tools',
+
+
+        splitFocusStatusbar: 'The bottom bar',
+
+
+        splitFocusTitlebar: 'The top bar (it shows up when you move the mouse to the top edge)',
         notifSound:       'Notification sound',
         notifSoundChoose: 'Choose sound',
         notifSoundUpload: 'Upload custom sound',
@@ -375,6 +397,10 @@ module.exports = {
         byNumber:        'Switch by number',
         splitTitle:      'Split screen',
         splitPreset:     'Open a saved split screen',
+
+        splitPresetN: 'Split screen {n}',
+
+        noPresets: 'No saved splits yet. Save a layout in the split panel and its key will appear here.',
         searchTitle:     'Search',
         quickSearch:     'Quick messenger search',
         findInPage:      'Find on page',

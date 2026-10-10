@@ -23,13 +23,22 @@ function eventToAccel(event) {
     return [event.ctrlKey || event.metaKey ? 'Ctrl' : '', event.altKey ? 'Alt' : '', event.shiftKey ? 'Shift' : '', key].filter(Boolean).join('+')
 }
 
-function bindShortcutsSettings({ invokeIpc, tGet }) {
+function bindShortcutsSettings({ invokeIpc, tGet, getPresets = () => [] }) {
     const group = document.getElementById('shortcutsCustomGroup')
     if (!group) return
 
     let items = []
     let recordingId = null
     let message = ''
+
+    // Tell the main process to stop handling shortcuts while a combination is being recorded.
+    let announced = false
+    function syncRecording() {
+        const on = recordingId !== null
+        if (on === announced) return
+        announced = on
+        invokeIpc('shortcuts:recording', on)
+    }
 
     const el = (tag, className, text) => {
         const node = document.createElement(tag)
@@ -51,14 +60,27 @@ function bindShortcutsSettings({ invokeIpc, tGet }) {
         return wrap
     }
 
+    // Split-screen presets: one row per saved layout, named "Split screen N · <name>".
+    const presetIndex = (id) => { const m = /^splitPreset([1-9])$/.exec(id); return m ? Number(m[1]) - 1 : -1 }
+    function labelFor(item) {
+        const index = presetIndex(item.id)
+        if (index < 0) return tGet(LABEL_KEYS[item.id] || item.id)
+        const preset = (getPresets() || [])[index]
+        const base = tGet('shortcuts.splitPresetN').replace('{n}', String(index + 1))
+        return preset && preset.name ? `${base} · ${preset.name}` : base
+    }
+
     function render() {
+        syncRecording()
         group.textContent = ''
         group.appendChild(el('div', 'settings-group-title', tGet('shortcuts.customTitle')))
         group.appendChild(el('div', 'settings-hint shortcut-hint', tGet('shortcuts.customHint')))
         const list = el('div', 'shortcut-list')
-        items.forEach((item) => {
+        const presetCount = (getPresets() || []).length
+        const shown = items.filter((item) => presetIndex(item.id) < 0 || presetIndex(item.id) < presetCount)
+        shown.forEach((item) => {
             const row = el('div', 'shortcut-row')
-            row.appendChild(el('span', 'shortcut-label', tGet(LABEL_KEYS[item.id] || item.id)))
+            row.appendChild(el('span', 'shortcut-label', labelFor(item)))
             const side = el('div', 'shortcut-side')
             if (recordingId === item.id) side.appendChild(el('span', 'shortcut-recording', tGet('shortcuts.pressKeys')))
             else side.appendChild(keysNode(item.accel))
@@ -78,6 +100,7 @@ function bindShortcutsSettings({ invokeIpc, tGet }) {
             list.appendChild(row)
         })
         group.appendChild(list)
+        if (presetCount === 0) group.appendChild(el('div', 'settings-hint shortcut-hint', tGet('shortcuts.noPresets')))
         if (message) group.appendChild(el('div', 'shortcut-message', message))
         if (items.some(item => item.accel !== item.defaultAccel)) {
             const resetAll = el('button', 'shortcut-btn shortcut-btn-all', tGet('shortcuts.resetAll'))
@@ -94,7 +117,10 @@ function bindShortcutsSettings({ invokeIpc, tGet }) {
     }
 
     function errorText(result) {
-        if (result.error === 'conflict') return tGet('shortcuts.errConflict').replace('{name}', tGet(LABEL_KEYS[result.conflictWith] || result.conflictWith || ''))
+        if (result.error === 'conflict') {
+            const other = items.find((item) => item.id === result.conflictWith)
+            return tGet('shortcuts.errConflict').replace('{name}', other ? labelFor(other) : tGet(LABEL_KEYS[result.conflictWith] || result.conflictWith || ''))
+        }
         if (result.error === 'reserved') return tGet('shortcuts.errReserved')
         return tGet('shortcuts.errInvalid')
     }
@@ -102,6 +128,8 @@ function bindShortcutsSettings({ invokeIpc, tGet }) {
     // Capture phase: while recording, the key must not trigger the app's own shortcuts or type anywhere.
     document.addEventListener('keydown', async (event) => {
         if (!recordingId) return
+        // The settings were closed while recording: stop here, so keys are never swallowed outside the settings.
+        if (group.offsetParent === null) { recordingId = null; render(); return }
         event.preventDefault()
         event.stopPropagation()
         if (event.key === 'Escape') { recordingId = null; message = ''; render(); return }

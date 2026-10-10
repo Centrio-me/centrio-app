@@ -131,6 +131,28 @@ module.exports = {
         notifPopup: "Fenêtres de notification Centrio",
 
         notifPopupHint: "Avec réponse directement dans la notification. Désactivez pour utiliser les notifications système habituelles.",
+
+
+        splitFocus: 'Mode focus en écran partagé',
+
+
+        splitFocusHint: 'Pendant un écran partagé, masque le superflu pour donner plus de place aux fenêtres. Les panneaux reviennent d’eux-mêmes quand vous quittez le partage.',
+
+
+
+        splitFocusWhat: 'Quoi masquer',
+
+
+        splitFocusSidebar: 'Le panneau de gauche avec les onglets',
+
+
+        splitFocusRight: 'Le panneau de droite avec les outils',
+
+
+        splitFocusStatusbar: 'La barre du bas',
+
+
+        splitFocusTitlebar: 'La barre du haut (elle apparaît quand la souris touche le bord supérieur)',
         notifSound:       'Son des notifications',
         notifSoundChoose: 'Choisir un son',
         notifSoundUpload: 'Importer un son personnalisé',
@@ -364,6 +386,10 @@ module.exports = {
         byNumber:        'Changer par numéro',
         splitTitle:      'Écran divisé',
         splitPreset:     'Ouvrir un écran divisé enregistré',
+
+        splitPresetN: 'Écran partagé {n}',
+
+        noPresets: 'Aucun partage enregistré pour l’instant. Enregistrez une disposition dans le panneau de partage et sa touche apparaîtra ici.',
         searchTitle:     'Recherche',
         quickSearch:     'Recherche rapide de messenger',
         findInPage:      'Rechercher sur la page',

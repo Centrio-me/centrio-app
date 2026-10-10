@@ -1127,6 +1127,18 @@
     </div>
     <div class="changelog-popup-body">
         <div class="changelog-entry">
+            <div class="changelog-version">v3.1.6</div>
+            <ul class="changelog-list">
+                <li>Исправлено: ответ из уведомления мог уйти не в тот чат. Сообщение печаталось, пока сайт мессенджера ещё переключал чат, особенно когда чатов много. Теперь Centrio ждёт, пока откроется нужный чат, и перед отправкой проверяет его: если что-то не так, ничего не отправляется, а вы видите причину. Дубли при медленном ответе сайта тоже исключены</li>
+                <li>Исправлено: после ответа из уведомления вас больше не оставляет в чужом чате. В Telegram Centrio возвращает тот чат, в котором вы были, чтобы вы продолжили работу там, где остановились</li>
+                <li>Улучшено: окошко уведомления исчезает сразу, как только вы нажали Enter. Если сообщение не ушло, появится отдельное окошко с причиной</li>
+                <li>Новое: режим фокуса в сплите. Настройки → Внешний вид → «Режим фокуса в сплите»: пока включён сплит-экран, можно прятать левую панель, правую панель, нижнюю строку и верхнюю строку (она выезжает, если подвести мышь к верхнему краю). При выходе из сплита всё возвращается. По умолчанию режим выключен</li>
+                <li>Новое: горячие клавиши сплит-экранов можно менять. Настройки → Горячие клавиши: для каждого сохранённого сплита своя строка. На Windows Ctrl+Shift+цифра иногда занято переключением раскладки клавиатуры, теперь можно выбрать другое сочетание</li>
+                <li>Исправлено: когда вы записываете новое сочетание клавиш, занятое сочетание больше не срабатывает как команда, а показывает сообщение, что оно занято</li>
+                <li>Улучшено: окна «VPN» и «Загрузки» оформлены так же, как остальные панели</li>
+            </ul>
+        </div>
+        <div class="changelog-entry">
             <div class="changelog-version">v3.1.5</div>
             <ul class="changelog-list">
                 <li>Новое: все окна справа теперь в одном стиле: ассистент, уведомления, задачи, заметки, пароли, быстрые ответы и плеер. Единая шапка с иконкой, аккуратный поиск и карточки в списках. Все прежние возможности на месте, в том числе поиск по уведомлениям</li>
@@ -2399,6 +2411,49 @@
                             </div>
                         </div>
                     </div>
+
+                    <div class="settings-group sf-group">
+                        <div class="settings-group-title" data-i18n="settings.splitFocus"></div>
+                        <div class="settings-row">
+                            <div class="settings-label">
+                                <span data-i18n="settings.splitFocus"></span>
+                                <span class="settings-hint" data-i18n="settings.splitFocusHint"></span>
+                            </div>
+                            <label class="toggle">
+                                <input type="checkbox" id="settingSplitFocus">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="settings-hint sf-what" data-i18n="settings.splitFocusWhat"></div>
+                        <div class="settings-row sf-option">
+                            <div class="settings-label"><span data-i18n="settings.splitFocusSidebar"></span></div>
+                            <label class="toggle">
+                                <input type="checkbox" id="settingSplitFocusSidebar">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="settings-row sf-option">
+                            <div class="settings-label"><span data-i18n="settings.splitFocusRight"></span></div>
+                            <label class="toggle">
+                                <input type="checkbox" id="settingSplitFocusRight">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="settings-row sf-option">
+                            <div class="settings-label"><span data-i18n="settings.splitFocusStatusbar"></span></div>
+                            <label class="toggle">
+                                <input type="checkbox" id="settingSplitFocusStatusbar">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="settings-row sf-option">
+                            <div class="settings-label"><span data-i18n="settings.splitFocusTitlebar"></span></div>
+                            <label class="toggle">
+                                <input type="checkbox" id="settingSplitFocusTitlebar">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                    </div>
                 </div>
 
 <!-- Уведомления -->
@@ -2564,21 +2619,6 @@
                                 <span class="shortcut-label" data-i18n="shortcuts.byNumber"></span>
                                 <div class="shortcut-keys">
                                     <span class="shortcut-key">Ctrl</span>
-                                    <span class="shortcut-sep">+</span>
-                                    <span class="shortcut-key">1 — 9</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="settings-group">
-                        <div class="settings-group-title" data-i18n="shortcuts.splitTitle"></div>
-                        <div class="shortcut-list">
-                            <div class="shortcut-row">
-                                <span class="shortcut-label" data-i18n="shortcuts.splitPreset"></span>
-                                <div class="shortcut-keys">
-                                    <span class="shortcut-key">Ctrl</span>
-                                    <span class="shortcut-sep">+</span>
-                                    <span class="shortcut-key">Shift</span>
                                     <span class="shortcut-sep">+</span>
                                     <span class="shortcut-key">1 — 9</span>
                                 </div>
@@ -4188,6 +4228,7 @@
 <!-- Панель менеджера загрузок -->
 <div id="downloadsPanel" class="app-notif-panel" style="display:none;">
     <div class="app-notif-header">
+        <span class="ph-tile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 11l5 5 5-5M4 20h16"/></svg></span>
         <span data-i18n="downloads.title"></span>
         <div class="app-notif-header-actions">
             <button id="downloadsClearAll" class="app-notif-delete-btn" data-i18n-title="downloads.clearAll">

@@ -10,6 +10,9 @@ const CODE_NAMES = {
     ArrowUp: 'Up', ArrowDown: 'Down', ArrowLeft: 'Left', ArrowRight: 'Right', Delete: 'Delete',
     Backspace: 'Backspace', Enter: 'Enter'
 }
+// Typed characters of Shift+1..0 on a US layout, used only when an event carries no physical key code (virtual
+// keyboards, remote desktop): without the code the digit cannot be told from the symbol.
+const SHIFTED_DIGITS = { '!': '1', '@': '2', '#': '3', '$': '4', '%': '5', '^': '6', '&': '7', '*': '8', '(': '9', ')': '0' }
 const KEY_NAMES = { ' ': 'Space', Escape: 'Esc', ArrowUp: 'Up', ArrowDown: 'Down', ArrowLeft: 'Left', ArrowRight: 'Right' }
 
 function keyFromCode(code) {
@@ -23,6 +26,10 @@ function keyFromCode(code) {
 }
 
 function shortcutKeyName(key, code) {
+    // Digits are always the physical key: Shift+1 types '!' (or another symbol on other layouts), but it is still the 1 key.
+    const digit = /^Digit([0-9])$/.exec(typeof code === 'string' ? code : '')
+    if (digit) return digit[1]
+    if (!code && typeof key === 'string' && SHIFTED_DIGITS[key]) return SHIFTED_DIGITS[key]
     if (typeof key === 'string' && key.length === 1 && /[\x21-\x7e]/.test(key)) return key.toUpperCase()
     if (typeof key === 'string' && KEY_NAMES[key]) return KEY_NAMES[key]
     const fromCode = keyFromCode(code)

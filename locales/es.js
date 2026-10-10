@@ -131,6 +131,28 @@ module.exports = {
         notifPopup: "Ventanas emergentes de Centrio",
 
         notifPopupHint: "Con respuesta directa en la notificación. Desactívalo para usar las notificaciones normales del sistema.",
+
+
+        splitFocus: 'Modo de enfoque en pantalla dividida',
+
+
+        splitFocusHint: 'Mientras la pantalla dividida está activa, oculta lo que sobra para que las ventanas tengan más espacio. Los paneles vuelven solos al salir de la división.',
+
+
+
+        splitFocusWhat: 'Qué ocultar',
+
+
+        splitFocusSidebar: 'El panel izquierdo con pestañas',
+
+
+        splitFocusRight: 'El panel derecho con herramientas',
+
+
+        splitFocusStatusbar: 'La barra inferior',
+
+
+        splitFocusTitlebar: 'La barra superior (aparece al llevar el ratón al borde superior)',
         notifSound:       'Sonido de notificaciones',
         notifSoundChoose: 'Elegir sonido',
         notifSoundUpload: 'Subir sonido propio',
@@ -364,6 +386,10 @@ module.exports = {
         byNumber:        'Cambiar por número',
         splitTitle:      'Pantalla dividida',
         splitPreset:     'Abrir una pantalla dividida guardada',
+
+        splitPresetN: 'Pantalla dividida {n}',
+
+        noPresets: 'Aún no hay divisiones guardadas. Guarda una en el panel de división y su tecla aparecerá aquí.',
         searchTitle:     'Búsqueda',
         quickSearch:     'Búsqueda rápida de messenger',
         findInPage:      'Buscar en la página',

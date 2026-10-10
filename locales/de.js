@@ -131,6 +131,28 @@ module.exports = {
         notifPopup: "Centrio-Popups",
 
         notifPopupHint: "Mit Antwortfeld direkt in der Benachrichtigung. Ausschalten, um normale Systembenachrichtigungen zu verwenden.",
+
+
+        splitFocus: 'Fokusmodus im Split-Screen',
+
+
+        splitFocusHint: 'Solange ein Split-Screen aktiv ist, wird Überflüssiges ausgeblendet, damit die Fenster mehr Platz haben. Die Leisten kommen von selbst zurück, wenn Sie den Split verlassen.',
+
+
+
+        splitFocusWhat: 'Was ausgeblendet wird',
+
+
+        splitFocusSidebar: 'Die linke Leiste mit den Tabs',
+
+
+        splitFocusRight: 'Die rechte Leiste mit Werkzeugen',
+
+
+        splitFocusStatusbar: 'Die untere Leiste',
+
+
+        splitFocusTitlebar: 'Die obere Leiste (erscheint, wenn Sie die Maus an den oberen Rand bewegen)',
         notifSound:       'Benachrichtigungston',
         notifSoundChoose: 'Ton auswählen',
         notifSoundUpload: 'Eigenen Ton hochladen',
@@ -364,6 +386,10 @@ module.exports = {
         byNumber:        'Nach Nummer wechseln',
         splitTitle:      'Geteilter Bildschirm',
         splitPreset:     'Gespeicherten Split-Bildschirm öffnen',
+
+        splitPresetN: 'Split-Screen {n}',
+
+        noPresets: 'Noch keine gespeicherten Splits. Speichern Sie eine Anordnung im Split-Bereich, dann erscheint hier ihre Taste.',
         searchTitle:     'Suche',
         quickSearch:     'Schnelle Messenger-Suche',
         findInPage:      'Auf Seite suchen',

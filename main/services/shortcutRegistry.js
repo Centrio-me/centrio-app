@@ -17,8 +17,12 @@ const DEFINITIONS = [
     { id: 'nextTab', accel: 'Ctrl+Tab' },
     { id: 'prevTab', accel: 'Ctrl+Shift+Tab' },
     { id: 'reload', accel: 'Ctrl+R' },
-    { id: 'settings', accel: 'Ctrl+,' }
+    { id: 'settings', accel: 'Ctrl+,' },
+    // Saved split screens: the Nth action opens the Nth saved layout (pressed again, it closes the split).
+    ...Array.from({ length: 9 }, (_, i) => ({ id: `splitPreset${i + 1}`, accel: `Ctrl+Shift+${i + 1}` }))
 ]
+const SPLIT_PRESET_RE = /^splitPreset([1-9])$/
+const SPLIT_PRESET_DEFAULT_RE = /^Ctrl\+Shift\+[1-9]$/
 
 // Combinations that are fixed elsewhere (tab numbers, zoom) or that would break text editing.
 const RESERVED = [
@@ -78,7 +82,9 @@ function validate(id, accel) {
     if (accel === '') return { accel: '' }
     const normalized = normalize(accel)
     if (!normalized) return { error: 'invalid' }
-    if (RESERVED.some(re => re.test(normalized))) return { error: 'reserved' }
+    // Ctrl+Shift+1..9 are free for the split presets only; every other action must stay away from them.
+    const presetKey = SPLIT_PRESET_RE.test(id) && SPLIT_PRESET_DEFAULT_RE.test(normalized)
+    if (!presetKey && RESERVED.some(re => re.test(normalized))) return { error: 'reserved' }
     const clash = list().find(item => item.id !== id && item.accel === normalized)
     if (clash) return { error: 'conflict', conflictWith: clash.id }
     return { accel: normalized }
@@ -110,4 +116,6 @@ function actionForInput(input) {
     return hit ? hit.id : null
 }
 
-module.exports = { DEFINITIONS, list, set, reset, normalize, inputToAccel, actionForInput }
+const splitPresetIndex = (id) => { const m = SPLIT_PRESET_RE.exec(id); return m ? Number(m[1]) - 1 : -1 }
+
+module.exports = { DEFINITIONS, list, set, reset, normalize, inputToAccel, actionForInput, splitPresetIndex }

@@ -131,6 +131,28 @@ module.exports = {
         notifPopup: "Popup di Centrio",
 
         notifPopupHint: "Con risposta direttamente nella notifica. Disattiva per usare le normali notifiche di sistema.",
+
+
+        splitFocus: 'Modalità focus nello schermo diviso',
+
+
+        splitFocusHint: 'Mentre lo schermo diviso è attivo, nasconde il superfluo per dare più spazio alle finestre. I pannelli tornano da soli quando esci dalla divisione.',
+
+
+
+        splitFocusWhat: 'Cosa nascondere',
+
+
+        splitFocusSidebar: 'Il pannello sinistro con le schede',
+
+
+        splitFocusRight: 'Il pannello destro con gli strumenti',
+
+
+        splitFocusStatusbar: 'La barra in basso',
+
+
+        splitFocusTitlebar: 'La barra in alto (compare se porti il mouse sul bordo superiore)',
         notifSound:       'Suono notifiche',
         notifSoundChoose: 'Scegli suono',
         notifSoundUpload: 'Carica suono personalizzato',
@@ -364,6 +386,10 @@ module.exports = {
         byNumber:        'Cambia per numero',
         splitTitle:      'Schermo diviso',
         splitPreset:     'Apri uno schermo diviso salvato',
+
+        splitPresetN: 'Schermo diviso {n}',
+
+        noPresets: 'Nessuna divisione salvata per ora. Salva una disposizione nel pannello della divisione e il suo tasto comparirà qui.',
         searchTitle:     'Ricerca',
         quickSearch:     'Ricerca rapida messenger',
         findInPage:      'Cerca nella pagina',

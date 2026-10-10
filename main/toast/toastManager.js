@@ -15,6 +15,7 @@ const AFTER_REPLY_MS = 1100
 const FAILURE_MS = 10000
 
 const toasts = []
+const pendingReplies = new Map() // replyId -> what is needed to report a failure after the pop-up is gone
 let nextId = 1
 let handlers = null
 
@@ -48,7 +49,7 @@ function arm(toast, ms = LIFETIME_MS) {
     toast.timer = setTimeout(() => { if (!toast.hover) dispose(toast); else arm(toast, 2000) }, ms)
 }
 
-function show({ title, body, icon, app, messengerId, nid, url, canReply, strings }) {
+function show({ title, body, icon, app, messengerId, nid, url, canReply, strings, lifetimeMs }) {
     while (toasts.length >= MAX_STACK) dispose(toasts[0])
 
     const win = new BrowserWindow({
@@ -75,7 +76,7 @@ function show({ title, body, icon, app, messengerId, nid, url, canReply, strings
     })
     win.setAlwaysOnTop(true, 'screen-saver')
 
-    const toast = { id: nextId++, win, messengerId, nid, url, canReply: !!canReply, hover: false, timer: null, height: MIN_HEIGHT, replyId: null }
+    const toast = { id: nextId++, win, messengerId, nid, url, canReply: !!canReply, hover: false, timer: null, height: MIN_HEIGHT, replyId: null, meta: { title, icon, app, strings } }
     toasts.push(toast)
 
     win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
@@ -93,7 +94,7 @@ function show({ title, body, icon, app, messengerId, nid, url, canReply, strings
         layout()
     })
 
-    arm(toast)
+    arm(toast, lifetimeMs || LIFETIME_MS)
     return toast
 }
 
@@ -124,18 +125,35 @@ function registerToastIpc(ipcMain, deps) {
         toast.height = next
         layout()
     })
+    // Enter sends and the pop-up leaves at once; the answer is awaited in the background and only a failure
+    // comes back as a new pop-up (see replyResult).
     on('toast:reply', (toast, text) => {
         if (!toast.canReply || typeof text !== 'string' || !text.trim()) return
-        toast.replyId = `r${toast.id}-${Date.now()}`
-        handlers.sendReply({ replyId: toast.replyId, messengerId: toast.messengerId, nid: toast.nid, text: text.slice(0, 4000) })
+        const replyId = `r${toast.id}-${Date.now()}`
+        pendingReplies.set(replyId, { messengerId: toast.messengerId, nid: toast.nid, url: toast.url, ...toast.meta })
+        handlers.sendReply({ replyId, messengerId: toast.messengerId, nid: toast.nid, text: text.slice(0, 4000) })
+        dispose(toast)
     })
 }
 
-// The answer of the messenger page: tell the pop-up whether the message went out.
+// The answer of the messenger page. Success is silent (the pop-up is already gone); a failure is shown honestly.
 function replyResult(replyId, result) {
-    const toast = toasts.find(item => item.replyId === replyId)
-    if (!toast || toast.win.isDestroyed()) return
-    toast.win.webContents.send('toast:reply-result', result)
+    const info = pendingReplies.get(replyId)
+    pendingReplies.delete(replyId)
+    if (!info || result === 'ok') return
+    const strings = info.strings || {}
+    show({
+        title: info.title,
+        body: result === 'no-input' ? (strings.noInput || strings.failed || '') : (strings.failed || ''),
+        icon: info.icon,
+        app: info.app,
+        messengerId: info.messengerId,
+        nid: info.nid,
+        url: info.url,
+        canReply: false,
+        strings,
+        lifetimeMs: FAILURE_MS
+    })
 }
 
 module.exports = { show, registerToastIpc, replyResult }

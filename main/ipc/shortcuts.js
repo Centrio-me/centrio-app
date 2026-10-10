@@ -1,7 +1,7 @@
 // Renderer -> main: read and change the rebindable keyboard shortcuts (see main/services/shortcutRegistry.js).
 const { ipcMain } = require('electron')
 const registry = require('../services/shortcutRegistry')
-const { registerGlobalShortcuts } = require('../services/shortcuts')
+const { registerGlobalShortcuts, setRecording } = require('../services/shortcuts')
 
 function registerShortcutsIpc() {
     ipcMain.handle('shortcuts:list', () => ({ success: true, items: registry.list() }))
@@ -11,6 +11,8 @@ function registerShortcutsIpc() {
         if (result.success) registerGlobalShortcuts()
         return { ...result, items: registry.list() }
     })
+
+    ipcMain.handle('shortcuts:recording', (_event, on) => { setRecording(on === true); return { success: true } })
 
     ipcMain.handle('shortcuts:reset', (_event, id) => {
         const result = registry.reset(id ? String(id) : null)
