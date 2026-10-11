@@ -312,8 +312,18 @@ const NOTIF_PATCH_SCRIPT = `(function() {
                 url = rawData.url || rawData.link || rawData.deepLink || rawData.href || null
             }
 
+            // The id of the chat, when the site puts it into the notification (Telegram Web: data.custom.peerId): the
+            // exact answer to "which chat is this message from" for a reply typed into our pop-up.
+            var peer = ''
+            try {
+                var custom = rawData && typeof rawData === 'object' ? rawData.custom : null
+                var pid = custom && custom.peerId != null ? custom.peerId : null
+                if (pid != null && String(pid).match(/^-?[0-9]{1,20}$/)) peer = String(pid)
+            } catch (e) {}
+
             var rawIcon = (options && options.icon) || ''
             var entry = {
+                peer: peer,
                 title: String(title || ''),
                 body: String((options && options.body) || ''),
                 tag: String((options && options.tag) || ''),

@@ -113,6 +113,7 @@ function createWebviewNotifyApi({
             icon: payload.icon || messenger.icon || '',
             messengerId: messenger.id,
             nid: payload.nid || '',
+            peer: /^-?[0-9]{1,20}$/.test(String(payload.peer || '')) ? String(payload.peer) : '',
             url: actionUrl || '',
             app: messenger.name || '',
             canReply: !!(payload.nid && adapterFor(messenger.url)),

@@ -49,7 +49,7 @@ function registerNotificationsIpc({ getMainWindow, showMainWindow }) {
         log.info(`[notif] ${messenger} (${kind}): ${decision}`)
     })
 
-    ipcMain.on('show-notification', async (event, { title, body, icon, messengerId, nid, url, app: appLabel, canReply }) => {
+    ipcMain.on('show-notification', async (event, { title, body, icon, messengerId, nid, peer, url, app: appLabel, canReply }) => {
         try {
             // Главное требование пользователя: пока экран заблокирован, нативный
             // OS-тост поверх лок-скрина всплывать не должен — это противоречит
@@ -133,6 +133,7 @@ function registerNotificationsIpc({ getMainWindow, showMainWindow }) {
                         app: typeof appLabel === 'string' ? appLabel.slice(0, 60) : '',
                         messengerId,
                         nid: typeof nid === 'string' ? nid : '',
+                        peer: typeof peer === 'string' && /^-?[0-9]{1,20}$/.test(peer) ? peer : '',
                         url: typeof url === 'string' ? url : '',
                         canReply: !!canReply && typeof nid === 'string' && nid !== '',
                         strings: {

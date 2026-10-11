@@ -49,7 +49,7 @@ function arm(toast, ms = LIFETIME_MS) {
     toast.timer = setTimeout(() => { if (!toast.hover) dispose(toast); else arm(toast, 2000) }, ms)
 }
 
-function show({ title, body, icon, app, messengerId, nid, url, canReply, strings, lifetimeMs }) {
+function show({ title, body, icon, app, messengerId, nid, peer, url, canReply, strings, lifetimeMs }) {
     while (toasts.length >= MAX_STACK) dispose(toasts[0])
 
     const win = new BrowserWindow({
@@ -76,7 +76,7 @@ function show({ title, body, icon, app, messengerId, nid, url, canReply, strings
     })
     win.setAlwaysOnTop(true, 'screen-saver')
 
-    const toast = { id: nextId++, win, messengerId, nid, url, canReply: !!canReply, hover: false, timer: null, height: MIN_HEIGHT, replyId: null, meta: { title, body, icon, app, strings } }
+    const toast = { id: nextId++, win, messengerId, nid, url, canReply: !!canReply, hover: false, timer: null, height: MIN_HEIGHT, replyId: null, meta: { title, body, peer, icon, app, strings } }
     toasts.push(toast)
 
     win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
@@ -131,7 +131,7 @@ function registerToastIpc(ipcMain, deps) {
         if (!toast.canReply || typeof text !== 'string' || !text.trim()) return
         const replyId = `r${toast.id}-${Date.now()}`
         pendingReplies.set(replyId, { messengerId: toast.messengerId, nid: toast.nid, url: toast.url, ...toast.meta })
-        handlers.sendReply({ replyId, messengerId: toast.messengerId, nid: toast.nid, text: text.slice(0, 4000), title: String(toast.meta.title || '').slice(0, 300), body: String(toast.meta.body || '').slice(0, 1000) })
+        handlers.sendReply({ replyId, messengerId: toast.messengerId, nid: toast.nid, text: text.slice(0, 4000), title: String(toast.meta.title || '').slice(0, 300), body: String(toast.meta.body || '').slice(0, 1000), peer: String(toast.meta.peer || '') })
         dispose(toast)
     })
 }

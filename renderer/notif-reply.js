@@ -1,18 +1,23 @@
 // Answering a message straight from its notification pop-up. The pop-up only asks; the page of the messenger does the
 // work: first the chat is opened by the site's own notification click (renderer/notif-open-chat.js), then the text is
-// typed into the site's message box the way a keyboard would (real input events), and Enter is pressed.
+// put into the message box of THAT chat and sent.
 //
-// A reply is reported as sent ONLY when it is proven: the text was really in the message box before sending and the box
-// was emptied afterwards. Anything else is reported as a failure, so the pop-up never says "sent" for a message that did
-// not go out.
-//
-// The reply must NEVER go to a different chat than the one the notification came from. Before anything is typed, the
-// open chat is checked against the notification itself (see chatVerdict): its header must carry the sender's name from
-// the notification, or the page must have navigated after the click and show the notified text. If the chat cannot be
-// proven, nothing is typed or sent, and the user is told to answer in the chat itself.
+// Three rules keep a reply from ever going where it does not belong:
+//  1. One chat at a time. A site may keep several chats in the page at once (Telegram Web K stacks every chat opened
+//     from a notification on top of the previous one, each with its own message box). Everything - the message box,
+//     the send button, the name, the messages - is looked up inside the container of the DISPLAYED chat only
+//     (`scope` of the adapter), never "the first one in the page".
+//  2. The chat is proven before a character is typed: by the id of the chat from the notification when the page shows
+//     it (Telegram: the peer id on the messages), otherwise by its name, otherwise by navigation and text (see
+//     chatVerdict). Not proven: nothing is typed, the user is told to answer in the chat.
+//  3. At most once. The text is typed with the page's own editing command into the one focused message box, the
+//     other message boxes of the page are checked to stay empty, and only ONE send action is taken; the second way to
+//     send is tried only while the very same text is still sitting in the box. A reply that cannot be proven is
+//     reported as a failure, never repeated.
 const OPEN_SETTLE_MS = 700
 const SETTLE_AFTER_TYPING_MS = 250
-const SETTLE_AFTER_SEND_MS = 900
+const RESULT_WAIT_MS = 3000
+const RESULT_POLL_MS = 300
 const COMPOSER_WAIT_MS = 4000
 const CHAT_WAIT_MS = 6000 // the site may switch chats slowly on accounts with many chats
 const CHAT_POLL_MS = 150
@@ -21,6 +26,10 @@ const CHAT_STABLE_MS = 250
 // Per site: where the message box and the send button are. Selectors are tried in order; the first match wins.
 const TELEGRAM = {
     chatKey: 'hash', // the address hash is the open chat; it can be put back without a reload
+    // Web K keeps a stack of chats in the page (the newest is the last one); the others keep their message boxes too.
+    scope: ['.chats-container > .chat:last-child', '#column-center .chat.active', '#MiddleColumn'],
+    // every message of a chat carries the id of the chat it belongs to
+    peers: ['.bubble[data-peer-id]'],
     composer: ['.chat-input .input-message-input[contenteditable="true"]', '.input-message-input[contenteditable="true"]', '#editable-message-text', 'div[contenteditable="true"].input-message-input'],
     send: ['.btn-send-container button.btn-send', 'button.btn-send', 'button.main-button.send', '.Button.send', 'button[aria-label="Send Message"]'],
     outgoing: ['.bubble.is-out .message', '.Message.own .text-content', '.message.own .text-content'],
@@ -31,6 +40,7 @@ const TELEGRAM = {
 }
 const WHATSAPP = {
     chatKey: 'title',
+    scope: ['#main'],
     composer: ['footer div[contenteditable="true"][role="textbox"]', 'footer div[contenteditable="true"]', 'div[contenteditable="true"][data-tab="10"]'],
     send: ['footer button[aria-label="Send"]', 'footer button[aria-label="Отправить"]', 'footer span[data-icon="send"]'],
     outgoing: ['div.message-out .copyable-text span.selectable-text'],
@@ -80,11 +90,26 @@ function pageScript(selectors, action, arg) {
         const action = ${JSON.stringify(action)}
         const arg = ${JSON.stringify(arg == null ? '' : String(arg))}
         const norm = (s) => String(s || '').replace(new RegExp('[' + String.fromCharCode(0x200b, 0x2060, 0xfeff) + ']', 'g'), '').replace(/\\s+/g, ' ').trim()
-        // A site may keep the screens of chats visited before in the page, hidden: a node the user can see wins (a whole page
-        // that is not shown, because its tab is in the background, has none: then the first one is as good as any).
+        // Only the container of the displayed chat is ever looked into: a site may keep the chats opened before in the page
+        // (each with its own message box), and "the first match in the page" would be one of THEM. The last container of a
+        // stack is the newest; without a known container the whole page is searched and a message box is accepted only
+        // when it is the only one.
         const visible = (n) => n.getClientRects().length > 0
-        const first = (sel) => { const nodes = Array.from(document.querySelectorAll(sel)); return nodes.find(visible) || nodes[0] || null }
-        const composer = () => { for (const sel of cfg.composer) { const el = first(sel); if (el) return el } return null }
+        let scope = document
+        for (const sel of cfg.scope || []) { const found = document.querySelectorAll(sel); if (found.length) { scope = found[found.length - 1]; break } }
+        const scoped = scope !== document
+        const all = (sel) => Array.from(scope.querySelectorAll(sel))
+        const first = (sel) => { const nodes = all(sel); return nodes.filter(visible).pop() || nodes[nodes.length - 1] || null }
+        const everyComposer = () => { const out = []; for (const sel of cfg.composer) for (const n of document.querySelectorAll(sel)) if (!out.includes(n)) out.push(n); return out }
+        const composer = () => {
+            for (const sel of cfg.composer) {
+                const nodes = all(sel)
+                if (!nodes.length) continue
+                // an unknown screen with several boxes of the same kind: no guessing
+                return scoped || nodes.length === 1 ? first(sel) : null
+            }
+            return null
+        }
         const isField = (el) => el && (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT')
         const read = (el) => isField(el) ? el.value : (el.innerText != null ? el.innerText : el.textContent)
         const el = composer()
@@ -97,8 +122,44 @@ function pageScript(selectors, action, arg) {
         }
         if (action === 'count') {
             let total = 0
+            for (const sel of cfg.outgoing) total += all(sel).length
+            return total
+        }
+        if (action === 'countAll') {
+            let total = 0
             for (const sel of cfg.outgoing) total += document.querySelectorAll(sel).length
             return total
+        }
+        if (action === 'peers') {
+            const ids = []
+            for (const sel of cfg.peers || []) for (const n of all(sel)) { const id = String(n.getAttribute('data-peer-id') || ''); if (id && !ids.includes(id)) ids.push(id) }
+            return ids
+        }
+        if (action === 'boxes') return everyComposer().length
+        if (action === 'mark') {
+            // what every message box of the page holds right now (drafts of the user stay theirs)
+            const mine = composer()
+            window.__centrioMarks = everyComposer().filter((n) => n !== mine).map((n) => [n, norm(read(n))])
+            return window.__centrioMarks.length
+        }
+        if (action === 'stray' || action === 'clearStray') {
+            // the text must be in the one message box we chose and nowhere else: another box counts only when it CHANGED
+            // since the mark and now holds the text; it is put back to what it held before
+            const mine = composer()
+            const wanted = norm(arg)
+            let count = 0
+            for (const [n, was] of window.__centrioMarks || []) {
+                const now = norm(read(n))
+                if (n === mine || !wanted || now === was || !now.includes(wanted)) continue
+                count++
+                if (action === 'clearStray') {
+                    n.focus()
+                    if (isField(n)) { n.value = was; n.dispatchEvent(new Event('input', { bubbles: true })) }
+                    else { document.execCommand('selectAll', false); if (was) document.execCommand('insertText', false, was); else document.execCommand('delete', false) }
+                }
+            }
+            if (action === 'clearStray' && mine) mine.focus()
+            return count
         }
         if (action === 'title') {
             for (const sel of cfg.title || []) {
@@ -121,8 +182,8 @@ function pageScript(selectors, action, arg) {
         if (action === 'incoming') {
             const out = []
             for (const sel of cfg.incoming || []) {
-                const all = Array.from(document.querySelectorAll(sel))
-                const nodes = all.some(visible) ? all.filter(visible) : all // screens of chats visited before may be kept hidden
+                const found = all(sel)
+                const nodes = found.some(visible) ? found.filter(visible) : found
                 for (let i = Math.max(0, nodes.length - 8); i < nodes.length; i++) out.push(norm(nodes[i].textContent))
                 if (out.length) break
             }
@@ -139,6 +200,19 @@ function pageScript(selectors, action, arg) {
             return norm(read(el)) === ''
         }
         if (action === 'focus') { el.focus(); return document.activeElement === el || el.contains(document.activeElement) }
+        if (action === 'insert') {
+            // The page's own editing command, into the box that has the focus: no way to land anywhere else.
+            if (!(document.activeElement === el || el.contains(document.activeElement))) return null
+            if (isField(el)) {
+                const proto = el.tagName === 'TEXTAREA' ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype
+                Object.getOwnPropertyDescriptor(proto, 'value').set.call(el, arg)
+                el.dispatchEvent(new Event('input', { bubbles: true }))
+            } else if (!document.execCommand('insertText', false, arg)) {
+                el.textContent = arg
+                el.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: arg }))
+            }
+            return norm(read(el))
+        }
         if (action === 'set') {
             // Fallback when typing through real input events did not land: the page's own editing command.
             el.focus()
@@ -221,8 +295,10 @@ function incomingHas(messages, body) {
 // What the page shows right now: the address of the chat, its name, its top bar and its latest messages.
 async function snapshot(run) {
     const messages = await run('incoming')
+    const peers = await run('peers')
     return {
         key: await run('key'),
+        peers: Array.isArray(peers) ? peers : [],
         name: normalize(await run('title')),
         bar: normalize(await run('region')),
         content: letters(Array.isArray(messages) ? messages.join(' ') : '')
@@ -241,6 +317,16 @@ async function snapshot(run) {
 async function chatVerdict(run, before, notice, diag = {}) {
     const now = await snapshot(run)
     const done = (ok) => ({ ok, key: now.key })
+    // The id of the chat, when the page shows it, settles everything: the chat is the notified one or it is not.
+    if (notice.peerRequired && now.peers.length !== 1) {
+        Object.assign(diag, { id: false, bar: now.name !== '' || now.bar !== '', hit: false, nav: now.key !== before.key, msgs: now.content !== '' })
+        return done(false) // the id is expected on the messages of the chat; none shown yet (the chat is still loading)
+    }
+    if (notice.peer && now.peers.length === 1) {
+        const exact = now.peers[0] === notice.peer
+        Object.assign(diag, { id: exact, bar: now.name !== '' || now.bar !== '', hit: exact, nav: now.key !== before.key, msgs: now.content !== '' })
+        return done(exact)
+    }
     const parts = titleParts(notice.title)
     const hit = now.name !== '' ? nameIs(now.name, parts) : barHas(now.bar, parts, notice.title)
     const changedKey = now.key !== '' && now.key !== before.key // an empty address is a page in transition
@@ -298,7 +384,8 @@ async function deliverReply(messenger, nid, text, notice, ctx) {
     if (!adapter || !webview || typeof webview.executeJavaScript !== 'function') return 'failed'
     const wanted = normalize(text)
     if (!wanted) return 'failed'
-    const target = { title: normalize(notice.title), body: normalize(notice.body) }
+    const target = { title: normalize(notice.title), body: normalize(notice.body), peer: /^-?\d{1,20}$/.test(String(notice.peer || '')) ? String(notice.peer) : '' }
+    target.peerRequired = target.peer !== '' && Array.isArray(adapter.selectors.peers) // the site shows chat ids: then they decide
     let draft = ''
     let hadDraft = false
     let chatTarget = null
@@ -319,25 +406,32 @@ async function deliverReply(messenger, nid, text, notice, ctx) {
         if (!verified || ctx.cancelled) return 'not-opened'
         chatTarget = verified.key
         await sleep(OPEN_SETTLE_MS)
-        if (!(await waitForComposer(run))) { chatTarget = null; return 'no-input' }
+        if (!(await waitForComposer(run))) { ctx.diag.boxes = Number(await run('boxes')) || 0; chatTarget = null; return 'no-input' }
         if (ctx.cancelled || !(await stillThere())) { chatTarget = null; return 'not-opened' }
 
         // A draft the user already has in this chat is kept aside and put back afterwards.
         draft = await run('read')
         hadDraft = normalize(draft) !== ''
         if (hadDraft && !(await run('clear'))) return 'failed'
-        await run('focus')
+        if (!(await run('focus'))) return 'failed' // the box must really have the focus before anything is typed
         try { webview.focus() } catch { /* the tab may not be shown; the page-side focus above is enough */ }
 
-        // 1) type like a keyboard; 2) if nothing landed, use the page's editing command.
-        let typed = ''
-        if (typeof webview.insertText === 'function') {
+        // The page's own editing command into the focused box; if nothing landed at all, a keyboard-like input into the
+        // very same focused box.
+        await run('mark')
+        let typed = normalize(await run('insert', text))
+        if (typed === '' && typeof webview.insertText === 'function' && (await run('focus'))) {
             await webview.insertText(String(text))
             await sleep(SETTLE_AFTER_TYPING_MS)
             typed = normalize(await run('read'))
         }
-        if (typed !== wanted) typed = normalize(await run('set', text))
         if (typed !== wanted) {
+            if (await stillThere()) await run('clear')
+            return 'failed'
+        }
+        // No other message box of the page may hold the text (a box of a chat that is not the notified one).
+        if ((await run('stray', text)) > 0) {
+            await run('clearStray', text)
             if (await stillThere()) await run('clear')
             return 'failed'
         }
@@ -349,7 +443,8 @@ async function deliverReply(messenger, nid, text, notice, ctx) {
         }
         const sentBefore = Number(await run('count')) || 0
 
-        // Send: the site's button or the Enter key, whichever this site answers to first; then the other one.
+        // Send: ONE action, the way this site answers to (Enter, or the button of the chat). The other way is taken only
+        // while the very same text is still in the box and nothing was sent: then nothing has gone out, so no duplicate.
         const pressEnter = () => {
             webview.sendInputEvent({ type: 'keyDown', keyCode: 'Enter' })
             webview.sendInputEvent({ type: 'char', keyCode: 'Enter' })
@@ -357,16 +452,27 @@ async function deliverReply(messenger, nid, text, notice, ctx) {
         }
         const pressButton = () => run('send')
         const attempts = adapter.selectors.sendWith === 'button' ? [pressButton, pressEnter] : [pressEnter, pressButton]
+        const allBefore = Number(await run('countAll')) || 0
         let proven = false
-        for (const attempt of attempts) {
+        for (const [index, attempt] of attempts.entries()) {
             if (ctx.cancelled || !(await stillThere())) break
+            if (index > 0 && (normalize(await run('read')) !== wanted || (Number(await run('count')) || 0) > sentBefore)) break
             await attempt()
-            await sleep(SETTLE_AFTER_SEND_MS)
-            const left = normalize(await run('read'))
-            // a new outgoing message counts as proof too: never press the second way when the first one worked
-            proven = left === '' || (Number(await run('count')) || 0) > sentBefore
+            // A slow page clears the box and shows the message late: wait for the result before even thinking of the
+            // second way (it is only ever used while the same text still sits in the box).
+            const until = Date.now() + RESULT_WAIT_MS
+            do {
+                await sleep(RESULT_POLL_MS)
+                const left = normalize(await run('read'))
+                // a new outgoing message counts as proof too
+                proven = left === '' || (Number(await run('count')) || 0) > sentBefore
+            } while (!proven && Date.now() < until)
             if (proven) break
         }
+        // exactly one message may have appeared in the whole page; the text must not be left in any other box
+        const allAfter = Number(await run('countAll')) || 0
+        if (proven && allBefore > 0 && allAfter - allBefore > 1) ctx.diag.dup = true
+        if ((await run('stray', text)) > 0) await run('clearStray', text)
         if (!proven && (await stillThere())) await run('clear')
         // the draft belongs to the notified chat: it goes back BEFORE the user is returned to the chat they were in
         if (hadDraft && (await stillThere())) await run('set', draft)
