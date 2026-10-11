@@ -88,7 +88,7 @@ function bindWindowUi({
         const messenger = (state.activeMessengers || []).find(m => m.id === payload.messengerId)
         const result = await sendReply(messenger, payload.nid, payload.text, { title: payload.title, body: payload.body, peer: payload.peer }, (outcome, diag) => {
             if (outcome === 'ok' && !(diag && diag.dup)) return
-            const flags = ['id', 'bar', 'hit', 'nav', 'msgs', 'dup'].map((k) => k + (diag && diag[k] ? 1 : 0)).join(' ') + (diag && diag.boxes != null ? ' boxes' + diag.boxes : '')
+            const flags = ['id', 'nav', 'dom', 'msgs', 'dup'].map((k) => k + (diag && diag[k] ? 1 : 0)).join(' ') + (diag && diag.boxes != null ? ' boxes' + diag.boxes : '')
             ipcRenderer.send('notif-diag', { messenger: messenger && messenger.name, tag: 'reply', decision: outcome + ' ' + flags })
         })
         ipcRenderer.send('notification-reply-result', payload.replyId, result)

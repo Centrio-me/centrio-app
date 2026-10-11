@@ -362,6 +362,8 @@ module.exports = {
         noInput: "In diesem Chat gibt es kein Eingabefeld, eine Antwort ist nicht möglich.",
 
         notOpened: "Nicht gesendet: Der richtige Chat konnte nicht geöffnet werden. Klicken Sie, um ihn zu öffnen und dort zu antworten.",
+
+        textKept: "Ihr Antworttext wurde in die Zwischenablage kopiert.",
         openChat: "Chat öffnen",
         close: "Schließen"
     },

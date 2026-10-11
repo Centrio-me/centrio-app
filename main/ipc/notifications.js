@@ -143,6 +143,7 @@ function registerNotificationsIpc({ getMainWindow, showMainWindow }) {
                             failed: t('toast.failed'),
                             noInput: t('toast.noInput'),
                             notOpened: t('toast.notOpened'),
+                            textKept: t('toast.textKept'),
                             openChat: t('toast.openChat'),
                             close: t('toast.close')
                         }

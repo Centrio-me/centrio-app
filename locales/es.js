@@ -362,6 +362,8 @@ module.exports = {
         noInput: "Este chat no tiene campo de mensaje, no se puede responder.",
 
         notOpened: "No enviado: no se pudo abrir el chat correcto. Haz clic para abrirlo y responder allí.",
+
+        textKept: "El texto de tu respuesta se copió al portapapeles.",
         openChat: "Abrir chat",
         close: "Cerrar"
     },

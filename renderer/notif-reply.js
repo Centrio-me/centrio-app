@@ -1,27 +1,34 @@
 // Answering a message straight from its notification pop-up. The pop-up only asks; the page of the messenger does the
-// work: first the chat is opened by the site's own notification click (renderer/notif-open-chat.js), then the text is
-// put into the message box of THAT chat and sent.
+// work: the site's own notification is "clicked" (the very thing the site does when the user clicks it: it opens the
+// right chat), the page is given time to settle, and the text is put into the message box of the chat that is then
+// displayed and sent.
 //
-// Three rules keep a reply from ever going where it does not belong:
-//  1. One chat at a time. A site may keep several chats in the page at once (Telegram Web K stacks every chat opened
-//     from a notification on top of the previous one, each with its own message box). Everything - the message box,
-//     the send button, the name, the messages - is looked up inside the container of the DISPLAYED chat only
-//     (`scope` of the adapter), never "the first one in the page".
-//  2. The chat is proven before a character is typed: by the id of the chat from the notification when the page shows
-//     it (Telegram: the peer id on the messages), otherwise by its name, otherwise by navigation and text (see
-//     chatVerdict). Not proven: nothing is typed, the user is told to answer in the chat.
+// The principle: act like the user's own click, and refuse only what is PROVABLY wrong. The site's own click handler
+// decides which chat belongs to the notification; a missing or odd name, a chat that loads slowly, a header that cannot
+// be read are never a reason to give up. What is refused: a chat whose id is known to differ from the id in the
+// notification, and a page that did not react to the click while showing another chat.
+//  1. One chat at a time. A site may keep several chats in the page (Telegram Web K stacks every chat opened from a
+//     notification on top of the previous one, each with its own message box). Everything is looked up inside the
+//     container of the DISPLAYED chat (`scope` of the adapter); without a known container the box that has the
+//     focus, or else the newest one, is used - never "the first one in the page".
+//  2. Settled first. After the click the page must have reacted (its address and its screen changed together) and
+//     stopped changing before a character is typed, so a slow site can never get the text into the previous chat.
 //  3. At most once. The text is typed with the page's own editing command into the one focused message box, the
-//     other message boxes of the page are checked to stay empty, and only ONE send action is taken; the second way to
-//     send is tried only while the very same text is still sitting in the box. A reply that cannot be proven is
-//     reported as a failure, never repeated.
+//     other boxes of the page are checked to stay as they were, and only ONE send action is taken; the second way to
+//     send is tried only while the very same text is still sitting in the box and nothing was sent. A reply that
+//     cannot be proven is reported as a failure, never repeated.
 const OPEN_SETTLE_MS = 700
 const SETTLE_AFTER_TYPING_MS = 250
 const RESULT_WAIT_MS = 3000
 const RESULT_POLL_MS = 300
 const COMPOSER_WAIT_MS = 4000
-const CHAT_WAIT_MS = 6000 // the site may switch chats slowly on accounts with many chats
+const CHAT_WAIT_MS = 12000 // the site may switch chats slowly on accounts with many chats
 const CHAT_POLL_MS = 150
-const CHAT_STABLE_MS = 250
+const SETTLE_MS = 500 // the page has to look the same this long before the text goes in
+const NO_CHANGE_WAIT_MS = 1500 // nothing changed after the click: the chat was already open (slow sites announce themselves earlier)
+const BLIND_WAIT_MS = 4000 // ... the same, on a page that shows no name and no ids (nothing could contradict an early guess)
+const PEERS_WAIT_MS = 4000 // the ids of the chat appear on its messages a moment after it opens; waited for, never forever
+const DOM_ONLY_GRACE_MS = 2000 // the screen changed but the address of the site does not: it is not required any more after this
 
 // Per site: where the message box and the send button are. Selectors are tried in order; the first match wins.
 const TELEGRAM = {
@@ -100,13 +107,16 @@ function pageScript(selectors, action, arg) {
         const scoped = scope !== document
         const all = (sel) => Array.from(scope.querySelectorAll(sel))
         const first = (sel) => { const nodes = all(sel); return nodes.filter(visible).pop() || nodes[nodes.length - 1] || null }
+        const head = (sel) => { const nodes = all(sel); return nodes.find(visible) || nodes[0] || null } // the title, not what is under it
         const everyComposer = () => { const out = []; for (const sel of cfg.composer) for (const n of document.querySelectorAll(sel)) if (!out.includes(n)) out.push(n); return out }
         const composer = () => {
             for (const sel of cfg.composer) {
                 const nodes = all(sel)
                 if (!nodes.length) continue
-                // an unknown screen with several boxes of the same kind: no guessing
-                return scoped || nodes.length === 1 ? first(sel) : null
+                if (scoped || nodes.length === 1) return first(sel)
+                // an unknown screen with several boxes: the one the site has focused (it focuses the box of the chat it
+                // opens), else the newest one (a stack grows at its end)
+                return nodes.find((n) => n === document.activeElement || n.contains(document.activeElement)) || first(sel)
             }
             return null
         }
@@ -117,9 +127,17 @@ function pageScript(selectors, action, arg) {
         if (action === 'key') {
             if (kind === 'hash') return location.hash
             if (kind === 'path') return location.pathname + location.hash
-            if (kind === 'title') { const h = first('#main header [title], #main header span[dir="auto"]'); return h ? (h.getAttribute('title') || h.textContent || '') : '' }
+            if (kind === 'title') { for (const sel of cfg.title || []) { const h = head(sel); if (h) { const v = norm(h.getAttribute('title') || h.textContent); if (v) return v } } return '' }
             return location.href
         }
+        if (action === 'top') {
+            // a number for the container of the displayed chat: another number = another chat screen
+            if (!scoped) return 0
+            const ids = (window.__centrioNodeIds = window.__centrioNodeIds || new WeakMap())
+            if (!ids.has(scope)) ids.set(scope, (window.__centrioNodeSeq = (window.__centrioNodeSeq || 0) + 1))
+            return ids.get(scope)
+        }
+        if (action === 'goto') { location.hash = arg; return true }
         if (action === 'count') {
             let total = 0
             for (const sel of cfg.outgoing) total += all(sel).length
@@ -163,7 +181,7 @@ function pageScript(selectors, action, arg) {
         }
         if (action === 'title') {
             for (const sel of cfg.title || []) {
-                const node = first(sel)
+                const node = head(sel)
                 if (!node) continue
                 const value = norm(node.getAttribute('title') || node.textContent)
                 if (value) return value
@@ -292,74 +310,78 @@ function incomingHas(messages, body) {
     return messages.some((m) => { const low = normalize(m).toLowerCase(); return needles.some((n) => low.includes(n)) })
 }
 
-// What the page shows right now: the address of the chat, its name, its top bar and its latest messages.
+// What the page shows right now: the address, the number of the chat screen, the ids and the name of the chat, the top
+// bar and the latest messages.
 async function snapshot(run) {
     const messages = await run('incoming')
     const peers = await run('peers')
     return {
         key: await run('key'),
+        top: Number(await run('top')) || 0,
         peers: Array.isArray(peers) ? peers : [],
         name: normalize(await run('title')),
         bar: normalize(await run('region')),
+        messages: Array.isArray(messages) ? messages : [],
         content: letters(Array.isArray(messages) ? messages.join(' ') : '')
     }
 }
 
-// Is the chat open in the page the one the notification is about? { ok, key }
-// `before` is the snapshot taken before our click. The proof, strongest first:
-//  1. the name of the open chat is exactly the chat of the notification (the group, not the sender);
-//  2. the page navigated after our click (new address: the site itself opened a chat) AND the screen really changed, so
-//     this is not the stale picture of the previous chat: a new name/top bar that still shares a word with the title or
-//     shows the notified text; names that cannot be read: new messages on screen (or nothing readable at all: the
-//     navigation alone);
-//  3. nothing navigated, but the notified text is right there (the chat was already open).
-// Anything else is NOT proven: nothing may be typed.
-async function chatVerdict(run, before, notice, diag = {}) {
-    const now = await snapshot(run)
-    const done = (ok) => ({ ok, key: now.key })
-    // The id of the chat, when the page shows it, settles everything: the chat is the notified one or it is not.
-    if (notice.peerRequired && now.peers.length !== 1) {
-        Object.assign(diag, { id: false, bar: now.name !== '' || now.bar !== '', hit: false, nav: now.key !== before.key, msgs: now.content !== '' })
-        return done(false) // the id is expected on the messages of the chat; none shown yet (the chat is still loading)
-    }
-    if (notice.peer && now.peers.length === 1) {
-        const exact = now.peers[0] === notice.peer
-        Object.assign(diag, { id: exact, bar: now.name !== '' || now.bar !== '', hit: exact, nav: now.key !== before.key, msgs: now.content !== '' })
-        return done(exact)
-    }
+const changedKeyOf = (now, before) => now.key !== '' && now.key !== before.key // an empty address is a page in transition
+const changedDomOf = (now, before) => now.top !== before.top || now.name !== before.name || now.content !== before.content || now.peers.join() !== before.peers.join()
+const readableDom = (snap) => snap.top !== 0 || snap.name !== '' || snap.content !== '' || snap.peers.length > 0
+// The one thing that is refused for certain: the page shows the id of the chat and it is another chat than the notified one.
+const contradicts = (now, notice) => !!notice.peer && now.peers.length === 1 && now.peers[0] !== notice.peer
+
+// No navigation was seen: is the chat that is open simply the notified one (it was open already)? Yes unless the page
+// shows something that says otherwise: another id, another name, other messages. A page that shows nothing readable
+// at all is taken as it is.
+function alreadyOpen(now, notice) {
+    if (notice.peer && now.peers.length === 1) return now.peers[0] === notice.peer
     const parts = titleParts(notice.title)
-    const hit = now.name !== '' ? nameIs(now.name, parts) : barHas(now.bar, parts, notice.title)
-    const changedKey = now.key !== '' && now.key !== before.key // an empty address is a page in transition
-    // flags only (never a name or a text): what the last check saw, for the log of a reply that was not sent
-    Object.assign(diag, { bar: now.name !== '' || now.bar !== '', hit, nav: changedKey, msgs: now.content !== '' })
-    if (hit) return done(true)
-    const bodyOk = normalize(notice.body).length >= 6
-    if (changedKey) {
-        // another name on screen: the page must have really moved on, and the chat must still look like the notified one
-        const known = now.name !== '' || now.bar !== ''
-        if (known) {
-            const moved = now.name !== before.name || now.bar !== before.bar
-            return done(moved && (sharesWord(now.name + ' ' + now.bar, notice.title) || (bodyOk && incomingHas(await run('incoming'), notice.body))))
-        }
-        const readable = now.content !== '' || before.content !== ''
-        return done(!readable || now.content !== before.content)
-    }
-    return done(bodyOk && incomingHas(await run('incoming'), notice.body))
+    // a name on screen decides: it is the notified chat or it is not (messages of ANOTHER chat can carry the same words)
+    if (now.name !== '') return nameIs(now.name, parts)
+    if (now.bar !== '' && barHas(now.bar, parts, notice.title)) return true
+    // no name, no id: nothing on the page can contradict the click, which has already run; taken as it is
+    return now.bar === '' || incomingHas(now.messages, notice.body) || now.peers.length === 0
 }
 
-// Waits until the open chat is proven to be the notified one (and stays so), or gives up.
-async function waitForNotifiedChat(run, before, notice, ctx) {
-    const until = Date.now() + CHAT_WAIT_MS
-    let stable = null // the address of the chat when it was first proven: it must stay the same
-    while (Date.now() < until && !ctx.cancelled) {
-        const verdict = await chatVerdict(run, before, notice, ctx.diag)
-        if (verdict.ok) {
-            if (stable && stable.key === verdict.key) return verdict
-            stable = verdict
-            await sleep(CHAT_STABLE_MS)
-            continue
+// Waits until the page has settled on the chat of the notification. Returns the snapshot, or null when the page showed
+// another chat for good (never typing anywhere in that case).
+async function waitForSettledChat(run, before, notice, ctx) {
+    const start = Date.now()
+    let sig = ''
+    let stableSince = Date.now()
+    let firstChange = 0
+    const seesDom = readableDom(before)
+    const seesKey = before.key !== ''
+    while (Date.now() - start < CHAT_WAIT_MS && !ctx.cancelled) {
+        const now = await snapshot(run)
+        const key = changedKeyOf(now, before)
+        const dom = changedDomOf(now, before)
+        const wrong = contradicts(now, notice)
+        const exact = !!notice.peer && now.peers.length === 1 && !wrong
+        Object.assign(ctx.diag, { id: exact, nav: key, dom, msgs: now.content !== '' })
+        if (key || dom) { if (!firstChange) firstChange = Date.now() }
+        const now_sig = JSON.stringify([now.key, now.top, now.name, now.peers, now.content])
+        if (now_sig !== sig) { sig = now_sig; stableSince = Date.now() }
+        const stable = Date.now() - stableSince >= SETTLE_MS
+        let ready = false
+        if (wrong) ready = false
+        else if (key || dom) {
+            // the page reacted to the click: both its address and its screen must have changed (when it has both),
+            // so the screen cannot still be the picture of the previous chat
+            const keyOk = key || !seesKey || (dom && Date.now() - firstChange >= DOM_ONLY_GRACE_MS && (exact || alreadyOpen(now, notice)))
+            const domOk = dom || !seesDom
+            // when the site shows chat ids, the id of the chat on screen is awaited (the messages of a chat that was just
+            // opened appear a moment later): then it is the exact answer
+            const peersOk = !notice.expectPeers || before.peers.length === 0 || now.peers.length === 1 || Date.now() - firstChange >= PEERS_WAIT_MS
+            ready = stable && keyOk && domOk && peersOk
+        } else {
+            const blind = before.name === '' && before.peers.length === 0
+            const idle = blind ? BLIND_WAIT_MS : NO_CHANGE_WAIT_MS
+            ready = stable && Date.now() - start >= idle && alreadyOpen(now, notice)
         }
-        stable = null
+        if (ready) return now
         await sleep(CHAT_POLL_MS)
     }
     return null
@@ -385,27 +407,33 @@ async function deliverReply(messenger, nid, text, notice, ctx) {
     const wanted = normalize(text)
     if (!wanted) return 'failed'
     const target = { title: normalize(notice.title), body: normalize(notice.body), peer: /^-?\d{1,20}$/.test(String(notice.peer || '')) ? String(notice.peer) : '' }
-    target.peerRequired = target.peer !== '' && Array.isArray(adapter.selectors.peers) // the site shows chat ids: then they decide
+    target.expectPeers = target.peer !== '' && Array.isArray(adapter.selectors.peers)
     let draft = ''
     let hadDraft = false
     let chatTarget = null
     const run = (action, arg) => webview.executeJavaScript(pageScript(adapter.selectors, action, arg))
     // The page can move to another chat at any moment (the site is slow, or the user clicks): the message box and the
     // draft are touched only while the notified chat is still the open one.
-    const stillThere = async () => chatTarget !== null && (await run('key')) === chatTarget
+    const stillThere = async () => {
+        if (chatTarget === null) return false
+        const top = Number(await run('top')) || 0
+        return chatTarget.top !== 0 ? top === chatTarget.top : (await run('key')) === chatTarget.key
+    }
     try {
         const before = await snapshot(run)
-        const opened = await webview.executeJavaScript(
+        let opened = await webview.executeJavaScript(
             `window.__centrioOpenNotif ? window.__centrioOpenNotif(${JSON.stringify(String(nid))}) : false`
         )
+        // The site's notification is gone (the page was reloaded): a site that puts the chat into its address (Telegram:
+        // the id) can still be taken to the chat that way.
+        if (!opened && target.peer && adapter.selectors.chatKey === 'hash') opened = await run('goto', '#' + target.peer)
         if (!opened) return 'not-opened'
-        // The site switches chats asynchronously (slowly on accounts with many chats). The message box of the chat
-        // that was open before is still there meanwhile, so its presence proves nothing: the notified chat itself
-        // must be proven open before a single character is typed.
-        const verified = await waitForNotifiedChat(run, before, target, ctx)
-        if (!verified || ctx.cancelled) return 'not-opened'
-        chatTarget = verified.key
-        await sleep(OPEN_SETTLE_MS)
+        // The site switches chats asynchronously (slowly on accounts with many chats). The message box of the chat that
+        // was open before is still there meanwhile, so its presence proves nothing: the page must have settled on the
+        // notified chat before a single character is typed.
+        const settled = await waitForSettledChat(run, before, target, ctx)
+        if (!settled || ctx.cancelled) return 'not-opened'
+        chatTarget = { key: settled.key, top: settled.top }
         if (!(await waitForComposer(run))) { ctx.diag.boxes = Number(await run('boxes')) || 0; chatTarget = null; return 'no-input' }
         if (ctx.cancelled || !(await stillThere())) { chatTarget = null; return 'not-opened' }
 
@@ -436,8 +464,8 @@ async function deliverReply(messenger, nid, text, notice, ctx) {
             return 'failed'
         }
         // The chat must still be the one the reply is meant for; never send into another conversation.
-        const recheck = await chatVerdict(run, before, target, ctx.diag)
-        if (ctx.cancelled || !recheck.ok || recheck.key !== chatTarget) {
+        const recheck = await snapshot(run)
+        if (ctx.cancelled || (chatTarget.top !== 0 ? recheck.top !== chatTarget.top : recheck.key !== chatTarget.key) || contradicts(recheck, target)) {
             if (await stillThere()) await run('clear')
             return 'not-opened'
         }
@@ -463,9 +491,9 @@ async function deliverReply(messenger, nid, text, notice, ctx) {
             const until = Date.now() + RESULT_WAIT_MS
             do {
                 await sleep(RESULT_POLL_MS)
-                const left = normalize(await run('read'))
-                // a new outgoing message counts as proof too
-                proven = left === '' || (Number(await run('count')) || 0) > sentBefore
+                const raw = await run('read')
+                // a new outgoing message counts as proof too; a box that is gone (null) proves nothing
+                proven = (raw !== null && normalize(raw) === '') || (Number(await run('count')) || 0) > sentBefore
             } while (!proven && Date.now() < until)
             if (proven) break
         }
@@ -477,7 +505,7 @@ async function deliverReply(messenger, nid, text, notice, ctx) {
         // the draft belongs to the notified chat: it goes back BEFORE the user is returned to the chat they were in
         if (hadDraft && (await stillThere())) await run('set', draft)
         hadDraft = false
-        if (proven && before.key && before.key !== chatTarget) await run('restore', before.key)
+        if (proven && before.key && before.key !== chatTarget.key) await run('restore', before.key)
         return proven ? 'ok' : 'failed'
     } catch {
         return 'failed'

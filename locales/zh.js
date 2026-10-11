@@ -362,6 +362,8 @@ module.exports = {
         noInput: "此聊天没有输入框，无法回复。",
 
         notOpened: "未发送：无法打开正确的聊天。点击打开该聊天并在那里回复。",
+
+        textKept: "你的回复内容已复制到剪贴板。",
         openChat: "打开聊天",
         close: "关闭"
     },

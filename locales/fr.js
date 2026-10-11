@@ -362,6 +362,8 @@ module.exports = {
         noInput: "Cette discussion n’a pas de champ de saisie : impossible de répondre.",
 
         notOpened: "Non envoyé : impossible d’ouvrir la bonne discussion. Cliquez pour l’ouvrir et répondez-y.",
+
+        textKept: "Le texte de votre réponse a été copié dans le presse-papiers.",
         openChat: "Ouvrir la discussion",
         close: "Fermer"
     },

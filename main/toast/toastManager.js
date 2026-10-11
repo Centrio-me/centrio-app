@@ -130,7 +130,7 @@ function registerToastIpc(ipcMain, deps) {
     on('toast:reply', (toast, text) => {
         if (!toast.canReply || typeof text !== 'string' || !text.trim()) return
         const replyId = `r${toast.id}-${Date.now()}`
-        pendingReplies.set(replyId, { messengerId: toast.messengerId, nid: toast.nid, url: toast.url, ...toast.meta })
+        pendingReplies.set(replyId, { messengerId: toast.messengerId, nid: toast.nid, url: toast.url, text: text.slice(0, 4000), ...toast.meta })
         handlers.sendReply({ replyId, messengerId: toast.messengerId, nid: toast.nid, text: text.slice(0, 4000), title: String(toast.meta.title || '').slice(0, 300), body: String(toast.meta.body || '').slice(0, 1000), peer: String(toast.meta.peer || '') })
         dispose(toast)
     })
@@ -148,9 +148,12 @@ function replyResult(replyId, result) {
     pendingReplies.delete(replyId)
     if (!info || result === 'ok') return
     const strings = info.strings || {}
+    // a reply that did not go out must not be lost: its text waits on the clipboard
+    let kept = ''
+    try { if (info.text) { require('electron').clipboard.writeText(info.text); kept = strings.textKept || '' } } catch { /* the failure pop-up still tells what happened */ }
     show({
         title: info.title,
-        body: failureText(result, strings),
+        body: [failureText(result, strings), kept].filter(Boolean).join(' '),
         icon: info.icon,
         app: info.app,
         messengerId: info.messengerId,

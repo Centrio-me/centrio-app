@@ -373,6 +373,8 @@ module.exports = {
         noInput: "This chat has no message box, so a reply is not possible.",
 
         notOpened: "Not sent: the right chat could not be opened. Click to open it and reply there.",
+
+        textKept: "Your reply text was copied to the clipboard.",
         openChat: "Open chat",
         close: "Close"
     },
