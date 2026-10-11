@@ -24,8 +24,9 @@ const TELEGRAM = {
     composer: ['.chat-input .input-message-input[contenteditable="true"]', '.input-message-input[contenteditable="true"]', '#editable-message-text', 'div[contenteditable="true"].input-message-input'],
     send: ['.btn-send-container button.btn-send', 'button.btn-send', 'button.main-button.send', '.Button.send', 'button[aria-label="Send Message"]'],
     outgoing: ['.bubble.is-out .message', '.Message.own .text-content', '.message.own .text-content'],
-    // the name of the open chat (Web K, Web A) and the incoming messages of it
-    header: ['.chat-info .peer-title', '#column-center .top .peer-title', '.MiddleHeader .ChatInfo .fullName', '.MiddleHeader .ChatInfo .title', '.chat-info-container .title h3'],
+    // the top bar of the open chat (Web K, Web A): the name of the chat is somewhere inside it
+    title: ['.chat.active .chat-info .peer-title', '.chat-info .peer-title', '.MiddleHeader .ChatInfo .fullName', '.chat-info-container .title h3'],
+    region: ['.chat.active .chat-info', '.chat-info', '.MiddleHeader', '.chat-info-container'],
     incoming: ['.bubble:not(.is-out) .message', '.Message:not(.own) .text-content', '.message:not(.own) .text-content']
 }
 const WHATSAPP = {
@@ -33,7 +34,8 @@ const WHATSAPP = {
     composer: ['footer div[contenteditable="true"][role="textbox"]', 'footer div[contenteditable="true"]', 'div[contenteditable="true"][data-tab="10"]'],
     send: ['footer button[aria-label="Send"]', 'footer button[aria-label="Отправить"]', 'footer span[data-icon="send"]'],
     outgoing: ['div.message-out .copyable-text span.selectable-text'],
-    header: ['#main header [data-testid="conversation-info-header-chat-title"]', '#main header span[title]', '#main header span[dir="auto"]'],
+    title: ['#main header [data-testid="conversation-info-header-chat-title"]', '#main header span[title]', '#main header span[dir="auto"]'],
+    region: ['#main header'],
     incoming: ['div.message-in .copyable-text span.selectable-text']
 }
 // MAX (checked on a live account, 2026-10-09): the message box is <div role="textbox" contenteditable=""> - note the
@@ -44,7 +46,7 @@ const MAX = {
     composer: ['[data-testid="composer"] [role="textbox"][contenteditable]:not([contenteditable="false"])', '[role="textbox"][contenteditable]:not([contenteditable="false"])'],
     send: ['button[aria-label="Отправить сообщение"]', 'button[aria-label*="Отправить" i]'],
     outgoing: ['.message--isOut'],
-    incoming: ['.message:not(.message--isOut)'], // the chat header of MAX is not known: the open chat is proven by navigation and text
+    incoming: ['.message:not(.message--isOut)'], // no top bar known: judged by navigation and by what is on screen
     sendWith: 'button'
 }
 // Any other site: the first message-box-looking element, and Enter.
@@ -78,7 +80,11 @@ function pageScript(selectors, action, arg) {
         const action = ${JSON.stringify(action)}
         const arg = ${JSON.stringify(arg == null ? '' : String(arg))}
         const norm = (s) => String(s || '').replace(new RegExp('[' + String.fromCharCode(0x200b, 0x2060, 0xfeff) + ']', 'g'), '').replace(/\\s+/g, ' ').trim()
-        const composer = () => { for (const sel of cfg.composer) { const el = document.querySelector(sel); if (el) return el } return null }
+        // A site may keep the screens of chats visited before in the page, hidden: a node the user can see wins (a whole page
+        // that is not shown, because its tab is in the background, has none: then the first one is as good as any).
+        const visible = (n) => n.getClientRects().length > 0
+        const first = (sel) => { const nodes = Array.from(document.querySelectorAll(sel)); return nodes.find(visible) || nodes[0] || null }
+        const composer = () => { for (const sel of cfg.composer) { const el = first(sel); if (el) return el } return null }
         const isField = (el) => el && (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT')
         const read = (el) => isField(el) ? el.value : (el.innerText != null ? el.innerText : el.textContent)
         const el = composer()
@@ -86,7 +92,7 @@ function pageScript(selectors, action, arg) {
         if (action === 'key') {
             if (kind === 'hash') return location.hash
             if (kind === 'path') return location.pathname + location.hash
-            if (kind === 'title') { const h = document.querySelector('#main header [title], #main header span[dir="auto"]'); return h ? (h.getAttribute('title') || h.textContent || '') : '' }
+            if (kind === 'title') { const h = first('#main header [title], #main header span[dir="auto"]'); return h ? (h.getAttribute('title') || h.textContent || '') : '' }
             return location.href
         }
         if (action === 'count') {
@@ -94,11 +100,20 @@ function pageScript(selectors, action, arg) {
             for (const sel of cfg.outgoing) total += document.querySelectorAll(sel).length
             return total
         }
-        if (action === 'header') {
-            for (const sel of cfg.header || []) {
-                const node = document.querySelector(sel)
+        if (action === 'title') {
+            for (const sel of cfg.title || []) {
+                const node = first(sel)
                 if (!node) continue
-                const value = norm(node.getAttribute('title') || node.innerText || node.textContent)
+                const value = norm(node.getAttribute('title') || node.textContent)
+                if (value) return value
+            }
+            return ''
+        }
+        if (action === 'region') {
+            for (const sel of cfg.region || []) {
+                const node = first(sel)
+                if (!node) continue
+                const value = norm(node.textContent)
                 if (value) return value
             }
             return ''
@@ -106,7 +121,8 @@ function pageScript(selectors, action, arg) {
         if (action === 'incoming') {
             const out = []
             for (const sel of cfg.incoming || []) {
-                const nodes = document.querySelectorAll(sel)
+                const all = Array.from(document.querySelectorAll(sel))
+                const nodes = all.some(visible) ? all.filter(visible) : all // screens of chats visited before may be kept hidden
                 for (let i = Math.max(0, nodes.length - 8); i < nodes.length; i++) out.push(norm(nodes[i].textContent))
                 if (out.length) break
             }
@@ -139,7 +155,7 @@ function pageScript(selectors, action, arg) {
         }
         if (action === 'send') {
             for (const sel of cfg.send) {
-                const node = document.querySelector(sel)
+                const node = first(sel)
                 const button = node && (node.closest('button') || node)
                 if (button && !button.disabled) { button.click(); return true }
             }
@@ -162,7 +178,36 @@ const normalize = (text) => String(text || '').replace(ZERO_WIDTH, '').replace(/
 
 // Same name, whatever the case, emoji or punctuation.
 const letters = (text) => normalize(text).toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '')
-const sameTitle = (a, b) => { const x = letters(a); return x !== '' && x === letters(b) }
+
+// The chat names a notification title can stand for. Telegram writes "Sender @ Group" (the chat is the group, NOT
+// the sender: the sender's name is in many other chats), "Topic (Group)" for forums, and appends " ➜ account" when
+// several accounts are signed in. The top bar of a chat shows the chat itself.
+function titleParts(title) {
+    const clean = normalize(title).replace(/\s*➜.*$/, '')
+    const at = clean.split(/\s@\s/)
+    const parts = at.length > 1 ? [at[at.length - 1]] : [clean]
+    for (const part of at.length > 1 ? [parts[0]] : [clean]) {
+        const forum = part.match(/^(.*?)\s*\((.+)\)$/)
+        if (forum) parts.push(forum[2], forum[1])
+    }
+    return Array.from(new Set(parts.map(letters).filter((p) => p.length >= 2)))
+}
+// Exactly the name of the chat? (the node of the top bar that carries it)
+const nameIs = (name, parts) => { const x = letters(name); return x !== '' && parts.includes(x) }
+// The same as whole words inside the text of the whole top bar (used only where the name node is unknown); "Team"
+// must not match "Team B" or "Bobby" a "Bob": the words have to stand on their own.
+function barHas(bar, parts, title) {
+    const text = ' ' + normalize(bar).toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim() + ' '
+    return normalize(title) !== '' && parts.length > 0 && text.length > 2 && parts.some((part) => {
+        const words = normalize(part).toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim()
+        return words.length >= 2 && text.includes(' ' + words + ' ')
+    })
+}
+// Does the top bar share a whole word with the title? (a looser sign, used only together with a navigation)
+const sharesWord = (bar, title) => {
+    const text = ' ' + normalize(bar).toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim() + ' '
+    return normalize(title).toLowerCase().split(/[^\p{L}\p{N}]+/u).some((word) => word.length >= 3 && text.includes(' ' + word + ' '))
+}
 
 // Does one of the latest incoming messages carry the notified text? Group notifications read "Name: text".
 function incomingHas(messages, body) {
@@ -173,36 +218,62 @@ function incomingHas(messages, body) {
     return messages.some((m) => { const low = normalize(m).toLowerCase(); return needles.some((n) => low.includes(n)) })
 }
 
+// What the page shows right now: the address of the chat, its name, its top bar and its latest messages.
+async function snapshot(run) {
+    const messages = await run('incoming')
+    return {
+        key: await run('key'),
+        name: normalize(await run('title')),
+        bar: normalize(await run('region')),
+        content: letters(Array.isArray(messages) ? messages.join(' ') : '')
+    }
+}
+
 // Is the chat open in the page the one the notification is about? { ok, key }
-// `before` is what the page showed before our click: { key, header }.
-//  - the header of the chat carries the sender's name from the notification: yes;
-//  - the header differs: only when the page really moved on (new address AND a new header, so the text below is not
-//    the stale screen of the previous chat) and shows the notified text;
-//  - the header cannot be read: the page navigated after our click, or the notified text is right there.
-// Anything else is NOT proven, and nothing may be typed.
-async function chatVerdict(run, before, notice) {
-    const key = await run('key')
-    const changed = key !== '' && key !== before.key // an empty address is a page in transition, never proof
-    const header = normalize(await run('header'))
-    if (header && sameTitle(header, notice.title)) return { ok: true, key }
-    if (header) return { ok: changed && header !== before.header && incomingHas(await run('incoming'), notice.body), key }
-    if (changed) return { ok: true, key }
-    return { ok: incomingHas(await run('incoming'), notice.body), key }
+// `before` is the snapshot taken before our click. The proof, strongest first:
+//  1. the name of the open chat is exactly the chat of the notification (the group, not the sender);
+//  2. the page navigated after our click (new address: the site itself opened a chat) AND the screen really changed, so
+//     this is not the stale picture of the previous chat: a new name/top bar that still shares a word with the title or
+//     shows the notified text; names that cannot be read: new messages on screen (or nothing readable at all: the
+//     navigation alone);
+//  3. nothing navigated, but the notified text is right there (the chat was already open).
+// Anything else is NOT proven: nothing may be typed.
+async function chatVerdict(run, before, notice, diag = {}) {
+    const now = await snapshot(run)
+    const done = (ok) => ({ ok, key: now.key })
+    const parts = titleParts(notice.title)
+    const hit = now.name !== '' ? nameIs(now.name, parts) : barHas(now.bar, parts, notice.title)
+    const changedKey = now.key !== '' && now.key !== before.key // an empty address is a page in transition
+    // flags only (never a name or a text): what the last check saw, for the log of a reply that was not sent
+    Object.assign(diag, { bar: now.name !== '' || now.bar !== '', hit, nav: changedKey, msgs: now.content !== '' })
+    if (hit) return done(true)
+    const bodyOk = normalize(notice.body).length >= 6
+    if (changedKey) {
+        // another name on screen: the page must have really moved on, and the chat must still look like the notified one
+        const known = now.name !== '' || now.bar !== ''
+        if (known) {
+            const moved = now.name !== before.name || now.bar !== before.bar
+            return done(moved && (sharesWord(now.name + ' ' + now.bar, notice.title) || (bodyOk && incomingHas(await run('incoming'), notice.body))))
+        }
+        const readable = now.content !== '' || before.content !== ''
+        return done(!readable || now.content !== before.content)
+    }
+    return done(bodyOk && incomingHas(await run('incoming'), notice.body))
 }
 
 // Waits until the open chat is proven to be the notified one (and stays so), or gives up.
 async function waitForNotifiedChat(run, before, notice, ctx) {
     const until = Date.now() + CHAT_WAIT_MS
-    let stableKey = null
+    let stable = null // the address of the chat when it was first proven: it must stay the same
     while (Date.now() < until && !ctx.cancelled) {
-        const verdict = await chatVerdict(run, before, notice)
+        const verdict = await chatVerdict(run, before, notice, ctx.diag)
         if (verdict.ok) {
-            if (stableKey === verdict.key) return verdict
-            stableKey = verdict.key
+            if (stable && stable.key === verdict.key) return verdict
+            stable = verdict
             await sleep(CHAT_STABLE_MS)
             continue
         }
-        stableKey = null
+        stable = null
         await sleep(CHAT_POLL_MS)
     }
     return null
@@ -236,7 +307,7 @@ async function deliverReply(messenger, nid, text, notice, ctx) {
     // draft are touched only while the notified chat is still the open one.
     const stillThere = async () => chatTarget !== null && (await run('key')) === chatTarget
     try {
-        const before = { key: await run('key'), header: normalize(await run('header')) }
+        const before = await snapshot(run)
         const opened = await webview.executeJavaScript(
             `window.__centrioOpenNotif ? window.__centrioOpenNotif(${JSON.stringify(String(nid))}) : false`
         )
@@ -271,7 +342,7 @@ async function deliverReply(messenger, nid, text, notice, ctx) {
             return 'failed'
         }
         // The chat must still be the one the reply is meant for; never send into another conversation.
-        const recheck = await chatVerdict(run, before, target)
+        const recheck = await chatVerdict(run, before, target, ctx.diag)
         if (ctx.cancelled || !recheck.ok || recheck.key !== chatTarget) {
             if (await stillThere()) await run('clear')
             return 'not-opened'
@@ -314,13 +385,18 @@ async function deliverReply(messenger, nid, text, notice, ctx) {
 // trample each other. One at a time per messenger, in the order they were sent.
 const REPLY_TIMEOUT_MS = 30000
 const queues = new Map()
-function sendReply(messenger, nid, text, notice = {}) {
+function sendReply(messenger, nid, text, notice = {}, onDone) {
     const id = messenger && messenger.id
     const turn = (queues.get(id) || Promise.resolve()).then(() => {
-        const ctx = { cancelled: false }
+        const ctx = { cancelled: false, diag: {} }
         // A hung page must not block every later reply: give up after a while, and from then on touch nothing.
-        const giveUp = new Promise((resolve) => setTimeout(() => { ctx.cancelled = true; resolve('failed') }, REPLY_TIMEOUT_MS))
-        return Promise.race([deliverReply(messenger, nid, text, notice, ctx), giveUp])
+        let timer = null
+        const giveUp = new Promise((resolve) => { timer = setTimeout(() => { ctx.cancelled = true; resolve('failed') }, REPLY_TIMEOUT_MS) })
+        return Promise.race([deliverReply(messenger, nid, text, notice, ctx), giveUp]).then((result) => {
+            clearTimeout(timer)
+            if (typeof onDone === 'function') { try { onDone(result, ctx.diag) } catch { /* diagnostics must never break a reply */ } }
+            return result
+        })
     })
     const tail = turn.catch(() => {})
     queues.set(id, tail)

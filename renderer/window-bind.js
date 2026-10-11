@@ -86,7 +86,11 @@ function bindWindowUi({
     ipcRenderer.on('notification-reply', async (payload) => {
         if (!payload || !payload.replyId) return
         const messenger = (state.activeMessengers || []).find(m => m.id === payload.messengerId)
-        const result = await sendReply(messenger, payload.nid, payload.text, { title: payload.title, body: payload.body })
+        const result = await sendReply(messenger, payload.nid, payload.text, { title: payload.title, body: payload.body }, (outcome, diag) => {
+            if (outcome === 'ok') return
+            const flags = ['bar', 'hit', 'nav', 'msgs'].map((k) => k + (diag && diag[k] ? 1 : 0)).join(' ')
+            ipcRenderer.send('notif-diag', { messenger: messenger && messenger.name, tag: 'reply', decision: outcome + ' ' + flags })
+        })
         ipcRenderer.send('notification-reply-result', payload.replyId, result)
     })
 
