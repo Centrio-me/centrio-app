@@ -96,9 +96,10 @@ function createWebviewNotifyApi({
             try { actionUrl = new URL(payload.url, messenger.url).href } catch {}
         }
 
+        const isFallbackNotice = tag === 'unread-fallback'
         // ── Добавляем в панель уведомлений как уведомление от мессенджера ──
         if (typeof addMessengerNotification === 'function') {
-            addMessengerNotification(title, body, messenger.name, messenger.id, actionUrl, payload.nid)
+            addMessengerNotification(title, body, messenger.name, messenger.id, actionUrl, payload.nid, isFallbackNotice ? 'count' : '')
         }
 
         if (shouldPlaySound) playNotifSound(messenger.id)
@@ -158,13 +159,21 @@ function createWebviewNotifyApi({
     // Windows"): часть сайтов (ВК) не вызывает Notification API, пока считает окно активным, поэтому
     // всплывашки не было, хотя бейдж рос. Если число непрочитанных выросло и сайт сам не присылал
     // уведомлений последние 10 минут, показываем своё. Первый замер после загрузки страницы не считается.
-    const lastUnreadSeen = {}
+    // A count that merely flickers is not news: Telegram Web flashes the page title between its name and "N notifications"
+    // for as long as chats are unread, which reads as 0, 6, 0, 6... Only a count ABOVE everything seen during the last
+    // minute is a new message, and the fallback never speaks more than once per cooldown for one messenger.
+    const unreadRecent = {}
+    const lastFallbackAt = {}
     const FALLBACK_DELAY_MS = 3500
     const SITE_SILENT_MS = 10 * 60 * 1000
+    const RECENT_WINDOW_MS = 60 * 1000
+    const FALLBACK_COOLDOWN_MS = 2 * 60 * 1000
 
     function scheduleUnreadFallback(messengerId, delta) {
         setTimeout(() => {
             if (Date.now() - (state.lastSiteNotifyAt[messengerId] || 0) < SITE_SILENT_MS) return
+            if (Date.now() - (lastFallbackAt[messengerId] || 0) < FALLBACK_COOLDOWN_MS) return
+            lastFallbackAt[messengerId] = Date.now()
             const messenger = (state.activeMessengers || []).find(m => m.id === messengerId)
             if (!messenger) return
             const body = delta > 1
@@ -178,9 +187,12 @@ function createWebviewNotifyApi({
         if (!messengerId) return
         const n = Number.isFinite(count) && count >= 0 ? count : 0
         updateUnreadCount(messengerId, n)
-        const before = lastUnreadSeen[messengerId]
-        lastUnreadSeen[messengerId] = n
-        if (before !== undefined && n > before) scheduleUnreadFallback(messengerId, n - before)
+        const now = Date.now()
+        const seen = (unreadRecent[messengerId] || []).filter((x) => now - x.t < RECENT_WINDOW_MS)
+        const highest = seen.reduce((max, x) => Math.max(max, x.n), -1) // -1: the first reading after the page loaded
+        seen.push({ t: now, n })
+        unreadRecent[messengerId] = seen
+        if (highest >= 0 && n > highest) scheduleUnreadFallback(messengerId, n - highest)
     })
 
     // Sign-in state of the page (see startLoginStatePolling in main); org-team.js reports it to the owner.

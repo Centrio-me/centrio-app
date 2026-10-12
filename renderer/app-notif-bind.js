@@ -390,10 +390,12 @@ function bindAppNotifUi({
         } catch {}
     }
 
-    function addMessengerNotification(title, body, messengerName, messengerId, actionUrl, nid) {
+    function addMessengerNotification(title, body, messengerName, messengerId, actionUrl, nid, kind) {
         const fakeEntry = {
             id: `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-            title: messengerName ? `${messengerName}: ${title}` : title,
+            // "Telegram: Telegram" says nothing twice: a notice that only counts messages is titled by the service alone
+            title: messengerName && title !== messengerName ? `${messengerName}: ${title}` : (title || messengerName || ''),
+            kind: kind === 'count' ? 'count' : '',
             body: body || '',
             isRead: false,
             createdAt: new Date().toISOString(),

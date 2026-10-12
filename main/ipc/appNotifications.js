@@ -29,7 +29,28 @@ function getMaxAppNotifHistory() {
     const configured = Number(store.get('settings', {})?.notifHistoryLimit)
     return Number.isFinite(configured) && configured > 0 ? configured : DEFAULT_MAX_APP_NOTIF_HISTORY
 }
-let messengerNotifHistory = store.get('messengerNotifHistory', []) || []
+// A notice that only counts messages ("Новых сообщений: 6") says the same thing every time it repeats. A flood of them once
+// filled the centre with thousands of identical rows, so identical count notices of one service within ten minutes are one.
+const COUNT_NOTICE_DUP_WINDOW_MS = 10 * 60 * 1000
+const isCountNotice = (n) => n && (n.kind === 'count' || /^(.+): \1$/.test(String(n.title || '')))
+const countKey = (n) => String(n.messengerId || n.title || '')
+function collapseCountNotices(list) {
+    const lastKept = new Map()
+    const kept = []
+    for (let i = list.length - 1; i >= 0; i--) { // the list is newest first: walk from the oldest
+        const n = list[i]
+        if (isCountNotice(n)) {
+            const key = countKey(n)
+            const at = Date.parse(n.createdAt) || 0
+            const prev = lastKept.get(key)
+            if (prev !== undefined && Math.abs(at - prev) < COUNT_NOTICE_DUP_WINDOW_MS) continue
+            lastKept.set(key, at)
+        }
+        kept.push(n)
+    }
+    return kept.reverse()
+}
+let messengerNotifHistory = collapseCountNotices(store.get('messengerNotifHistory', []) || [])
 let mainWindowGetter = null
 
 function persistMessengerNotifHistory() {
@@ -84,7 +105,8 @@ function normalizeRecord(input) {
         // стороне рендерера (app-notif-bind.js) непосредственно перед loadURL.
         actionUrl: typeof input.actionUrl === 'string' ? input.actionUrl.slice(0, 2000) : null,
         // short id of the page-side notification object, valid only until that page reloads
-        nid: typeof input.nid === 'string' && /^n\d{1,9}$/.test(input.nid) ? input.nid : ''
+        nid: typeof input.nid === 'string' && /^n\d{1,9}$/.test(input.nid) ? input.nid : '',
+        kind: input.kind === 'count' ? 'count' : ''
     }
 }
 
@@ -99,6 +121,11 @@ function registerAppNotificationsIpc({ getMainWindow }) {
         // Дедуп: если рендерер уже прислал этот id раньше (например, при
         // повторном IPC после кратковременного разрыва), не плодим дубликат.
         messengerNotifHistory = messengerNotifHistory.filter(n => n.id !== record.id)
+        if (isCountNotice(record)) {
+            const at = Date.parse(record.createdAt) || Date.now()
+            const same = messengerNotifHistory.find((n) => isCountNotice(n) && countKey(n) === countKey(record) && Math.abs((Date.parse(n.createdAt) || 0) - at) < COUNT_NOTICE_DUP_WINDOW_MS)
+            if (same) return // the same count notice again: not a new notification
+        }
         messengerNotifHistory.unshift(record)
         persistMessengerNotifHistory()
         broadcastAppNotifUpdate(record)
