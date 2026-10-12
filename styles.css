@@ -2476,6 +2476,11 @@ webview {
 
 webview.active { display: flex; }
 
+/* A reply typed into a notification pop-up needs the page of its messenger LAID OUT: Telegram Web does not draw a chat (and
+   so has no message box) in a page that has no layout, which is what a tab that is not selected is (display: none).
+   While a reply is being made the page gets a layout nobody can see: transparent, behind everything, no pointer events. */
+webview.reply-render:not(.active) { display: flex; opacity: 0; pointer-events: none; z-index: -1; }
+
 /* FEATURE (2026-08-24, "заглушка на основном окне ... авторизация через
    окно отдельное" — live user request): пока OAuth (Google/Яндекс и т.д.)
    идёт в отдельном BrowserWindow-попапе (см. wireOAuthPopup() в

@@ -26,6 +26,7 @@ const CHAT_WAIT_MS = 12000 // the site may switch chats slowly on accounts with 
 const CHAT_POLL_MS = 150
 const SETTLE_MS = 500 // the page has to look the same this long before the text goes in
 const NO_CHANGE_WAIT_MS = 1500 // nothing changed after the click: the chat was already open (slow sites announce themselves earlier)
+const LAYOUT_SETTLE_MS = 300 // a page that just got its invisible layout needs a moment before the site is clicked
 const BLIND_WAIT_MS = 4000 // ... the same, on a page that shows no name and no ids (nothing could contradict an early guess)
 const PEERS_WAIT_MS = 4000 // the ids of the chat appear on its messages a moment after it opens; waited for, never forever
 const DOM_ONLY_GRACE_MS = 2000 // the screen changed but the address of the site does not: it is not required any more after this
@@ -416,6 +417,7 @@ async function deliverReply(messenger, nid, text, notice, ctx) {
     let draft = ''
     let hadDraft = false
     let chatTarget = null
+    holdLayout(webview)
     const run = (action, arg) => webview.executeJavaScript(pageScript(adapter.selectors, action, arg))
     // The page can move to another chat at any moment (the site is slow, or the user clicks): the message box and the
     // draft are touched only while the notified chat is still the open one.
@@ -450,6 +452,7 @@ async function deliverReply(messenger, nid, text, notice, ctx) {
         return (await settleText('', 800)) === ''
     }
     try {
+        if (!webview.classList.contains('active')) await sleep(LAYOUT_SETTLE_MS)
         const before = await snapshot(run)
         let opened = await webview.executeJavaScript(
             `window.__centrioOpenNotif ? window.__centrioOpenNotif(${JSON.stringify(String(nid))}) : false`
@@ -542,7 +545,22 @@ async function deliverReply(messenger, nid, text, notice, ctx) {
     } finally {
         // the user's own draft comes back whatever happened, but only into the chat it was taken from
         if (hadDraft) { try { if (await stillThere()) await run('set', draft) } catch { /* the tab went away */ } }
+        releaseLayout(webview)
     }
+}
+
+// A messenger tab that is not selected has no layout (display: none) and some sites then draw nothing (Telegram Web: no chat,
+// no message box). Every reply gives the page an invisible layout for as long as it works (see .reply-render in styles.css).
+const renderHolds = new Map()
+function holdLayout(webview) {
+    renderHolds.set(webview, (renderHolds.get(webview) || 0) + 1)
+    webview.classList.add('reply-render')
+}
+function releaseLayout(webview) {
+    const left = (renderHolds.get(webview) || 1) - 1
+    if (left > 0) { renderHolds.set(webview, left); return }
+    renderHolds.delete(webview)
+    webview.classList.remove('reply-render')
 }
 
 // Two replies to the same messenger must never overlap: each one switches the chat of the page, so they would
