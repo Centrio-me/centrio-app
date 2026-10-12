@@ -35,6 +35,9 @@ const TELEGRAM = {
     chatKey: 'hash', // the address hash is the open chat; it can be put back without a reload
     // Web K keeps a stack of chats in the page (the newest is the last one); the others keep their message boxes too.
     scope: ['.chats-container > .chat:last-child', '#column-center .chat.active', '#MiddleColumn'],
+    // Seen on the real page: the chat holds TWO boxes of the same class, stacked on each other. The FIRST one is the editor
+    // (typing there enables the send button); the second one only mirrors it, and text typed into it is never sent.
+    composerPick: 'first',
     // every message of a chat carries the id of the chat it belongs to
     peers: ['.bubble[data-peer-id]'],
     composer: ['.chat-input .input-message-input[contenteditable="true"]', '.input-message-input[contenteditable="true"]', '#editable-message-text', 'div[contenteditable="true"].input-message-input'],
@@ -109,11 +112,13 @@ function pageScript(selectors, action, arg) {
         const first = (sel) => { const nodes = all(sel); return nodes.filter(visible).pop() || nodes[nodes.length - 1] || null }
         const head = (sel) => { const nodes = all(sel); return nodes.find(visible) || nodes[0] || null } // the title, not what is under it
         const everyComposer = () => { const out = []; for (const sel of cfg.composer) for (const n of document.querySelectorAll(sel)) if (!out.includes(n)) out.push(n); return out }
+        // the boxes of OTHER chats: the ones inside the displayed chat belong to it (mirrors of the editor included)
+        const otherBoxes = (mine) => everyComposer().filter((n) => n !== mine && !(scoped && scope.contains(n)))
         const composer = () => {
             for (const sel of cfg.composer) {
                 const nodes = all(sel)
                 if (!nodes.length) continue
-                if (scoped || nodes.length === 1) return first(sel)
+                if (scoped || nodes.length === 1) return cfg.composerPick === 'first' ? head(sel) : first(sel)
                 // an unknown screen with several boxes: the one the site has focused (it focuses the box of the chat it
                 // opens), else the newest one (a stack grows at its end)
                 return nodes.find((n) => n === document.activeElement || n.contains(document.activeElement)) || first(sel)
@@ -157,7 +162,7 @@ function pageScript(selectors, action, arg) {
         if (action === 'mark') {
             // what every message box of the page holds right now (drafts of the user stay theirs)
             const mine = composer()
-            window.__centrioMarks = everyComposer().filter((n) => n !== mine).map((n) => [n, norm(read(n))])
+            window.__centrioMarks = otherBoxes(mine).map((n) => [n, norm(read(n))])
             return window.__centrioMarks.length
         }
         if (action === 'stray' || action === 'clearStray') {
@@ -419,6 +424,31 @@ async function deliverReply(messenger, nid, text, notice, ctx) {
         const top = Number(await run('top')) || 0
         return chatTarget.top !== 0 ? top === chatTarget.top : (await run('key')) === chatTarget.key
     }
+    // Rich editors (Lexical in MAX, ProseMirror in Telegram) apply an edit a moment AFTER the command: the text is waited
+    // for before anything is concluded - concluding "nothing landed" too early and typing again doubles the text.
+    const settleText = async (want, ms) => {
+        const until = Date.now() + ms
+        let text = ''
+        do {
+            text = normalize(await run('read'))
+            if (text === want) return text
+            await sleep(100)
+        } while (Date.now() < until)
+        return text
+    }
+    // Empties the box so that nothing is left behind: the page's own command first, then the keyboard (select all, delete),
+    // which is what rich editors really listen to.
+    const clearBox = async () => {
+        if (await run('clear')) return true
+        try { webview.focus() } catch { /* the tab may not be shown */ }
+        await run('focus')
+        webview.sendInputEvent({ type: 'keyDown', keyCode: 'A', modifiers: ['control'] })
+        webview.sendInputEvent({ type: 'keyUp', keyCode: 'A', modifiers: ['control'] })
+        await sleep(150)
+        webview.sendInputEvent({ type: 'keyDown', keyCode: 'Backspace' })
+        webview.sendInputEvent({ type: 'keyUp', keyCode: 'Backspace' })
+        return (await settleText('', 800)) === ''
+    }
     try {
         const before = await snapshot(run)
         let opened = await webview.executeJavaScript(
@@ -440,7 +470,7 @@ async function deliverReply(messenger, nid, text, notice, ctx) {
         // A draft the user already has in this chat is kept aside and put back afterwards.
         draft = await run('read')
         hadDraft = normalize(draft) !== ''
-        if (hadDraft && !(await run('clear'))) return 'failed'
+        if (hadDraft && !(await clearBox())) return 'failed'
         if (!(await run('focus'))) return 'failed' // the box must really have the focus before anything is typed
         try { webview.focus() } catch { /* the tab may not be shown; the page-side focus above is enough */ }
 
@@ -448,25 +478,25 @@ async function deliverReply(messenger, nid, text, notice, ctx) {
         // very same focused box.
         await run('mark')
         let typed = normalize(await run('insert', text))
+        if (typed !== wanted) typed = await settleText(wanted, 1500)
         if (typed === '' && typeof webview.insertText === 'function' && (await run('focus'))) {
             await webview.insertText(String(text))
-            await sleep(SETTLE_AFTER_TYPING_MS)
-            typed = normalize(await run('read'))
+            typed = await settleText(wanted, 1500)
         }
         if (typed !== wanted) {
-            if (await stillThere()) await run('clear')
+            if (await stillThere()) await clearBox()
             return 'failed'
         }
         // No other message box of the page may hold the text (a box of a chat that is not the notified one).
         if ((await run('stray', text)) > 0) {
             await run('clearStray', text)
-            if (await stillThere()) await run('clear')
+            if (await stillThere()) await clearBox()
             return 'failed'
         }
         // The chat must still be the one the reply is meant for; never send into another conversation.
         const recheck = await snapshot(run)
         if (ctx.cancelled || (chatTarget.top !== 0 ? recheck.top !== chatTarget.top : recheck.key !== chatTarget.key) || contradicts(recheck, target)) {
-            if (await stillThere()) await run('clear')
+            if (await stillThere()) await clearBox()
             return 'not-opened'
         }
         const sentBefore = Number(await run('count')) || 0
@@ -501,7 +531,7 @@ async function deliverReply(messenger, nid, text, notice, ctx) {
         const allAfter = Number(await run('countAll')) || 0
         if (proven && allBefore > 0 && allAfter - allBefore > 1) ctx.diag.dup = true
         if ((await run('stray', text)) > 0) await run('clearStray', text)
-        if (!proven && (await stillThere())) await run('clear')
+        if (!proven && (await stillThere())) await clearBox()
         // the draft belongs to the notified chat: it goes back BEFORE the user is returned to the chat they were in
         if (hadDraft && (await stillThere())) await run('set', draft)
         hadDraft = false
