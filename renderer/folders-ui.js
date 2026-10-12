@@ -60,6 +60,8 @@ function createFoldersUiApi({
 
                 item.setAttribute('draggable', 'true')
                 item.style.cursor = 'grab'
+                // Choosing a service in the folder card opens its tab: the card has done its job and goes away.
+                item.addEventListener('click', () => closeFolderPanel())
 
                 item.addEventListener('dragstart', (e) => {
                     panelDragSrcId = messenger.id
