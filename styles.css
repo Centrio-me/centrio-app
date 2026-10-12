@@ -3741,7 +3741,10 @@ body:has(.modal.show) .split-handle { display: none !important; }
     background: var(--success);
     flex-shrink: 0;
     box-shadow: 0 0 6px var(--success);
-    animation: pulse-glow 2s ease infinite;
+    /* PERFORMANCE (2026-10-12, customer: Centrio takes 58% of the GPU): this dot used to pulse forever (a box-shadow
+       animation). A never-ending animation makes the window repaint and recomposite EVERY frame, webviews included, even
+       when nothing else on the screen changes: measured on a real machine the GPU process dropped from ~60% to ~5% of a
+       core by removing just this. Idle UI must stay still; only short animations that answer an action are fine. */
 }
 
 .status-divider {
@@ -11609,11 +11612,19 @@ button:active {
         transform 420ms cubic-bezier(.22, 1, .36, 1);
 }
 
+
 .startup-splash.hidden {
     opacity: 0;
     visibility: hidden;
     pointer-events: none;
     transform: scale(1.01);
+}
+/* the hidden splash stays in the page: its animations must not keep running behind the app */
+.startup-splash.hidden,
+.startup-splash.hidden *,
+.startup-splash.hidden *::before,
+.startup-splash.hidden *::after {
+    animation: none !important;
 }
 
 .startup-splash-bg {

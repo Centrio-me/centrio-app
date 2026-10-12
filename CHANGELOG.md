@@ -10,6 +10,10 @@ The format is based on Keep a Changelog. This project does not currently follow 
 
 _No unreleased changes yet — add entries here as they land, then move them under a new version heading at release time._
 
+## [3.1.14]
+
+- Повышена производительность: в простое Centrio теперь заметно меньше нагружает видеокарту и процессор, а кулеры ноутбука больше не раскручиваются без причины. Нагрузка на видеопроцесс в простое снизилась в десятки раз
+
 ## [3.1.13]
 
 - Исправлено: в свёрнутой боковой панели при выборе сервиса в карточке папки вкладка открывалась, а карточка оставалась на экране. Теперь карточка закрывается сразу после выбора
