@@ -449,6 +449,44 @@ function createCloudUiApi({
         } catch { return null }
     }
 
+    // ── Блок подписки команды ─────────────────────────────────────
+    // Состояние считает сервер (orgState/orgDaysLeft в orgSummary): приложение только показывает его словами и
+    // не пересчитывает по часам компьютера.
+    const TEAM_MANAGE_URL = 'https://centrio.me/team'
+    function _renderTeamSection(user) {
+        const section = document.getElementById('teamSubSection')
+        if (!section) return false
+        const org = user?.orgSummary
+        if (!org || !org.orgId) { section.style.display = 'none'; return false }
+
+        const state = org.orgState || (org.orgSeatsExpiresAt ? 'active' : 'none')
+        const date = _formatPlanExpiry(org.orgSeatsExpiresAt) || '—'
+        const days = org.orgDaysLeft != null ? org.orgDaysLeft : ''
+        const roleKey = { OWNER: 'teamRoleOwner', ADMIN: 'teamRoleAdmin' }[org.orgRole] || 'teamRoleMember'
+
+        section.classList.toggle('is-expiring', state === 'expiring')
+        section.classList.toggle('is-expired', state === 'expired')
+        section.classList.toggle('is-none', state === 'none')
+        document.getElementById('teamSubName').textContent =
+            tGet('cloud.teamTeamTitle', { name: org.orgName || '' }) + ' · ' + tGet('cloud.' + roleKey)
+        document.getElementById('teamSubStatus').textContent = tGet({
+            active: 'cloud.teamActive', expiring: 'cloud.teamExpiring', expired: 'cloud.teamExpired', none: 'cloud.teamNone'
+        }[state] || 'cloud.teamNone', { date, days })
+        document.getElementById('teamSubSeats').textContent =
+            tGet('cloud.teamSeats', { used: org.orgSeatsUsed ?? 0, limit: org.orgSeatLimit ?? 0 })
+
+        const btn = document.getElementById('teamManageBtn')
+        if (btn) {
+            const isOwner = org.orgRole === 'OWNER' || org.orgIsOwner === true
+            btn.style.display = isOwner ? '' : 'none'
+            btn.textContent = tGet('cloud.teamManage')
+            btn.dataset.url = TEAM_MANAGE_URL
+            if (!isOwner) document.getElementById('teamSubSeats').textContent += ' · ' + tGet('cloud.teamOwnerRenews')
+        }
+        section.style.display = 'flex'
+        return true
+    }
+
     // ── Обновляем PRO-секцию ──────────────────────────────────────
     function _renderProSection(user, plan, isPro) {
         const statsRow    = document.getElementById('cpStatsRow')
@@ -456,10 +494,13 @@ function createCloudUiApi({
         const proSection  = document.getElementById('proSubSection')
         const plansSection = document.querySelector('.cp-plans-section')
 
+        const hasTeam = _renderTeamSection(user)
+        // Pro that comes only from a team seat has no personal subscription to show: the team block says it all
+        const personalPro = PRO_PLANS.has(plan)
         if (isPro) {
             // Показываем статистику и блок подписки, скрываем тарифы
             if (statsRow)    statsRow.style.display    = ''
-            if (proSection)  proSection.style.display  = 'flex'
+            if (proSection)  proSection.style.display  = (hasTeam && !personalPro) ? 'none' : 'flex'
             if (plansSection) plansSection.style.display = 'none'
             _renderCloudUsageStats()
 

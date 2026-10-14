@@ -1127,6 +1127,12 @@
     </div>
     <div class="changelog-popup-body">
         <div class="changelog-entry">
+            <div class="changelog-version">v3.1.16</div>
+            <ul class="changelog-list">
+                <li>В окне аккаунта появился блок подписки команды: название команды, ваша роль, места, дата окончания и понятное состояние (активна, скоро закончится, закончилась). Владелец может сразу перейти к продлению. Пока подписка команды закончилась, Pro-места сотрудников отключены, и теперь это видно прямо в приложении</li>
+            </ul>
+        </div>
+        <div class="changelog-entry">
             <div class="changelog-version">v3.1.15</div>
             <ul class="changelog-list">
                 <li>Исправлены лишние уведомления вида «Новых сообщений: N», которые могли приходить массово: теперь уведомления появляются только о настоящих входящих сообщениях, каждое отдельно. Накопившиеся повторы в центре уведомлений очищаются автоматически</li>
@@ -3757,6 +3763,22 @@
                     <button class="cp-extend-btn" id="proExtendBtn" data-i18n="cloud.extend"></button>
                 </div>
             </div>
+                <!-- TEAM: подписка команды (виден владельцу и сотрудникам команды) -->
+                <div id="teamSubSection" class="cp-pro-section cp-team-section" style="display:none;">
+                    <div class="cp-pro-info">
+                        <div class="cp-pro-icon">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </div>
+                        <div class="cp-pro-details">
+                            <div class="cp-pro-plan-name" id="teamSubName"></div>
+                            <div class="cp-pro-expiry"><span id="teamSubStatus"></span></div>
+                            <div class="cp-pro-expiry"><span id="teamSubSeats"></span></div>
+                        </div>
+                    </div>
+                    <button class="cp-extend-btn" id="teamManageBtn" style="display:none;"></button>
+                </div>
 
             <!-- Прокручиваемая область: статистика / подписка / тарифы -->
             <div class="cp-scroll-area" id="cpScrollArea">

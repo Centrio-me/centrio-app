@@ -277,6 +277,11 @@ function bindCloudUi({
         _doOpenUrl(DASHBOARD_URL)
     })
 
+    document.getElementById('teamManageBtn')?.addEventListener('click', (e) => {
+        const url = e.currentTarget?.dataset?.url
+        if (url) _doOpenUrl(url)
+    })
+
     document.getElementById('proExtendBtn')?.addEventListener('click', async (e) => {
         const btn = e.currentTarget
         if (btn.dataset.canRenewNow !== 'true') {

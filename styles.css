@@ -9632,6 +9632,29 @@ button:active {
     color: #c7d2fe;
 }
 
+/* ── TEAM: блок подписки команды ── */
+.cp-team-section {
+    margin: 12px 24px 0;
+    width: auto;
+    flex-shrink: 0;
+    background: linear-gradient(135deg, rgba(250,204,21,0.12) 0%, rgba(245,158,11,0.07) 100%);
+    border-color: rgba(250,204,21,0.28);
+}
+.cp-team-section .cp-pro-icon { background: rgba(250,204,21,0.16); border-color: rgba(250,204,21,0.32); color: #facc15; }
+.cp-team-section .cp-pro-plan-name { color: #fcd34d; line-height: 1.2; }
+.cp-team-section .cp-pro-info { flex: 1; }
+.cp-team-section .cp-pro-expiry { white-space: normal; }
+.cp-team-section .cp-pro-expiry span { color: rgba(255,255,255,0.72); }
+.cp-team-section.is-expired .cp-pro-expiry span, .cp-team-section.is-none .cp-pro-expiry span { color: #fecaca; }
+.cp-team-section .cp-extend-btn { background: rgba(250,204,21,0.16); border-color: rgba(250,204,21,0.35); color: #fcd34d; }
+.cp-team-section .cp-extend-btn:hover { background: rgba(250,204,21,0.28); border-color: rgba(250,204,21,0.55); color: #fde68a; }
+.cp-team-section.is-expiring { border-color: rgba(245,158,11,0.5); }
+.cp-team-section.is-expired, .cp-team-section.is-none {
+    background: linear-gradient(135deg, rgba(239,68,68,0.12) 0%, rgba(239,68,68,0.05) 100%);
+    border-color: rgba(239,68,68,0.4);
+}
+.cp-team-section.is-expired .cp-pro-plan-name, .cp-team-section.is-none .cp-pro-plan-name { color: #fca5a5; }
+
 /* ── Сетка тарифов ── */
 /* REDESIGN (2026-09-30, "Личный кабинет — очень некрасивое. Полностью
    переделать" — live request, approved mockup): three side-by-side
