@@ -43,7 +43,29 @@ function _getFocusedSecs() {
     return Math.floor(ms / 1000)
 }
 
-// ── Per-service time (called from IPC handler) ────────────────────
+// ── Per-service time ──────────────────────────────────────────────
+// The renderer only says WHICH messenger has the focus (active tab / focused pane of a split). The clock lives here:
+// a second goes to that messenger only while the app window itself has focus, so a minimised or background Centrio,
+// or a tab that is merely open, never earns time. The sum of the services can therefore never exceed the app time.
+let _activeService = null
+let _lastTick = Date.now()
+let _tickTimer = null
+const MAX_TICK_MS = 2500 // a longer gap means the computer slept: do not credit it
+
+function setActiveService(name) {
+    _tickService() // credit the time up to now to the previous messenger first
+    _activeService = name || null
+}
+
+function _tickService() {
+    const now = Date.now()
+    const dt = now - _lastTick
+    _lastTick = now
+    if (!_isFocused || !_activeService || dt <= 0 || dt > MAX_TICK_MS) return
+    _serviceAccum[_activeService] = (_serviceAccum[_activeService] || 0) + dt / 1000
+}
+
+// Kept for older renderers that still report whole seconds themselves.
 function addServiceTime(serviceName, seconds) {
     if (!serviceName || seconds <= 0) return
     _serviceAccum[serviceName] = (_serviceAccum[serviceName] || 0) + seconds
@@ -65,6 +87,7 @@ function addMsgReceived(count = 1) { _msgReceived   += count }
 
 // ── Flush to API ─────────────────────────────────────────────────
 async function flush() {
+    _tickService()
     try {
         // cloud.accessToken is written encrypted (safeStorage, see main.js's
         // 'store:secure-set' handler and main/services/secureStore.js) — a raw
@@ -91,7 +114,7 @@ async function flush() {
         // yet) still gets its own row instead of being dropped.
         const services = new Set([...Object.keys(_serviceAccum), ...Object.keys(_serviceNotifAccum)])
         for (const service of services) {
-            const secs = _serviceAccum[service] || 0
+            const secs = Math.floor(_serviceAccum[service] || 0)
             const notifCount = _serviceNotifAccum[service] || 0
             if (secs > 0 || notifCount > 0) {
                 await api.trackStats(token, {
@@ -126,10 +149,13 @@ function start() {
     _interval = setInterval(() => {
         flush().catch(() => {})
     }, 60 * 1000)
+    _lastTick = Date.now()
+    _tickTimer = setInterval(_tickService, 1000)
     console.log('[tracker] started')
 }
 
 function stop() {
+    if (_tickTimer) { clearInterval(_tickTimer); _tickTimer = null }
     if (_interval) {
         clearInterval(_interval)
         _interval = null
@@ -140,6 +166,9 @@ module.exports = {
     onFocus,
     onBlur,
     addServiceTime,
+    setActiveService,
+    _tickService, // exported for the unit test
+    getActiveService: () => _activeService,
     addNotif,
     addMsgSent,
     addMsgReceived,

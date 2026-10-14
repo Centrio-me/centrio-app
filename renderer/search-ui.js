@@ -1,3 +1,5 @@
+const { getFocusedMessengerId, getVisibleMessengerIds } = require('./focused-messenger')
+
 function createSearchUiApi({
     state,
     quickSearch,
@@ -13,7 +15,54 @@ function createSearchUiApi({
     isMessengerMuted,
     updateMuteAllBtn
 }) {
+    // Where Ctrl+F searches: the messenger the user picked in the find bar, otherwise the one that has the focus (in a
+    // split — the focused pane, not simply the left one).
+    let pickedTargetId = null
+    function findTargetId() {
+        const visible = getVisibleMessengerIds(state)
+        if (pickedTargetId && visible.includes(pickedTargetId)) return pickedTargetId
+        return getFocusedMessengerId(state)
+    }
+
+    function renderFindTargets() {
+        const host = document.getElementById('findTargets')
+        if (!host) return
+        const visible = getVisibleMessengerIds(state)
+        const current = findTargetId()
+        host.classList.toggle('single', visible.length < 2)
+        host.innerHTML = ''
+        visible.forEach((id) => {
+            const m = (state.activeMessengers || []).find(x => x.id === id)
+            if (!m) return
+            const btn = document.createElement('button')
+            btn.type = 'button'
+            btn.className = 'find-target' + (id === current ? ' active' : '')
+            btn.title = m.name
+            if (m.icon) {
+                const img = document.createElement('img')
+                img.src = m.icon
+                img.alt = ''
+                btn.appendChild(img)
+            }
+            const label = document.createElement('span')
+            label.textContent = m.name
+            btn.appendChild(label)
+            btn.addEventListener('click', () => {
+                if (id === current) { findInput.focus(); return }
+                stopFind()
+                pickedTargetId = id
+                findCount.textContent = ''
+                renderFindTargets()
+                if (findInput.value) document.getElementById(`webview-${id}`)?.findInPage(findInput.value)
+                findInput.focus()
+            })
+            host.appendChild(btn)
+        })
+    }
+
     function openFindBar() {
+        pickedTargetId = null
+        renderFindTargets()
         findBar.classList.add('show')
         findInput.value = ''
         findCount.textContent = ''
@@ -34,15 +83,17 @@ function createSearchUiApi({
     }
 
     function doFind(forward = true) {
-        if (!state.activeTabId) return
-        const webview = document.getElementById(`webview-${state.activeTabId}`)
+        const targetId = findTargetId()
+        if (!targetId) return
+        const webview = document.getElementById(`webview-${targetId}`)
         if (!webview || !findInput.value) return
         webview.findInPage(findInput.value, { forward, findNext: true })
     }
 
     function stopFind() {
-        if (!state.activeTabId) return
-        const webview = document.getElementById(`webview-${state.activeTabId}`)
+        const targetId = findTargetId()
+        if (!targetId) return
+        const webview = document.getElementById(`webview-${targetId}`)
         if (webview) webview.stopFindInPage('clearSelection')
         findCount.textContent = ''
     }
@@ -245,8 +296,10 @@ function createSearchUiApi({
                 return
             }
 
-            if (!state.activeTabId) return
-            document.getElementById(`webview-${state.activeTabId}`)?.findInPage(findInput.value)
+            const targetId = findTargetId()
+            if (!targetId) return
+            renderFindTargets()
+            document.getElementById(`webview-${targetId}`)?.findInPage(findInput.value)
         })
 
         findInput.addEventListener('keydown', (e) => {

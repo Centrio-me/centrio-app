@@ -18,6 +18,8 @@
 // descendant selector keyed off an ancestor class.
 'use strict'
 
+const { getVisibleMessengerIds } = require('./focused-messenger')
+
 // Раскладки-сетки (доп. к классическому 2col выше) — прямоугольники в % от
 // #contentArea. Зона 0 всегда зеркалит activeTabId (та же конвенция, что и
 // "левая панель" в 2col), остальные зоны назначаются через мини-попап.
@@ -90,6 +92,15 @@ function createSplitApi ({
     const splitExitBtn    = document.getElementById('splitExitBtn')
     const gridRowHandle    = document.getElementById('splitGridRowHandle')
     const gridSideHandle   = document.getElementById('splitGridSideHandle')
+
+    // A split opened from a saved preset is a locked, monolithic view: its messengers cannot be reassigned and a click on
+    // a messenger outside it closes the split (see switchTab in renderer.js). Manual splits stay editable.
+    function _isLocked () { return !!(state.splitMode && state.splitPresetId) }
+
+    function _persistPresetLock () {
+        const saved = store?.get?.('split.saved', null) || {}
+        store?.set?.('split.saved', { ...saved, presetId: state.splitPresetId || null })
+    }
 
     function getGridLayout (layout) {
         return computeRowLayout(layout, state.gridRowPct || 50, state.gridSidePct || 50) || GRID_LAYOUTS[layout]
@@ -452,7 +463,8 @@ function createSplitApi ({
         store?.set?.('split.saved', {
             layout: state.splitLayout,
             zoneIds: state.splitZoneIds,
-            splitLeftPct: state.splitLeftPct || 50
+            splitLeftPct: state.splitLeftPct || 50,
+            presetId: state.splitPresetId || null
         })
     }
 
@@ -483,6 +495,7 @@ function createSplitApi ({
     // ── Мини-попап выбора мессенджера для одной зоны ────────────────────────────
 
     function showZonePicker (zoneIndex) {
+        if (_isLocked()) return
         if (!splitZonePicker || !splitZonePickerList) return
         document.dispatchEvent(new CustomEvent('close-all-popups'))
 
@@ -825,6 +838,7 @@ function createSplitApi ({
 
     function showPicker () {
         if (!splitPicker || !splitPickerList) return
+        if (_isLocked()) return
 
         splitPickerList.innerHTML = ''
         state.activeMessengers.forEach(m => {
@@ -951,6 +965,7 @@ function createSplitApi ({
         }
 
         state.splitMode       = false
+        state.splitPresetId   = null
         state.splitTabId      = null
         state.splitFocus      = 'left'
         state.splitLayout     = '2col'
@@ -968,6 +983,7 @@ function createSplitApi ({
 
         // Сбрасываем сохранённое состояние
         store?.delete?.('split.saved')
+        renderPinnedPresets()
     }
 
     // Переключить раскладку БЕЗ полного выхода из сплит-режима — переносит
@@ -977,6 +993,7 @@ function createSplitApi ({
     // пустыми). Если сплит ещё не активен — просто входит в раскладку
     // (эквивалент enterGridSplitMode/enterSplitMode).
     function switchSplitLayout (layout) {
+        state.splitPresetId = null
         const assignedIds = _currentAssignedIds()
 
         if (state.splitMode) _cleanupCurrentLayoutDom()
@@ -1017,14 +1034,20 @@ function createSplitApi ({
         }
 
         const presets = getPresets()
+        const newId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
         presets.push({
-            id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+            id: newId,
             name: trimmed,
             layout: state.splitMode ? state.splitLayout : '2col',
             memberIds
         })
         store?.set?.('splitPresets', presets)
         _pushSplitPresetsToCloud()
+        // The split that is open right now IS the saved one: from this moment it is locked like any opened preset.
+        if (state.splitMode && memberIds.length >= 2) {
+            state.splitPresetId = newId
+            _persistPresetLock()
+        }
         renderPresetsList()
         return true
     }
@@ -1064,6 +1087,7 @@ function createSplitApi ({
     function applyPreset (id) {
         const preset = getPresets().find(p => p.id === id)
         if (!preset) return false
+        state.splitPresetId = null
 
         const existingIds = preset.memberIds.filter(mid => state.activeMessengers.some(m => m.id === mid))
         if (existingIds.length === 0) return false
@@ -1152,10 +1176,66 @@ function createSplitApi ({
         }
         state.splitMode = wasSplitMode
 
-        if (preset.layout === '2col') {
-            return enterSplitMode(existingIds[1])
+        const opened = preset.layout === '2col'
+            ? enterSplitMode(existingIds[1])
+            : enterGridSplitMode(preset.layout, existingIds)
+        if (opened) {
+            if (preset.layout === '2col') setSplitFocus('left') // a preset opens with the focus on its first pane
+            state.splitPresetId = preset.id
+            _persistPresetLock()
+            hideLayoutPicker()
+            renderPinnedPresets()
         }
-        return enterGridSplitMode(preset.layout, existingIds)
+        return opened
+    }
+
+    // Is this messenger shown by the open preset? Used by renderer.js's switchTab.
+    function isPresetMember (messengerId) {
+        return _isLocked() && getVisibleMessengerIds(state).includes(messengerId)
+    }
+
+    // A click on a messenger that is already in the preset only moves the focus to its pane.
+    function focusPresetMember (messengerId) {
+        if (state.splitLayout === '2col') {
+            setSplitFocus(messengerId === state.activeTabId ? 'left' : 'right')
+        } else {
+            const zone = messengerId === state.activeTabId ? 0 : state.splitZoneIds.indexOf(messengerId)
+            if (zone >= 0) setGridZoneFocus(zone)
+        }
+        document.getElementById(`webview-${messengerId}`)?.focus?.()
+    }
+
+    const _esc = (v) => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;')
+
+    // ── Закрепление пресета в верхней панели ────────────────────────────────
+    function togglePinPreset (id) {
+        const presets = getPresets()
+        const preset = presets.find(p => p.id === id)
+        if (!preset) return
+        preset.pinned = !preset.pinned
+        store?.set?.('splitPresets', presets)
+        _pushSplitPresetsToCloud()
+        renderPresetsList()
+    }
+
+    function renderPinnedPresets () {
+        const host = document.getElementById('pinnedPresets')
+        if (!host) return
+        const all = getPresets()
+        const pinned = all.map((p, idx) => ({ p, num: idx + 1 })).filter(x => x.p.pinned)
+        // visible together with the split button itself (it is hidden when split screens are not available)
+        const splitAvailable = !splitBtn || splitBtn.style.display !== 'none'
+        host.style.display = pinned.length && splitAvailable ? 'inline-flex' : 'none'
+        host.innerHTML = pinned.map(({ p, num }) => {
+            const active = state.splitMode && state.splitPresetId === p.id
+            return `<button type="button" class="pinned-preset-btn${active ? ' active' : ''}" data-id="${_esc(p.id)}" title="${_esc(p.name)}"><span class="pinned-preset-num">${num}</span></button>`
+        }).join('')
+        host.querySelectorAll('.pinned-preset-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (state.splitMode && state.splitPresetId === btn.dataset.id) { exitSplitMode(); return }
+                applyPreset(btn.dataset.id)
+            })
+        })
     }
 
     function renderPresetsList () {
@@ -1166,9 +1246,15 @@ function createSplitApi ({
         const presets = getPresets()
         titleEl && (titleEl.style.display = presets.length ? '' : 'none')
 
-        listEl.innerHTML = presets.map(p => `
-            <div class="split-preset-row" data-id="${p.id}" title="Применить пресет «${p.name.replace(/"/g, '&quot;')}»">
+        listEl.innerHTML = presets.map((p, idx) => `
+            <div class="split-preset-row${p.pinned ? ' pinned' : ''}" data-id="${p.id}" title="Применить пресет «${p.name.replace(/"/g, '&quot;')}»">
+                <span class="split-preset-row-num">${idx + 1}</span>
                 <span class="split-preset-row-name">${p.name.replace(/</g, '&lt;')}</span>
+                <button type="button" class="split-preset-row-pin${p.pinned ? ' on' : ''}" data-pin-id="${p.id}" title="${p.pinned ? 'Открепить из верхней панели' : 'Закрепить в верхней панели'}">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="${p.pinned ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 17v5"/><path d="M9 3h6l-1 6 3 3v2H7v-2l3-3-1-6Z"/>
+                    </svg>
+                </button>
                 <button type="button" class="split-preset-row-rename" data-rename-id="${p.id}" title="Переименовать пресет">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/>
@@ -1181,14 +1267,22 @@ function createSplitApi ({
                 </button>
             </div>
         `).join('')
+        renderPinnedPresets()
 
         listEl.querySelectorAll('.split-preset-row').forEach(row => {
             row.addEventListener('click', (e) => {
                 if (e.target.closest('.split-preset-row-delete')) return
                 if (e.target.closest('.split-preset-row-rename')) return
+                if (e.target.closest('.split-preset-row-pin')) return
                 if (row.classList.contains('renaming')) return
                 hideLayoutPicker()
                 applyPreset(row.dataset.id)
+            })
+        })
+        listEl.querySelectorAll('.split-preset-row-pin').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation()
+                togglePinPreset(btn.dataset.pinId)
             })
         })
         listEl.querySelectorAll('.split-preset-row-delete').forEach(btn => {
@@ -1249,6 +1343,11 @@ function createSplitApi ({
     // the button was clicked), while every other save/rename flow in this
     // codebase uses its own inline UI or modal, never a native dialog.
     // Swapped for a small inline input inside this same popup.
+    // the split button appears/disappears by itself: keep the pinned presets in step
+    if (splitBtn && typeof MutationObserver === 'function') {
+        new MutationObserver(() => renderPinnedPresets()).observe(splitBtn, { attributes: true, attributeFilter: ['style'] })
+    }
+
     const savePresetBtn   = document.querySelector('.split-save-preset-btn')
     const savePresetForm  = document.querySelector('.split-save-preset-form')
     const savePresetInput = document.querySelector('.split-save-preset-input')
@@ -1325,7 +1424,7 @@ function createSplitApi ({
         setSplitFocus('right')
 
         // Сохраняем состояние в store
-        store?.set?.('split.saved', { splitTabId: id, splitLeftPct: state.splitLeftPct || 50 })
+        store?.set?.('split.saved', { splitTabId: id, splitLeftPct: state.splitLeftPct || 50, presetId: state.splitPresetId || null })
     }
 
     // ── Callbacks from renderer.js ────────────────────────────────────────────
@@ -1418,7 +1517,7 @@ function createSplitApi ({
         }
         // Обновляем сохранённый pct после перетаскивания
         if (state.splitMode && state.splitTabId) {
-            store?.set?.('split.saved', { splitTabId: state.splitTabId, splitLeftPct: state.splitLeftPct || 50 })
+            store?.set?.('split.saved', { splitTabId: state.splitTabId, splitLeftPct: state.splitLeftPct || 50, presetId: state.splitPresetId || null })
         }
         // BUGFIX ("позиция разделителя не запоминается при выходе и входе"):
         // 'split.saved' (above) — только для восстановления АКТИВНОЙ сессии
@@ -1559,6 +1658,10 @@ function createSplitApi ({
         onMessengerRemoved,
         onWebviewFocus,
         getPresets,
+        isPresetMember,
+        focusPresetMember,
+        togglePinPreset,
+        renderPinnedPresets,
         saveCurrentAsPreset,
         applyPreset,
         deletePreset

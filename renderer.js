@@ -12,6 +12,7 @@
 const state = require('./renderer/state')
 const { tGet, applyI18n, initI18n, setCurrentLanguage, getCurrentLanguage } = require('./renderer/i18n')
 const { getCurrentLocale, getUserInitial, hashPassword } = require('./renderer/helpers')
+const { getFocusedMessengerId } = require('./renderer/focused-messenger')
 const { popularMessengers, syntaxAiPromo, folderIcons, PAGE_SIZE, isChatWidgetMessenger } = require('./renderer/constants')
 const { createCloudStore, createCloudApi } = require('./renderer/cloud')
 const { createSoundsApi } = require('./renderer/sounds')
@@ -1571,9 +1572,7 @@ function applyZoomWhenReady(webview, zoomLevel) {
     // ==============================
 
     // ── Tab time tracker state ────────────────────────────────────
-    let _tkPrevId    = null   // previous messenger id
-    let _tkPrevName  = null   // previous messenger name
-    let _tkStart     = 0      // when current tab became active
+    let _tkLastService = undefined // the messenger last reported to the usage tracker
 
 // ── Split API (initialised below, after DOM refs are ready) ───
     let splitApi = null
@@ -1585,6 +1584,12 @@ let wakeTabRef = null
 
 function switchTab(id) {
     if (state.sleepingTabs.has(id) && typeof wakeTabRef === 'function') wakeTabRef(id)
+    // A split opened from a saved preset is monolithic: a click on one of its messengers only moves the focus to that
+    // pane; a click on any other messenger closes the split and opens that messenger in the full window.
+    if (state.splitMode && state.splitPresetId) {
+        if (splitApi?.isPresetMember?.(id)) { splitApi.focusPresetMember(id); return }
+        splitApi?.exitSplitMode?.()
+    }
     // In split mode route to the focused pane
     if (state.splitMode) {
         if (state.splitLayout !== '2col') {
@@ -1602,20 +1607,6 @@ function switchTab(id) {
             return
         }
     }
-
-    // Track time spent on previous tab
-    if (_tkPrevId && _tkPrevName && _tkStart > 0) {
-        const secs = Math.floor((Date.now() - _tkStart) / 1000)
-        if (secs > 0) {
-            invokeIpc('tracker:service-time', { service: _tkPrevName, serviceTime: secs })
-                .catch(() => {})
-        }
-    }
-    // Update tracker state for new tab
-    const _nextMessenger = state.activeMessengers.find(m => m.id === id)
-    _tkPrevId   = id
-    _tkPrevName = _nextMessenger?.name || null
-    _tkStart    = Date.now()
 
     state.activeTabId = id
     // BUGFIX ("не сохраняется выбранный мессенджер"): state.activeTabId only
@@ -4073,17 +4064,18 @@ function applyTabZoom(level) {
         if (cloudStore.isLoggedIn()) cloudSyncPush()
     }, 5 * 60 * 1000)
 
-    // ── Periodic tracker heartbeat: flush current tab's time ──────
+    // ── Usage tracker: tell the main process WHICH messenger has the focus ──────
+    // The main process owns the clock: it adds a second to the messenger only while the app window itself has focus
+    // (see main/services/tracker.js). Here we only say which messenger that is: the active tab, or in a split the pane
+    // that has focus — never a tab that is merely open in the background.
     setInterval(() => {
-        if (_tkPrevId && _tkPrevName && _tkStart > 0) {
-            const secs = Math.floor((Date.now() - _tkStart) / 1000)
-            if (secs > 0) {
-                invokeIpc('tracker:service-time', { service: _tkPrevName, serviceTime: secs })
-                    .catch(() => {})
-                _tkStart = Date.now() // reset so we don't double-count
-            }
+        const focusedId = getFocusedMessengerId(state)
+        const name = state.activeMessengers.find(m => m.id === focusedId)?.name || null
+        if (name !== _tkLastService) {
+            _tkLastService = name
+            invokeIpc('tracker:set-active-service', name).catch(() => {})
         }
-    }, 5 * 60 * 1000)
+    }, 1000)
 
     setInterval(updateStatusBar, 30000)
     window.addEventListener('online', updateStatusBar)
@@ -4129,6 +4121,11 @@ function applyTabZoom(level) {
             }
         }
     }
+
+    if (state.splitMode && _savedSplit?.presetId && splitApi.getPresets().some(p => p.id === _savedSplit.presetId)) {
+        state.splitPresetId = _savedSplit.presetId
+    }
+    splitApi.renderPinnedPresets()
 
     // Обновляем уведомления после полной загрузки (на случай если при init токена ещё не было)
     if (cloudStore.isLoggedIn()) {

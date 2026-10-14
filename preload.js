@@ -250,6 +250,7 @@ const validInvokeChannels = new Set([
     'tracker:msg-sent',
     'tracker:notif',
     'tracker:service-time',
+    'tracker:set-active-service',
     'vpn-connect',
     'vpn-connect-saved',
     'vpn-delete-config',

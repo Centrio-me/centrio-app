@@ -420,6 +420,16 @@ function registerApiIpc() {
         }
     })
 
+    // Renderer says which messenger has the focus; the clock itself runs in main/services/tracker.js
+    ipcMain.handle('tracker:set-active-service', async (event, name) => {
+        try {
+            tracker.setActiveService(typeof name === 'string' ? name : null)
+            return { success: true }
+        } catch {
+            return { success: false }
+        }
+    })
+
     // Renderer reports message sent
     ipcMain.handle('tracker:msg-sent', async () => {
         tracker.addMsgSent(1)
