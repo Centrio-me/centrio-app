@@ -346,6 +346,8 @@ module.exports = {
         linkPlaceholder: "Another service — paste a link",
         linkBtn: "Add",
         teamWait: "Messengers and folders from your manager will appear here in a few seconds.",
+        teamEmpty: "Your manager has not assigned any messengers to you yet. They will appear here as soon as they do.",
+        teamRetry: "Refresh",
         addBtn:   'Add messenger',
         loginBtn: 'Sign in to account',
         f1title:  'All messengers',

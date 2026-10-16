@@ -4,7 +4,11 @@
 // first frame — before the messenger list has loaded.
 const WELCOME_SERVICES = ['Telegram', 'WhatsApp', 'VK', 'MAX', 'Viber', 'Gmail', 'Discord', 'Slack']
 
-function bindWelcomeScreen({ state, cloudStore, popularMessengers, addMessenger, openModal, onSearchInput, onSearchEnter, tGet }) {
+// How long an employee waits for the manager's messengers before the screen says there are none (and offers a refresh).
+const TEAM_WAIT_MS = 12000
+const TEAM_RETRY_MS = 20000
+
+function bindWelcomeScreen({ state, cloudStore, popularMessengers, addMessenger, openModal, onSearchInput, onSearchEnter, tGet, retryTeamSync }) {
     const screen = document.getElementById('welcomeScreen')
     const grid = document.getElementById('welcomeGrid')
     if (!screen || !grid) return
@@ -44,7 +48,46 @@ function bindWelcomeScreen({ state, cloudStore, popularMessengers, addMessenger,
         }
         const locked = isLocked()
         screen.classList.toggle('wl-locked', locked)
+        watchTeamWait(locked && screen.style.display !== 'none')
     }
+
+    // While an employee sees this screen: ask for the assignments again now and then, and after a while replace
+    // "will appear in a few seconds" with the honest "nothing assigned yet" plus a refresh button.
+    const waitEl = document.getElementById('welcomeWait')
+    const retryBtn = document.getElementById('welcomeRetryBtn')
+    let waitTimer = null
+    let retryTimer = null
+
+    function setWaitText(stale) {
+        screen.classList.toggle('wl-stale', stale)
+        if (!waitEl) return
+        const key = stale ? 'welcome.teamEmpty' : 'welcome.teamWait'
+        waitEl.setAttribute('data-i18n', key)
+        waitEl.textContent = tGet(key)
+    }
+
+    function askTeamAgain() {
+        try { Promise.resolve(retryTeamSync?.()).catch(() => {}) } catch {}
+    }
+
+    function watchTeamWait(active) {
+        if (!active) {
+            clearTimeout(waitTimer); clearInterval(retryTimer)
+            waitTimer = null; retryTimer = null
+            setWaitText(false)
+            return
+        }
+        if (waitTimer || retryTimer) return
+        waitTimer = setTimeout(() => setWaitText(true), TEAM_WAIT_MS)
+        retryTimer = setInterval(askTeamAgain, TEAM_RETRY_MS)
+    }
+
+    retryBtn?.addEventListener('click', () => {
+        setWaitText(false)
+        askTeamAgain()
+        clearTimeout(waitTimer)
+        waitTimer = setTimeout(() => setWaitText(true), TEAM_WAIT_MS)
+    })
 
     grid.addEventListener('click', (e) => {
         const tile = e.target.closest('.wl-tile')

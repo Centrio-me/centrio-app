@@ -335,6 +335,8 @@ module.exports = {
         linkPlaceholder: "其他服务——粘贴链接",
         linkBtn: "添加",
         teamWait: "主管分配的通讯软件和文件夹将在几秒钟内出现在这里。",
+        teamEmpty: "主管暂未为您分配通讯软件，分配后会立即显示在这里。",
+        teamRetry: "刷新",
         addBtn:   '添加应用',
         loginBtn: '登录账户',
         f1title:  '所有通讯工具',

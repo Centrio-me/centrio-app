@@ -82,7 +82,10 @@ function createSplitApi ({
     // any local preset add/delete not also pushed to the cloud got reverted
     // on the next launch. Optional so this file still works without cloud.
     cloudSyncPush,
-    isCloudLoggedIn
+    isCloudLoggedIn,
+    // Zoom of one pane (webview, level) and "the focused pane changed, refresh the zoom shown/used by Ctrl+/-".
+    applyPaneZoom,
+    syncZoomState
 }) {
     const splitHandle     = document.getElementById('splitHandle')
     const splitPicker     = document.getElementById('splitPicker')
@@ -100,6 +103,81 @@ function createSplitApi ({
     function _persistPresetLock () {
         const saved = store?.get?.('split.saved', null) || {}
         store?.set?.('split.saved', { ...saved, presetId: state.splitPresetId || null })
+    }
+
+    // ── Per-preset look: divider position and zoom of each pane live in the preset itself ──
+    const _validPct = (v) => typeof v === 'number' && v >= 15 && v <= 85
+    const _prefPct  = (key) => { const v = store?.get?.(key, null); return _validPct(v) ? v : 50 }
+
+    // Divider positions of manual splits are the global preferences; presets bring their own and put them back on exit.
+    function _resetPctsToPrefs () {
+        state.splitLeftPct = _prefPct('splitLeftPctPref')
+        state.gridRowPct   = _prefPct('gridRowPctPref')
+        state.gridSidePct  = _prefPct('gridSidePctPref')
+    }
+
+    function _openPreset () {
+        return _isLocked() ? getPresets().find(p => p.id === state.splitPresetId) || null : null
+    }
+
+    let _cloudPushTimer = null
+    function _updateOpenPreset (mutate) {
+        const presets = getPresets()
+        const preset = presets.find(p => p.id === state.splitPresetId)
+        if (!preset) return false
+        mutate(preset)
+        store?.set?.('splitPresets', presets)
+        clearTimeout(_cloudPushTimer)
+        _cloudPushTimer = setTimeout(_pushSplitPresetsToCloud, 1500)
+        return true
+    }
+
+    // Called when a divider drag ends. True = it belonged to the open preset (so the global preference stays untouched).
+    function _savePresetDividers () {
+        if (!_isLocked()) return false
+        return _updateOpenPreset(p => {
+            p.leftPct = state.splitLeftPct || 50
+            p.rowPct  = state.gridRowPct || 50
+            p.sidePct = state.gridSidePct || 50
+        })
+    }
+
+    function getPresetZoom (messengerId) {
+        const z = _openPreset()?.zooms?.[messengerId]
+        return typeof z === 'number' ? z : null
+    }
+
+    function setPresetZoom (messengerId, level) {
+        if (!_isLocked() || !messengerId) return false
+        return _updateOpenPreset(p => { p.zooms = { ...(p.zooms || {}), [messengerId]: level } })
+    }
+
+    function _loadPresetDividers (preset) {
+        state.splitLeftPct = _validPct(preset.leftPct) ? preset.leftPct : _prefPct('splitLeftPctPref')
+        state.gridRowPct   = _validPct(preset.rowPct)  ? preset.rowPct  : _prefPct('gridRowPctPref')
+        state.gridSidePct  = _validPct(preset.sidePct) ? preset.sidePct : _prefPct('gridSidePctPref')
+    }
+
+    function _applyPresetZooms (preset) {
+        if (typeof applyPaneZoom !== 'function') return
+        getVisibleMessengerIds(state).forEach(id => {
+            const wv = document.getElementById(`webview-${id}`)
+            if (!wv) return
+            const own = state.activeMessengers.find(m => m.id === id)?.zoomLevel
+            const level = typeof preset.zooms?.[id] === 'number' ? preset.zooms[id] : (typeof own === 'number' ? own : 1)
+            applyPaneZoom(wv, level)
+        })
+        if (typeof syncZoomState === 'function') syncZoomState()
+    }
+
+    // After a restart the preset is re-opened from the saved split: put its dividers and zooms back.
+    function restorePresetLook () {
+        const preset = _openPreset()
+        if (!preset) return
+        _loadPresetDividers(preset)
+        if (state.splitLayout === '2col') applyLeft(state.splitLeftPct)
+        else _reapplyGridLayout()
+        _applyPresetZooms(preset)
     }
 
     function getGridLayout (layout) {
@@ -457,6 +535,7 @@ function createSplitApi ({
         state.splitZoneFocus = zoneIndex
         renderGridZones()
         _syncActiveIndicatorForGrid(zoneIndex)
+        if (typeof syncZoomState === 'function') syncZoomState()
     }
 
     function _persistGridSplit () {
@@ -832,6 +911,7 @@ function createSplitApi ({
         state.splitFocus = side
         contentArea.dataset.splitFocus = side
         if (state.splitLayout === '2col') _syncActiveIndicatorFor2col(side)
+        if (typeof syncZoomState === 'function') syncZoomState()
     }
 
     // ── Picker ────────────────────────────────────────────────────────────────
@@ -966,6 +1046,7 @@ function createSplitApi ({
 
         state.splitMode       = false
         state.splitPresetId   = null
+        _resetPctsToPrefs()
         state.splitTabId      = null
         state.splitFocus      = 'left'
         state.splitLayout     = '2col'
@@ -1035,12 +1116,25 @@ function createSplitApi ({
 
         const presets = getPresets()
         const newId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
-        presets.push({
+        const entry = {
             id: newId,
             name: trimmed,
             layout: state.splitMode ? state.splitLayout : '2col',
             memberIds
-        })
+        }
+        if (state.splitMode && memberIds.length >= 2) {
+            // The preset remembers how the split looks right now: dividers and the zoom of each pane.
+            entry.leftPct = state.splitLeftPct || 50
+            entry.rowPct  = state.gridRowPct || 50
+            entry.sidePct = state.gridSidePct || 50
+            const zooms = {}
+            memberIds.forEach(id => {
+                const z = state.activeMessengers.find(m => m.id === id)?.zoomLevel
+                if (typeof z === 'number' && z !== 1) zooms[id] = z
+            })
+            entry.zooms = zooms
+        }
+        presets.push(entry)
         store?.set?.('splitPresets', presets)
         _pushSplitPresetsToCloud()
         // The split that is open right now IS the saved one: from this moment it is locked like any opened preset.
@@ -1145,6 +1239,7 @@ function createSplitApi ({
         // directly, BEFORE switchTab() can ever show it — so there is no
         // wrong size to ever get latched in. enterSplitMode()/
         // enterGridSplitMode() then just reapply the same numbers (no-op).
+        _loadPresetDividers(preset)
         const primaryWvEl = document.getElementById(`webview-${primaryId}`)
         if (primaryWvEl) {
             if (preset.layout === '2col') {
@@ -1185,6 +1280,7 @@ function createSplitApi ({
             _persistPresetLock()
             hideLayoutPicker()
             renderPinnedPresets()
+            _applyPresetZooms(preset)
         }
         return opened
     }
@@ -1527,7 +1623,7 @@ function createSplitApi ({
         // настройка: сохраняем её всегда, независимо от того, выходят потом
         // из сплита или нет, и подхватываем как дефолт при следующем входе
         // (см. чтение ниже, сразу после объявления createSplitApi).
-        store?.set?.('splitLeftPctPref', state.splitLeftPct || 50)
+        if (!_savePresetDividers()) store?.set?.('splitLeftPctPref', state.splitLeftPct || 50)
     })
 
     // ── Grid drag resize (2top1bottom / 1top2bottom row+side dividers) ─────────
@@ -1584,7 +1680,7 @@ function createSplitApi ({
             document.body.style.cursor     = ''
             document.body.style.userSelect = ''
             _restoreWebviewPointerEvents()
-            store?.set?.('gridRowPctPref', state.gridRowPct || 50)
+            if (!_savePresetDividers()) store?.set?.('gridRowPctPref', state.gridRowPct || 50)
         }
         if (_gridSideDragging) {
             _gridSideDragging = false
@@ -1592,7 +1688,7 @@ function createSplitApi ({
             document.body.style.cursor     = ''
             document.body.style.userSelect = ''
             _restoreWebviewPointerEvents()
-            store?.set?.('gridSidePctPref', state.gridSidePct || 50)
+            if (!_savePresetDividers()) store?.set?.('gridSidePctPref', state.gridSidePct || 50)
         }
     })
 
@@ -1658,6 +1754,9 @@ function createSplitApi ({
         onMessengerRemoved,
         onWebviewFocus,
         getPresets,
+        getPresetZoom,
+        setPresetZoom,
+        restorePresetLook,
         isPresetMember,
         focusPresetMember,
         togglePinPreset,

@@ -1762,17 +1762,34 @@ function switchTab(id) {
     // ==============================
     // ИЗМЕНЕНИЕ TAB ZOOM
     // ==============================
+// Zoom of the messenger in focus (in a split: the pane in focus). A saved split keeps its own zoom per pane.
+function focusedZoomLevel() {
+    const id = getFocusedMessengerId(state)
+    const presetZoom = splitApi?.getPresetZoom?.(id)
+    if (typeof presetZoom === 'number') return presetZoom
+    const own = state.activeMessengers.find(m => m.id === id)?.zoomLevel
+    return typeof own === 'number' ? own : (store.get('tabZoomLevel', 1) || 1)
+}
+
+function syncZoomState() {
+    state.tabZoomLevel = focusedZoomLevel()
+    updateZoomStatus()
+}
+
 function applyTabZoom(level) {
     const nextZoom = Math.max(0.25, Math.min(5, level))
     state.tabZoomLevel = nextZoom
-    store.set('tabZoomLevel', nextZoom)
 
-    const activeMessenger = state.activeMessengers.find(m => m.id === state.activeTabId)
-    if (activeMessenger) {
-        activeMessenger.zoomLevel = nextZoom
+    const focusedId = getFocusedMessengerId(state)
+    if (!splitApi?.setPresetZoom?.(focusedId, nextZoom)) {
+        store.set('tabZoomLevel', nextZoom)
+        const focusedMessenger = state.activeMessengers.find(m => m.id === focusedId)
+        if (focusedMessenger) {
+            focusedMessenger.zoomLevel = nextZoom
+        }
     }
 
-    const webview = getActiveWebview()
+    const webview = focusedId ? document.getElementById(`webview-${focusedId}`) : getActiveWebview()
     if (webview) {
         applyZoomWhenReady(webview, nextZoom)
     }
@@ -1904,7 +1921,9 @@ function applyTabZoom(level) {
         store,
         switchTab,
         cloudSyncPush,
-        isCloudLoggedIn: () => cloudStore.isLoggedIn()
+        isCloudLoggedIn: () => cloudStore.isLoggedIn(),
+        applyPaneZoom: applyZoomWhenReady,
+        syncZoomState
     })
 
     // Tab manager: put a tab to sleep (unload its page) or wake it up again.
@@ -1936,6 +1955,7 @@ function applyTabZoom(level) {
 
     // Expose focus-tracker for webview-tabs-bind.js
     window.__centrioSplitFocus = (webview) => splitApi.onWebviewFocus(webview)
+    window.__centrioPresetZoom = (id) => splitApi.getPresetZoom(id)
 
     // ==============================
     // ADD MODAL UI API
@@ -2768,10 +2788,8 @@ function applyTabZoom(level) {
             resetMessengerNotifyState(newMessenger.id, 0)
         }
 
-        if (!state.activeTabId) {
-            welcomeScreen.style.display = 'none'
-            switchTab(newMessenger.id)
-        }
+        welcomeScreen.style.display = 'none'
+        if (!state.activeTabId) switchTab(newMessenger.id)
         tabsContent.style.pointerEvents = 'auto'
 
         updateStatusBar()
@@ -3242,7 +3260,10 @@ function applyTabZoom(level) {
 
         updateMuteAllBtn()
 
-        if (savedMessengers.length === 0 && savedFolders.length === 0) {
+        // An employee's messengers from the team owner can arrive (via the team poll) before this point; they are not
+        // in the local lists, so "nothing saved" alone must not bring the welcome screen back over them.
+        const hasTeamContent = state.activeMessengers.length > 0 || state.folders.length > 0
+        if (savedMessengers.length === 0 && savedFolders.length === 0 && !hasTeamContent) {
             welcomeScreen.style.display = 'flex'
             tabsContent.style.pointerEvents = 'none'
             updateStatusBar()
@@ -3316,6 +3337,8 @@ function applyTabZoom(level) {
                 ? lastActiveId
                 : savedMessengers[0].id
             switchTab(tabToOpen)
+        } else if (state.activeMessengers.length > 0 && !state.activeTabId) {
+            switchTab(state.activeMessengers[0].id)
         }
 
         loadOrder()
@@ -3548,7 +3571,7 @@ function applyTabZoom(level) {
         freeMessengerLimit: FREE_MESSENGER_LIMIT
     })
 
-    bindWelcomeScreen({ state, cloudStore, popularMessengers, addMessenger, openModal, onSearchInput, onSearchEnter, tGet })
+    bindWelcomeScreen({ state, cloudStore, popularMessengers, addMessenger, openModal, onSearchInput, onSearchEnter, tGet, retryTeamSync: () => orgTeamApi.tick() })
 
     ipcRenderer.on('shortcut-action', (payload) => document.dispatchEvent(new CustomEvent('centrio-shortcut', { detail: payload })))
     bindSplitFocus({ state, getSettings: () => store.get('settings', {}) || {} })
@@ -4124,6 +4147,7 @@ function applyTabZoom(level) {
 
     if (state.splitMode && _savedSplit?.presetId && splitApi.getPresets().some(p => p.id === _savedSplit.presetId)) {
         state.splitPresetId = _savedSplit.presetId
+        splitApi.restorePresetLook()
     }
     splitApi.renderPinnedPresets()
 

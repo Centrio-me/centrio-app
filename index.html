@@ -974,7 +974,8 @@
                 <h1 class="wl-title"><span data-i18n="welcome.title"></span> <i data-i18n="welcome.titleAccent"></i></h1>
                 <p class="wl-lead" data-i18n="welcome.lead"></p>
                 <div class="wl-note"><b data-i18n="welcome.privacyTitle"></b> <span data-i18n="welcome.privacy"></span></div>
-                <div class="wl-wait" data-i18n="welcome.teamWait"></div>
+                <div class="wl-wait" id="welcomeWait" data-i18n="welcome.teamWait"></div>
+                <button type="button" class="wl-retry" id="welcomeRetryBtn" data-i18n="welcome.teamRetry"></button>
             </section>
             <section class="wl-pick">
                 <div class="wl-grid" id="welcomeGrid"></div>
@@ -1128,6 +1129,14 @@
         <button class="changelog-popup-close" id="changelogPopupClose">✕</button>
     </div>
     <div class="changelog-popup-body">
+        <div class="changelog-entry">
+            <div class="changelog-version">v3.2.1</div>
+            <ul class="changelog-list">
+                <li>У каждого сохранённого сплита теперь свои положение разделителя и масштаб: настройка одного сплита не меняет остальные и сохраняется после перезапуска</li>
+                <li>Масштаб в сплите (Ctrl+ и Ctrl−) меняется и запоминается для той панели, в которой вы работаете</li>
+                <li>У сотрудника команды экран «Добавьте свой первый мессенджер» больше не остаётся поверх мессенджеров, которые назначил руководитель. Если руководитель ещё ничего не назначил, экран честно об этом сообщает и предлагает обновить</li>
+            </ul>
+        </div>
         <div class="changelog-entry">
             <div class="changelog-version">v3.2.0</div>
             <ul class="changelog-list">
@@ -3222,36 +3231,36 @@
                 <div class="lock-pin-dot" id="lockDot3"></div>
             </div>
             <input type="password" id="lockInput" class="lock-input-hidden" maxlength="4" inputmode="numeric" pattern="[0-9]*" autocomplete="off">
-            <div class="lock-numpad">
-            <button class="lock-key" data-digit="1">1</button>
-            <button class="lock-key" data-digit="2">2</button>
-            <button class="lock-key" data-digit="3">3</button>
-            <button class="lock-key" data-digit="4">4</button>
-            <button class="lock-key" data-digit="5">5</button>
-            <button class="lock-key" data-digit="6">6</button>
-            <button class="lock-key" data-digit="7">7</button>
-            <button class="lock-key" data-digit="8">8</button>
-            <button class="lock-key" data-digit="9">9</button>
-            <!-- BUGFIX (2026-09-21, "иконка удалить символ из пин кода - кривая.
-                 Нужно сделать ровную" — live user report): the old backspace-key
-                 shape (a pointed-left outline) with an X drawn inside it read as
-                 lopsided at this size — the outline itself isn't symmetric left
-                 -to-right, so it never looks "even" no matter the stroke tuning.
-                 Swapped for the same plain, perfectly symmetric X already used
-                 for "remove" elsewhere in the app (see context-menus.js's
-                 folder-pick "remove from folder" icon) — unambiguous as "clear"
-                 and trivially centered. -->
-            <button class="lock-key lock-key-clear" id="lockClearBtn">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                    <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                </svg>
-            </button>
-            <button class="lock-key" data-digit="0">0</button>
-            <button class="lock-key lock-key-enter" id="lockSubmitBtn">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                    <path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-            </button>
+            <div class="lock-numpad">
+            <button class="lock-key" data-digit="1">1</button>
+            <button class="lock-key" data-digit="2">2</button>
+            <button class="lock-key" data-digit="3">3</button>
+            <button class="lock-key" data-digit="4">4</button>
+            <button class="lock-key" data-digit="5">5</button>
+            <button class="lock-key" data-digit="6">6</button>
+            <button class="lock-key" data-digit="7">7</button>
+            <button class="lock-key" data-digit="8">8</button>
+            <button class="lock-key" data-digit="9">9</button>
+            <!-- BUGFIX (2026-09-21, "иконка удалить символ из пин кода - кривая.
+                 Нужно сделать ровную" — live user report): the old backspace-key
+                 shape (a pointed-left outline) with an X drawn inside it read as
+                 lopsided at this size — the outline itself isn't symmetric left
+                 -to-right, so it never looks "even" no matter the stroke tuning.
+                 Swapped for the same plain, perfectly symmetric X already used
+                 for "remove" elsewhere in the app (see context-menus.js's
+                 folder-pick "remove from folder" icon) — unambiguous as "clear"
+                 and trivially centered. -->
+            <button class="lock-key lock-key-clear" id="lockClearBtn">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                    <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+            </button>
+            <button class="lock-key" data-digit="0">0</button>
+            <button class="lock-key lock-key-enter" id="lockSubmitBtn">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                    <path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </button>
         </div>
             <p id="lockError" class="lock-error" style="display:none;" data-i18n="lock.error"></p>
             <div id="lockAttempts" class="lock-attempts"></div>

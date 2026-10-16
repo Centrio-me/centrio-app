@@ -17063,6 +17063,8 @@ body.onb-active #titlebarMenu {
 .wl-note { color: var(--text-secondary); font-size: 12.5px; max-width: 36ch; padding-top: 18px; border-top: 1px solid var(--border); line-height: 1.55; }
 .wl-note b { color: var(--text-primary); font-weight: 600; }
 .wl-wait { display: none; color: var(--text-secondary); font-size: 14px; margin-top: 18px; max-width: 36ch; }
+.wl-retry { display: none; margin-top: 14px; background: var(--text-bright); color: var(--bg-primary); border: 0; border-radius: 11px; padding: 9px 18px; font: inherit; font-size: 13.5px; font-weight: 600; cursor: pointer; }
+#welcomeScreen.wl-locked.wl-stale .wl-retry { display: inline-block; }
 .wl-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
 .wl-tile {
     position: relative; display: flex; flex-direction: column; align-items: center; gap: 10px;

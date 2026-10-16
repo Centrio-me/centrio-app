@@ -335,6 +335,8 @@ module.exports = {
         linkPlaceholder: "Altro servizio — incolla un link",
         linkBtn: "Aggiungi",
         teamWait: "I messenger e le cartelle del tuo responsabile compariranno qui tra pochi secondi.",
+        teamEmpty: "Il tuo responsabile non ti ha ancora assegnato nessun messenger. Compariranno qui non appena lo farà.",
+        teamRetry: "Aggiorna",
         addBtn:   'Aggiungi messenger',
         loginBtn: 'Accedi all\'account',
         f1title:  'Tutti i messenger',

@@ -335,6 +335,8 @@ module.exports = {
         linkPlaceholder: "Anderer Dienst – Link einfügen",
         linkBtn: "Hinzufügen",
         teamWait: "Messenger und Ordner Ihrer Leitung erscheinen hier in wenigen Sekunden.",
+        teamEmpty: "Ihre Leitung hat Ihnen noch keine Messenger zugewiesen. Sie erscheinen hier, sobald das geschieht.",
+        teamRetry: "Aktualisieren",
         addBtn:   'Messenger hinzufügen',
         loginBtn: 'Im Konto anmelden',
         f1title:  'Alle Messenger',

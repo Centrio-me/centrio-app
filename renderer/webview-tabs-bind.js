@@ -1179,9 +1179,13 @@ function createWebviewTabsApi({
         }
 
         const applyInitialZoom = () => {
-            const zoomLevel = typeof messenger.zoomLevel === 'number'
-                ? messenger.zoomLevel
-                : Number(state.tabZoomLevel || 1)
+            // A saved split that is open brings its own zoom for this pane.
+            const presetZoom = window.__centrioPresetZoom?.(messenger.id)
+            const zoomLevel = typeof presetZoom === 'number'
+                ? presetZoom
+                : typeof messenger.zoomLevel === 'number'
+                    ? messenger.zoomLevel
+                    : Number(state.tabZoomLevel || 1)
 
             try {
                 webview.setZoomFactor(zoomLevel)

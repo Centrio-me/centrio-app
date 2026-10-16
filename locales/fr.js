@@ -335,6 +335,8 @@ module.exports = {
         linkPlaceholder: "Autre service — collez un lien",
         linkBtn: "Ajouter",
         teamWait: "Les messageries et dossiers de votre responsable apparaîtront ici dans quelques secondes.",
+        teamEmpty: "Votre responsable ne vous a pas encore attribué de messageries. Elles apparaîtront ici dès que ce sera fait.",
+        teamRetry: "Actualiser",
         addBtn:   'Ajouter un messenger',
         loginBtn: 'Se connecter au compte',
         f1title:  'Tous les messengers',
