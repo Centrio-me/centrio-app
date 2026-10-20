@@ -514,6 +514,7 @@
              см. renderer/split.js _positionGridHandles(). -->
         <div id="splitGridRowHandle" class="split-handle split-handle-row" style="display:none"></div>
         <div id="splitGridSideHandle" class="split-handle split-handle-side" style="display:none"></div>
+        <div id="splitGridSide2Handle" class="split-handle split-handle-side" style="display:none"></div>
         <!-- Split-screen messenger picker (2col: единственная вторая панель) -->
         <div id="splitPicker" class="split-picker" style="display:none">
             <div class="split-picker-inner">
@@ -1129,6 +1130,14 @@
         <button class="changelog-popup-close" id="changelogPopupClose">✕</button>
     </div>
     <div class="changelog-popup-body">
+        <div class="changelog-entry">
+            <div class="changelog-version">v3.2.2</div>
+            <ul class="changelog-list">
+                <li>Границы сплита теперь двигаются во всех раскладках: в трёх колонках (две границы) и в сетке 2×2 (вертикальная и горизонтальная). Раньше это работало только в двойном сплите</li>
+                <li>Двойной щелчок по границе возвращает её на место: на середину, а в трёх колонках на равные трети</li>
+                <li>Положение границ запоминается: у сохранённого сплита своё, у обычного последнее выбранное</li>
+            </ul>
+        </div>
         <div class="changelog-entry">
             <div class="changelog-version">v3.2.1</div>
             <ul class="changelog-list">

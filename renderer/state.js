@@ -58,7 +58,10 @@ const state = {
     // splitLeftPct выше — тот только для 2col). gridRowPct — высота ряда с
     // двумя панелями, gridSidePct — ширина первой панели внутри этого ряда.
     gridRowPct:  50,
-    gridSidePct: 50
+    gridSidePct: 50,
+    // Границы раскладки "3 колонки": правый край первой и второго столбца, в % ширины.
+    gridColA:    33.34,
+    gridColB:    66.67
 }
 
 module.exports = state

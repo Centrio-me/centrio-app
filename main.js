@@ -230,7 +230,7 @@ const ALLOWED_STORE_ROOTS = new Set([
     // return value — so every splitPresets/pref write was dropped on the
     // floor with zero error surfaced anywhere, no matter how many times the
     // save button was clicked or how the renderer-side save flow was fixed.
-    'splitPresets', 'splitLeftPctPref', 'gridRowPctPref', 'gridSidePctPref',
+    'splitPresets', 'splitLeftPctPref', 'gridRowPctPref', 'gridSidePctPref', 'gridColAPref', 'gridColBPref',
     // BUGFIX ("выбранный мессенджер не сохраняется между перезапусками"):
     // switchTab() in renderer.js needs to persist the active tab id so it can
     // be restored on next launch — same disease as the splitPresets bug above

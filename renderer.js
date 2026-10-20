@@ -552,6 +552,8 @@ async function bootstrap() {
         ['splitLeftPctPref', 50],
         ['gridRowPctPref', 50],
         ['gridSidePctPref', 50],
+        ['gridColAPref', 33.34],
+        ['gridColBPref', 66.67],
         // BUGFIX ("выбранный мессенджер не восстанавливался"): last-active
         // tab id, written by switchTab() on every tab switch.
         ['activeTabId', null],

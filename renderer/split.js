@@ -47,10 +47,29 @@ const GRID_LAYOUTS = {
     ]
 }
 
-// Раскладки с двигаемыми границами ('2top1bottom'/'1top2bottom') считаются
-// динамически из state.gridRowPct/gridSidePct вместо статических % выше —
-// см. getGridLayout(). '3col'/'2x2' пока остаются фиксированными.
-function computeRowLayout (layout, rowPct, sidePct) {
+// Все раскладки-сетки считаются динамически из положений границ (state.gridRowPct/
+// gridSidePct, для 3col ещё gridColA/gridColB) — см. getGridLayout(); статическая таблица
+// выше остаётся только как проверка допустимого имени раскладки.
+const DEFAULT_COL_A = 33.34
+const DEFAULT_COL_B = 66.67
+const MIN_COL_GAP = 10 // two column borders never come closer than this, in %
+
+function computeRowLayout (layout, rowPct, sidePct, colA = DEFAULT_COL_A, colB = DEFAULT_COL_B) {
+    if (layout === '3col') {
+        return [
+            { left: 0,    top: 0, width: colA,        height: 100 },
+            { left: colA, top: 0, width: colB - colA, height: 100 },
+            { left: colB, top: 0, width: 100 - colB,  height: 100 }
+        ]
+    }
+    if (layout === '2x2') {
+        return [
+            { left: 0,       top: 0,      width: sidePct,       height: rowPct },
+            { left: sidePct, top: 0,      width: 100 - sidePct, height: rowPct },
+            { left: 0,       top: rowPct, width: sidePct,       height: 100 - rowPct },
+            { left: sidePct, top: rowPct, width: 100 - sidePct, height: 100 - rowPct }
+        ]
+    }
     if (layout === '2top1bottom') {
         return [
             { left: 0,      top: 0,      width: sidePct,       height: rowPct },
@@ -95,6 +114,7 @@ function createSplitApi ({
     const splitExitBtn    = document.getElementById('splitExitBtn')
     const gridRowHandle    = document.getElementById('splitGridRowHandle')
     const gridSideHandle   = document.getElementById('splitGridSideHandle')
+    const gridSide2Handle  = document.getElementById('splitGridSide2Handle')
 
     // A split opened from a saved preset is a locked, monolithic view: its messengers cannot be reassigned and a click on
     // a messenger outside it closes the split (see switchTab in renderer.js). Manual splits stay editable.
@@ -107,13 +127,18 @@ function createSplitApi ({
 
     // ── Per-preset look: divider position and zoom of each pane live in the preset itself ──
     const _validPct = (v) => typeof v === 'number' && v >= 15 && v <= 85
-    const _prefPct  = (key) => { const v = store?.get?.(key, null); return _validPct(v) ? v : 50 }
+    const _prefPct  = (key, fallback = 50) => { const v = store?.get?.(key, null); return _validPct(v) ? v : fallback }
+    const _validCols = (a, b) => _validPct(a) && _validPct(b) && b - a >= MIN_COL_GAP
 
     // Divider positions of manual splits are the global preferences; presets bring their own and put them back on exit.
     function _resetPctsToPrefs () {
         state.splitLeftPct = _prefPct('splitLeftPctPref')
         state.gridRowPct   = _prefPct('gridRowPctPref')
         state.gridSidePct  = _prefPct('gridSidePctPref')
+        const colA = _prefPct('gridColAPref', DEFAULT_COL_A)
+        const colB = _prefPct('gridColBPref', DEFAULT_COL_B)
+        state.gridColA = _validCols(colA, colB) ? colA : DEFAULT_COL_A
+        state.gridColB = _validCols(colA, colB) ? colB : DEFAULT_COL_B
     }
 
     function _openPreset () {
@@ -139,6 +164,8 @@ function createSplitApi ({
             p.leftPct = state.splitLeftPct || 50
             p.rowPct  = state.gridRowPct || 50
             p.sidePct = state.gridSidePct || 50
+            p.colA    = state.gridColA || DEFAULT_COL_A
+            p.colB    = state.gridColB || DEFAULT_COL_B
         })
     }
 
@@ -156,6 +183,9 @@ function createSplitApi ({
         state.splitLeftPct = _validPct(preset.leftPct) ? preset.leftPct : _prefPct('splitLeftPctPref')
         state.gridRowPct   = _validPct(preset.rowPct)  ? preset.rowPct  : _prefPct('gridRowPctPref')
         state.gridSidePct  = _validPct(preset.sidePct) ? preset.sidePct : _prefPct('gridSidePctPref')
+        const colsOk = _validCols(preset.colA, preset.colB)
+        state.gridColA = colsOk ? preset.colA : _prefPct('gridColAPref', DEFAULT_COL_A)
+        state.gridColB = colsOk ? preset.colB : _prefPct('gridColBPref', DEFAULT_COL_B)
     }
 
     function _applyPresetZooms (preset) {
@@ -181,7 +211,7 @@ function createSplitApi ({
     }
 
     function getGridLayout (layout) {
-        return computeRowLayout(layout, state.gridRowPct || 50, state.gridSidePct || 50) || GRID_LAYOUTS[layout]
+        return computeRowLayout(layout, state.gridRowPct || 50, state.gridSidePct || 50, state.gridColA || DEFAULT_COL_A, state.gridColB || DEFAULT_COL_B) || GRID_LAYOUTS[layout]
     }
 
     // Восстанавливаем предпочтение позиций границ, как для splitLeftPct ниже.
@@ -189,6 +219,11 @@ function createSplitApi ({
     const _savedSidePct = store?.get?.('gridSidePctPref', null)
     if (typeof _savedRowPct === 'number' && _savedRowPct >= 15 && _savedRowPct <= 85) state.gridRowPct = _savedRowPct
     if (typeof _savedSidePct === 'number' && _savedSidePct >= 15 && _savedSidePct <= 85) state.gridSidePct = _savedSidePct
+    {
+        const a = store?.get?.('gridColAPref', null)
+        const b = store?.get?.('gridColBPref', null)
+        if (_validCols(a, b)) { state.gridColA = a; state.gridColB = b }
+    }
 
     // Дефолт позиции разделителя из предыдущей сессии (см. mouseup-обработчик
     // ниже, где splitLeftPctPref сохраняется на каждом перетаскивании) — без
@@ -234,10 +269,9 @@ function createSplitApi ({
     // умел считать динамические прямоугольники из state.gridRowPct/
     // gridSidePct, но ничего никогда не двигало эти значения — не было ни
     // DOM-узлов для горизонтальной/вертикальной границы, ни обработчиков
-    // drag. '3col'/'2x2' остаются статичными (getGridLayout возвращает
-    // GRID_LAYOUTS для них), поэтому эти два хендла показываются только для
-    // раскладок 2top1bottom/1top2bottom — см. _positionGridHandles().
-    ;[gridRowHandle, gridSideHandle].forEach(el => {
+    // drag. Теперь границы есть у всех сеток (3col: две вертикальные, 2x2: крест,
+    // 2top1bottom/1top2bottom: строка + граница ряда) — см. _positionGridHandles().
+    ;[gridRowHandle, gridSideHandle, gridSide2Handle].forEach(el => {
         if (!el) return
         if (el.parentElement !== document.body) document.body.appendChild(el)
         el.style.position = 'fixed'
@@ -246,6 +280,7 @@ function createSplitApi ({
     })
     if (gridRowHandle)  gridRowHandle.classList.add('split-handle', 'split-handle-row')
     if (gridSideHandle) gridSideHandle.classList.add('split-handle', 'split-handle-side')
+    if (gridSide2Handle) gridSide2Handle.classList.add('split-handle', 'split-handle-side')
 
     if (splitPicker && splitPicker.parentElement !== document.body) {
         document.body.appendChild(splitPicker)
@@ -295,7 +330,7 @@ function createSplitApi ({
     // #lockScreen (plain style.display toggle, see renderer/lock.js) —
     // watching both class AND style attributes, not just class, is what
     // actually catches the lock screen case.
-    const _splitFixedEls = [splitHandle, gridRowHandle, gridSideHandle, splitPicker, splitLayoutPicker, splitZones, splitZonePicker].filter(Boolean)
+    const _splitFixedEls = [splitHandle, gridRowHandle, gridSideHandle, gridSide2Handle, splitPicker, splitLayoutPicker, splitZones, splitZonePicker].filter(Boolean)
     const _splitFixedPrevDisplay = new Map()
     function _isOverlayOpen () {
         if (document.querySelector('.modal.show')) return true
@@ -364,22 +399,59 @@ function createSplitApi ({
         splitPicker.style.bottom = 'auto'
     }
 
-    // Только 2top1bottom/1top2bottom двигаются — 3col/2x2 остаются
-    // статичными (getGridLayout возвращает GRID_LAYOUTS для них), поэтому
-    // оба хендла прячутся вне этих двух раскладок.
-    function _isRowGridLayout (layout) {
-        return layout === '2top1bottom' || layout === '1top2bottom'
+    // У всех сеток границы двигаются: 2top1bottom/1top2bottom (строка + граница внутри
+    // ряда), 2x2 (крест: одна вертикальная и одна горизонтальная), 3col (две вертикальные).
+    function _isGridLayout (layout) {
+        return layout === '2top1bottom' || layout === '1top2bottom' || layout === '2x2' || layout === '3col'
+    }
+
+    function _hideGridHandles () {
+        ;[gridRowHandle, gridSideHandle, gridSide2Handle].forEach(el => { if (el) el.style.display = 'none' })
+    }
+
+    function _placeVertical (el, rect, pct, topPct, heightPct) {
+        if (!el) return
+        el.style.display = 'block'
+        el.style.left    = (rect.left + rect.width * (pct / 100) - 3) + 'px'
+        el.style.top     = (rect.top + rect.height * (topPct / 100)) + 'px'
+        el.style.width   = '6px'
+        el.style.height  = (rect.height * (heightPct / 100)) + 'px'
+        el.style.right   = 'auto'
+        el.style.bottom  = 'auto'
+    }
+
+    function _placeHorizontal (el, rect, pct) {
+        if (!el) return
+        el.style.display = 'block'
+        el.style.left    = rect.left + 'px'
+        el.style.top     = (rect.top + rect.height * (pct / 100) - 3) + 'px'
+        el.style.width   = rect.width + 'px'
+        el.style.height  = '6px'
+        el.style.right   = 'auto'
+        el.style.bottom  = 'auto'
     }
 
     function _positionGridHandles () {
         if (!gridRowHandle && !gridSideHandle) return
-        if (!state.splitMode || !_isRowGridLayout(state.splitLayout)) {
-            if (gridRowHandle)  gridRowHandle.style.display  = 'none'
-            if (gridSideHandle) gridSideHandle.style.display = 'none'
+        if (!state.splitMode || !_isGridLayout(state.splitLayout)) {
+            _hideGridHandles()
             return
         }
 
-        const rect    = contentArea.getBoundingClientRect()
+        const rect = contentArea.getBoundingClientRect()
+        if (state.splitLayout === '3col') {
+            if (gridRowHandle) gridRowHandle.style.display = 'none'
+            _placeVertical(gridSideHandle,  rect, state.gridColA || DEFAULT_COL_A, 0, 100)
+            _placeVertical(gridSide2Handle, rect, state.gridColB || DEFAULT_COL_B, 0, 100)
+            return
+        }
+        if (state.splitLayout === '2x2') {
+            if (gridSide2Handle) gridSide2Handle.style.display = 'none'
+            _placeHorizontal(gridRowHandle, rect, state.gridRowPct || 50)
+            _placeVertical(gridSideHandle, rect, state.gridSidePct || 50, 0, 100)
+            return
+        }
+        if (gridSide2Handle) gridSide2Handle.style.display = 'none'
         const rowPct  = state.gridRowPct  || 50
         const sidePct = state.gridSidePct || 50
         // '2top1bottom': rowPct = высота верхнего ряда (граница-строка ниже
@@ -766,9 +838,9 @@ function createSplitApi ({
         // called applyLeft()/_applyWebviewInlineStyles() — logic for
         // resizing a 2-pane split — against a 4-tile 2x2 grid that has no
         // concept of a single left/right pct split, producing exactly the
-        // "не тащится / криво двигается" symptom. '3col'/'2x2' have no
-        // movable divider at all (see _isRowGridLayout), so the fix is
-        // simply to always hide splitHandle when entering ANY grid layout.
+        // "не тащится / криво двигается" symptom. Grid layouts have their own
+        // dividers (see _positionGridHandles), never the 2-pane splitHandle,
+        // so the fix is simply to always hide splitHandle when entering ANY grid layout.
         if (splitHandle) splitHandle.style.display = 'none'
 
         state.splitZoneIds.forEach((id, i) => { if (id) _applyGridZoneWebview(i, id) })
@@ -1060,6 +1132,7 @@ function createSplitApi ({
         if (splitHandle) splitHandle.style.display = 'none'
         if (gridRowHandle)  gridRowHandle.style.display  = 'none'
         if (gridSideHandle) gridSideHandle.style.display = 'none'
+        if (gridSide2Handle) gridSide2Handle.style.display = 'none'
         hideLayoutPicker()
 
         // Сбрасываем сохранённое состояние
@@ -1127,6 +1200,8 @@ function createSplitApi ({
             entry.leftPct = state.splitLeftPct || 50
             entry.rowPct  = state.gridRowPct || 50
             entry.sidePct = state.gridSidePct || 50
+            entry.colA    = state.gridColA || DEFAULT_COL_A
+            entry.colB    = state.gridColB || DEFAULT_COL_B
             const zooms = {}
             memberIds.forEach(id => {
                 const z = state.activeMessengers.find(m => m.id === id)?.zoomLevel
@@ -1626,70 +1701,105 @@ function createSplitApi ({
         if (!_savePresetDividers()) store?.set?.('splitLeftPctPref', state.splitLeftPct || 50)
     })
 
+    // Double click on the divider puts it back in the middle.
+    splitHandle?.addEventListener('dblclick', e => {
+        e.preventDefault()
+        e.stopPropagation()
+        applyLeft(50)
+        if (state.splitMode && state.splitTabId) {
+            store?.set?.('split.saved', { splitTabId: state.splitTabId, splitLeftPct: 50, presetId: state.splitPresetId || null })
+        }
+        if (!_savePresetDividers()) store?.set?.('splitLeftPctPref', 50)
+    })
+
     // ── Grid drag resize (2top1bottom / 1top2bottom row+side dividers) ─────────
     // Same drag/pointer-events pattern as splitHandle above, applied to the
     // two dynamic dividers wired up in _positionGridHandles().
 
-    let _gridRowDragging  = false
-    let _gridSideDragging = false
+    let _gridRowDragging   = false
+    let _gridSideDragging  = false
+    let _gridSide2Dragging = false
 
-    gridRowHandle?.addEventListener('mousedown', e => {
-        _gridRowDragging = true
-        gridRowHandle.classList.add('dragging')
-        document.body.style.cursor     = 'row-resize'
-        document.body.style.userSelect = 'none'
-        _disableWebviewPointerEvents()
-        e.preventDefault()
-        e.stopPropagation()
-    })
+    const _clampPct = (v, lo, hi) => Math.max(lo, Math.min(hi, v))
 
-    gridSideHandle?.addEventListener('mousedown', e => {
-        _gridSideDragging = true
-        gridSideHandle.classList.add('dragging')
-        document.body.style.cursor     = 'col-resize'
-        document.body.style.userSelect = 'none'
-        _disableWebviewPointerEvents()
-        e.preventDefault()
-        e.stopPropagation()
-    })
+    function _startGridDrag (handle, cursor, flag) {
+        handle?.addEventListener('mousedown', e => {
+            if (flag === 'row') _gridRowDragging = true
+            else if (flag === 'side') _gridSideDragging = true
+            else _gridSide2Dragging = true
+            handle.classList.add('dragging')
+            document.body.style.cursor     = cursor
+            document.body.style.userSelect = 'none'
+            _disableWebviewPointerEvents()
+            e.preventDefault()
+            e.stopPropagation()
+        })
+    }
+    _startGridDrag(gridRowHandle,   'row-resize', 'row')
+    _startGridDrag(gridSideHandle,  'col-resize', 'side')
+    _startGridDrag(gridSide2Handle, 'col-resize', 'side2')
+
+    // Remember where the dividers are: in the open saved split, or as the default for manual splits.
+    function _persistGridDividers () {
+        if (_savePresetDividers()) return
+        store?.set?.('gridRowPctPref',  state.gridRowPct  || 50)
+        store?.set?.('gridSidePctPref', state.gridSidePct || 50)
+        store?.set?.('gridColAPref',    state.gridColA    || DEFAULT_COL_A)
+        store?.set?.('gridColBPref',    state.gridColB    || DEFAULT_COL_B)
+    }
 
     document.addEventListener('mousemove', e => {
         if (_gridRowDragging) {
             const rect = contentArea.getBoundingClientRect()
-            let dividerPct = ((e.clientY - rect.top) / rect.height) * 100
-            dividerPct = Math.max(15, Math.min(85, dividerPct))
-            // См. _positionGridHandles(): для '1top2bottom' rowPct хранит
-            // высоту НИЖНЕГО ряда, поэтому конвертируем позицию границы
-            // обратно в rowPct по той же (обратной) формуле.
-            state.gridRowPct = state.splitLayout === '2top1bottom' ? dividerPct : (100 - dividerPct)
+            const dividerPct = _clampPct(((e.clientY - rect.top) / rect.height) * 100, 15, 85)
+            // См. _positionGridHandles(): для '1top2bottom' rowPct хранит высоту НИЖНЕГО ряда, поэтому
+            // позицию границы конвертируем обратно в rowPct обратной формулой; у '2top1bottom' и '2x2' это высота верхнего.
+            state.gridRowPct = state.splitLayout === '1top2bottom' ? (100 - dividerPct) : dividerPct
             _reapplyGridLayout()
         }
         if (_gridSideDragging) {
             const rect = contentArea.getBoundingClientRect()
-            let pct = ((e.clientX - rect.left) / rect.width) * 100
-            pct = Math.max(15, Math.min(85, pct))
-            state.gridSidePct = pct
+            const pct = ((e.clientX - rect.left) / rect.width) * 100
+            if (state.splitLayout === '3col') state.gridColA = _clampPct(pct, 15, (state.gridColB || DEFAULT_COL_B) - MIN_COL_GAP)
+            else state.gridSidePct = _clampPct(pct, 15, 85)
+            _reapplyGridLayout()
+        }
+        if (_gridSide2Dragging) {
+            const rect = contentArea.getBoundingClientRect()
+            const pct = ((e.clientX - rect.left) / rect.width) * 100
+            state.gridColB = _clampPct(pct, (state.gridColA || DEFAULT_COL_A) + MIN_COL_GAP, 85)
             _reapplyGridLayout()
         }
     })
 
     document.addEventListener('mouseup', () => {
-        if (_gridRowDragging) {
-            _gridRowDragging = false
-            gridRowHandle?.classList.remove('dragging')
-            document.body.style.cursor     = ''
-            document.body.style.userSelect = ''
-            _restoreWebviewPointerEvents()
-            if (!_savePresetDividers()) store?.set?.('gridRowPctPref', state.gridRowPct || 50)
-        }
-        if (_gridSideDragging) {
-            _gridSideDragging = false
-            gridSideHandle?.classList.remove('dragging')
-            document.body.style.cursor     = ''
-            document.body.style.userSelect = ''
-            _restoreWebviewPointerEvents()
-            if (!_savePresetDividers()) store?.set?.('gridSidePctPref', state.gridSidePct || 50)
-        }
+        const wasRow = _gridRowDragging, wasSide = _gridSideDragging, wasSide2 = _gridSide2Dragging
+        if (!wasRow && !wasSide && !wasSide2) return
+        _gridRowDragging = _gridSideDragging = _gridSide2Dragging = false
+        ;[gridRowHandle, gridSideHandle, gridSide2Handle].forEach(h => h?.classList.remove('dragging'))
+        document.body.style.cursor     = ''
+        document.body.style.userSelect = ''
+        _restoreWebviewPointerEvents()
+        _persistGridDividers()
+    })
+
+    // Double click on a divider puts that divider back to its default place.
+    function _resetGridDivider (which) {
+        if (which === 'row') state.gridRowPct = 50
+        else if (state.splitLayout === '3col') {
+            // Either column border puts both back to equal thirds: moving just one could be blocked by its neighbour.
+            state.gridColA = DEFAULT_COL_A
+            state.gridColB = DEFAULT_COL_B
+        } else state.gridSidePct = 50
+        _reapplyGridLayout()
+        _persistGridDividers()
+    }
+    ;[[gridRowHandle, 'row'], [gridSideHandle, 'side'], [gridSide2Handle, 'side2']].forEach(([handle, which]) => {
+        handle?.addEventListener('dblclick', e => {
+            e.preventDefault()
+            e.stopPropagation()
+            _resetGridDivider(which)
+        })
     })
 
     // ── Button wiring ─────────────────────────────────────────────────────────
