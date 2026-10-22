@@ -5,6 +5,7 @@ const state = {
     activeTabId: null,
     unreadCounts: {},
     sleepingTabs: new Set(), // messenger ids whose page is unloaded (tab manager)
+    detachedTabs: new Set(), // messenger ids shown in their own window (renderer/detached-windows.js)
     rawUnreadCounts: {},
     loginStates: {}, // messengerId -> 'in' | 'out' (main-process poll, see startLoginStatePolling)
     lastSiteNotifyAt: {}, // messengerId -> ms of the last notification the site itself produced
@@ -51,7 +52,7 @@ const state = {
     // Сетка-раскладки (3 колонки / 2×2) — независимы от 2col-полей выше,
     // чтобы не трогать уже работающий 2col-код. Зона 0 всегда зеркалит
     // activeTabId, как и в 2col (та же конвенция "первая зона = основная вкладка").
-    splitLayout:    '2col', // '2col' | '3col' | '2x2' | '2top1bottom' | '1top2bottom'
+    splitLayout:    '2col', // '2col' | '3col' | '3colsplit' | '2x2' | '2top1bottom' | '1top2bottom'
     splitZoneIds:   [],     // messenger id по зонам, только для '3col'/'2x2'/'2top1bottom'/'1top2bottom'
     splitZoneFocus: 0,      // индекс зоны, получающей переключение вкладок
     // Двигаемые границы для '2top1bottom'/'1top2bottom' (в %, независимо от

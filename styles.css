@@ -2928,6 +2928,17 @@ body:has(.modal.show) .split-handle { display: none !important; }
     height: calc(50% - 1.5px);
 }
 
+.split-layout-preview-3colsplit {
+    display: grid;
+    grid-template-columns: 1fr 1fr 0.62fr;
+    grid-template-rows: 1fr 1fr;
+}
+.split-layout-preview-3colsplit i { flex: none; }
+.split-layout-preview-3colsplit i:nth-child(1) { grid-column: 1; grid-row: 1 / 3; }
+.split-layout-preview-3colsplit i:nth-child(2) { grid-column: 2; grid-row: 1 / 3; }
+.split-layout-preview-3colsplit i:nth-child(3) { grid-column: 3; grid-row: 1; }
+.split-layout-preview-3colsplit i:nth-child(4) { grid-column: 3; grid-row: 2; }
+
 /* ── Пресеты сплит-режима ──────────────────────────────────────── */
 .split-presets-title {
     margin-top: 10px;
@@ -17708,3 +17719,79 @@ body.sf-hide-top #sfTopZone { display: block; }
 .sf-what { padding: 6px 0 2px; }
 .sf-group:has(#settingSplitFocus:not(:checked)) .sf-option,
 .sf-group:has(#settingSplitFocus:not(:checked)) .sf-what { opacity: 0.45; pointer-events: none; }
+
+/* ===== Мессенджер в отдельном окне (renderer/detached-windows.js) ===== */
+.detached-pane {
+    display: none;
+    position: absolute;
+    inset: 0;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background:
+        radial-gradient(ellipse at 50% 38%, color-mix(in srgb, var(--accent) 13%, transparent) 0%, transparent 62%),
+        var(--bg-primary);
+}
+.detached-pane.active { display: flex; }
+.detached-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    max-width: 360px;
+    text-align: center;
+}
+.detached-icon {
+    width: 68px;
+    height: 68px;
+    margin-bottom: 22px;
+    border-radius: 18px;
+    object-fit: cover;
+    background: var(--bg-tertiary, var(--bg-secondary));
+    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.35), 0 0 0 1px var(--border);
+}
+.detached-title {
+    margin-bottom: 8px;
+    color: var(--text-bright, var(--text-primary));
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+}
+.detached-hint {
+    margin-bottom: 24px;
+    color: var(--text-secondary, #a3a3a3);
+    font-size: 13px;
+    line-height: 1.55;
+}
+.detached-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+.detached-btn {
+    height: 36px;
+    padding: 0 18px;
+    border: 1px solid var(--border);
+    border-radius: 11px;
+    background: transparent;
+    color: var(--text-primary);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease, filter 0.15s ease;
+}
+.detached-btn:hover { background: var(--bg-tertiary, rgba(255, 255, 255, 0.06)); border-color: var(--border-light, var(--border)); }
+.detached-btn:active { transform: scale(0.97); }
+.detached-btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.detached-btn.primary:hover { filter: brightness(1.1); background: var(--accent); }
+.detached-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* a messenger that lives in its own window gets a small accent mark in the sidebar */
+.messenger-item.is-detached { position: relative; }
+.messenger-item.is-detached::after {
+    content: '';
+    position: absolute;
+    right: 5px;
+    bottom: 5px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 0 2px var(--bg-secondary);
+    pointer-events: none;
+}

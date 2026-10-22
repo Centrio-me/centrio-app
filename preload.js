@@ -89,7 +89,10 @@ const validReceiveChannels = new Set([
     // renderer/vpn-bind.js can reload the affected webview(s) instead of
     // leaving a live page to somehow survive its network context changing
     // out from under it, which WhatsApp's own code doesn't handle.
-    'vpn-proxy-changed'
+    'vpn-proxy-changed',
+    // A messenger's own window was opened / closed (main/services/detachedWindows.js).
+    'detached:opened',
+    'detached:closed'
 ])
 
 const invokeChannelMap = {
@@ -113,6 +116,10 @@ const invokeChannelMap = {
 // webview-preload.js) — это только про код самого главного окна.
 const validInvokeChannels = new Set([
     'battery:has',
+    'detached:open',
+    'detached:focus',
+    'detached:close',
+    'detached:list',
     'shortcuts:list',
     'shortcuts:set',
     'shortcuts:reset',

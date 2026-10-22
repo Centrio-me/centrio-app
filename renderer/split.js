@@ -44,6 +44,13 @@ const GRID_LAYOUTS = {
         { left: 0,  top: 0,  width: 100, height: 50 },
         { left: 0,  top: 50, width: 50,  height: 50 },
         { left: 50, top: 50, width: 50,  height: 50 }
+    ],
+    // Two wide columns and a narrow third one cut in half: two big messengers plus two small ones (tasks, assistant…).
+    '3colsplit': [
+        { left: 0,    top: 0,  width: 37.5, height: 100 },
+        { left: 37.5, top: 0,  width: 37.5, height: 100 },
+        { left: 75,   top: 0,  width: 25,   height: 50 },
+        { left: 75,   top: 50, width: 25,   height: 50 }
     ]
 }
 
@@ -53,6 +60,12 @@ const GRID_LAYOUTS = {
 const DEFAULT_COL_A = 33.34
 const DEFAULT_COL_B = 66.67
 const MIN_COL_GAP = 10 // two column borders never come closer than this, in %
+// "Two wide columns + a split one" starts with the narrow column on the right.
+const DEFAULT_SPLIT_COL_A = 37.5
+const DEFAULT_SPLIT_COL_B = 75
+const hasColumnDividers = (layout) => layout === '3col' || layout === '3colsplit'
+const defaultColumns = (layout) => (layout === '3colsplit' ? [DEFAULT_SPLIT_COL_A, DEFAULT_SPLIT_COL_B] : [DEFAULT_COL_A, DEFAULT_COL_B])
+const nearly = (a, b) => Math.abs((a || 0) - b) < 0.5
 
 function computeRowLayout (layout, rowPct, sidePct, colA = DEFAULT_COL_A, colB = DEFAULT_COL_B) {
     if (layout === '3col') {
@@ -60,6 +73,14 @@ function computeRowLayout (layout, rowPct, sidePct, colA = DEFAULT_COL_A, colB =
             { left: 0,    top: 0, width: colA,        height: 100 },
             { left: colA, top: 0, width: colB - colA, height: 100 },
             { left: colB, top: 0, width: 100 - colB,  height: 100 }
+        ]
+    }
+    if (layout === '3colsplit') {
+        return [
+            { left: 0,    top: 0,      width: colA,        height: 100 },
+            { left: colA, top: 0,      width: colB - colA, height: 100 },
+            { left: colB, top: 0,      width: 100 - colB,  height: rowPct },
+            { left: colB, top: rowPct, width: 100 - colB,  height: 100 - rowPct }
         ]
     }
     if (layout === '2x2') {
@@ -402,7 +423,7 @@ function createSplitApi ({
     // У всех сеток границы двигаются: 2top1bottom/1top2bottom (строка + граница внутри
     // ряда), 2x2 (крест: одна вертикальная и одна горизонтальная), 3col (две вертикальные).
     function _isGridLayout (layout) {
-        return layout === '2top1bottom' || layout === '1top2bottom' || layout === '2x2' || layout === '3col'
+        return layout === '2top1bottom' || layout === '1top2bottom' || layout === '2x2' || layout === '3col' || layout === '3colsplit'
     }
 
     function _hideGridHandles () {
@@ -420,12 +441,13 @@ function createSplitApi ({
         el.style.bottom  = 'auto'
     }
 
-    function _placeHorizontal (el, rect, pct) {
+    // fromPct/widthPct: the part of the width the horizontal divider spans (the whole window unless a layout cuts one column).
+    function _placeHorizontal (el, rect, pct, fromPct = 0, widthPct = 100) {
         if (!el) return
         el.style.display = 'block'
-        el.style.left    = rect.left + 'px'
+        el.style.left    = (rect.left + rect.width * (fromPct / 100)) + 'px'
         el.style.top     = (rect.top + rect.height * (pct / 100) - 3) + 'px'
-        el.style.width   = rect.width + 'px'
+        el.style.width   = (rect.width * (widthPct / 100)) + 'px'
         el.style.height  = '6px'
         el.style.right   = 'auto'
         el.style.bottom  = 'auto'
@@ -443,6 +465,13 @@ function createSplitApi ({
             if (gridRowHandle) gridRowHandle.style.display = 'none'
             _placeVertical(gridSideHandle,  rect, state.gridColA || DEFAULT_COL_A, 0, 100)
             _placeVertical(gridSide2Handle, rect, state.gridColB || DEFAULT_COL_B, 0, 100)
+            return
+        }
+        if (state.splitLayout === '3colsplit') {
+            const colB = state.gridColB || DEFAULT_SPLIT_COL_B
+            _placeVertical(gridSideHandle,  rect, state.gridColA || DEFAULT_SPLIT_COL_A, 0, 100)
+            _placeVertical(gridSide2Handle, rect, colB, 0, 100)
+            _placeHorizontal(gridRowHandle, rect, state.gridRowPct || 50, colB, 100 - colB)
             return
         }
         if (state.splitLayout === '2x2') {
@@ -801,6 +830,13 @@ function createSplitApi ({
                 setTimeout(() => { splitBtn.title = orig }, 2500)
             }
             return false
+        }
+
+        // The two column layouts start from their own widths: still the plain thirds (nothing moved yet) → switch to this layout's default.
+        if (layout === '3colsplit' && nearly(state.gridColA, DEFAULT_COL_A) && nearly(state.gridColB, DEFAULT_COL_B)) {
+            state.gridColA = DEFAULT_SPLIT_COL_A; state.gridColB = DEFAULT_SPLIT_COL_B
+        } else if (layout === '3col' && nearly(state.gridColA, DEFAULT_SPLIT_COL_A) && nearly(state.gridColB, DEFAULT_SPLIT_COL_B)) {
+            state.gridColA = DEFAULT_COL_A; state.gridColB = DEFAULT_COL_B
         }
 
         state.splitMode      = true
@@ -1760,7 +1796,7 @@ function createSplitApi ({
         if (_gridSideDragging) {
             const rect = contentArea.getBoundingClientRect()
             const pct = ((e.clientX - rect.left) / rect.width) * 100
-            if (state.splitLayout === '3col') state.gridColA = _clampPct(pct, 15, (state.gridColB || DEFAULT_COL_B) - MIN_COL_GAP)
+            if (hasColumnDividers(state.splitLayout)) state.gridColA = _clampPct(pct, 15, (state.gridColB || DEFAULT_COL_B) - MIN_COL_GAP)
             else state.gridSidePct = _clampPct(pct, 15, 85)
             _reapplyGridLayout()
         }
@@ -1786,10 +1822,9 @@ function createSplitApi ({
     // Double click on a divider puts that divider back to its default place.
     function _resetGridDivider (which) {
         if (which === 'row') state.gridRowPct = 50
-        else if (state.splitLayout === '3col') {
-            // Either column border puts both back to equal thirds: moving just one could be blocked by its neighbour.
-            state.gridColA = DEFAULT_COL_A
-            state.gridColB = DEFAULT_COL_B
+        else if (hasColumnDividers(state.splitLayout)) {
+            // Either column border puts both back to the layout's own default: moving just one could be blocked by its neighbour.
+            ;[state.gridColA, state.gridColB] = defaultColumns(state.splitLayout)
         } else state.gridSidePct = 50
         _reapplyGridLayout()
         _persistGridDividers()

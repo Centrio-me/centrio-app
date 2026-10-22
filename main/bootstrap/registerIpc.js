@@ -21,6 +21,7 @@ const registerTabManagerIpc = require('../ipc/tabManager')
 const registerVisitorStatsIpc = require('../ipc/visitorStats')
 const registerShortcutsIpc = require('../ipc/shortcuts')
 const registerBatteryIpc = require('../ipc/battery')
+const registerDetachedIpc = require('../ipc/detached')
 
 function registerIpc({ getMainWindow, showMainWindow, updateTrayMenu, isQuittingRef }) {
     registerWindowIpc({ getMainWindow, isQuittingRef })
@@ -46,6 +47,7 @@ function registerIpc({ getMainWindow, showMainWindow, updateTrayMenu, isQuitting
     registerVisitorStatsIpc()
     registerShortcutsIpc()
     registerBatteryIpc()
+    registerDetachedIpc({ getMainWindow })
 }
 
 module.exports = registerIpc

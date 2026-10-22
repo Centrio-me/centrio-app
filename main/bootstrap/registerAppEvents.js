@@ -826,6 +826,7 @@ function startUnreadPolling(contents, getMainWindow) {
         lastSent = n
         const win = getMainWindow()
         if (win && !win.isDestroyed()) win.webContents.send('messenger-unread-count', messengerId, n)
+        require('../services/detachedWindows').onUnread(messengerId, n)
     }
     const poll = () => {
         if (contents.isDestroyed() || inFlight) return
@@ -2230,6 +2231,7 @@ function registerAppEvents({
         isQuittingRef._flushed = true
         isQuittingRef.value = true
         tracker.stop()
+        try { require('../services/detachedWindows').closeAll() } catch { /* quitting anyway */ }
 
         // tracker.flush() makes a network call (see api.js/trackStats) that,
         // before this fix, had no timeout anywhere in the chain — a stalled

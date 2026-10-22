@@ -1,6 +1,7 @@
 const { app, globalShortcut } = require('electron')
 const { focusWindow, withWindow } = require('../utils/window')
 const registry = require('./shortcutRegistry')
+const detachedWindows = require('./detachedWindows')
 
 // Actions that already have a renderer handler (renderer/window-bind.js) keep their channel.
 const RENDERER_CHANNELS = {
@@ -65,6 +66,11 @@ function digitOf(input) {
 // whichever of them has the focus.
 function attachShortcutHandling(contents) {
     contents.on('before-input-event', (event, input) => {
+        // A messenger in its own window answers only to that window's keys (find, reload, zoom), not to tab switching.
+        if (contents.getType() === 'webview' && detachedWindows.isDetachedGuest(contents)) {
+            if (detachedWindows.handleGuestKey(contents, input)) event.preventDefault()
+            return
+        }
         if (input.type !== 'keyDown' || input.isAutoRepeat) return
         if (Date.now() < recordingUntil) return
         // Ctrl+1..9 = Nth messenger, Ctrl+Shift+1..9 = Nth saved split screen (pressed again, it closes the split).

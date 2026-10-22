@@ -3,7 +3,9 @@ module.exports = {
     addMessenger: 'Добавить сервис',
 
     ctx: {
-        reload: 'Обновить',
+         sound: "Звук уведомления",
+        detach: "Открыть в отдельном окне",
+       reload: 'Обновить',
         rename: 'Переименовать',
         moveToFolder: 'В папку',
         moveToWorkspace: 'В пространство',
@@ -354,6 +356,32 @@ module.exports = {
         remove: 'Убрать из списка'
     },
 
+    detached: {
+        paneTitle: "{name} открыт в отдельном окне",
+        paneHint: "Когда вы закроете то окно, мессенджер вернётся сюда.",
+        paneShow: "Показать окно",
+        paneBack: "Вернуть сюда",
+        menuCut: "Вырезать",
+        menuCopy: "Копировать",
+        menuPaste: "Вставить",
+        menuSelectAll: "Выделить всё",
+        reload: "Обновить",
+        find: "Поиск на странице",
+        pin: "Поверх всех окон",
+        unpin: "Не закреплять",
+        opacity: "Прозрачность",
+        dock: "Вернуть в Centrio",
+        minimize: "Свернуть",
+        maximize: "Развернуть",
+        restore: "Восстановить",
+        close: "Закрыть",
+        findPlaceholder: "Найти на странице",
+        findNone: "Нет совпадений",
+        loadFailed: "Не удалось загрузить страницу",
+        retry: "Повторить",
+        prev: "Предыдущее",
+        next: "Следующее",
+    },
     welcome: {
         kicker: "Последний шаг",
         kickerUser: "{name}, вы в Centrio",

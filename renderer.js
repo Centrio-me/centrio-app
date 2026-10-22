@@ -65,6 +65,7 @@ const { bindAppEvents } = require('./renderer/app-events-bind')
 const { bindEditModalUi } = require('./renderer/edit-modal-bind')
 const { bindAddModalUi } = require('./renderer/add-modal-bind')
 const { bindContextActionsUi } = require('./renderer/context-actions-bind')
+const { createDetachedApi } = require('./renderer/detached-windows')
 const { bindChangeIconUi } = require('./renderer/change-icon-bind')
 const { bindMessengerSoundUi } = require('./renderer/messenger-sound-bind')
 const { bindSidebarShellUi } = require('./renderer/sidebar-shell-bind')
@@ -1578,6 +1579,8 @@ function applyZoomWhenReady(webview, zoomLevel) {
 
 // ── Split API (initialised below, after DOM refs are ready) ───
     let splitApi = null
+    // ── Messengers in their own window (initialised after the webview API exists) ──
+    let detachedApi = null
     // ── Мини-плеер медиа (initialised below, after switchTab/tGet are ready) ──
     let mediaPlayerUiApi = null
 
@@ -1586,6 +1589,8 @@ let wakeTabRef = null
 
 function switchTab(id) {
     if (state.sleepingTabs.has(id) && typeof wakeTabRef === 'function') wakeTabRef(id)
+    // A messenger in its own window: the tab shows a placeholder, and the window itself comes to the front.
+    if (state.detachedTabs.has(id)) detachedApi?.focus(id)
     // A split opened from a saved preset is monolithic: a click on one of its messengers only moves the focus to that
     // pane; a click on any other messenger closes the split and opens that messenger in the full window.
     if (state.splitMode && state.splitPresetId) {
@@ -1664,7 +1669,7 @@ function switchTab(id) {
     // chat tab never removed ITS 'active' class, leaving it visually
     // covering whatever tab you switched to (both are position:absolute;
     // inset:0 on top of each other).
-    document.querySelectorAll('webview, .chat-widget-pane').forEach(wv => wv.classList.remove('active'))
+    document.querySelectorAll('webview, .chat-widget-pane, .detached-pane').forEach(wv => wv.classList.remove('active'))
 
     const activeWebview = document.getElementById(`webview-${id}`)
     const activeMessenger = state.activeMessengers.find(m => m.id === id)
@@ -1814,6 +1819,7 @@ function applyTabZoom(level) {
         if (messenger?.orgAssigned) return
         const folderId = messenger?.folderId
         if (isChatWidgetMessenger(messenger)) destroyChatWidgetPane(id)
+        detachedApi?.onMessengerRemoved(id)
 
         state.activeMessengers = state.activeMessengers.filter(m => m.id !== id)
         delete state.unreadCounts[id]
@@ -1927,6 +1933,20 @@ function applyTabZoom(level) {
         applyPaneZoom: applyZoomWhenReady,
         syncZoomState
     })
+
+    detachedApi = createDetachedApi({
+        state,
+        invokeIpc,
+        ipcRenderer,
+        tGet,
+        tabsContent,
+        getMessengerById: (id) => state.activeMessengers.find((m) => m.id === id),
+        getSplitApi: () => splitApi,
+        getAddWebview: () => webviewTabsApi.addWebview,
+        getSwitchTab: () => switchTab,
+        isChatWidgetMessenger
+    })
+    detachedApi.bind()
 
     // Tab manager: put a tab to sleep (unload its page) or wake it up again.
     function markSleeping(id, sleeping) {
@@ -3766,6 +3786,7 @@ function applyTabZoom(level) {
         openEditModal,
         toggleMessengerVpn,
         removeMessenger,
+        detachMessenger: (id) => detachedApi?.detach(id),
         moveMessengerToFolder,
         removeFolder,
         addDivider,

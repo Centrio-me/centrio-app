@@ -53,7 +53,7 @@ function createSearchUiApi({
                 pickedTargetId = id
                 findCount.textContent = ''
                 renderFindTargets()
-                if (findInput.value) document.getElementById(`webview-${id}`)?.findInPage(findInput.value)
+                if (findInput.value) document.getElementById(`webview-${id}`)?.findInPage?.(findInput.value)
                 findInput.focus()
             })
             host.appendChild(btn)
@@ -87,14 +87,14 @@ function createSearchUiApi({
         if (!targetId) return
         const webview = document.getElementById(`webview-${targetId}`)
         if (!webview || !findInput.value) return
-        webview.findInPage(findInput.value, { forward, findNext: true })
+        webview.findInPage?.(findInput.value, { forward, findNext: true })
     }
 
     function stopFind() {
         const targetId = findTargetId()
         if (!targetId) return
         const webview = document.getElementById(`webview-${targetId}`)
-        if (webview) webview.stopFindInPage('clearSelection')
+        if (webview) webview.stopFindInPage?.('clearSelection')
         findCount.textContent = ''
     }
 
@@ -299,7 +299,7 @@ function createSearchUiApi({
             const targetId = findTargetId()
             if (!targetId) return
             renderFindTargets()
-            document.getElementById(`webview-${targetId}`)?.findInPage(findInput.value)
+            document.getElementById(`webview-${targetId}`)?.findInPage?.(findInput.value)
         })
 
         findInput.addEventListener('keydown', (e) => {

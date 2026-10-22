@@ -10,13 +10,22 @@
 // IPC 'lock:set-state' из showLockScreen()/hideLockScreen() — см. регистрацию
 // слушателя в main/ipc/notifications.js.
 let locked = false
+const listeners = []
 
 function setLocked(value) {
-    locked = !!value
+    const next = !!value
+    if (next === locked) return
+    locked = next
+    listeners.forEach((fn) => { try { fn(locked) } catch { /* a listener must not break locking */ } })
 }
 
 function isLocked() {
     return locked
 }
 
-module.exports = { setLocked, isLocked }
+// Other main-process services (separate messenger windows) hide themselves while the app is locked.
+function onChange(fn) {
+    if (typeof fn === 'function') listeners.push(fn)
+}
+
+module.exports = { setLocked, isLocked, onChange }

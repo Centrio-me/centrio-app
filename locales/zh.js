@@ -3,7 +3,9 @@ module.exports = {
     addMessenger: '添加应用',
 
     ctx: {
-        reload:              '刷新',
+         sound: "通知声音",
+        detach: "在单独窗口中打开",
+       reload:              '刷新',
         rename:              '重命名',
         moveToFolder:        '移动到文件夹',
         removeFromFolder:    '从文件夹中移除',
@@ -323,6 +325,32 @@ module.exports = {
         remove: '从列表中移除'
     },
 
+    detached: {
+        paneTitle: "{name} 已在单独窗口中打开",
+        paneHint: "关闭该窗口后，聊天应用会回到这里。",
+        paneShow: "显示窗口",
+        paneBack: "带回这里",
+        menuCut: "剪切",
+        menuCopy: "复制",
+        menuPaste: "粘贴",
+        menuSelectAll: "全选",
+        reload: "刷新",
+        find: "页内查找",
+        pin: "置顶",
+        unpin: "取消置顶",
+        opacity: "透明度",
+        dock: "返回 Centrio",
+        minimize: "最小化",
+        maximize: "最大化",
+        restore: "还原",
+        close: "关闭",
+        findPlaceholder: "在页面中查找",
+        findNone: "没有匹配项",
+        loadFailed: "页面无法加载",
+        retry: "重试",
+        prev: "上一个",
+        next: "下一个",
+    },
     welcome: {
         kicker: "最后一步",
         kickerUser: "{name}，欢迎来到 Centrio",

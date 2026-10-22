@@ -3,7 +3,9 @@ module.exports = {
     addMessenger: 'Ajouter un service',
 
     ctx: {
-        reload:              'Recharger',
+         sound: "Son de notification",
+        detach: "Ouvrir dans une fenêtre séparée",
+       reload:              'Recharger',
         rename:              'Renommer',
         moveToFolder:        'Déplacer vers dossier',
         removeFromFolder:    'Retirer du dossier',
@@ -323,6 +325,32 @@ module.exports = {
         remove: 'Retirer de la liste'
     },
 
+    detached: {
+        paneTitle: "{name} est ouvert dans une fenêtre séparée",
+        paneHint: "Quand vous fermerez cette fenêtre, la messagerie reviendra ici.",
+        paneShow: "Afficher la fenêtre",
+        paneBack: "Ramener ici",
+        menuCut: "Couper",
+        menuCopy: "Copier",
+        menuPaste: "Coller",
+        menuSelectAll: "Tout sélectionner",
+        reload: "Actualiser",
+        find: "Rechercher dans la page",
+        pin: "Toujours au premier plan",
+        unpin: "Désépingler",
+        opacity: "Opacité",
+        dock: "Revenir dans Centrio",
+        minimize: "Réduire",
+        maximize: "Agrandir",
+        restore: "Restaurer",
+        close: "Fermer",
+        findPlaceholder: "Rechercher dans la page",
+        findNone: "Aucun résultat",
+        loadFailed: "Impossible de charger la page",
+        retry: "Réessayer",
+        prev: "Précédent",
+        next: "Suivant",
+    },
     welcome: {
         kicker: "Dernière étape",
         kickerUser: "{name}, vous êtes dans Centrio",

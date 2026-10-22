@@ -6,6 +6,7 @@ function bindContextActionsUi({
     openEditModal,
     toggleMessengerVpn,
     removeMessenger,
+    detachMessenger,
     moveMessengerToFolder,
     removeFolder,
     addDivider,
@@ -64,6 +65,12 @@ function bindContextActionsUi({
         const m = getMessengerById(state.contextTargetId)
         hideAllMenus()
         if (m) document.getElementById(`webview-${m.id}`)?.reload()
+    })
+
+    document.getElementById('ctxDetach')?.addEventListener('click', () => {
+        const m = getMessengerById(state.contextTargetId)
+        hideAllMenus()
+        if (m && typeof detachMessenger === 'function') detachMessenger(m.id)
     })
 
     document.getElementById('ctxMute')?.addEventListener('click', () => {
