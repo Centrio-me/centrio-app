@@ -149,7 +149,7 @@ function buildInitData(entry) {
     for (const key of STRING_KEYS) strings[key] = i18n.t(`detached.${key}`, key)
     // Same user-agent the tabs use: the real Chromium version, not a frozen literal (see renderer/webview-tabs-bind.js).
     const chrome = process.versions.chrome || '120.0.0.0'
-    const userAgent = `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${chrome.split('.').slice(0, 4).join('.')} Safari/537.36`
+    const userAgent = `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${chrome.split('.')[0]}.0.0.0 Safari/537.36`
     return {
         messenger: entry.record,
         partition: `persist:${entry.record.id}`,

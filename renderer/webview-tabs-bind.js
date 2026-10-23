@@ -305,7 +305,9 @@ function buildWebviewUserAgent() {
     if (cachedWebviewUserAgent) return cachedWebviewUserAgent
 
     const chromeVersion = window.electronAPI?.chromeVersion
-    const versionToken = chromeVersion ? `${chromeVersion}.0.0.0`.split('.').slice(0, 4).join('.') : null
+    // Chrome sends only the major version in its user-agent ("Chrome/152.0.0.0"); the rest lives in the Client Hints.
+    const major = chromeVersion ? String(chromeVersion).split('.')[0] : ''
+    const versionToken = /^\d+$/.test(major) ? `${major}.0.0.0` : null
 
     cachedWebviewUserAgent = versionToken
         ? `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${versionToken} Safari/537.36`

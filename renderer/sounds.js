@@ -5,6 +5,29 @@ function createSoundsApi({ store, ipcRenderer, getActiveMessengers }) {
         return `assets/sounds/${soundName}.wav`
     }
 
+    // Sounds play inside the app window with the browser's own audio. The old way (a PowerShell process per beep, see
+    // main/services/sound.js) silently did nothing on PCs where PowerShell is restricted, on paths with an apostrophe
+    // and in corporate setups — "pressing play does nothing". The old path stays as a fallback if the page cannot play it.
+    const SOUND_VOLUME = 0.7
+    let lastAudio = null
+    const toFileUrl = (p) => {
+        const parts = String(p).split(/[\\/]+/).filter(Boolean)
+        return 'file:///' + parts.map((part, i) => (i === 0 && /^[a-zA-Z]:$/.test(part) ? part : encodeURIComponent(part))).join('/')
+    }
+    const isAbsolutePath = (p) => /^[a-zA-Z]:[\\/]/.test(p) || p.startsWith('\\\\') || p.startsWith('/')
+
+    function playSoundFile(soundPath) {
+        const fallback = () => ipcRenderer.send('play-sound', soundPath)
+        try {
+            const audio = new Audio(isAbsolutePath(soundPath) ? toFileUrl(soundPath) : soundPath)
+            audio.volume = SOUND_VOLUME
+            audio.addEventListener('error', fallback, { once: true })
+            lastAudio = audio // keep it alive until it has finished
+            const started = audio.play()
+            if (started && typeof started.catch === 'function') started.catch(fallback)
+        } catch { fallback() }
+    }
+
     function playNotifSound(messengerId = null) {
         const settings = store.get('settings', {})
         if (settings.notifSound === false) return
@@ -27,7 +50,7 @@ function createSoundsApi({ store, ipcRenderer, getActiveMessengers }) {
             soundPath = getBuiltinSoundPath(soundName)
         }
 
-        ipcRenderer.send('play-sound', soundPath)
+        playSoundFile(soundPath)
     }
 
     // ── Скоуп на #notifSoundList ── BUGFIX: класс `.sound-item`/`.sound-preview-btn`
@@ -91,7 +114,7 @@ function createSoundsApi({ store, ipcRenderer, getActiveMessengers }) {
                 }
 
                 if (!soundPath) return
-                ipcRenderer.send('play-sound', soundPath)
+                playSoundFile(soundPath)
             })
         })
 
@@ -145,7 +168,7 @@ function createSoundsApi({ store, ipcRenderer, getActiveMessengers }) {
                 document.querySelectorAll('.sound-item').forEach(i => i.classList.remove('active'))
                 if (customItem) customItem.classList.add('active')
 
-                ipcRenderer.send('play-sound', filePath)
+                playSoundFile(filePath)
                 e.target.value = ''
             })
         }
@@ -158,7 +181,7 @@ function createSoundsApi({ store, ipcRenderer, getActiveMessengers }) {
         }
 
         const soundPath = getBuiltinSoundPath(soundName)
-        ipcRenderer.send('play-sound', soundPath)
+        playSoundFile(soundPath)
     }
 
     return {

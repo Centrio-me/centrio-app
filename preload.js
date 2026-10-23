@@ -422,7 +422,11 @@ const electronAPI = {
     extToggle:         (id, on)   => ipcRenderer.invoke('ext:toggle', id, on),
     extApplyToSession: (partition) => ipcRenderer.invoke('ext:apply-to-session', partition),
 
-    openPopupWindow: (url, opts) => ipcRenderer.invoke('open-popup-window', url, opts)
+    openPopupWindow: (url, opts) => ipcRenderer.invoke('open-popup-window', url, opts),
+
+    // The real Chromium version of this Electron. The tabs build their user-agent from it (renderer/webview-tabs-bind.js):
+    // a frozen literal next to the genuine Client Hints is exactly what anti-bot systems catch.
+    chromeVersion: process.versions.chrome
 }
 
 contextBridge.exposeInMainWorld('electronAPI', electronAPI)
