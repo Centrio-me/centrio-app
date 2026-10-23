@@ -1,6 +1,47 @@
 const { adapterFor } = require('./notif-reply')
 
 const DUPLICATE_WINDOW_MS = 8000
+const CROSS_CHANNEL_WINDOW_MS = 1500 // the page and the service worker report one message almost at the same moment
+const PAIR_DIAG_MS = 3000
+const RECENT_KEEP_MS = 10000
+const MIN_PREFIX_LENGTH = 8
+
+// Text compared the way a person would: spaces collapsed, case ignored, a trailing "…" (sites cut long texts differently).
+const normalizeText = (value) => String(value || '').replace(/\s+/g, ' ').trim().toLowerCase().replace(/[…\.]+$/, '')
+
+// Equal, or one is the beginning of the other (a push may carry a shortened copy of the text the page shows in full).
+function sameText(a, b) {
+    const x = normalizeText(a)
+    const y = normalizeText(b)
+    if (x === y) return true
+    return Math.min(x.length, y.length) >= MIN_PREFIX_LENGTH && (x.startsWith(y) || y.startsWith(x))
+}
+
+// A message reaches us through two doors (the page's Notification and the service worker's showNotification), often
+// with slightly different title/tag/text. Pure data in, verdict out; kept apart from the UI code so it can be tested.
+const recentSite = new Map() // messengerId -> [{ t, title, body, tag, peer, page }]
+function checkSiteDuplicate(messengerId, entry, now) {
+    const list = (recentSite.get(messengerId) || []).filter((item) => now - item.t < RECENT_KEEP_MS)
+    let result = { duplicate: false }
+    for (const prev of list) {
+        const gap = now - prev.t
+        const bodyMatch = sameText(prev.body, entry.body)
+        const titleMatch = normalizeText(prev.title) === normalizeText(entry.title)
+        const peerMatch = !!prev.peer && prev.peer === entry.peer
+        const tagMatch = !!prev.tag && prev.tag === entry.tag
+        const crossChannel = prev.page !== entry.page
+        if (gap < DUPLICATE_WINDOW_MS && bodyMatch && (titleMatch || peerMatch || tagMatch)) { result = { duplicate: true, reason: 'same-text' }; break }
+        if (gap < CROSS_CHANNEL_WINDOW_MS && bodyMatch && crossChannel) { result = { duplicate: true, reason: 'page-and-worker' }; break }
+        if (gap < PAIR_DIAG_MS && !result.pair) {
+            result = { duplicate: false, pair: `gap=${gap}ms title=${titleMatch ? 'eq' : 'ne'} body=${bodyMatch ? 'eq' : 'ne'} peer=${peerMatch ? 'eq' : (prev.peer || entry.peer ? 'ne' : 'none')} tag=${tagMatch ? 'eq' : (prev.tag || entry.tag ? 'ne' : 'none')} via=${prev.page ? 'page' : 'sw'}+${entry.page ? 'page' : 'sw'}` }
+        }
+    }
+    if (!result.duplicate) {
+        list.push({ t: now, title: entry.title, body: entry.body, tag: entry.tag, peer: entry.peer, page: entry.page })
+        recentSite.set(messengerId, list)
+    }
+    return result
+}
 
 function createWebviewNotifyApi({
     state,
@@ -29,13 +70,16 @@ function createWebviewNotifyApi({
         // The same message often arrives twice: a site fires Notification AND the service worker's
         // showNotification, usually with a different tag. Same sender (title) and same text within a few seconds is
         // one message; two different senders writing "ok" are not merged (the unread-count fallback keeps its own key).
-        const dedupeKey = tag === 'unread-fallback'
-            ? `${messenger.id}::unread-fallback`
-            : `${messenger.id}::${title}::${body}`
         const now = Date.now()
-        const prevTime = state.siteNotificationState[dedupeKey] || 0
-        if (now - prevTime < DUPLICATE_WINDOW_MS) { note('duplicate-within-8s'); return }
-        state.siteNotificationState[dedupeKey] = now
+        if (tag === 'unread-fallback') {
+            const fallbackKey = `${messenger.id}::unread-fallback`
+            if (now - (state.siteNotificationState[fallbackKey] || 0) < DUPLICATE_WINDOW_MS) { note('duplicate-within-8s'); return }
+            state.siteNotificationState[fallbackKey] = now
+        } else {
+            const verdict = checkSiteDuplicate(messenger.id, { title, body, tag, peer: String(payload.peer || ''), page: !!payload.nid }, now)
+            if (verdict.duplicate) { note(`duplicate:${verdict.reason}`); return }
+            if (verdict.pair) note(`pair:${verdict.pair}`) // a second one right after the first that was NOT merged: logged without any text
+        }
 
         const isActiveTab = state.activeTabId === messenger.id
 

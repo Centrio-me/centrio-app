@@ -255,7 +255,7 @@
         view.setAttribute('preload', data.preloadUrl)
         view.setAttribute('useragent', data.userAgent)
         view.setAttribute('allowpopups', 'true')
-        view.src = m.url
+        view.src = data.startUrl || m.url
 
         view.addEventListener('dom-ready', () => {
             try { view.setZoomFactor(zoom) } catch {}
@@ -281,7 +281,7 @@
 
     function wire() {
         el.reload.addEventListener('click', () => { showFail(false); view.reload() })
-        el.retryBtn.addEventListener('click', () => { showFail(false); view.src = data.messenger.url })
+        el.retryBtn.addEventListener('click', () => { showFail(false); view.src = data.startUrl || data.messenger.url })
         el.find.addEventListener('click', () => (el.findBar.hidden ? openFind() : closeFind()))
         el.pin.addEventListener('click', () => api.control('pin', !state.pinned))
         el.dock.addEventListener('click', () => api.control('close'))
@@ -347,6 +347,8 @@
         el.failText.textContent = s.loadFailed
         el.retryBtn.textContent = s.retry
 
+        // A window opened for a link has no tab to go back to.
+        if (data.isLink) { el.dock.hidden = true; el.dock.nextElementSibling && (el.dock.nextElementSibling.hidden = true) }
         applyState(data.state)
         buildView()
         wire()

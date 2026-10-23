@@ -1,4 +1,4 @@
-const { contextBridge, ipcRenderer } = require('electron')
+const { contextBridge, ipcRenderer, webUtils } = require('electron')
 
 const validReceiveChannels = new Set([
     'app-hidden',
@@ -92,7 +92,9 @@ const validReceiveChannels = new Set([
     'vpn-proxy-changed',
     // A messenger's own window was opened / closed (main/services/detachedWindows.js).
     'detached:opened',
-    'detached:closed'
+    'detached:closed',
+    // A right-click the page did not handle itself: the main window draws the menu (main/services/pageContextMenu.js).
+    'pagemenu:show'
 ])
 
 const invokeChannelMap = {
@@ -117,6 +119,8 @@ const invokeChannelMap = {
 const validInvokeChannels = new Set([
     'battery:has',
     'detached:open',
+    'detached:open-link',
+    'pagemenu:action',
     'detached:focus',
     'detached:close',
     'detached:list',
@@ -321,6 +325,8 @@ const electronAPI = {
     storeSecureDelete: (key) => ipcRenderer.invoke('store:secure-delete', key),
 
     getWebviewPreloadPath: () => ipcRenderer.invoke('get-webview-preload-path'),
+    // The real path of a file the user picked (Electron no longer puts it on File#path): custom notification sounds.
+    getPathForFile: (file) => { try { return webUtils.getPathForFile(file) } catch { return '' } },
 
     invoke: (channel, ...args) => {
         const mapped = mapInvokeChannel(channel)

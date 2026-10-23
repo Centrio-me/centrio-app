@@ -1189,6 +1189,11 @@ function registerAppEvents({
             // background tab's own JS actually running like the foreground one.
             try { contents.setBackgroundThrottling(false) } catch {}
 
+            // A right-click the page does not handle itself shows our menu (main/services/pageContextMenu.js).
+            require('../services/pageContextMenu').attach(contents, { getMainWindow })
+            // Files a cloud page opens go to windows of their own when the messenger has that option (main/services/fileWindows.js).
+            require('../services/fileWindows').watch(contents, { findMessengerId: findMessengerIdForSession })
+
             // BUGFIX (2026-08-26, Gmail-in-webview-tab Google rejection): the
             // webview's own base `useragent` attribute
             // (renderer/webview-tabs-bind.js) explicitly claims Chrome for
@@ -1978,6 +1983,12 @@ function registerAppEvents({
                     if (messenger?.url) {
                         try {
                             if (baseDomain(new URL(navUrl).hostname) === baseDomain(new URL(messenger.url).hostname)) {
+                                // The messenger opens its files in windows of their own: this popup becomes one.
+                                const fileWindows = require('../services/fileWindows')
+                                if (fileWindows.isEnabled(messenger.id) && fileWindows.openInWindow(messenger.id, navUrl)) {
+                                    if (!childWindow.isDestroyed()) childWindow.destroy()
+                                    return
+                                }
                                 if (!contents.isDestroyed()) contents.loadURL(navUrl).catch(() => {})
                                 if (!childWindow.isDestroyed()) childWindow.destroy()
                                 return

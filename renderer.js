@@ -548,6 +548,7 @@ async function bootstrap() {
         // (empty) no matter what was actually saved on disk.
         ['split.saved', null],
         ['splitPresets', []],
+        ['filesInWindows', {}],
         ['quickReplies', []],
         ['pmVault', null],
         ['splitLeftPctPref', 50],
@@ -3674,6 +3675,7 @@ function applyTabZoom(level) {
         if (vpnToggle) vpnToggle.classList.toggle('on', enabled)
 
         const m = state.activeMessengers.find(x => x.id === id)
+        document.getElementById('ctxFilesToggle')?.classList.toggle('on', (store.get('filesInWindows', {}) || {})[id] === true)
         const dmLabel = document.getElementById('ctxDarkModeLabel')
         const dmItem = document.getElementById('ctxDarkMode')
         const extState = store.get('extensionsState', {})
@@ -3780,6 +3782,7 @@ function applyTabZoom(level) {
 
     bindContextActionsUi({
         state,
+        store,
         folderIcons,
         saveData,
         hideAllMenus,

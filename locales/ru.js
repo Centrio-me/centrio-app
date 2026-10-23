@@ -4,6 +4,7 @@ module.exports = {
 
     ctx: {
          sound: "Звук уведомления",
+         filesInWindows: "Файлы — в отдельных окнах",
         detach: "Открыть в отдельном окне",
        reload: 'Обновить',
         rename: 'Переименовать',
@@ -177,6 +178,8 @@ module.exports = {
         splitFocusTitlebar: 'Верхнюю строку (появляется, если подвести мышь к верхнему краю)',
         notifSound: 'Звук уведомлений',
         notifSoundChoose: 'Выбор звука',
+        ringtone: "Рингтон",
+        ringtoneTuktuk: "Тук-тук (Telegram)",
         notifSoundUpload: 'Загрузить свой звук',
         trayBadge: 'Счётчик в трее',
         notifHistoryLimit: 'Сколько уведомлений хранить',
@@ -356,6 +359,26 @@ module.exports = {
         remove: 'Убрать из списка'
     },
 
+    // Right-click menu of a messenger page (renderer/page-menu.js).
+    pagemenu: {
+        back: "Назад",
+        forward: "Вперёд",
+        reload: "Обновить",
+        cut: "Вырезать",
+        paste: "Вставить",
+        pasteText: "Вставить как текст",
+        selectAll: "Выделить всё",
+        addToDictionary: "Добавить в словарь",
+        openLinkWindow: "Открыть в новом окне Centrio",
+        openLinkBrowser: "Открыть в браузере",
+        copyLink: "Копировать адрес ссылки",
+        copyContact: "Копировать",
+        copyImage: "Копировать изображение",
+        copyImageUrl: "Копировать адрес изображения",
+        searchWeb: "Найти «{text}» в Яндексе",
+        copyPageUrl: "Копировать адрес страницы",
+        openPageBrowser: "Открыть страницу в браузере",
+    },
     detached: {
         paneTitle: "{name} открыт в отдельном окне",
         paneHint: "Когда вы закроете то окно, мессенджер вернётся сюда.",

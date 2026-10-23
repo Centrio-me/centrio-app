@@ -1,5 +1,6 @@
 function bindContextActionsUi({
     state,
+    store,
     folderIcons,
     saveData,
     hideAllMenus,
@@ -71,6 +72,19 @@ function bindContextActionsUi({
         const m = getMessengerById(state.contextTargetId)
         hideAllMenus()
         if (m && typeof detachMessenger === 'function') detachMessenger(m.id)
+    })
+
+    // Every file this service opens appears in a window of its own (main/services/fileWindows.js).
+    document.getElementById('ctxFilesWindow')?.addEventListener('click', (e) => {
+        const m = getMessengerById(state.contextTargetId)
+        if (!m) { hideAllMenus(); return }
+        // The menu stays open so the switch is seen moving.
+        e.stopPropagation()
+        // Its own store key (not a messenger field): the cloud copy of the messenger list would drop it.
+        const files = { ...(store.get('filesInWindows', {}) || {}) }
+        if (files[m.id]) delete files[m.id]; else files[m.id] = true
+        store.set('filesInWindows', files)
+        document.getElementById('ctxFilesToggle')?.classList.toggle('on', files[m.id] === true)
     })
 
     document.getElementById('ctxMute')?.addEventListener('click', () => {

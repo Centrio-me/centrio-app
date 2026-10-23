@@ -15,6 +15,10 @@ function registerDetachedIpc({ getMainWindow }) {
         if (!fromMainWindow(event)) return { success: false, error: 'forbidden' }
         return detached.open(record)
     })
+    ipcMain.handle('detached:open-link', (event, record, url) => {
+        if (!fromMainWindow(event)) return { success: false, error: 'forbidden' }
+        return detached.openLink(record, url)
+    })
     ipcMain.handle('detached:focus', (event, id) => (fromMainWindow(event) ? detached.focus(id) : false))
     ipcMain.handle('detached:close', (event, id) => (fromMainWindow(event) ? detached.close(id) : false))
     ipcMain.handle('detached:list', (event) => (fromMainWindow(event) ? detached.list() : []))

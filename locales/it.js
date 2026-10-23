@@ -4,6 +4,7 @@ module.exports = {
 
     ctx: {
          sound: "Suono di notifica",
+         filesInWindows: "Apri i file in finestre separate",
         detach: "Apri in una finestra separata",
        reload:              'Ricarica',
         rename:              'Rinomina',
@@ -157,6 +158,8 @@ module.exports = {
         splitFocusTitlebar: 'La barra in alto (compare se porti il mouse sul bordo superiore)',
         notifSound:       'Suono notifiche',
         notifSoundChoose: 'Scegli suono',
+        ringtone: "Suoneria",
+        ringtoneTuktuk: "Toc-toc (Telegram)",
         notifSoundUpload: 'Carica suono personalizzato',
         trayBadge:        'Badge tray',
         notifHistoryLimit: 'Notifiche da conservare',
@@ -325,6 +328,26 @@ module.exports = {
         remove: 'Rimuovi dalla lista'
     },
 
+    // Right-click menu of a messenger page (renderer/page-menu.js).
+    pagemenu: {
+        back: "Indietro",
+        forward: "Avanti",
+        reload: "Ricarica",
+        cut: "Taglia",
+        paste: "Incolla",
+        pasteText: "Incolla come testo semplice",
+        selectAll: "Seleziona tutto",
+        addToDictionary: "Aggiungi al dizionario",
+        openLinkWindow: "Apri in una nuova finestra di Centrio",
+        openLinkBrowser: "Apri nel browser",
+        copyLink: "Copia indirizzo del link",
+        copyContact: "Copia",
+        copyImage: "Copia immagine",
+        copyImageUrl: "Copia indirizzo immagine",
+        searchWeb: "Cerca «{text}» su Google",
+        copyPageUrl: "Copia indirizzo della pagina",
+        openPageBrowser: "Apri la pagina nel browser",
+    },
     detached: {
         paneTitle: "{name} è aperto in una finestra separata",
         paneHint: "Quando chiudi quella finestra, il messenger torna qui.",

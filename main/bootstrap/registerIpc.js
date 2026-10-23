@@ -22,6 +22,7 @@ const registerVisitorStatsIpc = require('../ipc/visitorStats')
 const registerShortcutsIpc = require('../ipc/shortcuts')
 const registerBatteryIpc = require('../ipc/battery')
 const registerDetachedIpc = require('../ipc/detached')
+const registerPageMenuIpc = require('../ipc/pageMenu')
 
 function registerIpc({ getMainWindow, showMainWindow, updateTrayMenu, isQuittingRef }) {
     registerWindowIpc({ getMainWindow, isQuittingRef })
@@ -48,6 +49,7 @@ function registerIpc({ getMainWindow, showMainWindow, updateTrayMenu, isQuitting
     registerShortcutsIpc()
     registerBatteryIpc()
     registerDetachedIpc({ getMainWindow })
+    registerPageMenuIpc({ getMainWindow })
 }
 
 module.exports = registerIpc

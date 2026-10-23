@@ -3993,6 +3993,25 @@ body:has(.modal.show) .split-handle { display: none !important; }
     opacity: 0.6;
 }
 
+/* ── Меню страницы мессенджера (renderer/page-menu.js) ── */
+#webviewContextMenu { min-width: 232px; max-width: 340px; }
+#webviewContextMenu .pmenu-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#webviewContextMenu .pmenu-hint { margin-left: 16px; font-size: 11px; opacity: 0.45; flex-shrink: 0; }
+#webviewContextMenu .context-item:hover .pmenu-hint { opacity: 0.8; }
+#webviewContextMenu .pmenu-chevron { display: inline-flex; margin-left: auto; opacity: 0.6; }
+#webviewContextMenu .is-strong .pmenu-label { font-weight: 600; }
+#webviewContextMenu .is-disabled { opacity: 0.4; cursor: default; pointer-events: none; }
+.pmenu-nav { display: flex; gap: 2px; padding: 1px; }
+.pmenu-nav button {
+    flex: 1; display: flex; align-items: center; justify-content: center; height: 32px;
+    border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--text-primary);
+    cursor: pointer; transition: background 0.15s, color 0.15s;
+}
+.pmenu-nav button:hover:not(:disabled) { background: var(--accent); color: #fff; }
+.pmenu-nav button:disabled { opacity: 0.3; cursor: default; }
+[data-theme="light"] .pmenu-nav button { color: #1c1c1e; }
+[data-theme="light"] .pmenu-nav button:hover:not(:disabled) { color: #fff; }
+
 .modal-body {
     padding: 12px 24px 24px;
     display: flex;
@@ -11242,6 +11261,22 @@ button:active {
     text-align: center;
     flex-shrink: 0;
 }
+
+/* Номер рингтона вместо эмодзи */
+.sound-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--bg-hover);
+    font-size: 11px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-secondary);
+}
+.sound-item.active .sound-num { background: var(--accent); color: #fff; }
 
 .sound-preview-btn {
     background: var(--bg-hover);

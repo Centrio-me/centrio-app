@@ -165,17 +165,35 @@ function isEnabled() {
     return state.adblock === true
 }
 
+// A messenger page plays its own "tuk-tuk" for every message (Telegram Web: notification.mp3), and Centrio plays the
+// sound the user chose: two sounds for one message. While Centrio's own notification sound is on, the page's
+// notification sound files are simply not loaded, so the page stays silent and only Centrio's sound is heard.
+// Voice messages, calls and media are never touched: only files named like a notification sound.
+const OWN_SOUND_PATTERNS = ['mp3', 'ogg', 'wav', 'm4a', 'aac'].flatMap((ext) => [`*://*/*notification*.${ext}*`, `*://*/*notify*.${ext}*`])
+const OWN_SOUND_RE = /\/[^/?#]*(notification|notify)[^/?#]*\.(mp3|ogg|wav|m4a|aac)([?#]|$)/i
+
+function ownSoundIsSilenced(url) {
+    if (!OWN_SOUND_RE.test(String(url || ''))) return false
+    try { return (store.get('settings', {}) || {}).notifSound !== false } catch { return false }
+}
+
 function applyToSession(sess) {
     if (!sess || !sess.webRequest) return
 
-    if (!isEnabled()) {
-        try { sess.webRequest.onBeforeRequest(null); } catch(e) {}
-        return
-    }
-
-    sess.webRequest.onBeforeRequest({ urls: AD_PATTERNS }, (details, callback) => {
-        log.info(`[adblock] Blocking: ${details.url}`)
-        callback({ cancel: true })
+    // One listener per session (Electron allows only one for this event), so ads and own sounds share it.
+    const patterns = isEnabled() ? [...AD_PATTERNS, ...OWN_SOUND_PATTERNS] : OWN_SOUND_PATTERNS
+    sess.webRequest.onBeforeRequest({ urls: patterns }, (details, callback) => {
+        if (ownSoundIsSilenced(details.url)) {
+            log.info(`[notif-sound] page's own sound not loaded: ${details.url.split('?')[0]}`)
+            callback({ cancel: true })
+            return
+        }
+        if (isEnabled() && !OWN_SOUND_RE.test(details.url)) {
+            log.info(`[adblock] Blocking: ${details.url}`)
+            callback({ cancel: true })
+            return
+        }
+        callback({})
     })
 }
 

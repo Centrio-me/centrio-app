@@ -1,8 +1,33 @@
+// The ringtones that ship with the app: assets/sounds/ringtone-<id>.mp3. Anything else a saved setting names (the sounds of
+// older versions) counts as "not chosen", so it plays the default.
+// 11 is the notification sound of Telegram Web ("tuk-tuk").
+const RINGTONES = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11']
+// Older sounds kept on request, with their own file names.
+const EXTRA_SOUND_FILES = { single: 'single.wav' }
+const DEFAULT_RINGTONE = '10'
+const CUSTOM_SOUND = 'custom'
+
+function isRingtone(name) {
+    const key = String(name)
+    return RINGTONES.includes(key) || Object.prototype.hasOwnProperty.call(EXTRA_SOUND_FILES, key)
+}
+
+function soundFileName(name) {
+    const key = isRingtone(name) ? String(name) : DEFAULT_RINGTONE
+    return EXTRA_SOUND_FILES[key] || `ringtone-${key}.mp3`
+}
+
 function createSoundsApi({ store, ipcRenderer, getActiveMessengers }) {
     let soundPickerInited = false
 
     function getBuiltinSoundPath(soundName) {
-        return `assets/sounds/${soundName}.wav`
+        return `assets/sounds/${soundFileName(soundName)}`
+    }
+
+    // The sound the user chose for everyone, as a valid name.
+    function chosenSoundName(settings) {
+        const name = settings.notifSoundName
+        return isRingtone(name) || (name === CUSTOM_SOUND && settings.notifSoundCustomPath) ? name : DEFAULT_RINGTONE
     }
 
     // Sounds play inside the app window with the browser's own audio. The old way (a PowerShell process per beep, see
@@ -32,20 +57,18 @@ function createSoundsApi({ store, ipcRenderer, getActiveMessengers }) {
         const settings = store.get('settings', {})
         if (settings.notifSound === false) return
 
-        let soundName = settings.notifSoundName || 'single'
+        let soundName = chosenSoundName(settings)
 
         if (messengerId) {
             const messenger = getActiveMessengers().find(m => m.id === messengerId)
-            if (messenger && messenger.notifSound && messenger.notifSound !== '__default__') {
+            if (messenger && isRingtone(messenger.notifSound)) {
                 soundName = messenger.notifSound
             }
         }
 
         let soundPath
-        if (soundName === 'custom') {
-            const customPath = settings.notifSoundCustomPath || ''
-            if (!customPath) return
-            soundPath = customPath
+        if (soundName === CUSTOM_SOUND) {
+            soundPath = settings.notifSoundCustomPath
         } else {
             soundPath = getBuiltinSoundPath(soundName)
         }
@@ -66,7 +89,7 @@ function createSoundsApi({ store, ipcRenderer, getActiveMessengers }) {
         if (!container) return
 
         const settings = store.get('settings', {})
-        const current = settings.notifSoundName || 'single'
+        const current = chosenSoundName(settings)
 
         container.querySelectorAll('.sound-item').forEach(item => {
             item.classList.toggle('active', item.dataset.sound === current)

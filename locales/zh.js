@@ -4,6 +4,7 @@ module.exports = {
 
     ctx: {
          sound: "通知声音",
+         filesInWindows: "在单独窗口中打开文件",
         detach: "在单独窗口中打开",
        reload:              '刷新',
         rename:              '重命名',
@@ -157,6 +158,8 @@ module.exports = {
         splitFocusTitlebar: '顶部栏（鼠标移到顶部边缘时会出现）',
         notifSound:       '通知声音',
         notifSoundChoose: '选择提示音',
+        ringtone: "铃声",
+        ringtoneTuktuk: "咚咚 (Telegram)",
         notifSoundUpload: '上传自定义声音',
         trayBadge:        '托盘角标',
         notifHistoryLimit: '保留通知数量',
@@ -325,6 +328,26 @@ module.exports = {
         remove: '从列表中移除'
     },
 
+    // Right-click menu of a messenger page (renderer/page-menu.js).
+    pagemenu: {
+        back: "后退",
+        forward: "前进",
+        reload: "刷新",
+        cut: "剪切",
+        paste: "粘贴",
+        pasteText: "粘贴为纯文本",
+        selectAll: "全选",
+        addToDictionary: "添加到词典",
+        openLinkWindow: "在新的 Centrio 窗口中打开",
+        openLinkBrowser: "在浏览器中打开",
+        copyLink: "复制链接地址",
+        copyContact: "复制",
+        copyImage: "复制图片",
+        copyImageUrl: "复制图片地址",
+        searchWeb: "用 Google 搜索“{text}”",
+        copyPageUrl: "复制页面地址",
+        openPageBrowser: "在浏览器中打开页面",
+    },
     detached: {
         paneTitle: "{name} 已在单独窗口中打开",
         paneHint: "关闭该窗口后，聊天应用会回到这里。",

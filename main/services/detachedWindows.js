@@ -10,11 +10,12 @@
 'use strict'
 
 const path = require('path')
-const { BrowserWindow, Menu, screen, shell } = require('electron')
+const { BrowserWindow, Menu, clipboard, screen, shell } = require('electron')
 const store = require('./store')
 const lockState = require('./lockState')
 const orgAssignedPartitions = require('./orgAssignedPartitions')
 const i18n = require('./i18n')
+const pageMenu = require('./pageContextMenu')
 
 const STORE_KEY = 'detachedWindows'
 const MIN_W = 360
@@ -29,13 +30,14 @@ const EXTERNAL_SCHEMES = new Set(['https:', 'http:', 'mailto:', 'tel:'])
 const STRING_KEYS = ['reload', 'find', 'pin', 'unpin', 'opacity', 'dock', 'minimize', 'maximize', 'restore', 'close',
     'findPlaceholder', 'findNone', 'loadFailed', 'retry', 'prev', 'next']
 
-// messengerId -> { win, record, pinned, opacity, unread, saveTimer }
+// key (messengerId, or 'link:<n>' for a link window) -> { win, record, key, linkWindow, startUrl, pinned, opacity, unread, saveTimer }
 const entries = new Map()
-// host webContents id -> messengerId
+// host webContents id -> key
 const idByHost = new Map()
 
 let getMainWindow = () => null
 let closingAll = false
+let linkSeq = 0
 
 function init(deps) {
     getMainWindow = deps.getMainWindow || getMainWindow
@@ -88,6 +90,7 @@ function savedState(id) {
 }
 
 function persist(entry) {
+    if (entry.linkWindow) return
     clearTimeout(entry.saveTimer)
     entry.saveTimer = setTimeout(() => {
         if (entry.win.isDestroyed()) return
@@ -152,6 +155,8 @@ function buildInitData(entry) {
     const userAgent = `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${chrome.split('.')[0]}.0.0.0 Safari/537.36`
     return {
         messenger: entry.record,
+        startUrl: entry.startUrl,
+        isLink: entry.linkWindow,
         partition: `persist:${entry.record.id}`,
         preloadUrl: require('../ipc/api').getWebviewPreloadPath(),
         userAgent,
@@ -162,20 +167,40 @@ function buildInitData(entry) {
     }
 }
 
+// A plain right-click in the messenger (the page itself shows no menu in a <webview>): editing, links, and the way back
+// (a file opened from the cloud replaces the page, so Back matters here).
 function showEditMenu(win, guest, params) {
     const flags = params.editFlags || {}
     const label = (key) => i18n.t(`detached.${key}`, key)
-    let template = []
+    const menu = (key) => i18n.t(`pagemenu.${key}`, key)
+    const history = guest.navigationHistory
+    const template = []
+    const add = (items) => { if (items.length) { if (template.length) template.push({ type: 'separator' }); template.push(...items) } }
+    const link = pageMenu.safeExternal(params.linkURL)
+    if (link) {
+        add([
+            { label: menu('openLinkBrowser'), click: () => shell.openExternal(link).catch(() => {}) },
+            { label: menu('copyLink'), click: () => clipboard.writeText(link) }
+        ])
+    }
     if (params.isEditable) {
-        template = [
+        add([
             { label: label('menuCut'), enabled: !!flags.canCut, click: () => guest.cut() },
             { label: label('menuCopy'), enabled: !!flags.canCopy, click: () => guest.copy() },
             { label: label('menuPaste'), enabled: !!flags.canPaste, click: () => guest.paste() },
             { type: 'separator' },
             { label: label('menuSelectAll'), enabled: !!flags.canSelectAll, click: () => guest.selectAll() }
-        ]
+        ])
     } else if (params.selectionText) {
-        template = [{ label: label('menuCopy'), click: () => guest.copy() }]
+        add([{ label: label('menuCopy'), click: () => guest.copy() }])
+    } else if (!link) {
+        add([
+            { label: menu('back'), enabled: history ? history.canGoBack() : guest.canGoBack(), click: () => guest.goBack() },
+            { label: menu('forward'), enabled: history ? history.canGoForward() : guest.canGoForward(), click: () => guest.goForward() },
+            { label: menu('reload'), click: () => guest.reload() },
+            { type: 'separator' },
+            { label: menu('copyPageUrl'), click: () => clipboard.writeText(guest.getURL()) }
+        ])
     }
     if (template.length && !win.isDestroyed()) Menu.buildFromTemplate(template).popup({ window: win })
 }
@@ -190,8 +215,35 @@ function open(rawRecord) {
         focus(record.id)
         return { success: true, existing: true }
     }
+    return createWindow(record, { key: record.id, linkWindow: false })
+}
 
-    const saved = savedState(record.id)
+// A link (a file, a document) opened from a page's context menu in a window of its own. It shares the messenger's session,
+// so the user is already signed in, but it is only an extra window: the messenger's own tab stays where it is, and the
+// window keeps no saved position, no unread count and no 'moved' placeholder.
+function openLink(rawRecord, rawUrl) {
+    const record = sanitizeRecord(rawRecord)
+    if (!record) return { success: false, error: 'bad_messenger' }
+    if (!isKnownMessenger(record.id)) return { success: false, error: 'unknown_messenger' }
+    let startUrl
+    try {
+        const u = new URL(String(rawUrl || ''))
+        if (u.protocol !== 'https:' && u.protocol !== 'http:') return { success: false, error: 'bad_url' }
+        startUrl = u.toString()
+    } catch { return { success: false, error: 'bad_url' } }
+    // The same file asked for twice shows the window it already has.
+    for (const entry of entries.values()) {
+        if (entry.linkWindow && !entry.win.isDestroyed() && entry.record.id === record.id && entry.startUrl === startUrl) {
+            focus(entry.key)
+            return { success: true, existing: true }
+        }
+    }
+    linkSeq += 1
+    return createWindow(record, { key: `link:${linkSeq}`, linkWindow: true, startUrl })
+}
+
+function createWindow(record, { key, linkWindow, startUrl }) {
+    const saved = linkWindow ? {} : savedState(record.id)
     const startBounds = visibleBounds(saved.bounds)
     const dark = (store.get('settings', {}) || {}).theme !== 'light'
     const layout = startBounds || defaultBounds()
@@ -220,9 +272,9 @@ function open(rawRecord) {
     win.setMenuBarVisibility(false)
 
     const opacity = Math.max(MIN_OPACITY, Math.min(1, Number(saved.opacity) || 1))
-    const entry = { win, record, pinned: saved.pinned === true, opacity, unread: 0, saveTimer: null }
-    entries.set(record.id, entry)
-    idByHost.set(win.webContents.id, record.id)
+    const entry = { win, record, key, linkWindow, startUrl: startUrl || '', pinned: saved.pinned === true, opacity, unread: 0, saveTimer: null }
+    entries.set(key, entry)
+    idByHost.set(win.webContents.id, key)
 
     if (entry.pinned) win.setAlwaysOnTop(true)
     if (opacity < 1) win.setOpacity(opacity)
@@ -244,13 +296,13 @@ function open(rawRecord) {
     const hostId = win.webContents.id
     win.once('closed', () => {
         clearTimeout(entry.saveTimer)
-        entries.delete(record.id)
+        entries.delete(key)
         idByHost.delete(hostId)
-        if (!closingAll) sendToMain('detached:closed', record.id)
+        if (!closingAll && !linkWindow) sendToMain('detached:closed', record.id)
     })
 
     win.loadFile(path.join(__dirname, 'detached', 'detachedWindow.html')).catch(() => {})
-    sendToMain('detached:opened', record.id)
+    if (!linkWindow) sendToMain('detached:opened', record.id)
     return { success: true }
 }
 
@@ -284,7 +336,7 @@ function isOpen(id) {
 }
 
 function list() {
-    return [...entries.keys()]
+    return [...entries.values()].filter((e) => !e.linkWindow).map((e) => e.key)
 }
 
 // Called from the unread poll in registerAppEvents.js: the title shows the count, so the taskbar shows it too.
@@ -370,6 +422,6 @@ function isDetachedGuest(contents) {
 }
 
 module.exports = {
-    init, open, focus, close, closeAll, isOpen, list, onUnread,
+    init, open, openLink, focus, close, closeAll, isOpen, list, onUnread,
     handleInit, handleControl, handleGuestKey, isDetachedGuest
 }

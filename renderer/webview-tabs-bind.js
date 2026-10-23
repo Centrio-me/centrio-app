@@ -1,4 +1,5 @@
 const { isChatWidgetMessenger } = require('./constants')
+const { createPageMenu } = require('./page-menu')
 
 // ── Диплинки других мессенджеров (MAX / Telegram) ──────────────────────────
 // Классификация (какой href — деплинк какого сервиса) происходит ТОЛЬКО в
@@ -354,6 +355,12 @@ function createWebviewTabsApi({
     if (webviewContextMenu && webviewContextMenu.parentElement !== document.body) {
         document.body.appendChild(webviewContextMenu)
     }
+
+    // The page right-click menu (renderer/page-menu.js): built per click from what is under the cursor.
+    const pageMenu = createPageMenu({
+        menuEl: webviewContextMenu, state, store, ipcRenderer, invokeIpc, tGet,
+        hideMenu: () => hideWebviewContextMenu(), applyTabZoom, openFindBar
+    })
 
     const DEEP_LINK_HOST_MATCHERS = {
         telegram: /(^|\.)telegram\.org$|(^|\.)t\.me$/i,
@@ -926,6 +933,7 @@ function createWebviewTabsApi({
     }
 
     function attachContextMenu(webview, messenger) {
+        pageMenu.register(webview, messenger)
         webview.addEventListener('ipc-message', (e) => {
             if (e.channel === 'close-context-menu') {
                 hideWebviewContextMenu()
@@ -1044,81 +1052,8 @@ function createWebviewTabsApi({
                 switchTab(messenger.id)
             }
 
-            const params = e.args[0] || {}
-            state.wvContextParams = params
-
-            document.querySelectorAll('.context-menu').forEach((m) => {
-                m.classList.remove('show')
-                m.style.visibility = ''
-            })
-
-            const saveImageItem = document.getElementById('wvSaveImage')
-            if (saveImageItem) {
-                saveImageItem.style.display = params.mediaType === 'image' ? 'flex' : 'none'
-            }
-
-            const copyItem = document.getElementById('wvCopy')
-            if (copyItem) {
-                const hasCopy = params.mediaType === 'image' || !!params.selectionText
-                copyItem.style.display = hasCopy ? 'flex' : 'none'
-                const dividerAfterCopy = copyItem.nextElementSibling
-                if (dividerAfterCopy?.classList.contains('context-divider')) {
-                    dividerAfterCopy.style.display = hasCopy ? '' : 'none'
-                }
-            }
-
-            const translateItem = document.getElementById('wvTranslate')
-            if (translateItem) {
-                const extState = store.get('extensionsState', {})
-                const canTranslate = !!params.selectionText && extState.translate === true
-                translateItem.style.display = canTranslate ? 'flex' : 'none'
-                const wvTranslateDivider = document.getElementById('wvTranslateDivider')
-                if (wvTranslateDivider) wvTranslateDivider.style.display = canTranslate ? 'block' : 'none'
-            }
-
-            const webviewRect = webview.getBoundingClientRect()
-            const localX = Number(params.clientX ?? params.x ?? 0)
-            const localY = Number(params.clientY ?? params.y ?? 0)
-            const zoom = Number(state.tabZoomLevel || 1)
-            const margin = 8
-            const pointerOffset = 2
-
-            let left = webviewRect.left + localX * zoom + pointerOffset
-            let top = webviewRect.top + localY * zoom + pointerOffset
-
-            webviewContextMenu.style.position = 'fixed'
-            webviewContextMenu.style.left = '0px'
-            webviewContextMenu.style.top = '0px'
-            webviewContextMenu.style.visibility = 'hidden'
-            webviewContextMenu.classList.add('show')
-
-            requestAnimationFrame(() => {
-                const menuRect = webviewContextMenu.getBoundingClientRect()
-
-                const fitsBelow = top + menuRect.height <= window.innerHeight - margin
-                const fitsRight = left + menuRect.width <= window.innerWidth - margin
-
-                if (!fitsBelow) {
-                    top = top - menuRect.height - pointerOffset * 2
-                }
-
-                if (!fitsRight) {
-                    left = left - menuRect.width - pointerOffset * 2
-                }
-
-                const maxLeft = window.innerWidth - menuRect.width - margin
-                const maxTop = window.innerHeight - menuRect.height - margin
-
-                if (left > maxLeft) left = Math.max(margin, maxLeft)
-                if (top > maxTop) top = Math.max(margin, maxTop)
-
-                if (left < margin) left = margin
-                if (top < margin) top = margin
-
-                webviewContextMenu.style.left = `${Math.round(left)}px`
-                webviewContextMenu.style.top = `${Math.round(top)}px`
-                webviewContextMenu.style.visibility = 'visible'
-            })
+            // A quick second right-click (or Ctrl+right-click): our menu over any page, even one with its own.
+            pageMenu.showFromPage(webview, messenger, e.args[0] || {})
         })
     }
 
@@ -1467,80 +1402,6 @@ function createWebviewTabsApi({
 
     function bindWebviewContextMenuActions() {
         bindGlobalMenuClose()
-
-        document.getElementById('wvTranslate')?.addEventListener('click', () => {
-            const text = (state.wvContextParams || {}).selectionText || ''
-            if (text) ipcRenderer.send('open-translate-window', text)
-            hideWebviewContextMenu()
-        })
-
-        document.getElementById('wvCopy')?.addEventListener('click', async () => {
-            const params = state.wvContextParams || {}
-            if (params.mediaType === 'image' && params.srcURL) {
-                // Скачиваем картинку через preload → копируем через main process clipboard
-                const wv = getActiveWebview()
-                if (wv) {
-                    state._wvCopyMode = true
-                    wv.send('download-image', params.srcURL)
-                }
-            } else if (params.selectionText) {
-                // Копируем выделенный текст
-                try {
-                    await navigator.clipboard.writeText(params.selectionText)
-                } catch {
-                    // fallback если clipboard API недоступен
-                    invokeIpc('copy-text-to-clipboard', params.selectionText).catch(() => {})
-                }
-            }
-            hideWebviewContextMenu()
-        })
-
-        document.getElementById('wvSavePage')?.addEventListener('click', () => {
-            ipcRenderer.send('save-page')
-            hideWebviewContextMenu()
-        })
-
-        document.getElementById('wvSaveImage')?.addEventListener('click', async () => {
-            hideWebviewContextMenu()
-            if (!state.wvContextParams.srcURL) return
-
-            const wv = getActiveWebview()
-            if (!wv) return
-
-            const result = await invokeIpc('get-save-image-path', state.wvContextParams.srcURL)
-            if (!result.success) return
-
-            const filePath = result.data
-            if (!filePath) return
-
-            state.wvContextParams._filePath = filePath
-            wv.send('download-image', state.wvContextParams.srcURL)
-        })
-
-        document.getElementById('wvZoomIn')?.addEventListener('click', () => {
-            applyTabZoom(state.tabZoomLevel + 0.25)
-            hideWebviewContextMenu()
-        })
-
-        document.getElementById('wvZoomOut')?.addEventListener('click', () => {
-            applyTabZoom(state.tabZoomLevel - 0.25)
-            hideWebviewContextMenu()
-        })
-
-        document.getElementById('wvZoomReset')?.addEventListener('click', () => {
-            applyTabZoom(1.0)
-            hideWebviewContextMenu()
-        })
-
-        document.getElementById('wvFind')?.addEventListener('click', () => {
-            openFindBar()
-            hideWebviewContextMenu()
-        })
-
-        document.getElementById('wvPrint')?.addEventListener('click', () => {
-            getActiveWebview()?.print()
-            hideWebviewContextMenu()
-        })
     }
 
     // FEATURE (2026-09-11, chat widget as a real messenger) — called from

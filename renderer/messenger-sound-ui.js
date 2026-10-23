@@ -5,8 +5,11 @@ function createMessengerSoundUiApi({ requirePro } = {}) {
         const messenger = getMessengerById(messengerId)
         if (!messenger) return
 
-        const current = messenger.notifSound || '__default__'
-        document.querySelectorAll('#messengerSoundList .sound-item').forEach(item => {
+        // A sound of an older version (no longer in the list) shows as 'default', which is also what plays.
+        const items = [...document.querySelectorAll('#messengerSoundList .sound-item')]
+        const saved = messenger.notifSound || '__default__'
+        const current = items.some(item => item.dataset.msound === saved) ? saved : '__default__'
+        items.forEach(item => {
             item.classList.toggle('active', item.dataset.msound === current)
         })
 
