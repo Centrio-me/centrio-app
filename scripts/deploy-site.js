@@ -64,7 +64,11 @@ const ROOT = path.join(__dirname, '..')
 // the file WITHOUT a `.bak-*`/`.pre-*` suffix — and cross-check the
 // resulting port against `ps -fp <pid of that port>` on the server; do not
 // trust a pm2 process name alone, there are several stale look-alikes).
-const LIVE_WEB_ROOT = '/var/www/centrio-web-releases/20260926-links02'
+// 2026-10-26: nginx now proxies 'location /' to port 3011 = release 20261025-seo02 (pm2 centrio-web-seo20261025-languages). The earlier
+// 20260926-links02 only serves old cached JS assets; deploying there changes nothing a visitor sees.
+// The release folders share one node_modules through a symlink, which Turbopack refuses ("points out of the filesystem root"):
+// the site is built with webpack. A failed build used to leave the site on 502 (the .next folder is deleted first).
+const LIVE_WEB_ROOT = '/var/www/centrio-web-releases/20261025-seo02'
 
 // The pm2 process serving LIVE_WEB_ROOT, and the daemon that owns it.
 // 2026-09-30 finding: this one lives under a plain `pm2` (root's own
@@ -72,7 +76,7 @@ const LIVE_WEB_ROOT = '/var/www/centrio-web-releases/20260926-links02'
 // entirely and won't even see this process (see header comment above and
 // the 2026-08-26 note further down for the mirror-image version of this
 // same class of bug).
-const PM2_PROCESS = 'centrio-web-links02'
+const PM2_PROCESS = 'centrio-web-seo20261025-languages'
 
 // Every file on the LIVE server known to hardcode the current version as a
 // literal string (verified 2026-09-30 via `grep -rl '2.9.4' src/` on
@@ -98,6 +102,8 @@ const VERSION_LITERAL_REMOTE_FILES = [
     'src/content/translations/pages-zh.json',
     'src/app/download/page.tsx',
     'src/app/layout.tsx',
+    'src/components/editorial/guide-copy.ts',
+    'src/components/editorial/GuideWalkthrough.tsx',
 ]
 
 // changelog-data.ts is NOT a simple literal — it's a historical array
@@ -231,7 +237,7 @@ async function main() {
     await runCommand(sftp, `rm -rf ${LIVE_WEB_ROOT}/.next && echo cleared`)
 
     console.log('🔨 Building...')
-    const build = await runCommand(sftp, `cd ${LIVE_WEB_ROOT} && npm run build 2>&1 | tail -20`)
+    const build = await runCommand(sftp, `cd ${LIVE_WEB_ROOT} && NODE_OPTIONS=--max-old-space-size=2560 npx next build --webpack 2>&1 | tail -20`)
     if (build.code !== 0) {
         throw new Error(`Build failed (exit ${build.code}) — see output above. Not restarting pm2 on a failed build.`)
     }
