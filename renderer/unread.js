@@ -182,8 +182,15 @@ function createUnreadApi({
     }
 
     function toggleMuteAll() {
-        state.globalMuteAll = !state.globalMuteAll
+        setMuteAll(!state.globalMuteAll)
+    }
+
+    // On/off for every messenger at once. Also the way "do not disturb" (renderer/dnd.js) switches itself on and off.
+    function setMuteAll(on) {
+        state.globalMuteAll = on === true
         store.set('globalMuteAll', state.globalMuteAll)
+        // Switched off by hand (the bell in the notifications panel): any "until 18:40" no longer applies.
+        if (!state.globalMuteAll) store.set('dndUntil', 0)
         updateMuteAllBtn()
 
         state.activeMessengers.forEach(m => {
@@ -221,7 +228,8 @@ function createUnreadApi({
         updateUnreadCount,
         repaintAllUnreadBadges,
         toggleMuteMessenger,
-        toggleMuteAll
+        toggleMuteAll,
+        setMuteAll
     }
 }
 

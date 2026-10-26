@@ -53,9 +53,20 @@ function createSoundsApi({ store, ipcRenderer, getActiveMessengers }) {
         } catch { fallback() }
     }
 
-    function playNotifSound(messengerId = null) {
+    // One message can reach the app through more than one door (the page's own notification, its service worker, the
+    // unread counter), and each used to play the sound: two beeps for one message. Within this window a second one is skipped.
+    const SAME_MESSAGE_WINDOW_MS = 1200
+    let lastNotifSoundAt = 0
+
+    // force: a button the user pressed to hear the sound (never skipped).
+    function playNotifSound(messengerId = null, { force = false } = {}) {
         const settings = store.get('settings', {})
         if (settings.notifSound === false) return
+        if (!force) {
+            const now = Date.now()
+            if (now - lastNotifSoundAt < SAME_MESSAGE_WINDOW_MS) return
+            lastNotifSoundAt = now
+        }
 
         let soundName = chosenSoundName(settings)
 
@@ -199,7 +210,7 @@ function createSoundsApi({ store, ipcRenderer, getActiveMessengers }) {
 
     function previewMessengerSound(soundName) {
         if (soundName === '__default__') {
-            playNotifSound()
+            playNotifSound(null, { force: true })
             return
         }
 

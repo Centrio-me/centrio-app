@@ -60,6 +60,7 @@ const { bindSplitFocus } = require('./renderer/split-focus')
 const { bindBatteryStatus } = require('./renderer/battery-status')
 const { bindMenuUi } = require('./renderer/menu-bind')
 const { bindTitlebarQuickMenuUi } = require('./renderer/titlebar-quickmenu-bind')
+const { createDndApi } = require('./renderer/dnd')
 const { bindWindowUi } = require('./renderer/window-bind')
 const { bindAppEvents } = require('./renderer/app-events-bind')
 const { bindEditModalUi } = require('./renderer/edit-modal-bind')
@@ -549,6 +550,8 @@ async function bootstrap() {
         ['split.saved', null],
         ['splitPresets', []],
         ['filesInWindows', {}],
+        ['dndUntil', 0],
+        ['dndLastHours', 1],
         ['quickReplies', []],
         ['pmVault', null],
         ['splitLeftPctPref', 50],
@@ -1018,7 +1021,8 @@ async function bootstrap() {
         updateMuteAllBtn,
         updateUnreadCount,
         repaintAllUnreadBadges,
-        toggleMuteAll
+        toggleMuteAll,
+        setMuteAll
     } = unreadApi
 
     // ==============================
@@ -2184,7 +2188,9 @@ function applyTabZoom(level) {
             return Math.max(0, Math.min(100, Math.round((left / total) * 100)))
         }
 
-        let info = null
+        // The bar shows the paid period that lasts longest. A team owner (or member with a team seat) may also have a
+        // personal plan that ends much sooner, and the short one must not hide the long one.
+        const candidates = []
         if (plan !== 'FREE') {
             const expiry = user?.planExpiresAt || null
             if (expiry) {
@@ -2192,32 +2198,47 @@ function applyTabZoom(level) {
                 if (left > 0) {
                     const started = user?.planStartedAt || null
                     const totalDays = started ? Math.round((new Date(expiry) - new Date(started)) / 86400000) : 30
-                    info = {
+                    candidates.push({
                         plan: plan,
                         left,
                         since: started ? fmtShortDate(started) : '',
                         showRenew: true,
                         percent: percentLeft(left, totalDays)
-                    }
+                    })
                 }
             }
-        } else {
+        }
+        const org = user?.orgSummary
+        if (org && org.orgProSeat === true && org.orgSeatsExpiresAt) {
+            const left = daysLeft(org.orgSeatsExpiresAt)
+            if (left > 0) {
+                candidates.push({
+                    plan: 'TEAM',
+                    left,
+                    since: '',
+                    showRenew: org.orgIsOwner === true,
+                    percent: percentLeft(left, 365)
+                })
+            }
+        }
+        if (plan === 'FREE' && !candidates.length) {
             const trialExpiresAt = store.get('localProTrialExpiresAt', null)
             if (trialExpiresAt) {
                 const left = daysLeft(trialExpiresAt)
                 if (left > 0) {
                     const started = new Date(trialExpiresAt)
                     started.setDate(started.getDate() - 14)
-                    info = {
+                    candidates.push({
                         plan: 'TRIAL',
                         left,
                         since: fmtShortDate(started.toISOString()),
                         showRenew: false,
                         percent: percentLeft(left, 14)
-                    }
+                    })
                 }
             }
         }
+        const info = candidates.sort((a, b) => b.left - a.left)[0] || null
 
         sep.style.display = info ? '' : 'none'
         item.style.display = info ? '' : 'none'
@@ -3536,6 +3557,9 @@ function applyTabZoom(level) {
         updateMuteIcon,
         saveData
     })
+
+    // Do not disturb: the speaker button in the title bar and its hotkey (renderer/dnd.js).
+    createDndApi({ state, store, tGet, setMuteAll, isMessengerMuted, updateMuteIcon, saveData })
 
     bindWindowUi({
         store,

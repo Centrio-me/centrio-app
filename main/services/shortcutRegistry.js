@@ -18,6 +18,8 @@ const DEFINITIONS = [
     { id: 'prevTab', accel: 'Ctrl+Shift+Tab' },
     { id: 'reload', accel: 'Ctrl+R' },
     { id: 'settings', accel: 'Ctrl+,' },
+    // Do not disturb on / off (renderer/dnd.js)
+    { id: 'dnd', accel: 'Ctrl+Alt+D' },
     // Saved split screens: the Nth action opens the Nth saved layout (pressed again, it closes the split).
     ...Array.from({ length: 9 }, (_, i) => ({ id: `splitPreset${i + 1}`, accel: `Ctrl+Shift+${i + 1}` }))
 ]

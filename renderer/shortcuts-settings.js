@@ -10,7 +10,8 @@ const LABEL_KEYS = {
     nextTab: 'shortcuts.next',
     prevTab: 'shortcuts.prev',
     reload: 'shortcuts.reload',
-    settings: 'shortcuts.openSettings'
+    settings: 'shortcuts.openSettings',
+    dnd: 'shortcuts.dnd'
 }
 
 const { shortcutKeyName } = require('../shared/shortcutKeys')

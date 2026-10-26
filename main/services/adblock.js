@@ -169,8 +169,22 @@ function isEnabled() {
 // sound the user chose: two sounds for one message. While Centrio's own notification sound is on, the page's
 // notification sound files are simply not loaded, so the page stays silent and only Centrio's sound is heard.
 // Voice messages, calls and media are never touched: only files named like a notification sound.
-const OWN_SOUND_PATTERNS = ['mp3', 'ogg', 'wav', 'm4a', 'aac'].flatMap((ext) => [`*://*/*notification*.${ext}*`, `*://*/*notify*.${ext}*`])
-const OWN_SOUND_RE = /\/[^/?#]*(notification|notify)[^/?#]*\.(mp3|ogg|wav|m4a|aac)([?#]|$)/i
+// Sites that name the file differently (found by reading what their pages load):
+//   MAX Web: the new-message sound is /_app/immutable/assets/msg.<hash>.mp3; the call_*.mp3 files are calls and stay.
+const SITE_SOUNDS = [
+    { pattern: '*://web.max.ru/*/assets/msg.*.mp3*', re: /^https?:\/\/web\.max\.ru\/(?:[^?#]*\/)?assets\/msg\.[\w-]+\.mp3(?:[?#]|$)/i }
+]
+// WhatsApp Web names its sound files by hash, so which one is the new-message sound is not known yet: their file names are
+// noted in the log (the name and the time only) until it is read from a real message, then it joins SITE_SOUNDS above.
+const SOUND_LOG_PATTERNS = ['mp3', 'ogg', 'm4a', 'aac', 'wav', 'opus'].map((ext) => `*://*.whatsapp.net/*.${ext}*`)
+const SOUND_LOG_RE = /^https?:\/\/[^/]*\.whatsapp\.net\/.*\.(?:mp3|ogg|m4a|aac|wav|opus)(?:[?#]|$)/i
+const OWN_SOUND_PATTERNS = [
+    ...['mp3', 'ogg', 'wav', 'm4a', 'aac'].flatMap((ext) => [`*://*/*notification*.${ext}*`, `*://*/*notify*.${ext}*`]),
+    ...SITE_SOUNDS.map((site) => site.pattern),
+    ...SOUND_LOG_PATTERNS
+]
+const GENERIC_OWN_SOUND_RE = /\/[^/?#]*(notification|notify)[^/?#]*\.(mp3|ogg|wav|m4a|aac)([?#]|$)/i
+const OWN_SOUND_RE = { test: (url) => GENERIC_OWN_SOUND_RE.test(url) || SITE_SOUNDS.some((site) => site.re.test(url)) }
 
 function ownSoundIsSilenced(url) {
     if (!OWN_SOUND_RE.test(String(url || ''))) return false
@@ -186,6 +200,11 @@ function applyToSession(sess) {
         if (ownSoundIsSilenced(details.url)) {
             log.info(`[notif-sound] page's own sound not loaded: ${details.url.split('?')[0]}`)
             callback({ cancel: true })
+            return
+        }
+        if (SOUND_LOG_RE.test(details.url)) {
+            log.info(`[page-sound] ${details.url.split('?')[0].split('/').slice(-3).join('/')} (${details.resourceType})`)
+            callback({})
             return
         }
         if (isEnabled() && !OWN_SOUND_RE.test(details.url)) {

@@ -20,17 +20,27 @@ function bindBatteryStatus({ invokeIpc, tGet }) {
         item.title = tGet(battery.charging ? 'status.batteryCharging' : 'status.battery').replace('{n}', percent)
     }
 
-    async function start() {
-        let answer
-        try { answer = await invokeIpc('battery:has') } catch { return }
-        if (!answer || !answer.hasBattery) return
-        let battery
-        try { battery = await navigator.getBattery() } catch { return }
+    function reveal() {
         item.style.display = ''
         const separator = document.getElementById('statusBatterySep')
         if (separator) separator.style.display = ''
-        draw(battery)
-        ;['levelchange', 'chargingchange'].forEach((name) => battery.addEventListener(name, () => draw(battery)))
+    }
+
+    // A desktop PC always reports "100 %, charging". A computer that runs on its battery, or is below full, is a laptop
+    // whatever the operating system query said (that query can fail on locked-down PCs).
+    const runsOnBattery = (battery) => battery.charging === false || battery.level < 1
+
+    async function start() {
+        let answer = null
+        try { answer = await invokeIpc('battery:has') } catch { /* the web API below still tells */ }
+        let battery
+        try { battery = await navigator.getBattery() } catch { return }
+        let shown = !!(answer && answer.hasBattery)
+        if (shown || runsOnBattery(battery)) { shown = true; reveal(); draw(battery) }
+        ;['levelchange', 'chargingchange'].forEach((name) => battery.addEventListener(name, () => {
+            if (!shown && runsOnBattery(battery)) { shown = true; reveal() }
+            if (shown) draw(battery)
+        }))
     }
 
     start()

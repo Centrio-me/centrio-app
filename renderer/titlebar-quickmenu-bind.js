@@ -96,13 +96,7 @@ function bindTitlebarQuickMenuUi ({
         activeWebview()?.reload()
     })
 
-    document.getElementById('tqmMute')?.addEventListener('click', function () {
-        if (!state.activeTabId) return
-        state.mutedMessengers[state.activeTabId] = !state.mutedMessengers[state.activeTabId]
-        saveData()
-        updateMuteIcon(state.activeTabId)
-        this.classList.toggle('muted', isMessengerMuted(state.activeTabId))
-    })
+    // #tqmMute (do not disturb) is bound in renderer/dnd.js.
 
     document.getElementById('tqmBack')?.addEventListener('click', () => {
         const wv = activeWebview()
