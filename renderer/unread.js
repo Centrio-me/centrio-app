@@ -4,10 +4,28 @@ function createUnreadApi({
     tGet,
     ipcRenderer,
     updateStatusBar,
-    updateFolderBadge
+    updateFolderBadge,
+    pushUnreadSummary
 }) {
     function isMessengerMuted(id) {
         return state.globalMuteAll || state.mutedMessengers[id] === true
+    }
+
+    let unreadSummaryPushTimer = null
+    const UNREAD_SUMMARY_PUSH_DEBOUNCE_MS = 4000
+
+    // What the mobile app's feed shows: how many unread messages there are per service. Several messengers settling in
+    // the same second (a reconnect) become one request. A failed push never touches the local screen, which is already updated.
+    function scheduleUnreadSummaryPush() {
+        if (typeof pushUnreadSummary !== 'function') return
+        clearTimeout(unreadSummaryPushTimer)
+        unreadSummaryPushTimer = setTimeout(() => {
+            const byMessenger = state.activeMessengers
+                .map((m) => ({ id: m.id, name: m.name, unread: getEffectiveUnreadCount(m.id) }))
+                .filter((m) => m.unread > 0)
+            const total = byMessenger.reduce((sum, m) => sum + m.unread, 0)
+            pushUnreadSummary(total, byMessenger)
+        }, UNREAD_SUMMARY_PUSH_DEBOUNCE_MS)
     }
 
     function getEffectiveUnreadCount(id) {
@@ -169,6 +187,7 @@ function createUnreadApi({
             ipcRenderer.send('update-badge', count)
             ipcRenderer.send('tray:update-menu', count)
             updateStatusBar()
+            scheduleUnreadSummaryPush()
         }, 250)
     }
 

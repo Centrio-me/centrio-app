@@ -163,6 +163,14 @@ function registerApiIpc() {
         return wrapApi(() => api.syncPull(token))
     })
 
+    ipcMain.handle('api-unread-push', async (event, token, total, byMessenger) => {
+        return wrapApi(() => api.pushUnreadSummary(token, total, byMessenger))
+    })
+
+    ipcMain.handle('api-feed-push', async (event, token, items) => {
+        return wrapApi(() => api.pushFeedItems(token, items))
+    })
+
     ipcMain.handle('api-notes-list', async (event, token, opts) => {
         return wrapApi(() => api.notesList(token, opts))
     })

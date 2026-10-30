@@ -15,6 +15,19 @@
 // dueDate/priority/notes/subtasks/reminder — see migrateItem() below for the
 // backward-compatible defaulting of pre-existing tasks, and openTaskDetail()
 // for the new detail modal that edits them.
+// Each task carries `updatedAt` (set here, whenever its content changes). The cloud merges the lists task by task with
+// the phone's edits and the newer change wins, so a task changed on one side is not lost when the other side syncs.
+// The snapshot is taken when the data is read, before callers change it in place.
+let savedSnapshot = new Map()
+const contentOf = (t) => JSON.stringify({ ...t, updatedAt: undefined })
+function takeSnapshot(data) {
+    savedSnapshot = new Map((data.items || []).map(t => [t.id, contentOf(t)]))
+}
+function stampChanged(data) {
+    const now = Date.now()
+    return { ...data, items: (data.items || []).map(t => (savedSnapshot.get(t.id) === contentOf(t) ? t : { ...t, updatedAt: now })) }
+}
+
 const DEFAULT_LIST_ID = 'default'
 const REMINDER_CHECK_INTERVAL_MS = 60 * 1000
 
@@ -91,11 +104,14 @@ function bindTodosUi({ store, tGet, ipcRenderer, openRightPanel, closeRightPanel
             dirty = true
         }
         if (dirty) store.set('todos', data)
+        takeSnapshot(data)
         return data
     }
 
     function saveData(data) {
-        store.set('todos', data)
+        const stamped = stampChanged(data)
+        store.set('todos', stamped)
+        takeSnapshot(stamped)
     }
 
     function escapeHtml(str) {
@@ -610,7 +626,12 @@ function bindTodosUi({ store, tGet, ipcRenderer, openRightPanel, closeRightPanel
         closeCtxMenu()
     })
 
-    return { closePanel }
+    // Tasks changed from outside (the phone, through the cloud): redraw if the panel is on screen.
+    function refresh() {
+        if (panel.classList.contains('active')) renderAll()
+    }
+
+    return { closePanel, refresh }
 }
 
 module.exports = { bindTodosUi }

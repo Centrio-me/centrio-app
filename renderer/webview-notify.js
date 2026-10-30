@@ -52,7 +52,8 @@ function createWebviewNotifyApi({
     playNotifSound,
     isMessengerMuted,
     updateUnreadCount,
-    addMessengerNotification
+    addMessengerNotification,
+    pushFeedItem
 }) {
     async function sendPushNotificationFromSite(messenger, payload = {}) {
         if (payload.tag !== 'unread-fallback') state.lastSiteNotifyAt[messenger.id] = Date.now()
@@ -128,6 +129,13 @@ function createWebviewNotifyApi({
         // makes DOM-level "message received" detection unreliable across
         // different messengers) ──
         invokeIpc('tracker:msg-received', 1).catch(() => {})
+
+        // ── The phone's notification feed: the same text the user is shown here. Only real site notifications (the app's
+        // own "unread count grew" fallback has no text), and the server keeps them only if the user turned the feed on
+        // in the mobile app (off by default). Read-only on the phone.
+        if (!isFallback && typeof pushFeedItem === 'function') {
+            pushFeedItem({ messengerId: messenger.id, messengerName: messenger.name || '', title, body }).catch(() => {})
+        }
 
         // ── Кандидат-ссылка на конкретный чат/сообщение (см. payload.url —
         // извлекается из options.data патч-скриптами в registerAppEvents.js

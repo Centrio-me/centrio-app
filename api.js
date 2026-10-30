@@ -237,6 +237,17 @@ module.exports = {
         return request('GET', '/api/sync', null, token)
     },
 
+    // The personal unread summary the mobile app's feed shows (POST /api/unread-summary); caller: renderer/unread.js
+    pushUnreadSummary(token, total, byMessenger) {
+        return request('POST', '/api/unread-summary', { total, byMessenger }, token)
+    },
+
+    // Texts of shown notifications for the phone's feed (POST /api/mobile-feed). The server stores them only if the user
+    // switched the feed on in the mobile app; caller: renderer/cloud.js cloudPushFeedItem
+    pushFeedItems(token, items) {
+        return request('POST', '/api/mobile-feed', { items }, token)
+    },
+
     notesList(token, { archived = false } = {}) {
         return request('GET', `/api/notes${archived ? '?archived=true' : ''}`, null, token)
     },

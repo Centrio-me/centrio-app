@@ -17174,7 +17174,7 @@ body.onb-active #titlebarMenu {
 .status-sub .status-sub-progress { display: none; }
 .status-sub .sub-left { font-size: 11px; color: var(--text-secondary); }
 .status-sub .sub-left b { font-weight: 500; color: var(--text-primary); }
-.status-sub.sub-urgent .sub-left b { color: var(--warning); }
+.status-sub.sub-urgent .sub-left b { color: var(--danger); }
 /* The thin line of what is left sits under the text; it changes colour as the term runs out. */
 .status-sub::after {
     content: ""; position: absolute; left: 8px; right: 8px; bottom: 2px; height: 2px; border-radius: 2px;

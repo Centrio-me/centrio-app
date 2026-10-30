@@ -202,6 +202,8 @@ const validInvokeChannels = new Set([
     'api-refresh',
     'api-register',
     'api-sync-pull',
+    'api-unread-push',
+    'api-feed-push',
     'api-sync-push',
     'api-tickets-create',
     'api-tickets-file',

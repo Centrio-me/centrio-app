@@ -108,7 +108,7 @@ const SYNCED_STORE_KEYS = new Set([
     'messengers', 'folders', 'settings', 'security', 'lockOnStartup',
     'globalProxy', 'sidebarOrder', 'menuCollapsed', 'appZoomLevel',
     'vpnAppModes', 'extensionsState', 'splitLeftPctPref', 'splitPresets',
-    'mutedMessengers', 'quickReplies', 'pmVault', 'rightbarLayout', 'orgAssignedFolders', 'dividers', 'foldersStyle', 'folderColors'
+    'mutedMessengers', 'quickReplies', 'todos', 'pmVault', 'rightbarLayout', 'orgAssignedFolders', 'dividers', 'foldersStyle', 'folderColors'
 ])
 
 // Password manager sync (PRO): the encrypted vault rides along with the settings; `apply` is set once the panel exists.
@@ -796,6 +796,8 @@ async function bootstrap() {
                         splitLeftPctPref: store.get('splitLeftPctPref', 50),
                         splitPresets:     store.get('splitPresets', []) || [],
                         quickReplies:     store.get('quickReplies', []) || [],
+                        // Personal tasks (PRO): synced so the phone sees and edits them; the cloud merges task by task.
+                        ...((typeof hasEffectivePro === 'function' && hasEffectivePro() && store.get('todos', null)) ? { todos: store.get('todos', null) } : {}),
                         // Only the ENCRYPTED vault (useless without the master password); the key is left out entirely
                         // when not syncing, because a null would wipe the cloud copy.
                         ...((typeof hasEffectivePro === 'function' && hasEffectivePro() && !pmSync.blocked && store.get('pmVault', null)) ? { pmVault: store.get('pmVault', null) } : {}),
@@ -928,6 +930,7 @@ async function bootstrap() {
                         if (extra.splitLeftPctPref !== undefined) await store.setAsync('splitLeftPctPref', extra.splitLeftPctPref)
                         if (extra.splitPresets !== undefined) await store.setAsync('splitPresets', extra.splitPresets)
                         if (Array.isArray(extra.quickReplies)) await store.setAsync('quickReplies', extra.quickReplies)
+                        if (extra.todos && Array.isArray(extra.todos.lists)) await store.setAsync('todos', extra.todos)
                         if (extra.pmVault) { pmSync.pending = extra.pmVault; if (typeof pmSync.apply === 'function') pmSync.apply(extra.pmVault) }
                         if (extra.rightbarLayout !== undefined) await store.setAsync('rightbarLayout', extra.rightbarLayout)
                         if (extra.orgAssignedFolders && typeof extra.orgAssignedFolders === 'object') await store.setAsync('orgAssignedFolders', extra.orgAssignedFolders)
@@ -1010,7 +1013,8 @@ async function bootstrap() {
         tGet,
         ipcRenderer,
         updateStatusBar,
-        updateFolderBadge: (...args) => updateFolderBadge(...args)
+        updateFolderBadge: (...args) => updateFolderBadge(...args),
+        pushUnreadSummary: cloudApi.cloudPushUnreadSummary
     })
 
     const {
@@ -1039,6 +1043,7 @@ async function bootstrap() {
         playNotifSound,
         isMessengerMuted,
         updateUnreadCount,
+        pushFeedItem: cloudApi.cloudPushFeedItem,
         addMessengerNotification: (title, body, name, messengerId, actionUrl, nid) => {
             if (typeof addMessengerNotifRef === 'function') {
                 addMessengerNotifRef(title, body, name, messengerId, actionUrl, nid)
@@ -2157,6 +2162,16 @@ function applyTabZoom(level) {
         return mixHex(danger, warning, percent / 50)
     }
 
+    // The subscription pill and its bar: green all the way, red once 10 days or fewer are left (owner's request,
+    // 2026-10-30). It no longer fades through orange: the only thing that matters is "time to renew".
+    const SUB_URGENT_DAYS = 10
+    function subColorForDays (left) {
+        const css = getComputedStyle(document.documentElement)
+        return left <= SUB_URGENT_DAYS
+            ? (css.getPropertyValue('--danger').trim() || '#ef4444')
+            : (css.getPropertyValue('--success').trim() || '#22c55e')
+    }
+
     // Компактная подпись подписки в нижнем статус-баре, справа от счётчика
     // непрочитанных: прогресс-бар + "осталось 92 дн." + ссылка "Продлить".
     // Скрыта, если план FREE без активного локального триала (нечего
@@ -2254,13 +2269,13 @@ function applyTabZoom(level) {
         days.textContent = `${info.left} ${unit}`
         text.appendChild(days)
         item.title = info.since ? `${info.since} — ${info.left} ${unit}` : ''
-        item.style.setProperty('--sub-color', progressColorForPercent(info.percent))
+        item.style.setProperty('--sub-color', subColorForDays(info.left))
         item.style.setProperty('--fill-w', `${info.percent}%`)
-        item.classList.toggle('sub-urgent', info.left <= 7)
+        item.classList.toggle('sub-urgent', info.left <= SUB_URGENT_DAYS)
         item.classList.toggle('sub-trial', info.plan === 'TRIAL')
-        renew.style.display = info.showRenew || info.left <= 7 ? '' : 'none'
+        renew.style.display = info.showRenew || info.left <= SUB_URGENT_DAYS ? '' : 'none'
         fill.style.setProperty('--fill-w', `${info.percent}%`)
-        fill.style.background = progressColorForPercent(info.percent)
+        fill.style.background = subColorForDays(info.left)
         bar.title = `${tGet('sidebar.daysLeftTooltip') || 'Осталось'}: ${info.percent}%`
     }
 
@@ -3000,6 +3015,7 @@ function applyTabZoom(level) {
     // отложенную ссылку вместо прямого замыкания на notesUiApi.
     let notesUiApiRef = null
     let quickRepliesApiRef = null
+    let todosUiApiRef = null
     let rightbarCustomApiRef = null
 
     function onExtensionToggle(extId, isEnabled) {
@@ -3226,6 +3242,7 @@ function applyTabZoom(level) {
                 if (extra.splitLeftPctPref !== undefined) store.set('splitLeftPctPref', extra.splitLeftPctPref)
                 if (extra.splitPresets !== undefined) store.set('splitPresets', extra.splitPresets)
                 if (Array.isArray(extra.quickReplies)) store.set('quickReplies', extra.quickReplies)
+                if (extra.todos && Array.isArray(extra.todos.lists)) store.set('todos', extra.todos)
                 if (extra.pmVault) { pmSync.pending = extra.pmVault; if (typeof pmSync.apply === 'function') pmSync.apply(extra.pmVault) }
                 if (extra.rightbarLayout !== undefined) store.set('rightbarLayout', extra.rightbarLayout)
                 if (extra.orgAssignedFolders && typeof extra.orgAssignedFolders === 'object') store.set('orgAssignedFolders', extra.orgAssignedFolders)
@@ -3918,7 +3935,7 @@ function applyTabZoom(level) {
         addMessengerNotifRef = appNotifApi.addMessengerNotification
     }
 
-    bindTodosUi({
+    todosUiApiRef = bindTodosUi({
         store,
         tGet,
         ipcRenderer,
@@ -4151,6 +4168,32 @@ function applyTabZoom(level) {
     }, 1000)
 
     setInterval(updateStatusBar, 30000)
+
+    // Phone <-> computer: quick replies and tasks edited on the phone show up here within a minute. Skipped while a
+    // change of ours is still waiting to be sent (it would be overwritten), and the writes below do not trigger a push.
+    async function pullListsFromPhone() {
+        try {
+            if (!cloudStore.isLoggedIn() || !hasEffectivePro()) return
+            if (cloudStore.getPendingLocalChanges()) return
+            const lists = await cloudApi.cloudPullLists()
+            if (!lists) return
+            suppressAutoCloudSync = true
+            try {
+                const sameJson = (a, b) => JSON.stringify(a) === JSON.stringify(b)
+                if (Array.isArray(lists.quickReplies) && !sameJson(lists.quickReplies, store.get('quickReplies', []) || [])) {
+                    store.set('quickReplies', lists.quickReplies)
+                    quickRepliesApiRef?.render()
+                }
+                if (lists.todos && Array.isArray(lists.todos.lists) && !sameJson(lists.todos, store.get('todos', null))) {
+                    store.set('todos', lists.todos)
+                    todosUiApiRef?.refresh()
+                }
+            } finally {
+                suppressAutoCloudSync = false
+            }
+        } catch {}
+    }
+    setInterval(pullListsFromPhone, 60 * 1000)
     window.addEventListener('online', updateStatusBar)
     window.addEventListener('offline', updateStatusBar)
       await advanceStartup('data', 82, { minStepTime: 300 })

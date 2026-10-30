@@ -250,6 +250,53 @@ function createCloudApi({
         }
     }
 
+    async function cloudPushUnreadSummary(total, byMessenger) {
+        try {
+            if (!cloudStore.getToken()) return { success: false, error: 'Not authenticated', code: 'unauthorized' }
+            return await authorizedInvoke('api-unread-push', total, byMessenger)
+        } catch (e) {
+            console.error('cloudPushUnreadSummary error:', e)
+            return { success: false, error: e?.message || 'Unread summary push failed' }
+        }
+    }
+
+    // Whether the server wants notification texts for the phone's feed. It does only after the user switched the feed
+    // on in the mobile app; while it does not, ask again at most once in a few minutes instead of on every message.
+    const FEED_RECHECK_MS = 5 * 60 * 1000
+    let feedWanted = null
+    let feedCheckedAt = 0
+
+    async function cloudPushFeedItem(item) {
+        try {
+            if (!cloudStore.getToken()) return { success: false, error: 'Not authenticated', code: 'unauthorized' }
+            if (feedWanted === false && Date.now() - feedCheckedAt < FEED_RECHECK_MS) return { success: true, skipped: true }
+            const result = await authorizedInvoke('api-feed-push', [item])
+            if (result && result.success) {
+                feedWanted = result.data?.enabled !== false
+                feedCheckedAt = Date.now()
+            }
+            return result
+        } catch (e) {
+            console.error('cloudPushFeedItem error:', e)
+            return { success: false, error: e?.message || 'Feed push failed' }
+        }
+    }
+
+    // Just the two lists the phone also edits (quick replies, tasks), read from the cloud without touching the
+    // "last sync" bookkeeping. Null when there is nothing usable.
+    async function cloudPullLists() {
+        try {
+            if (!cloudStore.getToken()) return null
+            const result = await authorizedInvoke('api-sync-pull')
+            if (!result || !result.success) return null
+            const extra = result.data?.settings?.extra
+            if (!extra || typeof extra !== 'object') return null
+            return { quickReplies: Array.isArray(extra.quickReplies) ? extra.quickReplies : null, todos: extra.todos || null }
+        } catch (e) {
+            return null
+        }
+    }
+
     async function cloudSyncPull() {
         try {
             if (!cloudStore.getToken()) return null
@@ -372,6 +419,9 @@ function createCloudApi({
         cloudRefreshToken,
         cloudSyncPush,
         cloudSyncPull,
+        cloudPushUnreadSummary,
+        cloudPushFeedItem,
+        cloudPullLists,
         login,
         register,
         oauthGoogle,
