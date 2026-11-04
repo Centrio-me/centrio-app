@@ -54,6 +54,7 @@ const { bindSettingsUi } = require('./renderer/settings-bind')
 const { bindLockUi } = require('./renderer/lock-bind')
 const { bindCloudUi } = require('./renderer/cloud-bind')
 const { bindOnboardingScreen } = require('./renderer/onboarding-auth')
+const { bindOutageNotice } = require('./renderer/outage-notice')
 const { bindWelcomeScreen } = require('./renderer/welcome-screen')
 const { bindShortcutsSettings } = require('./renderer/shortcuts-settings')
 const { bindSplitFocus } = require('./renderer/split-focus')
@@ -86,6 +87,7 @@ const { bindVpnUi, bindVpnSettings } = require('./renderer/vpn-bind')
 const { bindAssistantTools } = require('./renderer/assistant-tools')
 const { bindAssistantUi } = require('./renderer/assistant-bind')
 const { bindAssistantSettingsUi } = require('./renderer/assistant-settings-bind')
+const { cloudCopyIsRolledBack } = require('./renderer/cloud-rollback')
 
 // ==============================
 // SHIM ДЛЯ STORE
@@ -878,8 +880,13 @@ async function bootstrap() {
             reapplySoundLocks()
 
             const cloudData = await cloudSyncPull()
-            const hasData = (cloudData?.messengers?.length > 0) || (cloudData?.folders?.length > 0)
+            // The cloud copy may be the old one restored after the servers were rebuilt: keep this computer's data then.
+            const cloudRolledBack = cloudCopyIsRolledBack(cloudData, store.get('messengers', []))
+            if (cloudRolledBack) console.warn('[cloud] The cloud copy is older than the rebuild — keeping local data and sending it up')
+            const hasData = !cloudRolledBack && ((cloudData?.messengers?.length > 0) || (cloudData?.folders?.length > 0))
             if (hasData) {
+                // Safety copy of what this computer had, in case the cloud copy turns out to be the wrong one.
+                try { store.set('backup.beforeCloudApply', { at: new Date().toISOString(), messengers: store.get('messengers', []), folders: store.get('folders', []), workspaces: store.get('workspaces', []) }) } catch {}
                 // Пишем данные, только что стянутые ИЗ облака — не планировать
                 // автопуш этих же данных обратно (страница всё равно перезагрузится).
                 suppressAutoCloudSync = true
@@ -3164,6 +3171,16 @@ function applyTabZoom(level) {
     function applyCloudBootData(cloudData) {
         if (!(cloudData?.messengers?.length > 0)) return
 
+        // The cloud copy written before the servers were rebuilt is older than this computer's data: never apply it,
+        // send the local state up instead (the same way as for unconfirmed local changes below).
+        if (cloudCopyIsRolledBack(cloudData, store.get('messengers', []))) {
+            console.warn('[cloud] Skipped applying cloud boot data — the cloud copy is older than the rebuild')
+            setTimeout(() => {
+                if (cloudStore.isLoggedIn()) cloudSyncPush().catch(() => {})
+            }, 3000)
+            return
+        }
+
         // BUGFIX (2026-09-30, "разложила всё по папкам, закрыла приложение
         // принудительно, запустила и всё повываливалось из папок"): this
         // function is what actually overwrites local folders/messengers/
@@ -3539,6 +3556,8 @@ function applyTabZoom(level) {
         openUrl: (url) => window.electronAPI?.openExternal?.(url),
         renewNow: () => authorizedInvoke('api-payments-renew-now')
     })
+
+    bindOutageNotice({ store, cloudStore, getLanguage: getCurrentLanguage })
 
     bindOnboardingScreen({
         store,
