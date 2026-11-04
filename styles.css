@@ -17853,3 +17853,11 @@ body.sf-hide-top #sfTopZone { display: block; }
 .outage-notice-close { padding: 12px 20px; border-radius: 999px; border: 1px solid #375075; background: transparent; color: #cfd9ee; font-weight: 600; font-size: 14px; cursor: pointer; }
 .outage-notice-close:hover { background: #1a2742; }
 .outage-notice-cta:focus-visible, .outage-notice-close:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+
+/* "Check for updates" inside the version history popup */
+.changelog-popup-update { margin-left: auto; margin-right: 10px; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--border, #375075); background: transparent; color: inherit; font: inherit; font-size: 12px; cursor: pointer; white-space: nowrap; }
+.changelog-popup-update:hover:not(:disabled) { background: rgba(127, 127, 127, 0.15); }
+.changelog-popup-update:disabled { opacity: 0.6; cursor: default; }
+.changelog-popup-update-status { font-size: 12px; opacity: 0.8; white-space: nowrap; }
+.changelog-popup-update-status:not(:empty) { margin-left: auto; margin-right: 10px; }
+.changelog-popup-update-status:not(:empty) + .changelog-popup-update { margin-left: 0; }

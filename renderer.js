@@ -602,6 +602,14 @@ async function bootstrap() {
 
     await advanceStartup('store', 24, { minStepTime: 240 })
 
+    // The top tabs bar is off by default for a brand-new install (no account, no messengers, onboarding not done);
+    // anyone who already uses Centrio keeps what they have, and the switch in settings still turns it on.
+    {
+        const savedSettings = store.get('settings', {}) || {}
+        const brandNew = !store.get('onboardingAuthSeen', false) && !store.get('cloud.user', null) && (store.get('messengers', []) || []).length === 0
+        if (savedSettings.showTabs === undefined && brandNew) store.set('settings', { ...savedSettings, showTabs: false })
+    }
+
     // Помечаем платформу на <body> для CSS-адаптаций
     if (window.electronAPI?.platform) {
         document.body.classList.add(`platform-${window.electronAPI.platform}`)
@@ -4462,32 +4470,32 @@ function applyTabZoom(level) {
         })
     })()
 
-    if (checkUpdatesBtn && updateStatusBadge && window.electronAPI?.checkForUpdates) {
-        checkUpdatesBtn.addEventListener('click', async () => {
-            updateStatusBadge.textContent = tGet('settings.statusChecking')
-            checkUpdatesBtn.disabled = true
+    // The same check from two places: the About page in settings and the version history popup.
+    function bindUpdateCheck(button, statusEl) {
+        if (!button || !statusEl || !window.electronAPI?.checkForUpdates) return
+        button.addEventListener('click', async () => {
+            statusEl.textContent = tGet('settings.statusChecking')
+            button.disabled = true
 
             try {
                 const result = await window.electronAPI.checkForUpdates()
 
                 if (result?.success) {
-                    if (result.updateInfo) {
-                        updateStatusBadge.textContent = tGet('settings.statusDone')
-                    } else {
-                        updateStatusBadge.textContent = tGet('settings.statusUpToDate')
-                    }
+                    statusEl.textContent = result.updateInfo ? tGet('settings.statusDone') : tGet('settings.statusUpToDate')
                 } else {
-                    updateStatusBadge.textContent = tGet('settings.statusError')
+                    statusEl.textContent = tGet('settings.statusError')
                     console.error('Update check error:', result?.error)
                 }
             } catch (error) {
-                updateStatusBadge.textContent = tGet('settings.statusError')
+                statusEl.textContent = tGet('settings.statusError')
                 console.error(error)
             } finally {
-                checkUpdatesBtn.disabled = false
+                button.disabled = false
             }
         })
     }
+    bindUpdateCheck(checkUpdatesBtn, updateStatusBadge)
+    bindUpdateCheck(document.getElementById('changelogCheckUpdatesBtn'), document.getElementById('changelogUpdateStatus'))
 
     initSettings()
     // Восстанавливаем язык из initI18n — cloud-sync или initSettings мог перезатереть storeCache

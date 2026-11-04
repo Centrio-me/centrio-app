@@ -1131,9 +1131,18 @@
 <div id="changelogPopup" class="changelog-popup" style="display:none;">
     <div class="changelog-popup-header">
         <span class="changelog-popup-title">История изменений</span>
+        <span class="changelog-popup-update-status" id="changelogUpdateStatus" role="status"></span>
+        <button class="changelog-popup-update" id="changelogCheckUpdatesBtn" type="button" data-i18n="settings.checkUpdatesBtn">Проверить обновления</button>
         <button class="changelog-popup-close" id="changelogPopupClose">✕</button>
     </div>
     <div class="changelog-popup-body">
+        <div class="changelog-entry">
+            <div class="changelog-version">v3.5.4</div>
+            <ul class="changelog-list">
+                <li>Новое: кнопка «Проверить обновления» теперь есть и в окне «История изменений» (клик по номеру версии внизу): рядом с ней показывается, нашлась ли новая версия.</li>
+                <li>Изменено: на новой установке верхние вкладки (полоса с открытыми мессенджерами над окном) по умолчанию выключены. Включить их можно в настройках. У тех, кто уже пользуется Centrio, ничего не меняется.</li>
+            </ul>
+        </div>
         <div class="changelog-entry">
             <div class="changelog-version">v3.5.3</div>
             <ul class="changelog-list">
