@@ -93,6 +93,7 @@ function createOrgTeamApi({
         if (isOrgManager()) return
         try {
             const raw = await authorizedInvoke('api-org-get-my-structure', orgId)
+            if (isMembershipLost(raw)) return // handled by syncAssignments right after, which refreshes the account
             const structure = unwrap(raw)
             if (structure && Array.isArray(structure.folders) && Array.isArray(structure.workspaces)) applyOrgStructure(structure)
             else window.__centrioSync?.report('team', false, { code: (raw && (raw.code || raw.status)) || 'bad_response', message: (raw && raw.error) || 'structure' })
@@ -101,10 +102,35 @@ function createOrgTeamApi({
         }
     }
 
+    // The server says "Not a member of this organization" when the team was deleted or the person was removed
+    // while this app still holds the old team in its cached account. Refresh the account from the server, forget
+    // the team locally and report the step as fine: being in no team is a normal state, not a sync problem.
+    function isMembershipLost(result) {
+        if (!result || result.success) return false
+        const text = String(result.error || result.message || '')
+        return /not a member/i.test(text) || String(result.code || result.status) === '403'
+    }
+
+    async function handleMembershipLost() {
+        try {
+            const me = await authorizedInvoke('api-me')
+            const user = me?.success ? (me.data?.user || me.data) : null
+            if (user && user.email) {
+                const nextUser = { ...user, orgSummary: user.orgSummary || null }
+                cloudStore.setUser(nextUser)
+            }
+        } catch {}
+        state.orgForcedTheme = null
+        setCanAddOwnMessengers(true)
+        state.activeMessengers.filter(m => m.orgAssigned).map(m => m.id).forEach(removeOrgAssignedMessenger)
+        window.__centrioSync?.report('team', true, { detail: 0 })
+    }
+
     async function syncAssignments(orgId) {
         try {
             await syncStructure(orgId)
             const result = await authorizedInvoke('api-org-get-messenger-assignments', orgId)
+            if (isMembershipLost(result)) { await handleMembershipLost(); return }
             const assignments = unwrap(result)
             if (!Array.isArray(assignments)) {
                 window.__centrioSync?.report('team', false, { code: (result && (result.code || result.status)) || 'bad_response', message: (result && result.error) || 'assignments' })

@@ -94,7 +94,7 @@ const popularMessengers = [
     // остального топ-8/Yandex Музыка). URL/иконка/цвет намеренно совпадают
     // с syntaxAiPromo — та же реферальная ссылка.
     { name: 'SYNTAX',           url: 'https://syntx.ai/welcome/I0QyuudO',   icon: 'assets/logomessenger/syntaxai.svg',      color: '#2A2A2E', category: 'ai', popular: true },
-    { name: 'ChatGPT',          url: 'https://chat.openai.com',             icon: 'assets/logomessenger/chatgpt.png',       color: '#10A37F', category: 'ai' },
+    { name: 'ChatGPT',          url: 'https://chatgpt.com',                  icon: 'assets/logomessenger/chatgpt.png',       color: '#10A37F', category: 'ai' },
     { name: 'Claude',           url: 'https://claude.ai',                   icon: 'assets/logomessenger/claude.png',        color: '#CC785C', category: 'ai' },
     { name: 'Gemini',           url: 'https://gemini.google.com',           icon: 'assets/logomessenger/gemini.png',        color: '#4285F4', category: 'ai' },
     { name: 'Grok',             url: 'https://grok.com',                    icon: 'assets/logomessenger/grok.png',          color: '#000000', category: 'ai' },

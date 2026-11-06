@@ -188,6 +188,19 @@ module.exports = {
         return request('POST', '/api/auth/register', { email, password, name, consent: consent === true })
     },
 
+    // Registration by email now goes through a code sent to the mailbox (2026-11-06): start → confirm.
+    registerStart(email, password, name) {
+        return request('POST', '/api/auth/register/start', { email, password, name })
+    },
+
+    registerConfirm(email, code) {
+        return request('POST', '/api/auth/register/confirm', { email, code })
+    },
+
+    registerResend(email) {
+        return request('POST', '/api/auth/register/resend', { email })
+    },
+
     login(email, password) {
         return request('POST', '/api/auth/login', { email, password })
     },
@@ -246,6 +259,27 @@ module.exports = {
     // switched the feed on in the mobile app; caller: renderer/cloud.js cloudPushFeedItem
     pushFeedItems(token, items) {
         return request('POST', '/api/mobile-feed', { items }, token)
+    },
+
+    // Phone link (end-to-end encrypted feed and replies): see main/services/e2e.js and the server's routes/e2e.js
+    e2ePhones(token) {
+        return request('GET', '/api/e2e/phones', null, token)
+    },
+
+    e2eConfirmPhone(token, deviceId) {
+        return request('POST', `/api/e2e/phones/${encodeURIComponent(deviceId)}/confirm`, {}, token)
+    },
+
+    e2eUnpairPhone(token, deviceId) {
+        return request('DELETE', `/api/e2e/phones/${encodeURIComponent(deviceId)}`, null, token)
+    },
+
+    e2eReplies(token) {
+        return request('GET', '/api/e2e/replies', null, token)
+    },
+
+    e2eReplyResult(token, id, status) {
+        return request('POST', `/api/e2e/replies/${encodeURIComponent(id)}/result`, { status }, token)
     },
 
     notesList(token, { archived = false } = {}) {

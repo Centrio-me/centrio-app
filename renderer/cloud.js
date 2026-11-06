@@ -297,6 +297,17 @@ function createCloudApi({
         }
     }
 
+    // The server side of the phone link, with the same token renewal as every other call.
+    const E2E_OPS = new Set(['phones', 'confirm', 'unpair', 'replies', 'reply-result'])
+    async function cloudE2e(op, ...args) {
+        if (!E2E_OPS.has(op) || !cloudStore.getToken()) return { success: false, error: 'Not authenticated', code: 'unauthorized' }
+        try {
+            return await authorizedInvoke('api-e2e-' + op, ...args)
+        } catch (e) {
+            return { success: false, error: e?.message || 'E2E call failed' }
+        }
+    }
+
     async function cloudSyncPull() {
         try {
             if (!cloudStore.getToken()) return null
@@ -332,6 +343,27 @@ function createCloudApi({
 
     async function register(email, password, name, consent) {
         const result = await invokeIpc('api-register', email, password, name, consent === true)
+        if (!result.success) return result
+
+        const data = result.data || {}
+        applyAuthData(data)
+        cloudStore.setLastSyncError(null)
+
+        return result
+    }
+
+    // Registration by email: the server mails a 6-digit code (start), the account is created only after the
+    // code is entered (confirm). The tokens arrive with the confirm answer, exactly like a normal register.
+    async function registerStart(email, password, name) {
+        return invokeIpc('api-register-start', email, password, name)
+    }
+
+    async function registerResend(email) {
+        return invokeIpc('api-register-resend', email)
+    }
+
+    async function registerConfirm(email, code) {
+        const result = await invokeIpc('api-register-confirm', email, code)
         if (!result.success) return result
 
         const data = result.data || {}
@@ -422,8 +454,12 @@ function createCloudApi({
         cloudPushUnreadSummary,
         cloudPushFeedItem,
         cloudPullLists,
+        cloudE2e,
         login,
         register,
+        registerStart,
+        registerConfirm,
+        registerResend,
         oauthGoogle,
         oauthYandex,
         updateProfile,

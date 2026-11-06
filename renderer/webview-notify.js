@@ -134,7 +134,7 @@ function createWebviewNotifyApi({
         // own "unread count grew" fallback has no text), and the server keeps them only if the user turned the feed on
         // in the mobile app (off by default). Read-only on the phone.
         if (!isFallback && typeof pushFeedItem === 'function') {
-            pushFeedItem({ messengerId: messenger.id, messengerName: messenger.name || '', title, body }).catch(() => {})
+            pushFeedItem({ messengerId: messenger.id, messengerName: messenger.name || '', title, body, nid: payload.nid || '', peer: String(payload.peer || ''), canReply: !!(payload.nid && adapterFor(messenger.url)) }).catch(() => {})
         }
 
         // ── Кандидат-ссылка на конкретный чат/сообщение (см. payload.url —

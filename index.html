@@ -3586,6 +3586,7 @@
                 <label class="app-consent" for="onbConsent"><input type="checkbox" id="onbConsent"><span data-consent-text></span></label>
                 <button id="onbLoginBtn" class="vsc-btn" data-i18n="cloud.login">Войти</button>
                 <button id="onbRegisterBtn" class="vsc-btn-secondary" data-i18n="cloud.register">Зарегистрироваться</button>
+                <a href="#" id="onbForgotPasswordLink" class="cloud-forgot-link" data-i18n="cloud.forgotPassword">Забыли пароль?</a>
             </div>
 
             <button id="onbSkipBtn" class="onb-skip" data-i18n="onb.skip">Пропустить и пользоваться без аккаунта — без облачной синхронизации →</button>
@@ -3603,6 +3604,74 @@
             <option value="it">Italiano</option>
             <option value="zh">中文</option>
         </select>
+    </div>
+</div>
+
+<!-- ===== ОНБОРДИНГ: ЭКРАН РЕГИСТРАЦИИ (почта + код из письма, Google, Яндекс) ===== -->
+<div id="onbRegisterScreen" class="onb-screen" style="display:none;">
+    <div class="onb-glow"></div>
+    <button class="onb-back-btn" id="onbRegisterBackBtn" aria-label="Назад">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    </button>
+    <div class="onb-body onb-body-single">
+        <div class="onb-right">
+            <div class="onb-card">
+                <!-- Шаг 1: почта и пароль -->
+                <div id="onbRegForm" class="onb-reg-step">
+                    <div class="onb-card-title" data-i18n="onb.regTitle">Создать аккаунт</div>
+                    <p class="onb-card-sub" data-i18n="onb.regSub">Аккаунт хранит сервисы и настройки на всех устройствах. Начните с Pro на 14 дней.</p>
+
+                    <div id="onbRegOauthWait" style="display:none;flex-direction:column;align-items:center;gap:14px;padding:18px 0;">
+                        <div class="onb-spinner"></div>
+                        <div id="onbRegOauthWaitText" style="font-size:13px;color:var(--text-primary);text-align:center;"></div>
+                        <button id="onbRegOauthCancelBtn" class="onb-cancel-btn" data-i18n="modal.cancel">Отмена</button>
+                    </div>
+
+                    <div id="onbRegOauthButtons" class="oauth-buttons">
+                        <button class="oauth-btn oauth-google" id="onbRegGoogleBtn">
+                            <svg width="18" height="18" viewBox="0 0 24 24">
+                                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
+                                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+                            </svg>
+                            <span data-i18n="onb.regGoogle">Продолжить с Google</span>
+                        </button>
+                        <button class="oauth-btn oauth-yandex" id="onbRegYandexBtn">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                                <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0z" fill="#FC3F1D"/>
+                                <path d="M13.32 7.3h-.88c-1.54 0-2.35.78-2.35 1.93 0 1.3.56 1.96 1.72 2.75l.96.65-2.74 4.07H8.17l2.52-3.73c-1.45-1.04-2.27-2.07-2.27-3.67 0-2.09 1.44-3.5 4.0-3.5h2.72V16.7H13.32V7.3z" fill="white"/>
+                            </svg>
+                            <span data-i18n="onb.regYandex">Продолжить с Яндекс</span>
+                        </button>
+                    </div>
+
+                    <div class="oauth-divider" id="onbRegOauthDivider">
+                        <span class="oauth-divider-line"></span>
+                        <span class="oauth-divider-text" data-i18n="onb.regOr">или по почте</span>
+                        <span class="oauth-divider-line"></span>
+                    </div>
+
+                    <input type="email" id="onbRegEmail" class="vsc-input" autocomplete="email" data-i18n-placeholder="cloud.emailPh" placeholder="Email">
+                    <input type="password" id="onbRegPassword" class="vsc-input" autocomplete="new-password" data-i18n-placeholder="onb.regPasswordPh" placeholder="Пароль — не меньше 8 символов">
+                    <div id="onbRegError" class="cloud-login-error" style="display:none;"></div>
+                    <label class="app-consent" for="onbRegConsent"><input type="checkbox" id="onbRegConsent"><span data-consent-text></span></label>
+                    <button id="onbRegSubmitBtn" class="vsc-btn" data-i18n="onb.regContinue">Получить код на почту</button>
+                </div>
+
+                <!-- Шаг 2: код из письма -->
+                <div id="onbRegCode" class="onb-reg-step" style="display:none;">
+                    <div class="onb-card-title" data-i18n="onb.codeTitle">Введите код из письма</div>
+                    <p class="onb-card-sub"><span data-i18n="onb.codeSub">Мы отправили 6-значный код на</span> <b id="onbRegCodeEmail"></b></p>
+                    <input type="text" id="onbRegCodeInput" class="vsc-input onb-code-input" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="••••••">
+                    <div id="onbRegCodeError" class="cloud-login-error" style="display:none;"></div>
+                    <button id="onbRegCodeConfirmBtn" class="vsc-btn" data-i18n="onb.codeConfirm">Подтвердить</button>
+                    <button id="onbRegCodeResendBtn" class="vsc-btn-secondary" disabled></button>
+                    <button id="onbRegCodeChangeBtn" class="onb-skip" data-i18n="onb.codeChange">Изменить почту</button>
+                    <p class="onb-code-hint" data-i18n="onb.codeHint">Письмо может прийти в течение минуты. Загляните в «Спам», если его нет.</p>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -3781,6 +3850,14 @@
     <label class="app-consent" for="cloudConsent"><input type="checkbox" id="cloudConsent"><span data-consent-text></span></label>
     <button id="cloudLoginBtn" class="vsc-btn" data-i18n="cloud.login"></button>
     <button id="cloudRegisterBtn" class="vsc-btn-secondary" data-i18n="cloud.register"></button>
+    <!-- Код из письма: появляется после «Зарегистрироваться», аккаунт создаётся только после ввода кода -->
+    <div id="cloudCodeBox" style="display:none;flex-direction:column;gap:10px;">
+        <p class="onb-card-sub" style="margin:0;"><span data-i18n="onb.codeSub">Мы отправили 6-значный код на</span> <b id="cloudCodeEmail"></b></p>
+        <input type="text" id="cloudCodeInput" class="vsc-input onb-code-input" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="••••••">
+        <div id="cloudCodeError" class="cloud-login-error" style="display:none;"></div>
+        <button id="cloudCodeConfirmBtn" class="vsc-btn" data-i18n="onb.codeConfirm">Подтвердить</button>
+        <button id="cloudCodeResendBtn" class="vsc-btn-secondary"></button>
+    </div>
     <a href="#" id="cloudForgotPasswordLink" class="cloud-forgot-link" data-i18n="cloud.forgotPassword"></a>
 </div>
 

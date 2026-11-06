@@ -130,7 +130,14 @@ function bindCloudUi({
 
         if (!requireConsent('cloudConsent', errorEl, tGet)) return
 
-        const result = await cloudApi.register(email, password, email.split('@')[0], true)
+        if (password.length < 8) {
+            errorEl.textContent = tGet('onb.regPasswordShort')
+            errorEl.style.display = 'block'
+            return
+        }
+
+        // The account is created only after the code from the email is entered (shown in #cloudCodeBox).
+        const result = await cloudApi.registerStart(email, password, email.split('@')[0])
         if (!result.success) {
             errorEl.textContent = result.error
             errorEl.style.display = 'block'
@@ -138,8 +145,69 @@ function bindCloudUi({
         }
 
         errorEl.style.display = 'none'
+        openCodeBox(email, result.data?.resendInSec ?? 45)
+    })
+
+    // ── Код из письма в окне входа ──
+    let codeEmail = ''
+    let codeTimer = null
+
+    function paintResend(left) {
+        const btn = document.getElementById('cloudCodeResendBtn')
+        btn.disabled = left > 0
+        btn.textContent = left > 0 ? tGet('onb.codeResendIn').replace('{s}', String(left)) : tGet('onb.codeResend')
+    }
+
+    function startCodeTimer(seconds) {
+        if (codeTimer) clearInterval(codeTimer)
+        let left = Math.max(0, Math.ceil(seconds || 0))
+        paintResend(left)
+        if (left <= 0) return
+        codeTimer = setInterval(() => {
+            left -= 1
+            paintResend(left)
+            if (left <= 0) { clearInterval(codeTimer); codeTimer = null }
+        }, 1000)
+    }
+
+    function showCodeError(text) {
+        const el = document.getElementById('cloudCodeError')
+        el.textContent = text || ''
+        el.style.display = text ? 'block' : 'none'
+    }
+
+    function openCodeBox(email, resendInSec) {
+        codeEmail = email
+        document.getElementById('cloudCodeEmail').textContent = email
+        document.getElementById('cloudCodeInput').value = ''
+        document.getElementById('cloudCodeBox').style.display = 'flex'
+        showCodeError('')
+        startCodeTimer(resendInSec)
+        setTimeout(() => document.getElementById('cloudCodeInput').focus(), 50)
+    }
+
+    async function confirmCloudCode() {
+        const code = document.getElementById('cloudCodeInput').value.replace(/\D/g, '')
+        if (code.length !== 6) return showCodeError(tGet('onb.codeFormat'))
+        const result = await cloudApi.registerConfirm(codeEmail, code)
+        if (!result.success) return showCodeError(result.error)
+        showCodeError('')
+        if (codeTimer) { clearInterval(codeTimer); codeTimer = null }
+        document.getElementById('cloudCodeBox').style.display = 'none'
         openCloudProfile()
         ;(cloudSyncAfterLogin || cloudSyncPush)()
+    }
+
+    document.getElementById('cloudCodeConfirmBtn').addEventListener('click', confirmCloudCode)
+    document.getElementById('cloudCodeInput').addEventListener('input', (e) => {
+        e.target.value = e.target.value.replace(/\D/g, '').slice(0, 6)
+        if (e.target.value.length === 6) confirmCloudCode()
+    })
+    document.getElementById('cloudCodeResendBtn').addEventListener('click', async () => {
+        const result = await cloudApi.registerResend(codeEmail)
+        if (!result.success) return showCodeError(result.error)
+        showCodeError('')
+        startCodeTimer(result.data?.resendInSec ?? 45)
     })
 
     document.getElementById('cloudUserAvatar').addEventListener('mouseenter', () => {

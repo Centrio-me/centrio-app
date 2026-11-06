@@ -17837,3 +17837,33 @@ body.sf-hide-top #sfTopZone { display: block; }
     box-shadow: 0 0 0 2px var(--bg-secondary);
     pointer-events: none;
 }
+
+/* Phone link: the "Телефон" section of the account window and the QR window (renderer/phone-link.js) */
+.cp-phone-section { padding: 0 20px 14px; }
+.cp-phone-desc { font-size: 12px; line-height: 1.45; color: var(--text-secondary); margin: 6px 0 10px; }
+.cp-phone-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+.cp-phone-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 12px; border: 1px solid var(--border-color, rgba(255,255,255,.08)); border-radius: 10px; background: var(--bg-tertiary, rgba(255,255,255,.04)); }
+.cp-phone-name { font-size: 13px; color: var(--text-primary); }
+.cp-phone-remove { background: none; border: none; color: var(--danger); font-size: 12px; cursor: pointer; }
+.cp-phone-remove:hover { text-decoration: underline; }
+.phone-link-card { background: var(--bg-secondary); border: 1px solid var(--border-color, rgba(255,255,255,.1)); border-radius: 16px; padding: 24px 28px; width: 340px; display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.phone-link-card h3 { margin: 0; font-size: 16px; color: var(--text-primary); }
+.phone-link-qr { width: 230px; height: 230px; image-rendering: pixelated; background: #fff; padding: 8px; border-radius: 12px; }
+.phone-link-steps { margin: 0; padding-left: 18px; font-size: 12px; line-height: 1.5; color: var(--text-secondary); align-self: stretch; }
+.phone-link-status { font-size: 13px; color: var(--accent); }
+
+/* ── Onboarding: registration screen with a code from the email (2026-11-06) ── */
+.onb-body-single { justify-content: center; }
+.onb-reg-step { display: flex; flex-direction: column; gap: 13px; }
+.onb-reg-step .onb-card-sub b { color: var(--text-bright); font-weight: 600; word-break: break-all; }
+.onb-code-input {
+    text-align: center;
+    font-size: 26px !important;
+    font-weight: 700;
+    letter-spacing: .5em;
+    padding-left: calc(16px + .5em) !important;
+    font-variant-numeric: tabular-nums;
+}
+.onb-code-input::placeholder { letter-spacing: .3em; opacity: .35; }
+.onb-code-hint { margin: 0; font-size: 12px; line-height: 1.5; text-align: center; color: var(--text-muted); }
+.onb-reg-step .vsc-btn, .onb-reg-step .vsc-btn-secondary { width: 100%; }

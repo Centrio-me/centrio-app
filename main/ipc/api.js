@@ -130,6 +130,18 @@ function registerApiIpc() {
         return wrapApiAndPersistUser(() => api.register(email, password, name, consent === true))
     })
 
+    ipcMain.handle('api-register-start', async (event, email, password, name) => {
+        return wrapApi(() => api.registerStart(String(email || ''), String(password || ''), String(name || '')))
+    })
+
+    ipcMain.handle('api-register-confirm', async (event, email, code) => {
+        return wrapApiAndPersistUser(() => api.registerConfirm(String(email || ''), String(code || '')))
+    })
+
+    ipcMain.handle('api-register-resend', async (event, email) => {
+        return wrapApi(() => api.registerResend(String(email || '')))
+    })
+
     ipcMain.handle('api-me', async (event, token) => {
         return wrapApiAndPersistUser(() => api.me(token))
     })
@@ -170,6 +182,12 @@ function registerApiIpc() {
     ipcMain.handle('api-feed-push', async (event, token, items) => {
         return wrapApi(() => api.pushFeedItems(token, items))
     })
+
+    ipcMain.handle('api-e2e-phones', async (event, token) => wrapApi(() => api.e2ePhones(token)))
+    ipcMain.handle('api-e2e-confirm', async (event, token, deviceId) => wrapApi(() => api.e2eConfirmPhone(token, deviceId)))
+    ipcMain.handle('api-e2e-unpair', async (event, token, deviceId) => wrapApi(() => api.e2eUnpairPhone(token, deviceId)))
+    ipcMain.handle('api-e2e-replies', async (event, token) => wrapApi(() => api.e2eReplies(token)))
+    ipcMain.handle('api-e2e-reply-result', async (event, token, id, status) => wrapApi(() => api.e2eReplyResult(token, id, status)))
 
     ipcMain.handle('api-notes-list', async (event, token, opts) => {
         return wrapApi(() => api.notesList(token, opts))

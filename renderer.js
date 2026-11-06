@@ -72,6 +72,7 @@ const { bindMessengerSoundUi } = require('./renderer/messenger-sound-bind')
 const { bindSidebarShellUi } = require('./renderer/sidebar-shell-bind')
 const { bindAppNotifUi } = require('./renderer/app-notif-bind')
 const { bindTodosUi } = require('./renderer/todos-bind')
+const { createPhoneLinkApi } = require('./renderer/phone-link')
 const { bindQuickRepliesUi } = require('./renderer/quick-replies-bind')
 const { bindPasswordsUi } = require('./renderer/passwords-ui')
 const { createPmBar } = require('./renderer/pm-bar')
@@ -1034,6 +1035,18 @@ async function bootstrap() {
     // ==============================
     let addMessengerNotifRef = null
 
+    // The phone link: pairing by QR, the encrypted message feed and replies typed on the phone.
+    const phoneLinkApi = createPhoneLinkApi({
+        state,
+        cloudStore,
+        cloudApi,
+        invokeIpc,
+        tGet,
+        hasEffectivePro: () => hasEffectivePro(),
+        getMessenger: (id) => (state.activeMessengers || []).find(m => m.id === id)
+    })
+    phoneLinkApi.start()
+
     const webviewNotifyApi = createWebviewNotifyApi({
         state,
         store,
@@ -1043,7 +1056,7 @@ async function bootstrap() {
         playNotifSound,
         isMessengerMuted,
         updateUnreadCount,
-        pushFeedItem: cloudApi.cloudPushFeedItem,
+        pushFeedItem: (item) => phoneLinkApi.pushFeedItem(item),
         addMessengerNotification: (title, body, name, messengerId, actionUrl, nid) => {
             if (typeof addMessengerNotifRef === 'function') {
                 addMessengerNotifRef(title, body, name, messengerId, actionUrl, nid)

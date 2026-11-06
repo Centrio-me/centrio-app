@@ -23,6 +23,7 @@ const registerShortcutsIpc = require('../ipc/shortcuts')
 const registerBatteryIpc = require('../ipc/battery')
 const registerDetachedIpc = require('../ipc/detached')
 const registerPageMenuIpc = require('../ipc/pageMenu')
+const registerE2eIpc = require('../ipc/e2e')
 
 function registerIpc({ getMainWindow, showMainWindow, updateTrayMenu, isQuittingRef }) {
     registerWindowIpc({ getMainWindow, isQuittingRef })
@@ -33,6 +34,7 @@ function registerIpc({ getMainWindow, showMainWindow, updateTrayMenu, isQuitting
     registerWeatherIpc()
     registerAutoLaunchIpc()
     registerApiIpc()
+    registerE2eIpc()
     registerOAuthIpc({ getMainWindow })
     registerProxyIpc()
     registerUpdaterIpc({ getMainWindow, isQuittingRef })
