@@ -1,0 +1,20 @@
+name: Uptime
+
+# Runs outside our server, so it still works when the API or the whole host is down.
+# A failed run makes GitHub email the owner.
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: API and database
+        run: curl --fail --silent --show-error --max-time 15 --retry 3 --retry-delay 20 --retry-all-errors https://api.centrio.me/api/payments/health
+      - name: Site
+        run: curl --fail --silent --show-error --output /dev/null --max-time 15 --retry 3 --retry-delay 20 --retry-all-errors https://centrio.me/
