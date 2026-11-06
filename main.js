@@ -240,8 +240,6 @@ const ALLOWED_STORE_ROOTS = new Set([
     // disease as the two bugs above: a new persisted key added without also
     // adding it here silently never gets read or written.
     'onboardingAuthSeen',
-    // One-time message after the servers were rebuilt (renderer/outage-notice.js)
-    'outageNotice20261104',
     // 14-day Pro trial for onboarding users without an account — see
     // api-device-trial-redeem in main/ipc/api.js and the requirePro()/
     // addMessenger() checks in renderer.js.

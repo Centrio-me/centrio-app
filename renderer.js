@@ -54,7 +54,6 @@ const { bindSettingsUi } = require('./renderer/settings-bind')
 const { bindLockUi } = require('./renderer/lock-bind')
 const { bindCloudUi } = require('./renderer/cloud-bind')
 const { bindOnboardingScreen } = require('./renderer/onboarding-auth')
-const { bindOutageNotice } = require('./renderer/outage-notice')
 const { bindWelcomeScreen } = require('./renderer/welcome-screen')
 const { bindShortcutsSettings } = require('./renderer/shortcuts-settings')
 const { bindSplitFocus } = require('./renderer/split-focus')
@@ -3585,8 +3584,6 @@ function applyTabZoom(level) {
         openUrl: (url) => window.electronAPI?.openExternal?.(url),
         renewNow: () => authorizedInvoke('api-payments-renew-now')
     })
-
-    bindOutageNotice({ store, cloudStore, getLanguage: getCurrentLanguage })
 
     bindOnboardingScreen({
         store,
