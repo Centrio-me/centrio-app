@@ -54,6 +54,7 @@ const { bindSettingsUi } = require('./renderer/settings-bind')
 const { bindLockUi } = require('./renderer/lock-bind')
 const { bindCloudUi } = require('./renderer/cloud-bind')
 const { bindOnboardingScreen } = require('./renderer/onboarding-auth')
+const { bindOutageNotice } = require('./renderer/outage-notice')
 const { bindWelcomeScreen } = require('./renderer/welcome-screen')
 const { bindShortcutsSettings } = require('./renderer/shortcuts-settings')
 const { bindSplitFocus } = require('./renderer/split-focus')
@@ -87,6 +88,7 @@ const { bindVpnUi, bindVpnSettings } = require('./renderer/vpn-bind')
 const { bindAssistantTools } = require('./renderer/assistant-tools')
 const { bindAssistantUi } = require('./renderer/assistant-bind')
 const { bindAssistantSettingsUi } = require('./renderer/assistant-settings-bind')
+const { cloudCopyIsRolledBack } = require('./renderer/cloud-rollback')
 
 // ==============================
 // SHIM ДЛЯ STORE
@@ -601,6 +603,14 @@ async function bootstrap() {
 
     await advanceStartup('store', 24, { minStepTime: 240 })
 
+    // The top tabs bar is off by default for a brand-new install (no account, no messengers, onboarding not done);
+    // anyone who already uses Centrio keeps what they have, and the switch in settings still turns it on.
+    {
+        const savedSettings = store.get('settings', {}) || {}
+        const brandNew = !store.get('onboardingAuthSeen', false) && !store.get('cloud.user', null) && (store.get('messengers', []) || []).length === 0
+        if (savedSettings.showTabs === undefined && brandNew) store.set('settings', { ...savedSettings, showTabs: false })
+    }
+
     // Помечаем платформу на <body> для CSS-адаптаций
     if (window.electronAPI?.platform) {
         document.body.classList.add(`platform-${window.electronAPI.platform}`)
@@ -879,8 +889,13 @@ async function bootstrap() {
             reapplySoundLocks()
 
             const cloudData = await cloudSyncPull()
-            const hasData = (cloudData?.messengers?.length > 0) || (cloudData?.folders?.length > 0)
+            // The cloud copy may be the old one restored after the servers were rebuilt: keep this computer's data then.
+            const cloudRolledBack = cloudCopyIsRolledBack(cloudData, store.get('messengers', []))
+            if (cloudRolledBack) console.warn('[cloud] The cloud copy is older than the rebuild — keeping local data and sending it up')
+            const hasData = !cloudRolledBack && ((cloudData?.messengers?.length > 0) || (cloudData?.folders?.length > 0))
             if (hasData) {
+                // Safety copy of what this computer had, in case the cloud copy turns out to be the wrong one.
+                try { store.set('backup.beforeCloudApply', { at: new Date().toISOString(), messengers: store.get('messengers', []), folders: store.get('folders', []), workspaces: store.get('workspaces', []) }) } catch {}
                 // Пишем данные, только что стянутые ИЗ облака — не планировать
                 // автопуш этих же данных обратно (страница всё равно перезагрузится).
                 suppressAutoCloudSync = true
@@ -3177,6 +3192,16 @@ function applyTabZoom(level) {
     function applyCloudBootData(cloudData) {
         if (!(cloudData?.messengers?.length > 0)) return
 
+        // The cloud copy written before the servers were rebuilt is older than this computer's data: never apply it,
+        // send the local state up instead (the same way as for unconfirmed local changes below).
+        if (cloudCopyIsRolledBack(cloudData, store.get('messengers', []))) {
+            console.warn('[cloud] Skipped applying cloud boot data — the cloud copy is older than the rebuild')
+            setTimeout(() => {
+                if (cloudStore.isLoggedIn()) cloudSyncPush().catch(() => {})
+            }, 3000)
+            return
+        }
+
         // BUGFIX (2026-09-30, "разложила всё по папкам, закрыла приложение
         // принудительно, запустила и всё повываливалось из папок"): this
         // function is what actually overwrites local folders/messengers/
@@ -3552,6 +3577,8 @@ function applyTabZoom(level) {
         openUrl: (url) => window.electronAPI?.openExternal?.(url),
         renewNow: () => authorizedInvoke('api-payments-renew-now')
     })
+
+    bindOutageNotice({ store, cloudStore, getLanguage: getCurrentLanguage })
 
     bindOnboardingScreen({
         store,
@@ -4456,32 +4483,32 @@ function applyTabZoom(level) {
         })
     })()
 
-    if (checkUpdatesBtn && updateStatusBadge && window.electronAPI?.checkForUpdates) {
-        checkUpdatesBtn.addEventListener('click', async () => {
-            updateStatusBadge.textContent = tGet('settings.statusChecking')
-            checkUpdatesBtn.disabled = true
+    // The same check from two places: the About page in settings and the version history popup.
+    function bindUpdateCheck(button, statusEl) {
+        if (!button || !statusEl || !window.electronAPI?.checkForUpdates) return
+        button.addEventListener('click', async () => {
+            statusEl.textContent = tGet('settings.statusChecking')
+            button.disabled = true
 
             try {
                 const result = await window.electronAPI.checkForUpdates()
 
                 if (result?.success) {
-                    if (result.updateInfo) {
-                        updateStatusBadge.textContent = tGet('settings.statusDone')
-                    } else {
-                        updateStatusBadge.textContent = tGet('settings.statusUpToDate')
-                    }
+                    statusEl.textContent = result.updateInfo ? tGet('settings.statusDone') : tGet('settings.statusUpToDate')
                 } else {
-                    updateStatusBadge.textContent = tGet('settings.statusError')
+                    statusEl.textContent = tGet('settings.statusError')
                     console.error('Update check error:', result?.error)
                 }
             } catch (error) {
-                updateStatusBadge.textContent = tGet('settings.statusError')
+                statusEl.textContent = tGet('settings.statusError')
                 console.error(error)
             } finally {
-                checkUpdatesBtn.disabled = false
+                button.disabled = false
             }
         })
     }
+    bindUpdateCheck(checkUpdatesBtn, updateStatusBadge)
+    bindUpdateCheck(document.getElementById('changelogCheckUpdatesBtn'), document.getElementById('changelogUpdateStatus'))
 
     initSettings()
     // Восстанавливаем язык из initI18n — cloud-sync или initSettings мог перезатереть storeCache

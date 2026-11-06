@@ -17867,3 +17867,27 @@ body.sf-hide-top #sfTopZone { display: block; }
 .onb-code-input::placeholder { letter-spacing: .3em; opacity: .35; }
 .onb-code-hint { margin: 0; font-size: 12px; line-height: 1.5; text-align: center; color: var(--text-muted); }
 .onb-reg-step .vsc-btn, .onb-reg-step .vsc-btn-secondary { width: 100%; }
+
+/* One-time message after the servers were rebuilt (renderer/outage-notice.js) */
+.outage-notice-overlay { position: fixed; inset: 0; z-index: 100000; display: flex; align-items: center; justify-content: center; padding: 20px; background: rgba(6, 10, 20, 0.72); backdrop-filter: blur(6px); }
+.outage-notice-dialog { width: 100%; max-width: 540px; max-height: calc(100vh - 40px); overflow: auto; border-radius: 18px; background: #101a2d; color: #eaf0fb; border: 1px solid #2f4673; box-shadow: 0 30px 80px #000c; }
+.outage-notice-head { display: flex; align-items: center; gap: 14px; padding: 20px 22px; background: linear-gradient(100deg, #ff9f1c 0%, #ff6b35 55%, #e4405f 100%); color: #1b0f06; }
+.outage-notice-head h2 { margin: 0; font-size: 20px; line-height: 1.25; }
+.outage-notice-icon { flex: none; width: 42px; height: 42px; border-radius: 50%; background: #1b0f06; color: #ffcf6b; font: 800 26px/42px system-ui, sans-serif; text-align: center; }
+.outage-notice-body { padding: 20px 22px 22px; font-size: 14px; line-height: 1.6; }
+.outage-notice-body p { margin: 0 0 12px; }
+.outage-notice-gift { padding: 11px 13px; border-radius: 10px; background: #ffb34726; border: 1px solid #ffb34766; font-weight: 700; color: #ffd98a; }
+.outage-notice-actions { display: flex; gap: 10px; margin-top: 6px; }
+.outage-notice-cta { flex: 1; padding: 12px 20px; border: 0; border-radius: 999px; background: #ff7a3d; color: #1b0f06; font-weight: 800; font-size: 14px; cursor: pointer; }
+.outage-notice-cta:hover { filter: brightness(1.08); }
+.outage-notice-close { padding: 12px 20px; border-radius: 999px; border: 1px solid #375075; background: transparent; color: #cfd9ee; font-weight: 600; font-size: 14px; cursor: pointer; }
+.outage-notice-close:hover { background: #1a2742; }
+.outage-notice-cta:focus-visible, .outage-notice-close:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+
+/* "Check for updates" inside the version history popup */
+.changelog-popup-update { margin-left: auto; margin-right: 10px; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--border, #375075); background: transparent; color: inherit; font: inherit; font-size: 12px; cursor: pointer; white-space: nowrap; }
+.changelog-popup-update:hover:not(:disabled) { background: rgba(127, 127, 127, 0.15); }
+.changelog-popup-update:disabled { opacity: 0.6; cursor: default; }
+.changelog-popup-update-status { font-size: 12px; opacity: 0.8; white-space: nowrap; }
+.changelog-popup-update-status:not(:empty) { margin-left: auto; margin-right: 10px; }
+.changelog-popup-update-status:not(:empty) + .changelog-popup-update { margin-left: 0; }
