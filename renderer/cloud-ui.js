@@ -1,3 +1,6 @@
+const { getCurrentLanguage } = require('./i18n')
+const { DEFAULT_TAB, showCabinetTab } = require('./cloud-tabs')
+
 function createCloudUiApi({
     cloudStore,
     tGet,
@@ -11,6 +14,10 @@ function createCloudUiApi({
     getAutoRenewStatus = async () => null
 }) {
     const PRO_PLANS = new Set(['PRO', 'PRO_YEAR', 'TEAM'])
+    const FREE_MESSENGER_LIMIT = 3
+    const SOON_DAYS = 3
+    const DAY_MS = 86400000
+    const PLURAL_RULES = new Set(['one', 'few'])
 
     // FEATURE (2026-09-10, "свяжи Pro-доступ с оплаченным местом в команде"):
     // also true for a member occupying a paid team seat (orgSummary.orgProSeat),
@@ -27,6 +34,17 @@ function createCloudUiApi({
     // so a team member can tell at a glance WHY they have Pro.
     function _isTeamPro(user) {
         return user?.orgSummary?.orgProSeat === true
+    }
+
+    // Адрес фото приходит с сервера. data:image/ — так хранится загруженное фото.
+    function _safeAvatarSrc(src) {
+        if (typeof src !== 'string') return null
+        try {
+            const u = new URL(src)
+            return u.protocol === 'https:' || u.protocol === 'http:' || src.startsWith('data:image/') ? src : null
+        } catch {
+            return null
+        }
     }
 
     // ── Sidebar cloudBtn ──────────────────────────────────────────
@@ -65,9 +83,7 @@ function createCloudUiApi({
         const pro     = _isPro(user)
         const teamPro = _isTeamPro(user)
         const size  = pro ? 26 : 26  // inner avatar size
-        const inner = user.avatar
-            ? `<img src="${user.avatar}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`
-            : `<div style="width:100%;height:100%;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:white;">${getUserInitial(user)}</div>`
+        const inner = `<div style="width:100%;height:100%;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:white;"></div>`
 
         if (pro) {
             btn.innerHTML = `
@@ -81,9 +97,16 @@ function createCloudUiApi({
         // BUGFIX (2026-09-10, same audit as media-player-ui.js's VK Video
         // icon fix): inline onerror="..." is silently blocked by this app's
         // CSP (script-src 'self', no 'unsafe-inline') — attach via JS instead.
-        const avatarImg = btn.querySelector('img')
-        if (avatarImg) {
-            avatarImg.addEventListener('error', () => { avatarImg.style.display = 'none' })
+        const holder = btn.querySelector('[style*="background:var(--accent)"]')
+        const avatarSrc = _safeAvatarSrc(user.avatar)
+        if (holder) holder.textContent = getUserInitial(user)
+        if (holder && avatarSrc) {
+            const img = document.createElement('img')
+            img.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:50%;'
+            img.addEventListener('error', () => img.remove())
+            img.src = avatarSrc
+            holder.textContent = ''
+            holder.appendChild(img)
         }
         btn.title = user.name
         _updateCloudBtnLabel(user.name)
@@ -97,14 +120,7 @@ function createCloudUiApi({
 
         if (src) {
             // Validate URL to prevent XSS via javascript: or other dangerous schemes
-            let safeSrc = null
-            try {
-                const u = new URL(src)
-                if (u.protocol === 'https:' || u.protocol === 'http:') safeSrc = src
-            } catch {
-                // Not a valid URL - check for base64 data URI (used when uploading photo)
-                if (src.startsWith('data:image/')) safeSrc = src
-            }
+            const safeSrc = _safeAvatarSrc(src)
 
             if (safeSrc) {
                 const img = document.createElement('img')
@@ -134,6 +150,12 @@ function createCloudUiApi({
         ring.classList.toggle('is-team-pro', !!isTeamPro)
     }
 
+    function _planLabel(plan) {
+        if (plan === 'FREE') return tGet('cloud.planFree')
+        if (plan === 'TEAM') return 'Team'
+        return tGet('cloud.planPro')
+    }
+
     // ── Бейдж плана ──────────────────────────────────────────────
     // UPDATE (2026-09-10, "оформи так все в приложении, что человек
     // понимает, что у него про подписка команды" — live user request):
@@ -144,7 +166,8 @@ function createCloudUiApi({
     function _applyPlanBadge(plan, isTeamPro) {
         const el = document.getElementById('cloudUserPlan')
         if (!el) return
-        el.textContent = isTeamPro ? `${plan} · ${tGet('cloud.teamBadgeSuffix') || 'КОМАНДА'}` : plan
+        const name = _planLabel(plan)
+        el.textContent = isTeamPro ? `${name} · ${tGet('cloud.teamBadgeSuffix') || 'КОМАНДА'}` : name
         el.classList.toggle('is-pro', PRO_PLANS.has(plan) || isTeamPro)
         el.classList.toggle('is-team-pro', !!isTeamPro)
     }
@@ -240,16 +263,17 @@ function createCloudUiApi({
     }
 
     function _renderWeekChart(chart) {
+        const hasData = Array.isArray(chart) && chart.length > 0
         const section = document.getElementById('cpWeekChart')
-        const holder  = document.getElementById('cpChartBars')
-        if (!section || !holder) return
+        if (section) section.style.display = hasData ? '' : 'none'
+        if (!hasData) return
+        ;['cpChartBars', 'lkOverviewChart'].forEach((id) => {
+            const holder = document.getElementById(id)
+            if (holder) _drawWeekChart(holder, chart)
+        })
+    }
 
-        if (!Array.isArray(chart) || chart.length === 0) {
-            section.style.display = 'none'
-            return
-        }
-
-        section.style.display = ''
+    function _drawWeekChart(holder, chart) {
         const maxMinutes = Math.max(1, ...chart.map(d => d.minutes || 0))
         const todayIso   = new Date().toISOString().slice(0, 10)
         const n = chart.length
@@ -281,8 +305,8 @@ function createCloudUiApi({
         svg.setAttribute('preserveAspectRatio', 'none')
         svg.innerHTML =
             `<defs><linearGradient id="${gradId}" x1="0" y1="0" x2="0" y2="1">` +
-            `<stop offset="0%" stop-color="#818cf8" stop-opacity="0.35"/>` +
-            `<stop offset="100%" stop-color="#818cf8" stop-opacity="0"/>` +
+            `<stop offset="0%" style="stop-color:var(--accent)" stop-opacity="0.35"/>` +
+            `<stop offset="100%" style="stop-color:var(--accent)" stop-opacity="0"/>` +
             `</linearGradient></defs>` +
             `<path class="cp-chart-area" d="${areaPath}" fill="url(#${gradId})"/>` +
             `<path class="cp-chart-line" d="${linePath}" fill="none"/>`
@@ -291,25 +315,28 @@ function createCloudUiApi({
         tooltip.className = 'cp-chart-tooltip'
         tooltip.style.display = 'none'
 
-        const dotsG = document.createElementNS(svgNs, 'g')
-        points.forEach((p, i) => {
-            const dot = document.createElementNS(svgNs, 'circle')
-            dot.setAttribute('class', 'cp-chart-dot' + (p.isToday ? ' is-today' : ''))
-            dot.setAttribute('cx', p.x)
-            dot.setAttribute('cy', p.y)
-            dot.setAttribute('r', p.isToday ? 4 : 3)
-            dotsG.appendChild(dot)
+        wrap.appendChild(svg)
 
-            const hit = document.createElementNS(svgNs, 'circle')
-            hit.setAttribute('class', 'cp-chart-hit')
-            hit.setAttribute('cx', p.x)
-            hit.setAttribute('cy', p.y)
-            hit.setAttribute('r', 16)
+        // Точки обычными элементами: SVG растягивается по ширине окна и превращал круги в овалы
+        points.forEach((p, i) => {
+            const left = (p.x / CHART_W * 100) + '%'
+            const top  = (p.y / CHART_H * 100) + '%'
+
+            const dot = document.createElement('span')
+            dot.className = 'lk-chart-dot' + (p.isToday ? ' is-today' : '')
+            dot.style.left = left
+            dot.style.top = top
+            wrap.appendChild(dot)
+
+            const hit = document.createElement('span')
+            hit.className = 'lk-chart-hit'
+            hit.style.left = left
+            hit.style.top = top
             hit.addEventListener('mouseenter', () => {
                 dot.classList.add('is-active')
                 tooltip.textContent = `${p.label}: ${_formatDuration(p.minutes * 60)}`
-                tooltip.style.left = (p.x / CHART_W * 100) + '%'
-                tooltip.style.top  = (p.y / CHART_H * 76) + 'px'
+                tooltip.style.left = left
+                tooltip.style.top  = top
                 tooltip.classList.toggle('align-start', i === 0)
                 tooltip.classList.toggle('align-end', i === n - 1)
                 tooltip.style.display = 'block'
@@ -318,11 +345,9 @@ function createCloudUiApi({
                 dot.classList.remove('is-active')
                 tooltip.style.display = 'none'
             })
-            dotsG.appendChild(hit)
+            wrap.appendChild(hit)
         })
-        svg.appendChild(dotsG)
 
-        wrap.appendChild(svg)
         wrap.appendChild(tooltip)
         holder.appendChild(wrap)
 
@@ -347,22 +372,21 @@ function createCloudUiApi({
     // .cp-service-bar-track/-fill markup from before this is gone).
     function _renderServicesBreakdown(services) {
         const section = document.getElementById('cpServicesBreakdown')
-        const list    = document.getElementById('cpServicesList')
-        if (!section || !list) return
-
         const top3 = (Array.isArray(services) ? services : [])
             .filter(s => s.name && (s.minutes || 0) > 0)
             .sort((a, b) => (b.minutes || 0) - (a.minutes || 0))
             .slice(0, 3)
 
-        if (top3.length === 0) {
-            section.style.display = 'none'
-            return
-        }
+        if (section) section.style.display = top3.length ? '' : 'none'
+        ;['cpServicesList', 'lkOverviewServices'].forEach((id) => {
+            const list = document.getElementById(id)
+            if (list) _fillServices(list, top3)
+        })
+    }
 
-        section.style.display = ''
+    function _fillServices(list, services) {
         list.textContent = ''
-        top3.forEach(s => {
+        services.forEach(s => {
             const row = document.createElement('div')
             row.className = 'cp-service-item-compact'
 
@@ -383,6 +407,8 @@ function createCloudUiApi({
 
     async function _renderCloudUsageStats() {
         const wrap = document.getElementById('cpUsageStats')
+        const overview = document.getElementById('lkOverviewUsage')
+        const overviewToday = document.getElementById('lkOverviewToday')
         if (!wrap || typeof getCloudStats !== 'function') return
 
         const requestId = ++_usageStatsRequestId
@@ -401,11 +427,14 @@ function createCloudUiApi({
             if (weekEl)   weekEl.textContent   = '—'
             if (streakEl) streakEl.textContent = '—'
             if (msgEl)    msgEl.textContent    = '—'
+            if (overview) overview.style.display = 'none'
             _renderWeekChart(null)
             _renderServicesBreakdown(null)
             return
         }
 
+        if (overview) overview.style.display = ''
+        if (overviewToday) overviewToday.textContent = _formatDuration(data.today?.appTime)
         if (todayEl)  todayEl.textContent  = _formatDuration(data.today?.appTime)
         if (weekEl)   weekEl.textContent   = _formatDuration(data.week?.appTime)
         if (streakEl) streakEl.textContent = String(data.streak ?? 0)
@@ -433,6 +462,7 @@ function createCloudUiApi({
         document.getElementById('cloudLoginError').style.display  = 'none'
         document.getElementById('cloudEmail').value    = ''
         document.getElementById('cloudPassword').value = ''
+        document.dispatchEvent(new CustomEvent('cloud-login-opened'))
     }
 
     // ── Форматирование даты подписки ──────────────────────────────
@@ -487,27 +517,65 @@ function createCloudUiApi({
         return true
     }
 
+    // ── Сколько осталось подписки ─────────────────────────────────
+    function _daysLeftText(days) {
+        const rule = new Intl.PluralRules(getCurrentLanguage()).select(days)
+        return tGet(`cloud.daysLeft_${PLURAL_RULES.has(rule) ? rule : 'other'}`, { n: days })
+    }
+
+    function _renderPlanTerm(expiry) {
+        const el = document.getElementById('lkDaysLeft')
+        if (!el) return
+        const left = expiry ? Math.ceil((new Date(expiry).getTime() - Date.now()) / DAY_MS) : NaN
+        const isKnown = Number.isFinite(left) && left >= 0
+        el.textContent = isKnown ? _daysLeftText(left) : (tGet('cloud.subNoExpiry') || '—')
+        el.classList.toggle('is-soon', isKnown && left <= SOON_DAYS)
+    }
+
+    function _renderAutoRenew(status) {
+        const text = status ? tGet(status.autoRenew ? 'cloud.autoRenewOn' : 'cloud.autoRenewOff') : ''
+        ;['lkAutoRenewBand', 'lkAutoRenewNote'].forEach((id) => {
+            const el = document.getElementById(id)
+            if (el) el.textContent = text
+        })
+    }
+
+    function _renderFreeBand(isFree) {
+        const band = document.getElementById('lkFreeBand')
+        if (!band) return
+        band.style.display = isFree ? 'flex' : 'none'
+        const pitch = document.getElementById('lkFreePitch')
+        if (pitch) pitch.style.display = isFree ? '' : 'none'
+        const used = getLocalStats ? getLocalStats().messengers : null
+        const usage = document.getElementById('lkFreeUsage')
+        if (isFree && usage) usage.textContent = tGet('cloud.freeUsage', { used: used ?? 0, limit: FREE_MESSENGER_LIMIT })
+    }
+
     // ── Обновляем PRO-секцию ──────────────────────────────────────
     function _renderProSection(user, plan, isPro) {
-        const statsRow    = document.getElementById('cpStatsRow')
         const usageStats  = document.getElementById('cpUsageStats')
+        const overviewUsage = document.getElementById('lkOverviewUsage')
+        const locked      = document.getElementById('lkActivityLocked')
+        const subSummary  = document.getElementById('lkSubSummary')
         const proSection  = document.getElementById('proSubSection')
         const plansSection = document.querySelector('.cp-plans-section')
 
         const hasTeam = _renderTeamSection(user)
         // Pro that comes only from a team seat has no personal subscription to show: the team block says it all
         const personalPro = PRO_PLANS.has(plan)
+        _renderFreeBand(!isPro)
+        if (locked) locked.style.display = isPro ? 'none' : 'flex'
+        if (subSummary) subSummary.style.display = personalPro ? 'flex' : 'none'
+        if (plansSection) plansSection.style.display = (!isPro || personalPro) ? '' : 'none'
         if (isPro) {
-            // Показываем статистику и блок подписки, скрываем тарифы
-            if (statsRow)    statsRow.style.display    = ''
+            // Показываем статистику и блок подписки
             if (proSection)  proSection.style.display  = (hasTeam && !personalPro) ? 'none' : 'flex'
-            if (plansSection) plansSection.style.display = 'none'
             _renderCloudUsageStats()
 
             // Имя плана
             const planNameEl = document.getElementById('proSubPlanName')
             if (planNameEl) {
-                planNameEl.textContent = plan === 'PRO_YEAR' ? 'Pro Год' : 'Pro'
+                planNameEl.textContent = plan === 'PRO_YEAR' ? `${tGet('cloud.planPro')} ${tGet('cloud.planYear')}` : tGet('cloud.planPro')
             }
 
             // Дата окончания
@@ -520,6 +588,9 @@ function createCloudUiApi({
                 const expiry = user?.planExpiresAt || user?.planExpiry || user?.expiresAt || user?.subscriptionExpiresAt || null
                 const formatted = _formatPlanExpiry(expiry)
                 expiryEl.textContent = formatted || (tGet('cloud.subNoExpiry') || '—')
+                _renderPlanTerm(expiry)
+                const title = document.getElementById('lkSubTitle')
+                if (title) title.textContent = `${planNameEl?.textContent || tGet('cloud.planPro')} · ${tGet('cloud.subActiveUntil')} ${expiryEl.textContent}`
             }
 
             // FEATURE (2026-09-21, one-click renew — see param doc above):
@@ -531,7 +602,9 @@ function createCloudUiApi({
             if (extendBtn) {
                 extendBtn.dataset.canRenewNow = 'false'
                 extendBtn.textContent = tGet('cloud.extend')
+                _renderAutoRenew(null)
                 getAutoRenewStatus().then((status) => {
+                    _renderAutoRenew(status)
                     if (status?.hasMethod) {
                         extendBtn.dataset.canRenewNow = 'true'
                         extendBtn.textContent = tGet('cloud.renewNow')
@@ -539,11 +612,10 @@ function createCloudUiApi({
                 }).catch(() => {})
             }
         } else {
-            // FREE: скрываем статистику и PRO-блок, показываем тарифы
-            if (statsRow)    statsRow.style.display    = 'none'
+            // FREE: статистика использования и PRO-блок доступны только на Pro
             if (usageStats)  usageStats.style.display  = 'none'
+            if (overviewUsage) overviewUsage.style.display = 'none'
             if (proSection)  proSection.style.display  = 'none'
-            if (plansSection) plansSection.style.display = ''
         }
     }
 
@@ -556,6 +628,8 @@ function createCloudUiApi({
         const content = modal.querySelector('.cloud-modal-content')
         if (content) content.classList.add('profile-open')
 
+        // Повторный вызов после обновления данных с сервера не должен сбрасывать открытый раздел
+        if (!modal.classList.contains('show')) showCabinetTab(DEFAULT_TAB)
         modal.classList.add('show')
         document.getElementById('cloudLoginView').style.display   = 'none'
         document.getElementById('cloudProfileView').style.display = 'flex'

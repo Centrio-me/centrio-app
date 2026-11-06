@@ -26,6 +26,7 @@ const { createUnreadApi } = require('./renderer/unread')
 const { createLockApi } = require('./renderer/lock')
 const { createCloudUiApi } = require('./renderer/cloud-ui')
 const { bindSupportTicketsUi } = require('./renderer/support-tickets-ui')
+const { bindCabinetAccount } = require('./renderer/cloud-account')
 const { applyOrgLogo } = require('./renderer/org-branding')
 const { createOrgTeamApi } = require('./renderer/org-team')
 const { createVaultLoginBar } = require('./renderer/vault-login-bar')
@@ -1379,15 +1380,14 @@ async function bootstrap() {
     // hasEffectivePro передан для тихого фонового поллинга бейджа в сайдбаре
     // (2026-09-29) — без него бейдж обновлялся бы только после открытия
     // попапа профиля, что убивало бы смысл "видно сразу, не открывая".
+    bindCabinetAccount({ authorizedInvoke, tGet })
     bindSupportTicketsUi({
         authorizedInvoke,
         tGet,
         hasEffectivePro,
         ipcRenderer,
         playNotifSound,
-        openCloudLogin,
         openUrl: (url) => window.electronAPI?.openExternal?.(url),
-        cloudStore,
         // Same forward-reference pattern as webviewNotifyApi above (line
         // ~961) — bindAppNotifUi() (which owns the real implementation)
         // hasn't run yet at this point in init, so a ref that gets filled

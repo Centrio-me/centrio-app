@@ -17,7 +17,6 @@ function bindSettingsUi({
     const settingsBtn = document.getElementById('settingsBtn')
     const closeSettingsBtn = document.getElementById('closeSettingsBtn')
     const settingsModal = document.getElementById('settingsModal')
-    const applySettingsBtn = document.getElementById('applySettingsBtn')
     const resetAllBtn = document.getElementById('resetAllBtn')
     const settingPasswordEnable = document.getElementById('settingPasswordEnable')
 
@@ -75,93 +74,118 @@ function bindSettingsUi({
         })
     })
 
-    if (applySettingsBtn) {
-        applySettingsBtn.addEventListener('click', async () => {
-            const previousSettings = store.get('settings', {}) || {}
-            const settings = collectSettings()
-            const oldLang = (previousSettings.language || 'ru').trim()
-            const newLang = (settings.language || 'ru').trim()
+    async function saveSettingsNow() {
+        const previousSettings = store.get('settings', {}) || {}
+        const settings = collectSettings()
+        const oldLang = (previousSettings.language || 'ru').trim()
+        const newLang = (settings.language || 'ru').trim()
 
-            // Используем setAsync чтобы гарантировать запись в main-процесс до reload
-            if (store.setAsync) {
-                await store.setAsync('settings', settings)
-            } else {
-                await (store.set('settings', settings) || Promise.resolve())
-            }
-            applySettings(settings)
+        // Используем setAsync чтобы гарантировать запись в main-процесс до reload
+        if (store.setAsync) {
+            await store.setAsync('settings', settings)
+        } else {
+            await (store.set('settings', settings) || Promise.resolve())
+        }
+        applySettings(settings)
 
-            const autoLaunch = document.getElementById('settingAutoLaunch')
-            const autoLaunchRequested = !!autoLaunch?.checked
+        const autoLaunch = document.getElementById('settingAutoLaunch')
+        const autoLaunchRequested = !!autoLaunch?.checked
 
-            // BUGFIX ("настройка 'запускать с системой' не работает"): this
-            // used to be pure fire-and-forget — 'auto-launch-result' was sent
-            // back from main/ipc/autoLaunch.js but nothing ever listened for
-            // it, so a failed OS-level registration was 100% silent. The user
-            // would see the generic "✓ Настройки применены" toast either way,
-            // then find the checkbox unchecked again next time they opened
-            // Settings (get-auto-launch correctly reporting the real,
-            // unchanged OS state) with zero indication why. Listen for the
-            // reply and surface failures explicitly instead of masking them.
-            // BUGFIX ("Не удалось применить настройку автозапуска" — always
-            // shown, even on real success): preload.js's once() wrapper calls
-            // listener(...args) with the IPC payload only (no synthetic event
-            // object — see preload.js, every other .on()/.once() listener in
-            // this codebase follows that shape). This listener was written as
-            // if it were raw ipcRenderer.once(channel, (event, result) => ...)
-            // — so `result` was always undefined and every attempt, success or
-            // not, hit the "!result?.success" failure branch.
-            ipcRenderer.once('auto-launch-result', (result) => {
-                if (!result?.success && autoLaunch) autoLaunch.checked = !autoLaunchRequested
+        // BUGFIX ("настройка 'запускать с системой' не работает"): this
+        // used to be pure fire-and-forget — 'auto-launch-result' was sent
+        // back from main/ipc/autoLaunch.js but nothing ever listened for
+        // it, so a failed OS-level registration was 100% silent. The user
+        // would see the generic "✓ Настройки применены" toast either way,
+        // then find the checkbox unchecked again next time they opened
+        // Settings (get-auto-launch correctly reporting the real,
+        // unchanged OS state) with zero indication why. Listen for the
+        // reply and surface failures explicitly instead of masking them.
+        // BUGFIX ("Не удалось применить настройку автозапуска" — always
+        // shown, even on real success): preload.js's once() wrapper calls
+        // listener(...args) with the IPC payload only (no synthetic event
+        // object — see preload.js, every other .on()/.once() listener in
+        // this codebase follows that shape). This listener was written as
+        // if it were raw ipcRenderer.once(channel, (event, result) => ...)
+        // — so `result` was always undefined and every attempt, success or
+        // not, hit the "!result?.success" failure branch.
+        const autoLaunchChanged = autoLaunchRequested !== !!previousSettings.autoLaunch
+        ipcRenderer.once('auto-launch-result', (result) => {
+            if (!result?.success && autoLaunch) autoLaunch.checked = !autoLaunchRequested
 
-                const autoLaunchWarning = document.getElementById('settingAutoLaunchWarning')
-                if (autoLaunchWarning) {
-                    // Same Windows StartupApproved gap as get-auto-launch (see
-                    // main/ipc/autoLaunch.js) — surface it right away instead of
-                    // waiting for the next Settings open.
-                    autoLaunchWarning.style.display = result?.success && result?.disabledByOS ? '' : 'none'
-                }
-
-                const status = document.getElementById('settingsStatus')
-                if (status && !result?.success) {
-                    // Показываем и реальную причину сбоя (result.error, из
-                    // main/ipc/autoLaunch.js) — раньше был только общий текст,
-                    // из-за чего диагностировать конкретную причину провала
-                    // app.setLoginItemSettings() на машине пользователя было
-                    // невозможно без доступа к его log-файлу.
-                    const reason = result?.error ? ` (${result.error})` : ''
-                    status.textContent = tGet('autoLaunch.error') + reason
-                    status.classList.remove('success')
-                    status.classList.add('error')
-                    setTimeout(() => {
-                        status.textContent = ''
-                        status.classList.remove('error')
-                    }, 8000)
-                }
-            })
-            ipcRenderer.send('set-auto-launch', autoLaunchRequested)
-
-            ipcRenderer.send('set-download-dir', settings.downloadDir || '')
-            ipcRenderer.send('set-ask-download', settings.askDownload ?? true)
-
-            if (newLang !== oldLang) {
-                // Перезагружаем рендерер — быстрее и надёжнее чем app.relaunch(),
-                // настройки уже сохранены в store, initI18n подхватит новый язык.
-                window.location.reload()
-                return
+            const autoLaunchWarning = document.getElementById('settingAutoLaunchWarning')
+            if (autoLaunchWarning) {
+                // Same Windows StartupApproved gap as get-auto-launch (see
+                // main/ipc/autoLaunch.js) — surface it right away instead of
+                // waiting for the next Settings open.
+                autoLaunchWarning.style.display = result?.success && result?.disabledByOS ? '' : 'none'
             }
 
             const status = document.getElementById('settingsStatus')
-            if (status) {
-                status.textContent = tGet('settings.applied')
-                status.classList.add('success')
-
+            if (status && !result?.success) {
+                // Показываем и реальную причину сбоя (result.error, из
+                // main/ipc/autoLaunch.js) — раньше был только общий текст,
+                // из-за чего диагностировать конкретную причину провала
+                // app.setLoginItemSettings() на машине пользователя было
+                // невозможно без доступа к его log-файлу.
+                const reason = result?.error ? ` (${result.error})` : ''
+                status.textContent = tGet('autoLaunch.error') + reason
+                status.classList.remove('success')
+                status.classList.add('error')
                 setTimeout(() => {
                     status.textContent = ''
-                    status.classList.remove('success')
-                }, 3000)
+                    status.classList.remove('error')
+                }, 8000)
             }
         })
+        if (autoLaunchChanged) ipcRenderer.send('set-auto-launch', autoLaunchRequested)
+
+        ipcRenderer.send('set-download-dir', settings.downloadDir || '')
+        ipcRenderer.send('set-ask-download', settings.askDownload ?? true)
+
+        if (newLang !== oldLang) {
+            // Перезагружаем рендерер — быстрее и надёжнее чем app.relaunch(),
+            // настройки уже сохранены в store, initI18n подхватит новый язык.
+            window.location.reload()
+            return
+        }
+
+        const status = document.getElementById('settingsStatus')
+        if (status) {
+            status.textContent = tGet('settings.applied')
+            status.classList.add('success')
+
+            setTimeout(() => {
+                status.textContent = ''
+                status.classList.remove('success')
+            }, 3000)
+        }
     }
+
+    // Настройки применяются сразу: сохраняем, как только значения на экране изменились
+    const SAVE_DELAY_MS = 250
+    let savedSnapshot = null
+    let saveTimer = null
+    const snapshot = () => JSON.stringify(collectSettings())
+    function scheduleSave() {
+        if (!settingsModal?.classList.contains('show') || savedSnapshot === null) return
+        clearTimeout(saveTimer)
+        saveTimer = setTimeout(() => {
+            const current = snapshot()
+            if (current === savedSnapshot) return
+            savedSnapshot = current
+            saveSettingsNow()
+        }, SAVE_DELAY_MS)
+    }
+    if (settingsModal) {
+        new MutationObserver(() => {
+            const isOpen = settingsModal.classList.contains('show')
+            if (isOpen && savedSnapshot === null) setTimeout(() => { savedSnapshot = snapshot() }, 0)
+            if (!isOpen) savedSnapshot = null
+        }).observe(settingsModal, { attributes: true, attributeFilter: ['class'] })
+    }
+    document.addEventListener('click', scheduleSave)
+    document.addEventListener('change', scheduleSave)
+    settingsModal?.addEventListener('input', scheduleSave)
 
     document.querySelectorAll('.theme-item').forEach((item) => {
         item.addEventListener('click', () => {

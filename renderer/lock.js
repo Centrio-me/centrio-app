@@ -105,7 +105,7 @@ function createLockApi({
         const cityEl = document.getElementById('lockWeatherCity')
         if (!widget || !iconEl || !tempEl || !cityEl) return
 
-        let weather = null
+        let weather
         try {
             weather = await ipcRenderer.invoke('weather:get')
         } catch {
@@ -145,7 +145,7 @@ function createLockApi({
         if (!list || !widget) return
         if ((store.get('settings', {}) || {}).lockShowActivity === false) { widget.style.display = 'none'; return }
 
-        let history = []
+        let history
         try {
             history = await ipcRenderer.invoke('app-notifs:get-history') || []
         } catch {

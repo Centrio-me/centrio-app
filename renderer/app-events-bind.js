@@ -3,6 +3,19 @@ const { getVisualMessengerOrder } = require('./tab-order')
 // Ctrl+Shift+N opens the Nth saved split screen; pressed again while that very screen is open it closes the split.
 let presetOpenedByKey = null
 
+// Esc closes the window on top through its own close button, so each window cleans up as usual.
+const ESC_KEEPS_WINDOW = ['#supportLightbox:not([style*="none"])', '.shortcut-recording', '#cloudEditName:focus']
+
+function closeTopWindow(event) {
+    if (event.defaultPrevented) return
+    if (ESC_KEEPS_WINDOW.some((selector) => document.querySelector(selector))) return
+    const open = [...document.querySelectorAll('.modal.show')].pop()
+    if (!open) return
+    const close = open.querySelector('.modal-close, [data-modal-close]')
+    if (close) close.click()
+    else open.classList.remove('show')
+}
+
 function bindAppEvents({
     state,
     quickSearch,
@@ -63,6 +76,7 @@ function bindAppEvents({
             // same event Escape already triggers everywhere else covers all
             // of them for free — no per-menu wiring needed.
             document.dispatchEvent(new CustomEvent('close-all-popups'))
+            closeTopWindow(e)
         }
 
         if (isInput) return

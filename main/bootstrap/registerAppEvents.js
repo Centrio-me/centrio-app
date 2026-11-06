@@ -239,7 +239,7 @@ function detectLoginStateInPage() {
         return 'unknown'
     }
     // Остальные сайты (кабинеты, CRM, почта): страница входа / видимое поле пароля
-    var loginRoute = /(^|[\/#])(login|log-in|signin|sign-in|logon|auth|authorize|passport|sso|enter)([\/?#.]|$)/i.test(route)
+    var loginRoute = /(^|[/#])(login|log-in|signin|sign-in|logon|auth|authorize|passport|sso|enter)([/?#.]|$)/i.test(route)
     var passwordVisible = hasVisible('input[type="password"]')
     if (passwordVisible && (loginRoute || document.querySelectorAll('input').length <= 6)) return 'out'
     if (loginRoute) return 'out'

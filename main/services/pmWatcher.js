@@ -116,7 +116,7 @@ function attach(contents, messengerId, getMainWindow) {
         contents.on('console-message', (...args) => {
             const text = messageText(args)
             if (!text.startsWith(TAG)) return
-            let data = null
+            let data
             try { data = JSON.parse(text.slice(TAG.length)) } catch { return }
             if (!data || typeof data !== 'object') return
             const url = contents.getURL()

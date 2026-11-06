@@ -237,8 +237,9 @@ function installUpdate({ auto = false } = {}) {
         if (pending) store.set('pendingUpdate', { ...pending, installTriggeredAt: Date.now(), auto })
     } catch {}
 
+    // Без параметров установщик показывал своё окно и не запускал приложение обратно
     writeLog('quitAndInstall called', auto ? '(automatic, on launch)' : '(by user)')
-    autoUpdater.quitAndInstall()
+    autoUpdater.quitAndInstall(true, true)
 }
 
 // Called once at startup (see initApp.js). Compares the version the app is
@@ -269,6 +270,7 @@ function checkPendingUpdateOutcome({ appendCrashLog, reportCrashToServer } = {})
         if (currentVersion === pending.toVersion) {
             writeLog('update applied successfully:', pending.fromVersion, '->', currentVersion)
             store.delete('autoInstall')
+            reportCrashToServer && reportCrashToServer('update-applied', { fromVersion: pending.fromVersion, toVersion: pending.toVersion })
         } else if (pending.installTriggeredAt) {
             writeError(
                 'update install was triggered but the app is still on', currentVersion,

@@ -371,7 +371,7 @@ async function waitForSettledChat(run, before, notice, ctx) {
         const now_sig = JSON.stringify([now.key, now.top, now.name, now.peers, now.content])
         if (now_sig !== sig) { sig = now_sig; stableSince = Date.now() }
         const stable = Date.now() - stableSince >= SETTLE_MS
-        let ready = false
+        let ready
         if (wrong) ready = false
         else if (key || dom) {
             // the page reacted to the click: both its address and its screen must have changed (when it has both),
@@ -430,7 +430,7 @@ async function deliverReply(messenger, nid, text, notice, ctx) {
     // for before anything is concluded - concluding "nothing landed" too early and typing again doubles the text.
     const settleText = async (want, ms) => {
         const until = Date.now() + ms
-        let text = ''
+        let text
         do {
             text = normalize(await run('read'))
             if (text === want) return text

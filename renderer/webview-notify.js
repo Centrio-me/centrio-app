@@ -7,7 +7,7 @@ const RECENT_KEEP_MS = 10000
 const MIN_PREFIX_LENGTH = 8
 
 // Text compared the way a person would: spaces collapsed, case ignored, a trailing "…" (sites cut long texts differently).
-const normalizeText = (value) => String(value || '').replace(/\s+/g, ' ').trim().toLowerCase().replace(/[…\.]+$/, '')
+const normalizeText = (value) => String(value || '').replace(/\s+/g, ' ').trim().toLowerCase().replace(/[….]+$/, '')
 
 // Equal, or one is the beginning of the other (a push may carry a shortened copy of the text the page shows in full).
 function sameText(a, b) {

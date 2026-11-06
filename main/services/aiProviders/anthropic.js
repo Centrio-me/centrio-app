@@ -156,7 +156,7 @@ async function* chat({ apiKey, model, messages, tools, signal, maxTokens }) {
 
     for (const block of blocks.values()) {
         if (block.type !== 'tool_use') continue
-        let args = {}
+        let args
         try { args = block.jsonText ? JSON.parse(block.jsonText) : {} } catch { args = {} }
         yield { type: 'tool-call', id: block.id, name: block.name, arguments: args }
     }

@@ -719,7 +719,7 @@ function wireOAuthPopup(popup, { url, mainWin, partition }) {
     let googleRejectionHandled = false
     const checkGoogleRejection = async (navUrl) => {
         if (googleRejectionHandled || popup.isDestroyed()) return
-        let hostname = ''
+        let hostname
         try { hostname = new URL(navUrl || popup.webContents.getURL()).hostname } catch { return }
         // BUGFIX (2026-08-24, same ccTLD gap as isGoogleAccountsUrl() above):
         // this used to only recognize *.google.com / google.com, so a
@@ -729,7 +729,7 @@ function wireOAuthPopup(popup, { url, mainWin, partition }) {
         const isPlainGoogleCom = hostname.endsWith('.google.com') || hostname === 'google.com'
         if (!isPlainGoogleCom && !GOOGLE_ACCOUNTS_HOST_RE.test(hostname)) return
 
-        let pageText = ''
+        let pageText
         try {
             pageText = await popup.webContents.executeJavaScript(
                 'document.body ? document.body.innerText : ""'

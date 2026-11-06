@@ -18,7 +18,7 @@ function collect(views) {
         const id = String(view && view.id || '')
         const wc = Number.isInteger(view && view.wcId) ? webContents.fromId(view.wcId) : null
         if (!id || !wc || wc.isDestroyed()) continue
-        let pid = 0
+        let pid
         try { pid = wc.getOSProcessId() } catch { pid = 0 }
         const proc = byPid.get(pid)
         if (!proc) continue

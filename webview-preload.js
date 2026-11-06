@@ -635,7 +635,7 @@ function bindDropFileHandler() {
     function findExtraDropTargets() {
         const found = []
         for (const sel of EXTRA_DROP_TARGET_SELECTORS) {
-            let el = null
+            let el
             try { el = document.querySelector(sel) } catch { el = null }
             // offsetParent is null for display:none (or fixed-position with
             // no containing block edge case, acceptable false-negative here

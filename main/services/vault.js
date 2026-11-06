@@ -86,14 +86,14 @@ const PROVIDER_DOMAINS = {
 }
 
 function allowedBaseDomains(assignedUrl) {
-    let host = ''
+    let host
     try { host = new URL(assignedUrl).hostname } catch { return [] }
     const base = baseDomain(host)
     return [...new Set([base, ...(PROVIDER_DOMAINS[base] || [])])]
 }
 
 function hostIsAllowed(pageUrl, assignedUrl) {
-    let host = ''
+    let host
     try {
         const page = new URL(pageUrl)
         host = page.hostname

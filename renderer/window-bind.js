@@ -2,6 +2,8 @@ const { getVisualMessengerOrder } = require('./tab-order')
 const { openNotifiedChat } = require('./notif-open-chat')
 const { sendReply } = require('./notif-reply')
 
+const { SUPPORT_NOTIFICATION_PREFIX } = require('./support-tickets-ui')
+
 function bindWindowUi({
     store,
     state,
@@ -114,6 +116,10 @@ function bindWindowUi({
 
     ipcRenderer.on('notification-clicked-id', (messengerId) => {
         if (!messengerId) return
+        if (String(messengerId).startsWith(SUPPORT_NOTIFICATION_PREFIX)) {
+            document.dispatchEvent(new CustomEvent('open-support-ticket', { detail: { id: messengerId.slice(SUPPORT_NOTIFICATION_PREFIX.length) } }))
+            return
+        }
         if (state.splitMode && typeof exitSplitMode === 'function') exitSplitMode()
         switchTab(messengerId)
     })

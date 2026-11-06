@@ -162,7 +162,7 @@ function attachServiceWorkerNotifBridge(contents, messengerId, getMainWindow) {
                 returnByValue: true
             }, childSessionId).then((res) => {
                 const raw = res && res.result && res.result.value
-                let diag = null
+                let diag
                 try { diag = JSON.parse(raw) } catch { diag = raw }
                 if (diag && diag.verified === false) {
                     log.warn?.('[sw-notif] patch NOT verified for', messengerId, JSON.stringify(diag))

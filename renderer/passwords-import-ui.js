@@ -39,7 +39,7 @@ function createImportView({ lang, invokeIpc, onClose, onImported }) {
         busy = true
         message = text('reading')
         render()
-        let picked = null
+        let picked
         try { picked = await invokeIpc('pm:import-pick') } catch { picked = null }
         busy = false
         if (!picked || picked.error === 'CANCELED') { message = ''; render(); return }
@@ -53,7 +53,7 @@ function createImportView({ lang, invokeIpc, onClose, onImported }) {
         busy = true
         message = text('importing')
         render()
-        let done = null
+        let done
         try { done = await invokeIpc('pm:import-commit', preview.token, deleteAfter) } catch { done = null }
         busy = false
         if (!done || !done.success) { message = text(`err${(done && done.error) || 'FAILED'}`); render(); return }

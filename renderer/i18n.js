@@ -79,14 +79,11 @@ function getDictionary () {
 function tGet (key, params = {}) {
     if (!key || typeof key !== 'string') return ''
 
-    const dict = getDictionary()
     const keys = key.split('.')
-    let val = dict
-
-    for (const k of keys) {
-        val = val?.[k]
-        if (val === undefined) return key
-    }
+    const lookup = (dict) => keys.reduce((node, k) => node?.[k], dict)
+    // Language without this string: English, then Russian, never the bare key
+    const val = lookup(getDictionary()) ?? lookup(DICTIONARIES.en) ?? lookup(DICTIONARIES.ru)
+    if (val === undefined) return key
 
     if (typeof val !== 'string') return key
 
@@ -109,6 +106,11 @@ function applyI18n (root = document) {
         const key = el.dataset.i18nPlaceholder
         if (!key) return
         el.placeholder = tGet(key)
+    })
+
+    root.querySelectorAll('[data-i18n-aria]').forEach((el) => {
+        const key = el.dataset.i18nAria
+        if (key) el.setAttribute('aria-label', tGet(key))
     })
 
     root.querySelectorAll('[data-i18n-title]').forEach((el) => {

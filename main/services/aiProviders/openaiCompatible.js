@@ -150,7 +150,7 @@ async function* streamOpenAiCompatible({ endpoint, headers, body, signal }) {
     }
 
     for (const acc of toolCallAcc.values()) {
-        let args = {}
+        let args
         try { args = acc.argsText ? JSON.parse(acc.argsText) : {} } catch { args = {} }
         yield { type: 'tool-call', id: acc.id, name: acc.name, arguments: args }
     }

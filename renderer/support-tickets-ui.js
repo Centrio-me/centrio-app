@@ -9,26 +9,33 @@
 // the bot's messages are marked, and the page says that no ticket is left without an answer.
 'use strict'
 
+const { showCabinetTab } = require('./cloud-tabs')
+
 const IMAGE_MIMES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif']
 const MAX_IMAGES = 4
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024
 const FRESH_TICKET_MS = 2 * 60 * 1000
+const SUPPORT_NOTIFICATION_PREFIX = 'support:'
+const SUPPORT_SITE_URL = 'https://centrio.me/dashboard?tab=support'
 
 function bindSupportTicketsUi({
     authorizedInvoke, tGet, hasEffectivePro, ipcRenderer, playNotifSound,
-    openCloudLogin, openUrl, cloudStore, addMessengerNotification
+    openUrl, addMessengerNotification
 }) {
     const $ = (id) => document.getElementById(id)
-    const modalEl = $('supportModal')
+    const cabinetEl = $('cloudModal')
+    const panelEl = $('lkSupportPanel')
     const listEl = $('supportTicketsList')
-    if (!modalEl || !listEl) return {}
+    if (!cabinetEl || !panelEl || !listEl) return {}
 
     const loadingEl = $('supportTicketsLoading')
     const emptyEl = $('supportTicketsEmpty')
     const countEl = $('supportCountLabel')
-    const sidebarBadgeEl = $('supportSidebarBadge')
-    const sidebarBtn = $('supportSidebarBtn')
-    const mainEl = modalEl.querySelector('.sp2-main')
+    const accountBtn = $('cloudBtn')
+    const navBadgeEl = $('lkSupportBadge')
+    const lockedEl = $('lkSupportLocked')
+    const workEl = $('lkSupportWork')
+    const mainEl = panelEl.querySelector('.sp2-main')
 
     const idleView = $('supportIdleView')
     const newView = $('supportNewTicketForm')
@@ -111,9 +118,24 @@ function bindSupportTicketsUi({
         return visible
     }
 
-    function updateBadge(hasUnnotified) {
-        if (sidebarBadgeEl) sidebarBadgeEl.style.display = hasUnnotified ? '' : 'none'
+    // Keeps the mark until the reply is opened: a poll that finds nothing new must not clear it.
+    const UNREAD_TICKETS_KEY = 'centrio-support-unread'
+    function renderBadge() {
+        const hasUnread = Object.keys(readMap(UNREAD_TICKETS_KEY)).length > 0
+        accountBtn?.classList.toggle('has-support-reply', hasUnread)
+        if (navBadgeEl) navBadgeEl.style.display = hasUnread ? '' : 'none'
     }
+    function markUnread(ticketId) {
+        writeMap(UNREAD_TICKETS_KEY, { ...readMap(UNREAD_TICKETS_KEY), [ticketId]: true })
+        renderBadge()
+    }
+    function markRead(ticketId) {
+        const rest = { ...readMap(UNREAD_TICKETS_KEY) }
+        delete rest[ticketId]
+        writeMap(UNREAD_TICKETS_KEY, rest)
+        renderBadge()
+    }
+    const isOpen = () => cabinetEl.classList.contains('show') && !panelEl.hidden
 
     // ---- labels ----
     function tagText(category) {
@@ -136,20 +158,18 @@ function bindSupportTicketsUi({
     // ---- notifications for new replies (unchanged logic) ----
     async function checkForNewReplies(tickets, { seedOnly = false } = {}) {
         const seen = getSeenCounts()
-        let anyUnnotified = false
-        const isThreadOpen = modalEl.classList.contains('show') && threadView.style.display !== 'none'
+        const isThreadOpen = isOpen() && threadView.style.display !== 'none'
         for (const t of tickets) {
             const count = t._count?.messages || 0
             const prev = seen[t.id]
             const isNewReply = prev !== undefined && count > prev && (t.status === 'ANSWERED' || t.status === 'CLOSED')
             if (isNewReply && !seedOnly && !(isThreadOpen && currentTicketId === t.id)) {
-                anyUnnotified = true
+                markUnread(t.id)
                 fireReplyNotification(t).catch(() => {})
             }
             seen[t.id] = count
         }
         setSeenCounts(seen)
-        return anyUnnotified
     }
 
     async function fireReplyNotification(ticket) {
@@ -163,9 +183,23 @@ function bindSupportTicketsUi({
         if (typeof addMessengerNotification === 'function') addMessengerNotification(title, body, ticket.subject, null, null)
         playNotifSound?.(null)
         try {
-            ipcRenderer?.send?.('show-notification', { title: ticket.subject || title, body, icon: '', silent: true })
+            ipcRenderer?.send?.('show-notification', { title: ticket.subject || title, body, icon: '', silent: true, messengerId: SUPPORT_NOTIFICATION_PREFIX + ticket.id })
         } catch { /* notification is best effort */ }
-        updateBadge(true)
+    }
+
+    async function confirmRemoveTicket(id, subject, messageCount) {
+        const ok = await window.showConfirmModal?.({
+            title: tt('cloud.supportDeleteTitle', 'Remove the ticket?'),
+            message: tt('cloud.supportDeleteText', '').replace('{subject}', subject),
+            confirmText: tt('cloud.supportDelete', 'Remove'),
+            cancelText: tt('cloud.supportCancel', 'Cancel'),
+            danger: true
+        })
+        if (!ok) return
+        dismissTicket(id, messageCount)
+        markRead(id)
+        if (currentTicketId === id) showIdle()
+        loadTickets()
     }
 
     // ---- ticket list ----
@@ -201,19 +235,9 @@ function bindSupportTicketsUi({
         remove.className = 'sp2-card-x'
         remove.setAttribute('aria-label', tt('cloud.supportDeleteBtn', 'Delete'))
         remove.innerHTML = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none"><path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>'
-        remove.addEventListener('click', async (e) => {
+        remove.addEventListener('click', (e) => {
             e.stopPropagation()
-            const ok = await window.showConfirmModal?.({
-                title: tt('cloud.supportDeleteTitle', 'Remove the ticket?'),
-                message: tt('cloud.supportDeleteText', '').replace('{subject}', t.subject),
-                confirmText: tt('cloud.supportDelete', 'Remove'),
-                cancelText: tt('cloud.supportCancel', 'Cancel'),
-                danger: true
-            })
-            if (!ok) return
-            dismissTicket(t.id, t._count?.messages || 0)
-            if (currentTicketId === t.id) showIdle()
-            loadTickets()
+            confirmRemoveTicket(t.id, t.subject, t._count?.messages || 0)
         })
 
         card.append(top, sub, remove)
@@ -229,8 +253,7 @@ function bindSupportTicketsUi({
         loadingEl.style.display = 'none'
 
         const allTickets = result?.success ? (result.data?.tickets || []) : []
-        const hasUnnotified = await checkForNewReplies(allTickets, { seedOnly })
-        if (!hasUnnotified) updateBadge(false)
+        await checkForNewReplies(allTickets, { seedOnly })
 
         const tickets = filterDismissed(allTickets)
         listEl.textContent = ''
@@ -245,9 +268,8 @@ function bindSupportTicketsUi({
         if (typeof authorizedInvoke !== 'function') return
         const result = await authorizedInvoke('api-tickets-list').catch(() => null)
         if (!result?.success) return
-        const hasUnnotified = await checkForNewReplies(result.data?.tickets || [])
-        if (!hasUnnotified) updateBadge(false)
-        if (modalEl.classList.contains('show')) loadTickets()
+        await checkForNewReplies(result.data?.tickets || [])
+        if (isOpen()) loadTickets()
     }
 
     // ---- views ----
@@ -557,7 +579,7 @@ function bindSupportTicketsUi({
         const seen = getSeenCounts()
         seen[id] = ticket.messages?.length || 0
         setSeenCounts(seen)
-        updateBadge(false)
+        markRead(id)
         startThreadPoll()
         replyInput.focus()
     }
@@ -608,17 +630,20 @@ function bindSupportTicketsUi({
         if (result.data?.id) openThread(result.data.id)
     }
 
-    function openSupportModal() {
-        modalEl.classList.add('show')
-        showIdle()
+    function enterSupport() {
+        const canUse = typeof hasEffectivePro === 'function' && hasEffectivePro()
+        lockedEl.style.display = canUse ? 'none' : 'flex'
+        workEl.style.display = canUse ? '' : 'none'
+        if (!canUse) return
+        if (!currentTicketId) showIdle()
         loadTickets()
     }
 
-    function closeSupportModal() {
+    function leaveSupport() {
         stopThreadPoll()
         closeLightbox()
-        modalEl.classList.remove('show')
         currentTicketId = null
+        currentTicket = null
     }
 
     // ---- events ----
@@ -672,28 +697,36 @@ function bindSupportTicketsUi({
 
     lightboxEl?.addEventListener('click', closeLightbox)
     document.addEventListener('keydown', (e) => {
-        if (e.key !== 'Escape' || !modalEl.classList.contains('show')) return
+        if (e.key !== 'Escape' || !isOpen()) return
         if (lightboxEl.style.display !== 'none') closeLightbox()
-        else closeSupportModal()
     })
-    $('closeSupportModalBtn')?.addEventListener('click', closeSupportModal)
-    modalEl.addEventListener('click', (e) => { if (e.target === modalEl) closeSupportModal() })
+    $('ticketDeleteBtn')?.addEventListener('click', () => {
+        if (currentTicket) confirmRemoveTicket(currentTicket.id, currentTicket.subject, currentTicket.messages?.length || 0)
+    })
+    $('lkSupportSiteBtn')?.addEventListener('click', () => openUrl?.(SUPPORT_SITE_URL))
 
-    sidebarBtn?.addEventListener('click', () => {
-        if (!cloudStore?.isLoggedIn?.()) { openCloudLogin?.(); return }
-        if (typeof hasEffectivePro === 'function' && !hasEffectivePro()) {
-            openUrl?.('https://centrio.me/dashboard?tab=support')
-            return
-        }
-        openSupportModal()
+    document.addEventListener('cabinet-tab', (e) => {
+        if (e.detail.name === 'support') enterSupport()
+        else leaveSupport()
+    })
+    new MutationObserver(() => {
+        if (!cabinetEl.classList.contains('show')) leaveSupport()
+    }).observe(cabinetEl, { attributes: true, attributeFilter: ['class'] })
+
+    // A click on a reply notification opens that conversation.
+    document.addEventListener('open-support-ticket', (e) => {
+        accountBtn?.click()
+        showCabinetTab('support')
+        openThread(e.detail.id)
     })
 
     // Quiet background check for the sidebar badge; the first pass only seeds the counters so
     // existing history does not notify all at once.
+    renderBadge()
     loadTickets({ seedOnly: true })
     setInterval(pollListQuietly, LIST_POLL_MS)
 
-    return { loadTickets, openSupportModal, closeSupportModal }
+    return { loadTickets }
 }
 
-module.exports = { bindSupportTicketsUi }
+module.exports = { bindSupportTicketsUi, SUPPORT_NOTIFICATION_PREFIX }

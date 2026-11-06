@@ -514,6 +514,22 @@ module.exports = {
         return request('GET', '/api/payments/auto-renew', null, token)
     },
 
+    paymentsSetAutoRenew(token, enabled) {
+        return request('PATCH', '/api/payments/auto-renew', { enabled }, token)
+    },
+
+    paymentsCancelReason(token, reason) {
+        return request('POST', '/api/payments/cancel-reason', { reason }, token)
+    },
+
+    paymentsList(token) {
+        return request('GET', '/api/payments/my', null, token)
+    },
+
+    revokeOtherDevices(token) {
+        return request('DELETE', '/api/user/devices?keepCurrent=1', {}, token)
+    },
+
     paymentsRenewNow(token) {
         return request('POST', '/api/payments/renew-now', null, token)
     },

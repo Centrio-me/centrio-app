@@ -337,6 +337,30 @@ function registerApiIpc() {
         return wrapApi(() => api.paymentsAutoRenewStatus(token))
     })
 
+    ipcMain.handle('api-payments-set-auto-renew', async (event, token, enabled) => {
+        return wrapApi(() => api.paymentsSetAutoRenew(token, enabled === true))
+    })
+
+    ipcMain.handle('api-payments-cancel-reason', async (event, token, reason) => {
+        return wrapApi(() => api.paymentsCancelReason(token, String(reason || '')))
+    })
+
+    ipcMain.handle('api-payments-list', async (event, token) => {
+        return wrapApi(() => api.paymentsList(token))
+    })
+
+    ipcMain.handle('api-devices-list', async (event, token) => {
+        return wrapApi(() => api.getDevices(token))
+    })
+
+    ipcMain.handle('api-devices-revoke', async (event, token, deviceId) => {
+        return wrapApi(() => api.revokeDevice(token, encodeURIComponent(String(deviceId || ''))))
+    })
+
+    ipcMain.handle('api-devices-revoke-others', async (event, token) => {
+        return wrapApi(() => api.revokeOtherDevices(token))
+    })
+
     ipcMain.handle('api-payments-renew-now', async (event, token) => {
         return wrapApi(() => api.paymentsRenewNow(token))
     })

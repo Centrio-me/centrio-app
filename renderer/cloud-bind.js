@@ -1,4 +1,5 @@
 const { requireConsent } = require('./consent-ui')
+const { bindCabinetTabs } = require('./cloud-tabs')
 
 function bindCloudUi({
     cloudStore,
@@ -37,22 +38,21 @@ function bindCloudUi({
     function showOAuthWait(providerLabel) {
         const waitView    = document.getElementById('oauthWaitView')
         const btnsView    = document.getElementById('oauthButtonsView')
-        const divider     = document.querySelector('#cloudLoginView .oauth-divider')
-        const form        = document.querySelector('#cloudLoginView .vsc-input')
+        const form        = document.getElementById('laSignInForm')
         const waitText    = document.getElementById('oauthWaitText')
         if (waitText) waitText.textContent = tGet('oauth.waitFor').replace('{provider}', providerLabel)
         if (waitView)  waitView.style.display  = 'flex'
         if (btnsView)  btnsView.style.display  = 'none'
-        if (divider)   divider.style.display   = 'none'
+        if (form)      form.style.display      = 'none'
     }
 
     function hideOAuthWait() {
         const waitView    = document.getElementById('oauthWaitView')
         const btnsView    = document.getElementById('oauthButtonsView')
-        const divider     = document.querySelector('#cloudLoginView .oauth-divider')
+        const form        = document.getElementById('laSignInForm')
         if (waitView)  waitView.style.display  = 'none'
-        if (btnsView)  btnsView.style.display  = 'flex'
-        if (divider)   divider.style.display   = ''
+        if (btnsView)  btnsView.style.display  = ''
+        if (form)      form.style.display      = ''
     }
 
     document.getElementById('oauthCancelBtn')?.addEventListener('click', () => {
@@ -79,12 +79,12 @@ function bindCloudUi({
     }
 
     document.getElementById('oauthGoogleBtn').addEventListener('click', () => {
-        if (!requireConsent('cloudConsent', document.getElementById('cloudLoginError'), tGet)) return
+        if (!requireConsent('cloudConsentOauth', document.getElementById('cloudLoginError'), tGet)) return
         handleSystemOAuth(() => cloudApi.oauthGoogle(), 'Google')
     })
 
     document.getElementById('oauthYandexBtn').addEventListener('click', () => {
-        if (!requireConsent('cloudConsent', document.getElementById('cloudLoginError'), tGet)) return
+        if (!requireConsent('cloudConsentOauth', document.getElementById('cloudLoginError'), tGet)) return
         handleSystemOAuth(() => cloudApi.oauthYandex(), 'Yandex')
     })
 
@@ -111,42 +111,47 @@ function bindCloudUi({
         ;(cloudSyncAfterLogin || cloudSyncPush)()
     })
 
-    document.getElementById('cloudRegisterBtn').addEventListener('click', async () => {
-        const email = document.getElementById('cloudEmail').value.trim()
-        const password = document.getElementById('cloudPassword').value.trim()
-        const errorEl = document.getElementById('cloudLoginError')
+    // Отдельные шаги: вход, создание аккаунта, код из письма
+    function showAuthStep(name) {
+        document.querySelectorAll('[data-auth-step]').forEach((step) => { step.hidden = step.dataset.authStep !== name })
+        const field = { signin: 'cloudEmail', register: 'cloudRegEmail', code: 'cloudCodeInput' }[name]
+        setTimeout(() => document.getElementById(field)?.focus(), 50)
+    }
+    document.addEventListener('cloud-login-opened', () => showAuthStep('signin'))
+    document.querySelectorAll('[data-auth-goto]').forEach((btn) => {
+        btn.addEventListener('click', () => showAuthStep(btn.dataset.authGoto))
+    })
+    document.getElementById('cloudRegisterBtn').addEventListener('click', () => {
+        document.getElementById('cloudLoginError').style.display = 'none'
+        document.getElementById('cloudRegError').style.display = 'none'
+        document.getElementById('cloudRegEmail').value = document.getElementById('cloudEmail').value.trim()
+        showAuthStep('register')
+    })
 
-        if (!email || !password) {
-            errorEl.textContent = tGet('cloud.fillAll')
-            errorEl.style.display = 'block'
-            return
-        }
+    async function submitRegistration() {
+        const email = document.getElementById('cloudRegEmail').value.trim()
+        const password = document.getElementById('cloudRegPassword').value.trim()
+        const errorEl = document.getElementById('cloudRegError')
+        const fail = (text) => { errorEl.textContent = text; errorEl.style.display = 'block' }
 
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-            errorEl.textContent = tGet('cloud.invalidEmail')
-            errorEl.style.display = 'block'
-            return
-        }
-
+        if (!email || !password) return fail(tGet('cloud.fillAll'))
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return fail(tGet('cloud.invalidEmail'))
+        if (password.length < 8) return fail(tGet('onb.regPasswordShort'))
         if (!requireConsent('cloudConsent', errorEl, tGet)) return
 
-        if (password.length < 8) {
-            errorEl.textContent = tGet('onb.regPasswordShort')
-            errorEl.style.display = 'block'
-            return
-        }
-
-        // The account is created only after the code from the email is entered (shown in #cloudCodeBox).
+        // The account is created only after the code from the email is entered.
         const result = await cloudApi.registerStart(email, password, email.split('@')[0])
-        if (!result.success) {
-            errorEl.textContent = result.error
-            errorEl.style.display = 'block'
-            return
-        }
+        if (!result.success) return fail(result.error)
 
         errorEl.style.display = 'none'
         openCodeBox(email, result.data?.resendInSec ?? 45)
-    })
+    }
+    document.getElementById('cloudRegSubmitBtn').addEventListener('click', submitRegistration)
+    const onEnter = (id, action) => document.getElementById(id).addEventListener('keydown', (e) => { if (e.key === 'Enter') action() })
+    onEnter('cloudRegEmail', submitRegistration)
+    onEnter('cloudRegPassword', submitRegistration)
+    onEnter('cloudEmail', () => document.getElementById('cloudLoginBtn').click())
+    onEnter('cloudPassword', () => document.getElementById('cloudLoginBtn').click())
 
     // ── Код из письма в окне входа ──
     let codeEmail = ''
@@ -180,10 +185,9 @@ function bindCloudUi({
         codeEmail = email
         document.getElementById('cloudCodeEmail').textContent = email
         document.getElementById('cloudCodeInput').value = ''
-        document.getElementById('cloudCodeBox').style.display = 'flex'
+        showAuthStep('code')
         showCodeError('')
         startCodeTimer(resendInSec)
-        setTimeout(() => document.getElementById('cloudCodeInput').focus(), 50)
     }
 
     async function confirmCloudCode() {
@@ -193,7 +197,6 @@ function bindCloudUi({
         if (!result.success) return showCodeError(result.error)
         showCodeError('')
         if (codeTimer) { clearInterval(codeTimer); codeTimer = null }
-        document.getElementById('cloudCodeBox').style.display = 'none'
         openCloudProfile()
         ;(cloudSyncAfterLogin || cloudSyncPush)()
     }
@@ -310,8 +313,17 @@ function bindCloudUi({
     })
 
     // The app restarts as new right after this, see cloudApi.logout().
-    document.getElementById('cloudLogoutBtn').addEventListener('click', (e) => {
-        e.currentTarget.disabled = true
+    document.getElementById('cloudLogoutBtn').addEventListener('click', async (e) => {
+        const btn = e.currentTarget
+        const ok = await window.showConfirmModal({
+            title: tGet('cloud.logoutConfirmTitle'),
+            message: tGet('cloud.logoutConfirmText'),
+            confirmText: tGet('cloud.logout'),
+            cancelText: tGet('cloud.supportCancel'),
+            danger: true
+        })
+        if (!ok) return
+        btn.disabled = true
         cloudApi.logout()
     })
 
@@ -321,6 +333,8 @@ function bindCloudUi({
         if (openUrl) openUrl(url)
         else window.electronAPI?.openExternal?.(url)
     }
+
+    bindCabinetTabs()
 
     document.getElementById('planBuyProBtn')?.addEventListener('click', () => {
         _doOpenUrl(DASHBOARD_URL)

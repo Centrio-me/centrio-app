@@ -71,7 +71,7 @@ function createVaultLoginBar({ state, tGet, autoLogin }) {
         if (busy) return
         busy = true
         render()
-        let result = null
+        let result
         try { result = await autoLogin(messengerId) } catch { result = { success: false, error: 'FAILED' } }
         busy = false
         if (!result || result.success !== true) {
