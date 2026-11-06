@@ -74,6 +74,8 @@ const { bindSidebarShellUi } = require('./renderer/sidebar-shell-bind')
 const { bindAppNotifUi } = require('./renderer/app-notif-bind')
 const { bindTodosUi } = require('./renderer/todos-bind')
 const { createPhoneLinkApi } = require('./renderer/phone-link')
+// Not finished yet (owner, 2026-11-06): nothing about it is shown to people until this is switched on.
+const PHONE_LINK_ENABLED = false
 const { bindQuickRepliesUi } = require('./renderer/quick-replies-bind')
 const { bindPasswordsUi } = require('./renderer/passwords-ui')
 const { createPmBar } = require('./renderer/pm-bar')
@@ -874,6 +876,10 @@ async function bootstrap() {
         try {
             // Обновляем данные пользователя с сервера (план, аватар и т.д.)
             await cloudApi.refreshUser()
+            // This account's saved profile comes back here, and another account's profile is put aside.
+            // When that happens the app restarts, so nothing below may touch the store or the cloud.
+            const profile = await invokeIpc('profile:signed-in')
+            if (profile?.restarting) return
             orgTeamTickRef?.()
             if (typeof updateCloudBtn === 'function') updateCloudBtn()
             updateAddButtonState()
@@ -1060,7 +1066,7 @@ async function bootstrap() {
         hasEffectivePro: () => hasEffectivePro(),
         getMessenger: (id) => (state.activeMessengers || []).find(m => m.id === id)
     })
-    phoneLinkApi.start()
+    if (PHONE_LINK_ENABLED) phoneLinkApi.start()
 
     const webviewNotifyApi = createWebviewNotifyApi({
         state,
@@ -1071,7 +1077,9 @@ async function bootstrap() {
         playNotifSound,
         isMessengerMuted,
         updateUnreadCount,
-        pushFeedItem: (item) => phoneLinkApi.pushFeedItem(item),
+        pushFeedItem: (item) => (PHONE_LINK_ENABLED
+            ? phoneLinkApi.pushFeedItem(item)
+            : cloudApi.cloudPushFeedItem({ messengerId: item.messengerId, messengerName: item.messengerName, title: item.title, body: item.body })),
         addMessengerNotification: (title, body, name, messengerId, actionUrl, nid) => {
             if (typeof addMessengerNotifRef === 'function') {
                 addMessengerNotifRef(title, body, name, messengerId, actionUrl, nid)

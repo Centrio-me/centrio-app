@@ -309,13 +309,10 @@ function bindCloudUi({
         if (e.key === 'Enter') submitPromoCode()
     })
 
-    document.getElementById('cloudLogoutBtn').addEventListener('click', () => {
+    // The app restarts as new right after this, see cloudApi.logout().
+    document.getElementById('cloudLogoutBtn').addEventListener('click', (e) => {
+        e.currentTarget.disabled = true
         cloudApi.logout()
-        const content = document.querySelector('.cloud-modal-content')
-        if (content) content.classList.remove('profile-open')
-        document.getElementById('cloudProfileView').style.display = 'none'
-        document.getElementById('cloudLoginView').style.display = 'flex'
-        document.getElementById('cloudModal').classList.remove('show')
     })
 
     const DASHBOARD_URL = 'https://centrio.me/dashboard'

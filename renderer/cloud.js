@@ -1,3 +1,6 @@
+const LOGOUT_PUSH_TIMEOUT_MS = 5000
+const PROFILE_LOCAL_STORAGE_KEYS = ['centrio-add-recent', 'centrio-dismissed-notifs', 'centrio.lockThrottle', 'centrio-org-alerts-seen-at', 'centrio.syncOutbox']
+
 function createCloudStore(store) {
     return {
         getToken: () => store.get('cloud.accessToken', null),
@@ -438,13 +441,24 @@ function createCloudApi({
         return result
     }
 
+    // Signing out saves the profile and restarts the app as new; the profile returns at the next sign-in to this
+    // account (main/ipc/profile.js). The cloud gets the latest changes first, but a slow network must not hold the
+    // person on this screen: if it does not answer in time, the local copy still has everything.
     async function logout() {
+        const userId = cloudStore.getUser()?.id
+        const pushed = await Promise.race([
+            cloudSyncPush().then(result => !!result?.success).catch(() => false),
+            new Promise(resolve => setTimeout(() => resolve(false), LOGOUT_PUSH_TIMEOUT_MS))
+        ])
         try {
             if (cloudStore.getToken()) {
                 await authorizedInvoke('api-logout', cloudStore.getRefresh())
             }
         } catch {}
-        forceLogout()
+        for (const key of PROFILE_LOCAL_STORAGE_KEYS) {
+            try { localStorage.removeItem(key) } catch {}
+        }
+        await invokeIpc('profile:sign-out', userId, pushed)
     }
 
     return {

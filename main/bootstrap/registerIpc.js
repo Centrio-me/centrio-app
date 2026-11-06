@@ -24,6 +24,7 @@ const registerBatteryIpc = require('../ipc/battery')
 const registerDetachedIpc = require('../ipc/detached')
 const registerPageMenuIpc = require('../ipc/pageMenu')
 const registerE2eIpc = require('../ipc/e2e')
+const { registerProfileIpc } = require('../ipc/profile')
 
 function registerIpc({ getMainWindow, showMainWindow, updateTrayMenu, isQuittingRef }) {
     registerWindowIpc({ getMainWindow, isQuittingRef })
@@ -35,6 +36,7 @@ function registerIpc({ getMainWindow, showMainWindow, updateTrayMenu, isQuitting
     registerAutoLaunchIpc()
     registerApiIpc()
     registerE2eIpc()
+    registerProfileIpc()
     registerOAuthIpc({ getMainWindow })
     registerProxyIpc()
     registerUpdaterIpc({ getMainWindow, isQuittingRef })

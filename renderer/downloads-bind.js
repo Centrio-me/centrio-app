@@ -137,6 +137,13 @@ function bindDownloadsUi({
                 ? `${formatBytes(d.receivedBytes)} / ${d.totalBytes > 0 ? formatBytes(d.totalBytes) : '?'}`
                 : stateLabel(d)
 
+            const actionsHtml = d.state === 'completed'
+                ? `<div class="downloads-item-actions">
+                        <button type="button" class="downloads-item-action" data-action="open">${escapeHtml(tGet('downloads.openFile') || 'Open file')}</button>
+                        <button type="button" class="downloads-item-action" data-action="folder">${escapeHtml(tGet('downloads.showInFolder') || 'Show in folder')}</button>
+                    </div>`
+                : ''
+
             return `
                 <div class="app-notif-item downloads-item" data-id="${escapeHtml(d.id)}" title="${escapeHtml(d.filename)}">
                     <div class="downloads-item-row">
@@ -148,6 +155,7 @@ function bindDownloadsUi({
                             <div class="app-notif-item-time">${formatDate(d.startTime)}</div>
                         </div>
                     </div>
+                    ${actionsHtml}
                 </div>
             `
         }).join('')
@@ -174,6 +182,18 @@ function bindDownloadsUi({
         // OS-drag-сессию — курсор-ghost + геометрия для определения целевого
         // <webview>, синтетический drop строится ВНУТРИ гостевой страницы.
         // Обычный клик (без сдвига мыши) по-прежнему открывает файл.
+        list.querySelectorAll('.downloads-item-action').forEach(button => {
+            // The row itself starts a drag on mousedown and opens the file on click.
+            button.addEventListener('mousedown', (e) => e.stopPropagation())
+            button.addEventListener('click', (e) => {
+                e.stopPropagation()
+                const id = button.closest('.downloads-item')?.dataset.id
+                if (!id) return
+                if (button.dataset.action === 'folder') ipcRenderer.send('downloads:show-in-folder', id)
+                else invokeIpc('downloads:open-file', id)
+            })
+        })
+
         list.querySelectorAll('.downloads-item').forEach(el => {
             let suppressClick = false
 

@@ -9078,6 +9078,7 @@ button:active {
    a bottom border — now its own card, each stat gets an icon chip so the
    row scans at a glance instead of reading as three bare numbers. */
 .cp-stats-row {
+    flex-shrink: 0;
     display: flex;
     align-items: stretch;
     background: var(--bg-tertiary);
@@ -14243,7 +14244,42 @@ body.startup-locked #contentArea {
 /* ── Менеджер загрузок ─────────────────────────────────────────────── */
 .downloads-item {
     cursor: pointer;
+    position: relative;
 }
+
+.downloads-item-actions {
+    position: absolute;
+    right: 8px;
+    bottom: 7px;
+    display: flex;
+    gap: 6px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.12s ease;
+}
+
+.downloads-item:hover .downloads-item-actions,
+.downloads-item:focus-within .downloads-item-actions {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.downloads-item-action {
+    padding: 4px 9px;
+    border: 1px solid var(--border-light);
+    border-radius: 7px;
+    background: var(--bg-active);
+    color: var(--text-bright);
+    font: inherit;
+    font-size: 11.5px;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+
+.downloads-item-action:hover { background: var(--accent); border-color: var(--accent); color: #fff; }
+.downloads-item-action:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
 .downloads-progress-track {
     width: 100%;
@@ -17080,6 +17116,8 @@ body.onb-active #titlebarMenu {
     pointer-events: auto;
 }
 #welcomeScreen::before { display: none; }
+/* The glow is larger than the screen on purpose: clipped here so it never gives the screen scrollbars. */
+.wl-glow-clip { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
 .wl-glow {
     position: absolute; inset: -20%; pointer-events: none;
     background:
@@ -17885,9 +17923,11 @@ body.sf-hide-top #sfTopZone { display: block; }
 .outage-notice-cta:focus-visible, .outage-notice-close:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 
 /* "Check for updates" inside the version history popup */
-.changelog-popup-update { margin-left: auto; margin-right: 10px; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--border, #375075); background: transparent; color: inherit; font: inherit; font-size: 12px; cursor: pointer; white-space: nowrap; }
-.changelog-popup-update:hover:not(:disabled) { background: rgba(127, 127, 127, 0.15); }
+.changelog-popup-update { order: 4; flex: 0 0 auto; margin: 0 0 0 auto; padding: 5px 11px; border-radius: 8px; border: 1px solid var(--border-light); background: var(--bg-tertiary); color: var(--text-bright); font: inherit; font-size: 12px; font-weight: 600; white-space: nowrap; cursor: pointer; transition: background 0.12s ease, border-color 0.12s ease; }
+.changelog-popup-update:hover:not(:disabled) { background: var(--bg-active); border-color: var(--accent); }
+.changelog-popup-update:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .changelog-popup-update:disabled { opacity: 0.6; cursor: default; }
-.changelog-popup-update-status { font-size: 12px; opacity: 0.8; white-space: nowrap; }
-.changelog-popup-update-status:not(:empty) { margin-left: auto; margin-right: 10px; }
-.changelog-popup-update-status:not(:empty) + .changelog-popup-update { margin-left: 0; }
+.changelog-popup-update-status { order: 3; flex: 1 1 60px; min-width: 0; font-size: 12px; line-height: 1.35; color: var(--text-secondary); }
+.changelog-popup-header { flex-wrap: wrap; row-gap: 9px; }
+.changelog-popup-title { order: 1; flex: 1 1 calc(100% - 44px); min-width: 0; }
+.changelog-popup-close { order: 2; }

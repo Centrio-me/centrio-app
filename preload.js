@@ -201,6 +201,8 @@ const validInvokeChannels = new Set([
     'api-redeem-promo',
     'api-refresh',
     'api-register',
+    'profile:sign-out',
+    'profile:signed-in',
     'api-register-start',
     'api-register-confirm',
     'api-register-resend',

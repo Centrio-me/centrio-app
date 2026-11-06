@@ -368,6 +368,7 @@ function sanitizeQuickRepliesForStore(value) {
 }
 
 safeHandle('store:set', async (_event, key, value) => {
+    if (require('./main/ipc/profile').isProfileBeingReplaced()) return { success: false, error: 'Profile is being replaced' }
     if (!isValidStoreKey(key)) {
         console.warn(`[store] Blocked store:set for disallowed key "${key}"`)
         return { success: false, error: 'Disallowed key' }
