@@ -1,7 +1,7 @@
 // Экран первого запуска — 4 шага:
 //  1) язык + вход/регистрация (или «Пропустить»)
 //  2) выбор сервисов
-//  3) объявление 14-дневного Pro-триала
+//  3) объявление 7-дневного Pro-триала
 //  4) «Готово — запустить Centrio»
 //
 // Показывается один раз — до тех пор пока store.get('onboardingAuthSeen')
@@ -420,7 +420,7 @@ function bindOnboardingScreen({
 
     document.getElementById('onbServicesSkipBtn')?.addEventListener('click', goToTrial)
 
-    // ── Шаг 3: Pro-триал на 14 дней ──────────────────────────────
+    // ── Шаг 3: Pro-триал на 7 дней ──────────────────────────────
     // Раньше выдавался только зарегистрированным (через промокод PRO14 на
     // аккаунт). Теперь — всем, включая тех кто нажал «Пропустить»: без
     // аккаунта триал привязывается к железу через
@@ -435,7 +435,7 @@ function bindOnboardingScreen({
         let granted = false
         try {
             if (cloudStore.isLoggedIn()) {
-                // Since 2026-11-06 the server grants the 14 days when the account is created (code, Google, Яндекс).
+                // Since 2026-11-06 the server grants the 7 days when the account is created (code, Google, Яндекс).
                 // Fresh grant = the plan started a few minutes ago; a returning paid customer is not told about a
                 // gift they did not get. Accounts made before that still redeem the code here.
                 const user = (await cloudApi.refreshUser()) || cloudStore.getUser()
