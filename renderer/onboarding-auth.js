@@ -438,18 +438,18 @@ function bindOnboardingScreen({
         if (showAllBtn) showAllBtn.style.display = 'none'
     })
 
+    let grantingTrial = false
+
     function addSelectedMessengers() {
         popularMessengers
             .filter(m => selected.has(m.name))
             .forEach(m => { try { addMessenger(m) } catch (e) { console.error('onboarding addMessenger failed:', e) } })
     }
 
-    document.getElementById('onbServicesContinueBtn')?.addEventListener('click', () => {
-        addSelectedMessengers()
-        goToTrial()
-    })
+    // Services are added after the trial: otherwise the fourth one meets the free limit on the very first screen.
+    document.getElementById('onbServicesContinueBtn')?.addEventListener('click', () => goToTrial(addSelectedMessengers))
 
-    document.getElementById('onbServicesSkipBtn')?.addEventListener('click', goToTrial)
+    document.getElementById('onbServicesSkipBtn')?.addEventListener('click', () => goToTrial())
 
     // ── Шаг 3: Pro-триал на 7 дней ──────────────────────────────
     // Раньше выдавался только зарегистрированным (через промокод PRO14 на
@@ -462,7 +462,9 @@ function bindOnboardingScreen({
     // used the trial), so people believed they had Pro while staying on Free.
     // Now the screen appears only after a successful grant; otherwise the
     // onboarding goes straight to the final step.
-    async function goToTrial() {
+    async function goToTrial(afterGrant) {
+        if (grantingTrial) return
+        grantingTrial = true
         let granted = false
         try {
             if (cloudStore.isLoggedIn()) {
@@ -494,11 +496,15 @@ function bindOnboardingScreen({
                 // fails softly here and any existing expiry is left untouched.
                 const result = await window.electronAPI.invoke('api-device-trial-redeem')
                 granted = !!(result && result.success)
+                // The window keeps its own copy of this key from startup and may not write it, so it is told here.
+                if (typeof result?.data?.expiresAt === 'string') store.setLocal?.('localProTrialExpiresAt', result.data.expiresAt)
             }
         } catch (e) {
             console.error('onboarding trial grant failed:', e)
         }
         updateTrialStatusBar?.()
+        afterGrant?.()
+        grantingTrial = false
         if (granted) goTo('trial')
         else goToReady()
     }
