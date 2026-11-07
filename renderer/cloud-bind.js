@@ -1,5 +1,7 @@
+const { showTelegramWait, clearTelegramWait } = require('./telegram-wait')
 const { requireConsent } = require('./consent-ui')
 const { bindCabinetTabs } = require('./cloud-tabs')
+const { bindAchievements } = require('./cloud-achievements')
 
 function bindCloudUi({
     cloudStore,
@@ -56,6 +58,8 @@ function bindCloudUi({
     }
 
     document.getElementById('oauthCancelBtn')?.addEventListener('click', () => {
+        cloudApi.cancelTelegramLogin()
+        clearTelegramWait()
         hideOAuthWait()
     })
 
@@ -64,6 +68,7 @@ function bindCloudUi({
         try {
             const result = await oauthFn()
             hideOAuthWait()
+            if (result.cancelled) return
             if (!result.success) {
                 document.getElementById('cloudLoginError').textContent = result.error || tGet('cloud.oauthError')
                 document.getElementById('cloudLoginError').style.display = 'block'
@@ -86,6 +91,20 @@ function bindCloudUi({
     document.getElementById('oauthYandexBtn').addEventListener('click', () => {
         if (!requireConsent('cloudConsentOauth', document.getElementById('cloudLoginError'), tGet)) return
         handleSystemOAuth(() => cloudApi.oauthYandex(), 'Yandex')
+    })
+
+    bindAchievements({ cloudApi, tGet })
+
+    document.querySelectorAll('[data-external]').forEach((btn) => {
+        btn.addEventListener('click', () => window.electronAPI.openExternal(btn.dataset.external))
+    })
+
+    document.getElementById('oauthTelegramBtn').addEventListener('click', async () => {
+        if (!requireConsent('cloudConsentOauth', document.getElementById('cloudLoginError'), tGet)) return
+        document.getElementById('cloudLoginError').style.display = 'none'
+        const onReady = (data) => showTelegramWait(document.getElementById('oauthWaitText'), data, { tGet, onOpen: () => cloudApi.openTelegramLogin() })
+        await handleSystemOAuth(() => cloudApi.oauthTelegram(onReady), 'Telegram')
+        clearTelegramWait()
     })
 
     document.getElementById('cloudLoginBtn').addEventListener('click', async () => {

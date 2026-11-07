@@ -17,6 +17,8 @@ function soundFileName(name) {
     return EXTRA_SOUND_FILES[key] || `ringtone-${key}.mp3`
 }
 
+const isAbsolutePath = (p) => /^[a-zA-Z]:[\\/]/.test(p) || p.startsWith('\\\\') || p.startsWith('/')
+
 function createSoundsApi({ store, ipcRenderer, getActiveMessengers }) {
     let soundPickerInited = false
 
@@ -27,7 +29,8 @@ function createSoundsApi({ store, ipcRenderer, getActiveMessengers }) {
     // The sound the user chose for everyone, as a valid name.
     function chosenSoundName(settings) {
         const name = settings.notifSoundName
-        return isRingtone(name) || (name === CUSTOM_SOUND && settings.notifSoundCustomPath) ? name : DEFAULT_RINGTONE
+        const hasCustomFile = name === CUSTOM_SOUND && isAbsolutePath(String(settings.notifSoundCustomPath || ''))
+        return isRingtone(name) || hasCustomFile ? name : DEFAULT_RINGTONE
     }
 
     // Sounds play inside the app window with the browser's own audio. The old way (a PowerShell process per beep, see
@@ -39,10 +42,17 @@ function createSoundsApi({ store, ipcRenderer, getActiveMessengers }) {
         const parts = String(p).split(/[\\/]+/).filter(Boolean)
         return 'file:///' + parts.map((part, i) => (i === 0 && /^[a-zA-Z]:$/.test(part) ? part : encodeURIComponent(part))).join('/')
     }
-    const isAbsolutePath = (p) => /^[a-zA-Z]:[\\/]/.test(p) || p.startsWith('\\\\') || p.startsWith('/')
 
+    // A sound that cannot be played falls back to the built-in one, so a notification is never silent.
     function playSoundFile(soundPath) {
-        const fallback = () => ipcRenderer.send('play-sound', soundPath)
+        const defaultPath = getBuiltinSoundPath(DEFAULT_RINGTONE)
+        let failed = false
+        const fallback = () => {
+            if (failed) return
+            failed = true
+            if (soundPath === defaultPath) ipcRenderer.send('play-sound', soundPath)
+            else playSoundFile(defaultPath)
+        }
         try {
             const audio = new Audio(isAbsolutePath(soundPath) ? toFileUrl(soundPath) : soundPath)
             audio.volume = SOUND_VOLUME
@@ -160,7 +170,7 @@ function createSoundsApi({ store, ipcRenderer, getActiveMessengers }) {
                 fileInput.click()
             })
 
-            fileInput.addEventListener('change', (e) => {
+            fileInput.addEventListener('change', async (e) => {
                 const file = e.target.files[0]
                 if (!file) return
 
@@ -174,7 +184,9 @@ function createSoundsApi({ store, ipcRenderer, getActiveMessengers }) {
                 // matching "загружаю, но звук вообще не играет". Resolve the
                 // real absolute path via the webUtils bridge exposed in
                 // preload.js instead of trusting file.path/file.name.
-                const filePath = window.electronAPI?.getPathForFile?.(file) || ''
+                const sourcePath = window.electronAPI?.getPathForFile?.(file) || ''
+                const imported = sourcePath ? await ipcRenderer.invoke('sound:import-custom', sourcePath).catch(() => null) : null
+                const filePath = imported?.success ? imported.path : ''
 
                 if (!filePath) {
                     const orig = uploadBtn.textContent

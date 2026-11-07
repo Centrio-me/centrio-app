@@ -314,6 +314,18 @@ module.exports = {
         return request('GET', '/api/stats/summary', null, token)
     },
 
+    getAchievements(token) {
+        return request('GET', '/api/achievements', null, token)
+    },
+
+    reportAchievements(token, body) {
+        return request('POST', '/api/achievements/report', body, token)
+    },
+
+    claimAchievementReward(token) {
+        return request('POST', '/api/achievements/claim-reward', {}, token)
+    },
+
     getDevices(token) {
         return request('GET', '/api/user/devices', null, token)
     },

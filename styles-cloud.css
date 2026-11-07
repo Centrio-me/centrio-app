@@ -470,7 +470,7 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    font-family: 'Golos Text', 'Manrope', 'Inter', sans-serif;
+    font-family: inherit;
 }
 
 .onb-glow {
@@ -790,6 +790,14 @@
     color: #fff;
 }
 
+.onb-service-tile.selected .onb-service-check::after {
+    content: '';
+    width: 11px;
+    height: 11px;
+    background: #fff;
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
 .onb-show-all {
     background: none;
     border: none;
@@ -815,7 +823,7 @@
 
 .onb-back-btn {
     position: absolute;
-    top: 28px;
+    top: 52px;
     left: 28px;
     z-index: 5;
     width: 38px;
@@ -884,11 +892,14 @@
 }
 
 .onb-trial-list li::before {
-    content: '✓';
+    content: '';
     position: absolute;
     left: 0;
-    color: var(--accent-hover);
-    font-weight: 700;
+    top: 2px;
+    width: 16px;
+    height: 16px;
+    background: var(--accent-hover);
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E") center / contain no-repeat;
 }
 
 .onb-ready-avatar {

@@ -635,7 +635,8 @@ function createCloudUiApi({
         document.getElementById('cloudProfileView').style.display = 'flex'
 
         document.getElementById('cloudUserName').textContent  = user?.name  || ''
-        document.getElementById('cloudUserEmail').textContent = user?.email || ''
+        // An account made through Telegram has a stand-in address: it is never shown to the person.
+        document.getElementById('cloudUserEmail').textContent = /^tg_\d+@centrio\.me$/.test(user?.email || '') ? 'Telegram' : (user?.email || '')
 
         const plan     = (user?.plan || 'FREE').toUpperCase()
         const isPro    = _isPro(user)

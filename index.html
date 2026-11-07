@@ -29,7 +29,7 @@
                    font-src 'self';
                    img-src 'self' data: blob: https:;
                    connect-src 'self' https://api.centrio.me https://centrio.me;
-                   media-src 'self';
+                   media-src 'self' file:;
                    object-src 'none';
                    frame-src 'none';">
     <title>Centrio</title>
@@ -1124,6 +1124,20 @@
         <button class="changelog-popup-close" id="changelogPopupClose">✕</button>
     </div>
     <div class="changelog-popup-body">
+        <div class="changelog-entry">
+            <div class="changelog-version">v3.6.1</div>
+            <ul class="changelog-list">
+                <li>Новое: вход через Telegram. Нажмите кнопку, отсканируйте код или откройте Telegram и подтвердите вход в боте.</li>
+                <li>Новое: в личном кабинете появились ссылки на наш канал и бота в Telegram.</li>
+                <li>Новое: первый запуск стал проще: сначала выбираете сервисы, а аккаунт можно создать потом.</li>
+                <li>Новое: «Первые шаги» помогают освоиться, за их прохождение 3 дня ПРО в подарок.</li>
+                <li>Новое: достижения в личном кабинете. Они сохраняются на сервере, а то, что вы уже делали в Centrio, засчитано сразу.</li>
+                <li>Новое: подсказки появляются один раз и в нужный момент: например, как разложить сервисы по папкам.</li>
+                <li>Исправлено: уведомления больше не остаются без звука: если выбранный свой звук недоступен, играет стандартный.</li>
+                <li>Исправлено: свой звук уведомления копируется в папку программы и не пропадает, если исходный файл переместить или удалить.</li>
+                <li>Исправлено: настройка «Запускать с системой» снова включается и выключается.</li>
+            </ul>
+        </div>
         <div class="changelog-entry">
             <div class="changelog-version">v3.6.0</div>
             <ul class="changelog-list">
@@ -3612,6 +3626,10 @@
                         </svg>
                         <span data-i18n="cloud.loginYandex">Войти через Яндекс</span>
                     </button>
+                    <button class="oauth-btn oauth-telegram" id="onbOauthTelegramBtn">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="#2AABEE" aria-hidden="true"><path d="M21.9 4.3 18.8 19c-.2 1-.8 1.3-1.7.8l-4.7-3.5-2.3 2.2c-.3.3-.5.5-1 .5l.3-4.8 8.8-7.9c.4-.3-.1-.5-.6-.2L5.8 12.5l-4.7-1.5c-1-.3-1-1 .2-1.5L20.5 2.9c.9-.3 1.7.2 1.4 1.4z"/></svg>
+                        <span data-i18n="cloud.loginTelegram">Войти через Telegram</span>
+                    </button>
                 </div>
 
                 <div class="oauth-divider" id="onbOauthDivider">
@@ -3684,6 +3702,10 @@
                             </svg>
                             <span data-i18n="onb.regYandex">Продолжить с Яндекс</span>
                         </button>
+                        <button class="oauth-btn oauth-telegram" id="onbRegTelegramBtn">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="#2AABEE" aria-hidden="true"><path d="M21.9 4.3 18.8 19c-.2 1-.8 1.3-1.7.8l-4.7-3.5-2.3 2.2c-.3.3-.5.5-1 .5l.3-4.8 8.8-7.9c.4-.3-.1-.5-.6-.2L5.8 12.5l-4.7-1.5c-1-.3-1-1 .2-1.5L20.5 2.9c.9-.3 1.7.2 1.4 1.4z"/></svg>
+                            <span data-i18n="cloud.loginTelegram">Войти через Telegram</span>
+                        </button>
                     </div>
 
                     <div class="oauth-divider" id="onbRegOauthDivider">
@@ -3718,9 +3740,6 @@
 <!-- ===== ОНБОРДИНГ: ЭКРАН 2 — ВЫБОР СЕРВИСОВ ===== -->
 <div id="onbServicesScreen" class="onb-screen" style="display:none;">
     <div class="onb-glow"></div>
-    <button class="onb-back-btn" id="onbServicesBackBtn" aria-label="Назад" data-i18n-aria="html.k002">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-    </button>
     <div class="onb-services-body">
         <div class="onb-services-head">
             <h1 class="onb-services-title" data-i18n="onb.svcTitle">Подключи свои сервисы</h1>
@@ -3729,12 +3748,13 @@
 
         <div class="onb-services-scroll">
             <div id="onbServicesGrid" class="onb-services-grid"></div>
-            <button id="onbShowAllBtn" class="onb-show-all" data-i18n="onb.svcShowAll">Показать все сервисы →</button>
+            <button id="onbShowAllBtn" class="onb-show-all" data-i18n="onb.svcShowAll">Показать все сервисы</button>
         </div>
 
         <div class="onb-services-footer">
             <button id="onbServicesContinueBtn" class="onb-cta-btn" data-i18n="onb.continue">Продолжить</button>
             <button id="onbServicesSkipBtn" class="onb-skip" data-i18n="onb.svcSkip">Пропустить</button>
+            <button id="onbHaveAccountBtn" class="onb-skip" data-i18n="onb.haveAccount">У меня уже есть аккаунт</button>
         </div>
     </div>
 </div>
@@ -3753,7 +3773,7 @@
         <p class="onb-services-sub" data-i18n="onb.trialSub">Мы включили Pro на этом аккаунте — вот что это значит.</p>
 
         <div class="onb-trial-card">
-            <div class="onb-trial-badge" data-i18n="onb.trialBadge">PRO · ВКЛЮЧЕНО НА 7 ДНЕЙ</div>
+            <div class="onb-trial-badge" data-i18n="onb.trialBadge">ПРО · ВКЛЮЧЕНО НА 7 ДНЕЙ</div>
             <ul class="onb-trial-list">
                 <li data-i18n="onb.trialF1">Неограниченное количество сервисов</li>
                 <li data-i18n="onb.trialF2">Встроенный VPN на каждый мессенджер</li>
@@ -3779,6 +3799,7 @@
         <h1 class="onb-services-title" data-i18n="onb.readyTitle">Centrio готов к работе</h1>
         <p class="onb-services-sub" id="onbReadySub" data-i18n="onb.readySub">Всё настроено — можно начинать.</p>
         <button id="onbLaunchBtn" class="onb-cta-btn" data-i18n="onb.launch">Запустить Centrio</button>
+        <button id="onbReadyAccountBtn" class="onb-skip" data-i18n="onb.readyAccount">Создать аккаунт, чтобы данные были на всех устройствах</button>
     </div>
 </div>
 
@@ -3884,6 +3905,10 @@
                     </svg>
                     <span data-i18n="cloud.yandex"></span>
                 </button>
+                <button class="la-oauth-btn la-oauth-btn--wide" id="oauthTelegramBtn">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="#2AABEE" aria-hidden="true"><path d="M21.9 4.3 18.8 19c-.2 1-.8 1.3-1.7.8l-4.7-3.5-2.3 2.2c-.3.3-.5.5-1 .5l.3-4.8 8.8-7.9c.4-.3-.1-.5-.6-.2L5.8 12.5l-4.7-1.5c-1-.3-1-1 .2-1.5L20.5 2.9c.9-.3 1.7.2 1.4 1.4z"/></svg>
+                    <span>Telegram</span>
+                </button>
             </div>
 
             <label class="app-consent la-consent la-consent--oauth" for="cloudConsentOauth"><input type="checkbox" id="cloudConsentOauth"><span data-consent-text></span></label>
@@ -3978,6 +4003,10 @@
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18v12H3zM3 10h18M7 15h3"/></svg>
                         <span data-i18n="cloud.tabSubscription"></span>
                     </button>
+                    <button class="lk-nav-btn" data-lk-tab="achievements">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0zM7 6H4a3 3 0 0 0 3 4M17 6h3a3 3 0 0 1-3 4"/></svg>
+                        <span data-i18n="achievements.tab"></span>
+                    </button>
                     <button class="lk-nav-btn" data-lk-tab="devices">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h18v11H3zM8 20h8M12 16v4"/></svg>
                         <span data-i18n="cloud.tabDevices"></span>
@@ -4046,6 +4075,13 @@
                                 <li data-i18n="cloud.planProF3"></li>
                                 <li data-i18n="cloud.planProF4"></li>
                             </ul>
+                        </div>
+
+                        <div class="lk-telegram">
+                            <span class="lk-telegram-mark" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M21.9 4.3 18.8 19c-.2 1-.8 1.3-1.7.8l-4.7-3.5-2.3 2.2c-.3.3-.5.5-1 .5l.3-4.8 8.8-7.9c.4-.3-.1-.5-.6-.2L5.8 12.5l-4.7-1.5c-1-.3-1-1 .2-1.5L20.5 2.9c.9-.3 1.7.2 1.4 1.4z"/></svg></span>
+                            <div class="lk-telegram-copy"><div class="lk-card-title" data-i18n="cloud.tgTitle"></div><div class="lk-telegram-text" data-i18n="cloud.tgText"></div></div>
+                            <button class="lk-btn lk-btn--small" data-external="https://t.me/centrioapp" data-i18n="cloud.tgChannel"></button>
+                            <button class="lk-btn lk-btn--ghost lk-btn--small" data-external="https://t.me/Centrio_bot" data-i18n="cloud.tgBot"></button>
                         </div>
 
                         <div class="lk-split" id="lkOverviewUsage" style="display:none;">
@@ -4154,6 +4190,10 @@
                     </section>
 
                     <!-- Устройства -->
+                    <section class="lk-panel" data-lk-panel="achievements" hidden>
+                        <div id="lkAchievements" class="ach-panel"></div>
+                    </section>
+
                     <section class="lk-panel" data-lk-panel="devices" hidden>
                         <div class="lk-card">
                             <div class="lk-head-row">

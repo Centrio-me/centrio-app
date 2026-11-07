@@ -349,6 +349,21 @@ function registerApiIpc() {
         return wrapApi(() => api.paymentsList(token))
     })
 
+    ipcMain.handle('api-achievements-get', async (event, token) => {
+        return wrapApi(() => api.getAchievements(token))
+    })
+
+    ipcMain.handle('api-achievements-report', async (event, token, body) => {
+        return wrapApi(() => api.reportAchievements(token, {
+            keys: Array.isArray(body?.keys) ? body.keys.filter((key) => typeof key === 'string').slice(0, 30) : [],
+            services: Number.isInteger(body?.services) ? body.services : 0
+        }))
+    })
+
+    ipcMain.handle('api-achievements-claim', async (event, token) => {
+        return wrapApi(() => api.claimAchievementReward(token))
+    })
+
     ipcMain.handle('api-devices-list', async (event, token) => {
         return wrapApi(() => api.getDevices(token))
     })

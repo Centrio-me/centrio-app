@@ -108,7 +108,6 @@ function bindSettingsUi({
         // if it were raw ipcRenderer.once(channel, (event, result) => ...)
         // — so `result` was always undefined and every attempt, success or
         // not, hit the "!result?.success" failure branch.
-        const autoLaunchChanged = autoLaunchRequested !== !!previousSettings.autoLaunch
         ipcRenderer.once('auto-launch-result', (result) => {
             if (!result?.success && autoLaunch) autoLaunch.checked = !autoLaunchRequested
 
@@ -137,7 +136,7 @@ function bindSettingsUi({
                 }, 8000)
             }
         })
-        if (autoLaunchChanged) ipcRenderer.send('set-auto-launch', autoLaunchRequested)
+        ipcRenderer.send('set-auto-launch', autoLaunchRequested)
 
         ipcRenderer.send('set-download-dir', settings.downloadDir || '')
         ipcRenderer.send('set-ask-download', settings.askDownload ?? true)
@@ -163,9 +162,11 @@ function bindSettingsUi({
 
     // Настройки применяются сразу: сохраняем, как только значения на экране изменились
     const SAVE_DELAY_MS = 250
+    const SNAPSHOT_DELAY_MS = 300
     let savedSnapshot = null
     let saveTimer = null
-    const snapshot = () => JSON.stringify(collectSettings())
+    // Автозапуск хранится в Windows, а не в настройках, поэтому смотрим на галочку отдельно
+    const snapshot = () => JSON.stringify({ ...collectSettings(), autoLaunchChecked: !!document.getElementById('settingAutoLaunch')?.checked })
     function scheduleSave() {
         if (!settingsModal?.classList.contains('show') || savedSnapshot === null) return
         clearTimeout(saveTimer)
@@ -179,7 +180,8 @@ function bindSettingsUi({
     if (settingsModal) {
         new MutationObserver(() => {
             const isOpen = settingsModal.classList.contains('show')
-            if (isOpen && savedSnapshot === null) setTimeout(() => { savedSnapshot = snapshot() }, 0)
+            // После чтения автозапуска из системы, иначе само открытие окна выглядело бы как изменение
+            if (isOpen && savedSnapshot === null) setTimeout(() => { savedSnapshot = snapshot() }, SNAPSHOT_DELAY_MS)
             if (!isOpen) savedSnapshot = null
         }).observe(settingsModal, { attributes: true, attributeFilter: ['class'] })
     }

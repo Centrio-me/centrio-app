@@ -20,7 +20,8 @@ const PROFILE_KEYS = [
     'appZoomLevel', 'tabZoomLevel', 'extensionsState',
     'split', 'splitPresets', 'splitLeftPctPref', 'gridRowPctPref', 'gridSidePctPref', 'gridColAPref', 'gridColBPref',
     'mutedMessengers', 'globalMuteAll', 'dndUntil', 'dndLastHours',
-    'quickReplies', 'todos', 'pmVault', 'assistant', 'messengerNotifHistory', 'downloadsHistory'
+    'quickReplies', 'todos', 'pmVault', 'assistant', 'messengerNotifHistory', 'downloadsHistory',
+    'milestones', 'firstStepsActive', 'firstStepsCollapsed', 'hintsSeen'
 ]
 // Removed but not worth keeping: the first-run flag, and a copy of the profile made before a cloud apply.
 const WIPE_ONLY_KEYS = ['backup', 'onboardingAuthSeen']

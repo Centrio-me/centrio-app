@@ -398,6 +398,24 @@ function createCloudApi({
         return result
     }
 
+    const getAchievements = () => authorizedInvoke('api-achievements-get')
+    const reportAchievements = (body) => authorizedInvoke('api-achievements-report', body)
+    const claimAchievementReward = () => authorizedInvoke('api-achievements-claim')
+
+    // onReady gets the QR code as soon as the server has made it, then this waits for the confirmation in the bot.
+    async function oauthTelegram(onReady) {
+        const started = await invokeIpc('telegram-login-start')
+        if (!started.success) return started
+        onReady?.(started.data)
+        const result = await invokeIpc('telegram-login-wait')
+        if (!result.success) return { ...result, cancelled: result.error === 'telegram-cancelled' }
+
+        applyAuthData(result.data || {})
+        cloudStore.setLastSyncError(null)
+
+        return result
+    }
+
     async function updateProfile(dataPatch) {
         const result = await authorizedInvoke('api-update-profile', dataPatch)
         if (!result.success) return result
@@ -476,6 +494,12 @@ function createCloudApi({
         registerResend,
         oauthGoogle,
         oauthYandex,
+        oauthTelegram,
+        getAchievements,
+        reportAchievements,
+        claimAchievementReward,
+        openTelegramLogin: () => invokeIpc('telegram-login-open'),
+        cancelTelegramLogin: () => invokeIpc('telegram-login-cancel'),
         updateProfile,
         redeemPromo,
         logout,

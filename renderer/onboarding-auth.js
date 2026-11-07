@@ -1,8 +1,8 @@
-// Экран первого запуска — 4 шага:
-//  1) язык + вход/регистрация (или «Пропустить»)
-//  2) выбор сервисов
-//  3) объявление 7-дневного Pro-триала
-//  4) «Готово — запустить Centrio»
+const { showTelegramWait, clearTelegramWait } = require('./telegram-wait')
+// Экран первого запуска. Сначала польза, аккаунт потом:
+//  1) выбор сервисов и язык (ссылка «У меня уже есть аккаунт» ведёт на вход)
+//  2) объявление 7-дневного Pro-триала
+//  3) «Готово — запустить Centrio», там же можно создать аккаунт
 //
 // Показывается один раз — до тех пор пока store.get('onboardingAuthSeen')
 // не станет true (флаг ставится только на финальном шаге, чтобы прерванный
@@ -25,7 +25,8 @@ function bindOnboardingScreen({
     applyI18n,
     popularMessengers,
     addMessenger,
-    updateTrialStatusBar
+    updateTrialStatusBar,
+    onFinished
 }) {
     const screen1 = document.getElementById('onboardingScreen')
     if (!screen1) return
@@ -65,7 +66,12 @@ function bindOnboardingScreen({
     // работал корректно независимо от того, как пользователь попал на
     // текущий шаг (например, экран 4 достижим и из экрана 3, и напрямую
     // из экрана 2, если триал не показывался). ──
-    const navHistory = ['auth']
+    const navHistory = ['services']
+    let accountFromReady = false
+
+    function openAccountStep() {
+        goTo('auth')
+    }
 
     function showScreen(name) {
         Object.values(SCREENS).forEach(s => { if (s) s.style.display = 'none' })
@@ -94,6 +100,7 @@ function bindOnboardingScreen({
         ;(cloudSyncAfterLogin || cloudSyncPush)()
         const user = cloudStore.getUser()
         if (user && user.orgSummary && user.orgSummary.orgId) { leaveOnboarding(); return }
+        if (accountFromReady) { goToReady(); return }
         goTo('services')
     }
 
@@ -103,7 +110,6 @@ function bindOnboardingScreen({
         showScreen(navHistory[navHistory.length - 1])
     }
 
-    document.getElementById('onbServicesBackBtn')?.addEventListener('click', goBack)
     document.getElementById('onbTrialBackBtn')?.addEventListener('click', goBack)
     document.getElementById('onbReadyBackBtn')?.addEventListener('click', goBack)
 
@@ -123,7 +129,13 @@ function bindOnboardingScreen({
         })
     }
 
-    document.getElementById('onbSkipBtn')?.addEventListener('click', () => { track('onboarding_skip'); goTo('services') })
+    document.getElementById('onbSkipBtn')?.addEventListener('click', () => { track('onboarding_skip'); goBack() })
+    document.getElementById('onbHaveAccountBtn')?.addEventListener('click', () => { track('onboarding_have_account'); openAccountStep() })
+    document.getElementById('onbReadyAccountBtn')?.addEventListener('click', () => {
+        track('onboarding_ready_account')
+        accountFromReady = true
+        openAccountStep()
+    })
 
     // Two screens have Google/Яндекс buttons (sign-in and registration); their element ids differ only by the prefix.
     const OAUTH_UI = {
@@ -145,6 +157,9 @@ function bindOnboardingScreen({
         document.getElementById(`${ui.prefix}OauthDivider`).style.display = ''
     }
 
+    const stopTelegram = () => { cloudApi.cancelTelegramLogin(); clearTelegramWait() }
+    document.getElementById('onbOauthCancelBtn')?.addEventListener('click', stopTelegram)
+    document.getElementById('onbRegOauthCancelBtn')?.addEventListener('click', stopTelegram)
     document.getElementById('onbOauthCancelBtn')?.addEventListener('click', () => hideOAuthWait(OAUTH_UI.auth))
     document.getElementById('onbRegOauthCancelBtn')?.addEventListener('click', () => hideOAuthWait(OAUTH_UI.register))
 
@@ -155,6 +170,7 @@ function bindOnboardingScreen({
         try {
             const result = await oauthFn()
             hideOAuthWait(ui)
+            if (result.cancelled) return
             if (!result.success) {
                 const errorEl = document.getElementById(ui.error)
                 errorEl.textContent = result.error || tGet('cloud.oauthError')
@@ -167,6 +183,21 @@ function bindOnboardingScreen({
             console.error('Onboarding OAuth error:', e)
         }
     }
+
+    function telegramLogin(ui) {
+        const onReady = (data) => showTelegramWait(document.getElementById(`${ui.prefix}OauthWaitText`), data, { tGet, onOpen: () => cloudApi.openTelegramLogin() })
+        return handleOAuth(() => cloudApi.oauthTelegram(onReady), 'Telegram', ui).finally(clearTelegramWait)
+    }
+
+    document.getElementById('onbOauthTelegramBtn')?.addEventListener('click', () => {
+        track('onboarding_telegram_click')
+        telegramLogin(OAUTH_UI.auth)
+    })
+
+    document.getElementById('onbRegTelegramBtn')?.addEventListener('click', () => {
+        track('onboarding_reg_telegram')
+        telegramLogin(OAUTH_UI.register)
+    })
 
     document.getElementById('onbOauthGoogleBtn')?.addEventListener('click', () => {
         track('onboarding_google_click')
@@ -378,7 +409,7 @@ function bindOnboardingScreen({
         const tile = document.createElement('div')
         tile.className = 'onb-service-tile' + (selected.has(m.name) ? ' selected' : '')
         tile.innerHTML = `
-            <div class="onb-service-check">✓</div>
+            <div class="onb-service-check"></div>
             <img src="${m.icon}" alt="">
             <span>${m.name}</span>
         `
@@ -475,6 +506,7 @@ function bindOnboardingScreen({
     // ── Шаг 4: готово ────────────────────────────────────────────
     function goToReady() {
         const user = cloudStore.getUser()
+        document.getElementById('onbReadyAccountBtn')?.toggleAttribute('hidden', !!user)
         const avatarWrap = document.getElementById('onbReadyAvatar')
         const avatarImg = document.getElementById('onbReadyAvatarImg')
         if (user?.avatar && avatarImg) {
@@ -494,11 +526,15 @@ function bindOnboardingScreen({
         document.body.classList.remove('onb-active')
         if (store.setAsync) store.setAsync('onboardingAuthSeen', true)
         else store.set('onboardingAuthSeen', true)
+        onFinished?.()
     })
 
     document.body.classList.add('onb-active')
     renderServicesGrid()
-    showScreen('auth')
+    // The language choice lives on the first screen the person sees.
+    const langRow = document.querySelector('#onboardingScreen .onb-lang-row')
+    if (langRow && screen2) screen2.append(langRow)
+    showScreen('services')
 }
 
 module.exports = { bindOnboardingScreen }

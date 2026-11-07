@@ -1,3 +1,4 @@
+const { reachMilestone } = require('./milestones')
 const { openNotifiedChat } = require('./notif-open-chat')
 
 // Привязка уведомлений приложения (от администратора / changelog).
@@ -391,6 +392,7 @@ function bindAppNotifUi({
     }
 
     function addMessengerNotification(title, body, messengerName, messengerId, actionUrl, nid, kind) {
+        reachMilestone('notification')
         const fakeEntry = {
             id: `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
             // "Telegram: Telegram" says nothing twice: a notice that only counts messages is titled by the service alone

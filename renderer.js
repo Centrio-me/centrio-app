@@ -55,6 +55,11 @@ const { bindSettingsUi } = require('./renderer/settings-bind')
 const { bindLockUi } = require('./renderer/lock-bind')
 const { bindCloudUi } = require('./renderer/cloud-bind')
 const { bindOnboardingScreen } = require('./renderer/onboarding-auth')
+const { createMilestones, reachMilestone } = require('./renderer/milestones')
+let appHintsRef = null
+let milestonesRef = null
+const { createFirstSteps } = require('./renderer/first-steps')
+const { createAppHints } = require('./renderer/app-hints')
 const { bindWelcomeScreen } = require('./renderer/welcome-screen')
 const { bindShortcutsSettings } = require('./renderer/shortcuts-settings')
 const { bindSplitFocus } = require('./renderer/split-focus')
@@ -581,6 +586,10 @@ async function bootstrap() {
         ['cloud.lastSyncAt', null],
         ['cloud.lastSyncError', null],
         ['onboardingAuthSeen', false],
+        ['milestones', {}],
+        ['firstStepsActive', false],
+        ['firstStepsCollapsed', false],
+        ['hintsSeen', {}],
         ['localProTrialExpiresAt', null],
         // BUGFIX (2026-09-10, "в настройке ИИ-ассистент — всегда подсвечен
         // типа выбран 'Свой ключ'" — live user report): same disease as
@@ -880,6 +889,7 @@ async function bootstrap() {
             // When that happens the app restarts, so nothing below may touch the store or the cloud.
             const profile = await invokeIpc('profile:signed-in')
             if (profile?.restarting) return
+            milestonesRef?.start()
             orgTeamTickRef?.()
             if (typeof updateCloudBtn === 'function') updateCloudBtn()
             updateAddButtonState()
@@ -2687,6 +2697,12 @@ function applyTabZoom(level) {
         invokeIpc('vpn-set-app-vpn', id, options.vpn !== false).catch(() => {})
 
         track('messenger_added', { first: state.activeMessengers.length === 1 })
+        reachMilestone('service')
+        appHintsRef?.onServiceAdded({
+            count: state.activeMessengers.length,
+            sameServiceAgain: state.activeMessengers.filter((item) => item.url === newMessenger.url).length > 1,
+            hasFolders: (store.get('folders', []) || []).length > 0
+        })
 
         welcomeScreen.style.display = 'none'
         tabsContent.style.pointerEvents = 'auto'
@@ -3571,6 +3587,37 @@ function applyTabZoom(level) {
         getMessengerById: (id) => state.activeMessengers.find(m => m.id === id)
     })
 
+    const appHints = createAppHints({
+        store,
+        tGet,
+        openAchievements: async () => {
+            await openCloudProfile()
+            document.querySelector('[data-lk-tab="achievements"]')?.click()
+        }
+    })
+    appHintsRef = appHints
+    const milestones = createMilestones({
+        store,
+        cloudStore,
+        cloudApi,
+        getServiceCount: () => state.activeMessengers.length,
+        onSynced: (data) => {
+            firstSteps.closeForOldAccount(data.stats.days)
+            if (data.fresh.length) appHints.showAchievements(data.fresh, data.total)
+        }
+    })
+    milestonesRef = milestones
+    const firstSteps = createFirstSteps({
+        store,
+        tGet,
+        milestones,
+        cloudStore,
+        cloudApi,
+        openCloudLogin,
+        getServiceCount: () => state.activeMessengers.length,
+        openAddMessenger: () => document.getElementById('addMessengerBtn')?.click()
+    })
+
     bindCloudUi({
         cloudStore,
         cloudApi,
@@ -3585,7 +3632,11 @@ function applyTabZoom(level) {
         renewNow: () => authorizedInvoke('api-payments-renew-now')
     })
 
+    milestones.start()
+    firstSteps.render()
+
     bindOnboardingScreen({
+        onFinished: () => firstSteps.start(),
         store,
         cloudApi,
         cloudStore,

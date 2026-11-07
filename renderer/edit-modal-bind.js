@@ -1,3 +1,4 @@
+const { reachMilestone } = require('./milestones')
 function bindEditModalUi({
     state,
     editModal,
@@ -138,6 +139,7 @@ function bindEditModalUi({
             state.folders.push(folder)
             renderFolder(folder)
             applyWorkspaceFilter?.()
+            reachMilestone('folder')
 
             const pendingId = saveBtn?.dataset.pendingMessengerId
             if (pendingId) moveMessengerToFolder(pendingId, folder.id)

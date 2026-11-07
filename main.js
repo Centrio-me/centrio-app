@@ -214,6 +214,8 @@ const ALLOWED_STORE_ROOTS = new Set([
     // Password manager vault (encrypted blob). The renderer keeps a cached copy for cloud sync; writes are validated
     // below, and the main-process service is the only real owner of this key.
     'pmVault',
+    // First steps, tips and what the person has tried. Plain progress flags, nothing sensitive.
+    'milestones', 'firstStepsActive', 'firstStepsCollapsed', 'hintsSeen',
     'menuCollapsed', 'messengers', 'mutedMessengers', 'globalMuteAll',
     'globalProxy', 'sidebarOrder', 'vpnAppModes', 'vpnActiveLink',
     'vpnSubUrl', 'vpnSubLinks', 'tabZoomLevel', 'appZoomLevel', 'folders',

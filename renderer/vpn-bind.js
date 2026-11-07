@@ -1,3 +1,4 @@
+const { reachMilestone } = require('./milestones')
 // VPN Panel — полный рефактор UI
 // UX: список конфигов с выбором → одна кнопка Connect/Disconnect сверху
 // Пинг: TCP-замер запускается фоном при открытии панели
@@ -165,6 +166,7 @@ function bindVpnUi ({ invokeIpc, tGet, ipcRenderer, onVpnStatusChange, state }) 
       await invokeIpc('vpn-disconnect')
       stopTimer()
       const result = await invokeIpc('vpn-connect-saved', conf.link)
+      if (result?.success) reachMilestone('vpn')
       if (result.success) {
         status = result.status
         startTimer()
