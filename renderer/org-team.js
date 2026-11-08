@@ -10,6 +10,11 @@
 // highest-value, lowest-risk field to push live) — forcedSettingsJson on
 // the server already accepts arbitrary keys, so extending coverage later is
 // additive, not a schema change.
+const { buildBeat } = require('./team-presence')
+const { runCommand } = require('./team-commands')
+const { createTeamNotes } = require('./team-notes')
+const { showTeamNotice } = require('./team-toast')
+
 function createOrgTeamApi({
     authorizedInvoke,
     invokeIpc,
@@ -21,10 +26,13 @@ function createOrgTeamApi({
     removeOrgAssignedMessenger,
     refreshAllVpnBadges = () => {}, // (active) => void — keeps the sidebar VPN badges/state.vpnActive in sync, see renderer.js
     setCanAddOwnMessengers = () => {}, // (allowed: boolean) => void — gates the "+" add-messenger button, see renderer.js/add-modal-bind.js
+    setStrictMode = () => {}, // (strict: boolean) => void — TEAM strict mode, see renderer/team-strict.js and renderer.js
     setTeamQuickReplies = () => {}, // (replies) => void — renderer/quick-replies-bind.js
     applyOrgStructure = () => {}, // ({ workspaces, folders }) => void — owner-managed workspaces/folders, see renderer.js
     refreshTeamTasks = () => {}, // () => Promise — renderer/team-tasks.js, polled every TASKS_POLL_MS
     notifyOwnerAlert = () => {}, // ({ title, body }) => void — OS notification + bell entry for the owner/admin
+    onTeamEvent = () => {}, // (handler) => void — subscribes to 'team-event' from the main process
+    switchToMessenger = () => {}, // (messengerId) => void
     tGet = () => ''
 }) {
     const POLL_INTERVAL_MS = 2 * 60 * 1000
@@ -121,6 +129,9 @@ function createOrgTeamApi({
             }
         } catch {}
         state.orgForcedTheme = null
+        // the server says he is no longer in the team: his work sign-ins go (review M1)
+        invokeIpc('team:wipe-sessions', 'all').catch(() => {})
+        setStrictMode(false)
         setCanAddOwnMessengers(true)
         state.activeMessengers.filter(m => m.orgAssigned).map(m => m.id).forEach(removeOrgAssignedMessenger)
         window.__centrioSync?.report('team', true, { detail: 0 })
@@ -140,8 +151,9 @@ function createOrgTeamApi({
             // Messengers from the owner are here: the first-run wizard must not keep covering them.
             if (assignments.length > 0 && document.body.classList.contains('onb-active')) window.__centrioLeaveOnboarding?.()
 
+            noticePausedChanges(assignments)
             const serverIds = new Set()
-            for (const a of assignments) {
+            for (const a of assignments.filter(x => !x.paused)) {
                 const id = `org:${a.id}`
                 serverIds.add(id)
                 await addOrgAssignedMessenger({
@@ -164,6 +176,8 @@ function createOrgTeamApi({
                 .filter(m => m.orgAssigned && !serverIds.has(m.id))
                 .map(m => m.id)
             toRemove.forEach(removeOrgAssignedMessenger)
+            // New or changed team tabs: strict mode re-applies to them (hiding, navigation lock).
+            if (state.orgStrict) setStrictMode(true)
         } catch (error) {
             window.__centrioSync?.report('team', false, { code: 'error', message: error && error.message })
         }
@@ -194,7 +208,9 @@ function createOrgTeamApi({
             const list = unwrap(result)
             if (!Array.isArray(list)) return
             const self = list.find(m => m.userId === userId)
-            setCanAddOwnMessengers(self ? self.canAddOwnMessengers !== false : true)
+            const strict = !!(self && self.strictMode === true)
+            setStrictMode(strict)
+            setCanAddOwnMessengers(self ? (self.canAddOwnMessengers !== false && !strict) : true)
         } catch {}
     }
 
@@ -385,7 +401,7 @@ function createOrgTeamApi({
         const user = cloudStore.getUser()
         if (!orgId || !user?.id) return null
         const cached = readVaultKeyCache(orgId, user.id)
-        if (cached) return cached
+        if (cached) { rememberTeamDevice(orgId, user.id, cached); return cached }
         if (vaultRegistering) return null
         vaultRegistering = true
         try {
@@ -396,6 +412,7 @@ function createOrgTeamApi({
             }))
             if (!registered?.id) return null
             try { localStorage.setItem(vaultKeyStorage(orgId), JSON.stringify({ userId: user.id, deviceKeyId: registered.id })) } catch {}
+            rememberTeamDevice(orgId, user.id, registered.id)
             return registered.id
         } catch { return null } finally { vaultRegistering = false }
     }
@@ -417,6 +434,191 @@ function createOrgTeamApi({
         return invokeIpc('vault:autofill', { userId: user.id, messengerId, blob: credential.blob, aad: credential.aad, assignedUrl: messenger.url })
     }
 
+
+    // ── TEAM control (2026-11-08): live stream, presence, commands, notes ─────────────────────────────
+    // The owner's changes arrive over a stream the main process keeps open (main/services/teamEvents.js);
+    // the polling above stays as the fallback. Presence is sent every 30 s; commands are fetched by this
+    // device even after it left the team, signing with its vault key (main/services/teamDevice.js).
+    const PRESENCE_MS = 30 * 1000
+    const ACCOUNT_CHECK_MS = 60 * 1000
+    const TEAM_DEVICE_KEY = 'centrio-team-device'
+    let presenceTimer = null
+    let accountTimer = null
+    let liveOrgId = null
+    let commandsRunning = false
+    let knownPaused = null
+
+    function readTeamDevice() {
+        try { return JSON.parse(localStorage.getItem(TEAM_DEVICE_KEY) || 'null') } catch { return null }
+    }
+    function rememberTeamDevice(orgId, userId, deviceKeyId) {
+        try { localStorage.setItem(TEAM_DEVICE_KEY, JSON.stringify({ orgId, userId, deviceKeyId })) } catch {}
+    }
+    function forgetTeamDevice() {
+        try { localStorage.removeItem(TEAM_DEVICE_KEY) } catch {}
+    }
+
+    const notesUi = createTeamNotes({
+        tGet,
+        markRead: async (noteId) => {
+            if (String(noteId).startsWith('local-intro-')) {
+                try { localStorage.setItem(`centrio-team-intro-${getOrgId()}`, '1') } catch {}
+                localNotes = []
+                return
+            }
+            return authorizedInvoke('api-org-read-note', getOrgId(), noteId)
+        }
+    })
+
+    function notice(key, name) {
+        showTeamNotice(tGet(`teamControl.${key}`, { name: name || '' }).replace('{name}', name || ''))
+    }
+
+    function nameOf(messengerId) {
+        return state.activeMessengers.find(m => m.id === messengerId)?.name || null
+    }
+
+    let localNotes = []
+    function introduceTeam(orgId) {
+        const key = `centrio-team-intro-${orgId}`
+        try { if (localStorage.getItem(key)) return } catch { return }
+        const org = cloudStore.getUser()?.orgSummary
+        if (!org || org.orgRole === 'OWNER' || org.orgIsOwner === true) return
+        localNotes = [{ id: `local-intro-${orgId}`, createdAt: new Date(0).toISOString(),
+            text: tGet('teamControl.joinedNotice', { org: org.orgName || '' }).replace('{org}', org.orgName || '') + '\n\n' + tGet('teamControl.whatManagerSees') }]
+        notesUi.setNotes(localNotes)
+    }
+
+    async function refreshNotes(orgId) {
+        introduceTeam(orgId)
+        const list = unwrap(await authorizedInvoke('api-org-get-notes', orgId))
+        if (Array.isArray(list)) notesUi.setNotes([...localNotes, ...list])
+    }
+
+    async function pushPresence(orgId) {
+        try {
+            const idle = await invokeIpc('team:idle-seconds')
+            const device = readTeamDevice()
+            const beat = buildBeat(state, idle?.idleSec || 0, device && device.orgId === orgId ? device.deviceKeyId : null)
+            await authorizedInvoke('api-org-push-presence', orgId, beat)
+        } catch {}
+    }
+
+    // Commands for this device: with the account when it is still the one that joined the team,
+    // otherwise with the device's own key (signed out, another account, removed from the team).
+    async function runPendingCommands() {
+        const user = cloudStore.getUser()
+        // No device key (no OS secure storage): the account alone still fetches its commands (review M1).
+        const device = readTeamDevice() || (user && getOrgId() ? { userId: user.id, deviceKeyId: null, orgId: getOrgId() } : null)
+        if (!device || commandsRunning) return
+        commandsRunning = true
+        try {
+            const sameAccount = user && user.id === device.userId
+            if (!sameAccount && !device.deviceKeyId) return
+            let headers = device.deviceKeyId ? { 'X-Device-Key': device.deviceKeyId } : {}
+            const call = async (channel, ...args) => {
+                if (sameAccount) return authorizedInvoke(channel, ...args, headers)
+                return invokeIpc(channel, null, ...args, headers)
+            }
+            if (!sameAccount) {
+                const proof = await invokeIpc('team:device-proof', device.userId, device.deviceKeyId)
+                if (!proof?.success) return
+                headers = proof.headers
+            }
+            const list = unwrap(await call('api-org-device-commands'))
+            if (!Array.isArray(list)) return
+            for (const cmd of list) {
+                await runCommand(cmd, {
+                    wipe: (ids) => wipeTeamSessions(ids),
+                    reload: (id) => { try { document.getElementById(`webview-${id}`)?.reload() } catch {} },
+                    askRelogin: (id) => { try { switchToMessenger(id); document.getElementById(`webview-${id}`)?.reload() } catch {} },
+                    confirm: async (commandId) => { await call('api-org-device-command-done', commandId) },
+                    notice,
+                    nameOf
+                }).catch((error) => console.warn('[team] command failed, will retry:', error.message))
+            }
+            if (list.length === 0 && !getOrgId()) forgetTeamDevice()
+        } finally {
+            commandsRunning = false
+        }
+    }
+
+    // Team tabs are closed first, so a running page cannot write its session back after the clear (review I5).
+    async function wipeTeamSessions(ids) {
+        const targets = state.activeMessengers.filter(m => m.orgAssigned && (ids === 'all' || ids.includes(String(m.id).replace(/^org:/, ''))))
+        targets.map(m => m.id).forEach(removeOrgAssignedMessenger)
+        await new Promise(resolve => setTimeout(resolve, 600))
+        const res = await invokeIpc('team:wipe-sessions', ids)
+        if (!res?.success) throw new Error(res?.error || 'wipe failed')
+        return res
+    }
+
+    // Signing out (or into another account) ends this device's work sign-ins, as removal does.
+    async function checkAccountChange() {
+        const device = readTeamDevice()
+        if (!device) return
+        const user = cloudStore.getUser()
+        if (user && user.id === device.userId) return
+        await runPendingCommands()
+        try {
+            await wipeTeamSessions('all')
+            forgetTeamDevice()
+        } catch {}
+    }
+
+    // Paused by the owner: the tab goes away (its session stays) and comes back when resumed.
+    function noticePausedChanges(assignments) {
+        const paused = new Set(assignments.filter(a => a.paused).map(a => a.id))
+        if (knownPaused) {
+            assignments.forEach(a => {
+                if (paused.has(a.id) && !knownPaused.has(a.id)) notice('paused', a.name)
+                if (!paused.has(a.id) && knownPaused.has(a.id)) notice('resumed', a.name)
+            })
+        }
+        knownPaused = paused
+    }
+
+    async function startLive(orgId) {
+        if (!orgId) return
+        liveOrgId = orgId
+        await authorizedInvoke('team-events:start', orgId).catch(() => {})
+    }
+
+    function handleTeamEvent(evt) {
+        const orgId = getOrgId()
+        if (!evt || !evt.type) return
+        if (evt.type === 'membership-lost') { handleMembershipLost().then(runPendingCommands); return }
+        if (!orgId) return
+        switch (evt.type) {
+        case 'assignments':
+        case 'structure':
+            syncAssignments(orgId)
+            break
+        case 'settings':
+            syncForcedSettings(orgId); syncSharedVpn(orgId); syncQuickReplies(orgId)
+            break
+        case 'member':
+            syncMemberPermission(orgId); syncAssignments(orgId)
+            break
+        case 'tasks':
+            refreshTeamTasks()
+            break
+        case 'command':
+            runPendingCommands()
+            break
+        case 'note':
+            refreshNotes(orgId)
+            break
+        case 'reconnected':
+            tick(); runPendingCommands(); refreshNotes(orgId)
+            break
+        case 'auth-expired':
+            liveOrgId = null
+            startLive(orgId).then(() => tick())
+            break
+        }
+    }
+
     async function tick() {
         const orgId = getOrgId()
         if (!orgId) return
@@ -434,6 +636,16 @@ function createOrgTeamApi({
     function start() {
         if (pollTimer) return
         tick()
+        onTeamEvent(handleTeamEvent)
+        checkAccountChange().finally(() => runPendingCommands())
+        accountTimer = setInterval(checkAccountChange, ACCOUNT_CHECK_MS)
+        presenceTimer = setInterval(() => {
+            const orgId = getOrgId()
+            if (!orgId) return
+            if (liveOrgId !== orgId) { startLive(orgId); refreshNotes(orgId) }
+            pushPresence(orgId)
+        }, PRESENCE_MS)
+        ;[2000, 9000].forEach(ms => setTimeout(() => { const orgId = getOrgId(); if (orgId && liveOrgId !== orgId) { startLive(orgId); refreshNotes(orgId); pushPresence(orgId) } }, ms))
         statsHeartbeatTimer = setInterval(() => {
             const orgId = getOrgId()
             if (orgId) pushStats(orgId)
@@ -475,6 +687,10 @@ function createOrgTeamApi({
         clearInterval(loginRemindTimer)
         clearInterval(tasksTimer)
         clearTimeout(statsPushTimer)
+        clearInterval(presenceTimer)
+        clearInterval(accountTimer)
+        invokeIpc('team-events:stop').catch(() => {})
+        liveOrgId = null
         pollTimer = null
         statsHeartbeatTimer = null
         alertsTimer = null

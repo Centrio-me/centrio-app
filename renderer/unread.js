@@ -8,6 +8,7 @@ function createUnreadApi({
     pushUnreadSummary
 }) {
     function isMessengerMuted(id) {
+        if (state.orgStrict) return !String(id).startsWith('org:') // team ones always ring, hidden personal ones never
         return state.globalMuteAll || state.mutedMessengers[id] === true
     }
 
@@ -192,6 +193,7 @@ function createUnreadApi({
     }
 
     function toggleMuteMessenger(id) {
+        if (state.orgStrict && String(id).startsWith('org:')) return
         state.mutedMessengers[id] = !state.mutedMessengers[id]
         store.set('mutedMessengers', state.mutedMessengers)
         updateMuteIcon(id)

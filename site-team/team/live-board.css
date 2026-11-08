@@ -1,0 +1,83 @@
+/* «Сейчас» and «Отчёты» (TEAM control, 2026-11-08). Same dark glass look as the rest of /team. */
+.team-shell .live { --live-ok: #34d399; --live-warn: #fbbf24; --live-bad: #f87171; --live-muted: rgba(255, 255, 255, 0.5); display: flex; flex-direction: column; gap: 14px; }
+.team-shell .live-muted { color: var(--live-muted); font-size: 12.5px; }
+.team-shell .live-ok { color: var(--live-ok); font-size: 13px; }
+.team-shell .live-empty { padding: 22px 26px; color: var(--live-muted); font-size: 13.5px; }
+
+.team-shell .live-top { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px; }
+.team-shell .live-summary { display: flex; flex-wrap: wrap; gap: 28px; }
+.team-shell .live-stat { display: flex; flex-direction: column; gap: 2px; }
+.team-shell .live-stat-val { font-size: 34px; font-weight: 700; line-height: 1; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.team-shell .live-stat-lbl { font-size: 12px; color: var(--live-muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.team-shell .live-stat.is-warn .live-stat-val { color: var(--live-warn); }
+.team-shell .live-stat.is-bad .live-stat-val { color: var(--live-bad); }
+.team-shell .live-top-actions { display: flex; align-items: center; gap: 10px; }
+.team-shell .live-pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--live-ok); box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.6); animation: live-pulse 2s infinite; }
+@keyframes live-pulse { 70% { box-shadow: 0 0 0 8px rgba(52, 211, 153, 0); } 100% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0); } }
+
+.team-shell .live-note { padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+.team-shell .live-note-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 8px; }
+
+.team-shell .live-list { padding: 6px; display: flex; flex-direction: column; }
+.team-shell .live-row {
+  display: grid;
+  grid-template-columns: 10px minmax(120px, 1.4fr) minmax(110px, 1fr) minmax(110px, 1fr) 48px minmax(120px, 1.3fr) 52px;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 14px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 13.5px;
+  text-align: left;
+  cursor: pointer;
+}
+.team-shell .live-row:hover, .team-shell .live-row.is-open { background: rgba(255, 255, 255, 0.05); }
+.team-shell .live-row:focus-visible { outline: 2px solid var(--accent, #5aa9ff); outline-offset: -2px; }
+.team-shell .live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--live-muted); }
+.team-shell .live-row.is-working .live-dot { background: var(--live-ok); }
+.team-shell .live-row.is-away .live-dot { background: var(--live-warn); }
+.team-shell .live-row.is-off_hours .live-dot { background: rgba(255, 255, 255, 0.2); }
+.team-shell .live-name { font-weight: 600; display: inline-flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.team-shell .live-lock { display: inline-flex; color: var(--live-muted); }
+.team-shell .live-status, .team-shell .live-front, .team-shell .live-today { color: rgba(255, 255, 255, 0.72); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.team-shell .live-today { text-align: right; font-variant-numeric: tabular-nums; }
+.team-shell .live-unread { text-align: center; font-variant-numeric: tabular-nums; color: var(--live-muted); }
+.team-shell .live-unread.has { color: #fff; font-weight: 700; }
+.team-shell .live-wait { color: var(--live-warn); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.team-shell .live-wait.is-bad { color: var(--live-bad); font-weight: 600; }
+
+.team-shell .live-panel { padding: 18px 22px; display: flex; flex-direction: column; gap: 10px; }
+.team-shell .live-panel-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.team-shell .live-panel-name { font-size: 18px; font-weight: 700; }
+.team-shell .live-panel-title { margin-top: 6px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--live-muted); }
+.team-shell .live-msgs { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.team-shell .live-msg { display: grid; grid-template-columns: minmax(100px, 1fr) minmax(140px, 1.6fr) auto; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; background: rgba(255, 255, 255, 0.03); }
+.team-shell .live-msg.is-paused { opacity: 0.6; }
+.team-shell .live-msg-name { font-weight: 600; }
+.team-shell .live-msg-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
+.team-shell .live-msg-actions .btn-ghost { padding: 5px 10px; font-size: 12.5px; }
+.team-shell .live-danger { margin-top: 8px; padding-top: 12px; border-top: 1px solid rgba(255, 255, 255, 0.08); display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+.team-shell .live-danger-btn { color: var(--live-bad); }
+.team-shell .live-danger-yes { background: var(--live-bad); }
+.team-shell .live-confirm p { margin: 0 0 8px; font-size: 13px; color: rgba(255, 255, 255, 0.8); max-width: 60ch; }
+.team-shell .live-panel-foot { margin: 4px 0 0; }
+
+.team-shell .rep-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 12px; }
+.team-shell .rep-table-wrap { overflow-x: auto; }
+.team-shell .rep-table { width: 100%; border-collapse: collapse; font-size: 13.5px; font-variant-numeric: tabular-nums; }
+.team-shell .rep-table th { text-align: left; font-weight: 500; font-size: 12px; color: var(--live-muted, rgba(255, 255, 255, 0.5)); padding: 8px 10px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); white-space: nowrap; }
+.team-shell .rep-table td { padding: 10px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); }
+.team-shell .rep-table td.num, .team-shell .rep-table th.num { text-align: right; }
+.team-shell .rep-bad { color: #f87171; font-weight: 600; }
+
+@media (max-width: 760px) {
+  .team-shell .live-row { grid-template-columns: 10px 1fr auto; row-gap: 4px; }
+  .team-shell .live-front, .team-shell .live-today { display: none; }
+  .team-shell .live-wait { grid-column: 2 / -1; }
+  .team-shell .live-msg { grid-template-columns: 1fr; }
+  .team-shell .live-msg-actions { justify-content: flex-start; }
+}
+@media (prefers-reduced-motion: reduce) { .team-shell .live-pulse { animation: none; } }

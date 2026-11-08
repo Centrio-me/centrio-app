@@ -609,6 +609,20 @@ module.exports = {
     },
 
     updater: {
+        stripDownloading: "Download di {v} · {n}%",
+        stripReady: "Centrio {v} è pronta",
+        stripReadyHint: "Schede e accessi restano salvati",
+        stripRestart: "Riavvia",
+        stripLater: "Più tardi",
+        stripInstalling: "Installazione di {v}",
+        stripInstallingHint: "Centrio si riaprirà da solo",
+        stripUpdated: "Aggiornato a {v}",
+        stripDownloadFailed: "Impossibile scaricare {v}",
+        stripInstallFailed: "Impossibile installare {v}",
+        stripRetry: "Riprova",
+        stripFromSite: "Scarica dal sito",
+        stripClose: "Chiudi",
+        statusUpdate: "Aggiorna a {v}",
         title: 'Aggiornamento',
         close: 'Chiudi',
         newAvailable: '🔔 Nuova versione disponibile',
@@ -1389,6 +1403,20 @@ module.exports = {
         folderMeta: "Servizi: 4 · non letti: 3",
     },
 
+    teamControl: {
+        lockedByManager: "Impostato dal tuo responsabile",
+        noteTitle: "Messaggio dal tuo responsabile",
+        noteOk: "Ho capito",
+        whatManagerSeesTitle: "Cosa vede il tuo responsabile",
+        whatManagerSees: "Il tuo responsabile vede se hai effettuato l’accesso ai messenger di lavoro, quanti messaggi non letti ci sono e quanto aspettano i clienti, se l’app è aperta e sei al computer, e quale messenger di lavoro è aperto. Non vede le tue chat, il tuo schermo né i tuoi messenger personali.",
+        joinedNotice: "Fai parte del team «{org}». I messenger di lavoro li configura il tuo responsabile.",
+        paused: "Il tuo responsabile ha disattivato «{name}»",
+        resumed: "Il tuo responsabile ha attivato «{name}»",
+        reloaded: "Il tuo responsabile ha ricaricato «{name}»",
+        relogin: "Il tuo responsabile ti chiede di accedere di nuovo a «{name}»",
+        sessionsEnded: "Gli accessi di lavoro su questo computer sono stati chiusi",
+        strictOn: "Il tuo responsabile ha attivato la modalità rigorosa",
+    },
     teamTasks: {
 
         title: "Dal responsabile",

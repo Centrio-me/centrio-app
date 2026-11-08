@@ -1189,6 +1189,18 @@ function registerAppEvents({
             // background tab's own JS actually running like the foreground one.
             try { contents.setBackgroundThrottling(false) } catch {}
 
+            // TEAM strict mode (2026-11-08): a team tab stays on its own site; other links open in the browser.
+            const teamNavigationGuard = (event, url) => {
+                const policy = require('../services/orgNavigationPolicy')
+                const decision = policy.decideNavigation({ messengerId: policy.messengerIdForSession(contents.session, (p) => session.fromPartition(p)), targetUrl: url })
+                if (decision === 'allow') return
+                event.preventDefault()
+                if (decision === 'external') shell.openExternal(url).catch(() => {})
+            }
+            contents.on('will-navigate', teamNavigationGuard)
+            // a redirect through a link shim (vk.com/away.php, google.com/url) is checked too (review I2)
+            contents.on('will-redirect', (event, url, _isInPlace, isMainFrame) => { if (isMainFrame) teamNavigationGuard(event, url) })
+
             // A right-click the page does not handle itself shows our menu (main/services/pageContextMenu.js).
             require('../services/pageContextMenu').attach(contents, { getMainWindow })
             // Files a cloud page opens go to windows of their own when the messenger has that option (main/services/fileWindows.js).

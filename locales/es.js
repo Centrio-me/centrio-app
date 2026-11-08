@@ -609,6 +609,20 @@ module.exports = {
     },
 
     updater: {
+        stripDownloading: "Descargando {v} · {n}%",
+        stripReady: "Centrio {v} está lista",
+        stripReadyHint: "Tus pestañas y sesiones se conservarán",
+        stripRestart: "Reiniciar",
+        stripLater: "Más tarde",
+        stripInstalling: "Instalando {v}",
+        stripInstallingHint: "Centrio se abrirá solo",
+        stripUpdated: "Actualizado a {v}",
+        stripDownloadFailed: "No se pudo descargar {v}",
+        stripInstallFailed: "No se pudo instalar {v}",
+        stripRetry: "Reintentar",
+        stripFromSite: "Descargar del sitio",
+        stripClose: "Cerrar",
+        statusUpdate: "Actualizar a {v}",
         title: 'Actualización',
         close: 'Cerrar',
         newAvailable: '🔔 Nueva versión disponible',
@@ -1389,6 +1403,20 @@ module.exports = {
         folderMeta: "Servicios: 4 · sin leer: 3",
     },
 
+    teamControl: {
+        lockedByManager: "Configurado por tu responsable",
+        noteTitle: "Mensaje de tu responsable",
+        noteOk: "Entendido",
+        whatManagerSeesTitle: "Qué ve tu responsable",
+        whatManagerSees: "Tu responsable ve si has iniciado sesión en los mensajeros de trabajo, cuántos mensajes sin leer hay y cuánto esperan los clientes, si la app está abierta y estás en el ordenador, y qué mensajero de trabajo está abierto. No ve tus chats, tu pantalla ni tus mensajeros personales.",
+        joinedNotice: "Estás en el equipo «{org}». Tu responsable configura los mensajeros de trabajo.",
+        paused: "Tu responsable desactivó «{name}»",
+        resumed: "Tu responsable activó «{name}»",
+        reloaded: "Tu responsable recargó «{name}»",
+        relogin: "Tu responsable te pide volver a iniciar sesión en «{name}»",
+        sessionsEnded: "Se cerraron las sesiones de trabajo en este ordenador",
+        strictOn: "Tu responsable activó el modo estricto",
+    },
     teamTasks: {
 
         title: "Del responsable",

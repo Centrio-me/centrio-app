@@ -264,6 +264,27 @@ function registerApiIpc() {
         return wrapApi(() => api.orgPushMessengerStats(token, orgId, stats))
     })
 
+    ipcMain.handle('api-org-push-presence', async (event, token, orgId, beat) => {
+        return wrapApi(() => api.orgPushPresence(token, String(orgId || ''), beat))
+    })
+
+    ipcMain.handle('api-org-get-notes', async (event, token, orgId) => {
+        return wrapApi(() => api.orgGetNotes(token, String(orgId || '')))
+    })
+
+    ipcMain.handle('api-org-read-note', async (event, token, orgId, noteId) => {
+        return wrapApi(() => api.orgReadNote(token, String(orgId || ''), String(noteId || '')))
+    })
+
+    // token is null when this device signs with its own key (it may have left the team).
+    ipcMain.handle('api-org-device-commands', async (event, token, deviceHeaders) => {
+        return wrapApi(() => api.orgDeviceCommands(token || null, deviceHeaders || {}))
+    })
+
+    ipcMain.handle('api-org-device-command-done', async (event, token, commandId, deviceHeaders) => {
+        return wrapApi(() => api.orgDeviceCommandDone(token || null, String(commandId || ''), deviceHeaders || {}))
+    })
+
     ipcMain.handle('api-org-get-quick-replies', async (event, token, orgId) => {
         return wrapApi(() => api.orgGetQuickReplies(token, String(orgId || '')))
     })

@@ -1190,6 +1190,18 @@ function createWebviewTabsApi({
             // the popup and hand control back once sign-in completes — see
             // isOAuthProviderUrl()/OAUTH_PROVIDER_HOST_RE above.
             if ((url.startsWith('http://') || url.startsWith('https://')) && messenger?.id) {
+                // TEAM strict mode (review I2): a team tab never opens another site inside Centrio.
+                if (String(messenger.id).startsWith('org:') && !isOAuthProviderUrl(url)) {
+                    invokeIpc('team:decide-nav', messenger.id, url).then((decision) => {
+                        if (decision === 'external') ipcRenderer.send('open-url', url)
+                        else if (decision === 'allow') openTeamPopup()
+                    }).catch(() => openTeamPopup())
+                    return
+                }
+                openTeamPopup()
+                return
+            }
+            function openTeamPopup() {
                 const popupOpts = {
                     width: 500,
                     height: 650,
@@ -1206,7 +1218,6 @@ function createWebviewTabsApi({
                         if (!result || result.success !== true) ipcRenderer.send('open-url', url)
                     })
                     .catch(() => ipcRenderer.send('open-url', url))
-                return
             }
 
             // SECURITY: 'new-window' (like 'will-navigate' below) can be

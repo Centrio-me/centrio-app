@@ -513,6 +513,9 @@ function createCloudUiApi({
             btn.dataset.url = TEAM_MANAGE_URL
             if (!isOwner) document.getElementById('teamSubSeats').textContent += ' · ' + tGet('cloud.teamOwnerRenews')
         }
+        // Employees always see what the manager sees about them (TEAM control, 2026-11-08).
+        const sees = document.getElementById('teamSubSees')
+        if (sees) sees.style.display = (org.orgRole === 'OWNER' || org.orgIsOwner === true) ? 'none' : ''
         section.style.display = 'flex'
         return true
     }

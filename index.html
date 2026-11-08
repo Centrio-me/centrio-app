@@ -143,6 +143,7 @@
 
     <div class="titlebar-tabs" id="tabsBar"></div>
     <div class="titlebar-drag"></div>
+    <span class="update-download-text" id="updateDownloadText" role="status" hidden></span>
     <div class="titlebar-right">
         <!-- REDESIGN (2026-09-17, "Верхняя шапка нуждается в переделке...
              Меню теперь будет как 3 палочки слева от кнопок закрытия" +
@@ -423,7 +424,11 @@
             </svg>
         </button>
     </div>
+    <div class="update-download-line" id="updateDownloadLine" hidden><div class="update-download-fill" id="updateDownloadFill"></div></div>
 </div>
+
+<!-- Update strip, see renderer/updater.js -->
+<section class="update-strip" id="updateStrip" role="status" aria-live="polite" inert></section>
 
 <!-- MAIN -->
 <div class="main-container">
@@ -1041,6 +1046,8 @@
         <div class="status-divider"></div>
         <span class="status-item" id="statusTime"></span>
         <div class="status-divider"></div>
+        <button type="button" class="status-update-btn" id="statusUpdateBtn" hidden><span class="status-update-dot"></span><span id="statusUpdateBtnText"></span></button>
+        <div class="status-divider" id="statusUpdateSep" hidden></div>
         <span class="status-item status-version-btn" id="statusVersion" title="История изменений" data-i18n-title="html.k031"></span>
     </div>
 </div>
@@ -1124,6 +1131,19 @@
         <button class="changelog-popup-close" id="changelogPopupClose">✕</button>
     </div>
     <div class="changelog-popup-body">
+        <div class="changelog-entry">
+            <div class="changelog-version">v3.7.0</div>
+            <ul class="changelog-list">
+                <li>Новое: обновление выглядит по-новому. Пока версия скачивается, под заголовком бежит тонкая полоса цвета вашей темы, а когда всё готово, сверху выезжает строка «Перезапустить» — она ничего не закрывает.</li>
+                <li>Новое: если установка обновления не прошла, приложение предложит повторить или скачать установщик с сайта.</li>
+                <li>Новое для команд: строгий режим. Руководитель включает его сотруднику, и в Centrio остаются только рабочие мессенджеры: свои не добавить, рабочие не переименовать и не заглушить, ссылки на чужие сайты открываются в браузере.</li>
+                <li>Новое для команд: изменения руководителя доходят до сотрудника за секунды, а не через пару минут.</li>
+                <li>Новое для команд: на сайте появилась вкладка «Сейчас» — кто на месте, где ждут клиенты, у кого непрочитанные — и вкладка «Отчёты» за 7 и 30 дней.</li>
+                <li>Новое для команд: руководитель может выключить или перезагрузить мессенджер сотрудника, попросить войти заново и написать сообщение — оно появится карточкой в Centrio.</li>
+                <li>Новое для команд: при удалении сотрудника из команды или выходе из аккаунта рабочие входы на его компьютере стираются.</li>
+                <li>Новое для команд: сотрудник всегда видит, что видит руководитель: время, статус и количество непрочитанных. Переписки и экран не видны никому.</li>
+            </ul>
+        </div>
         <div class="changelog-entry">
             <div class="changelog-version">v3.6.1</div>
             <ul class="changelog-list">
@@ -1913,6 +1933,10 @@
 
 <!-- Контекстное меню мессенджера -->
 <div id="contextMenu" class="context-menu">
+    <div class="context-item context-locked-note" id="ctxLockedNote" style="display:none;" aria-disabled="true">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+        <span data-i18n="teamControl.lockedByManager">Это настроил руководитель</span>
+    </div>
     <div class="context-item" id="ctxReload">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
             <path d="M1 4v6h6M23 20v-6h-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -4049,6 +4073,10 @@
                                 <div class="lk-summary-title" id="teamSubName"></div>
                                 <div class="lk-note"><span id="teamSubStatus"></span></div>
                                 <div class="lk-note"><span id="teamSubSeats"></span></div>
+                                <details class="lk-team-sees" id="teamSubSees" style="display:none;">
+                                    <summary data-i18n="teamControl.whatManagerSeesTitle">Что видит руководитель</summary>
+                                    <p data-i18n="teamControl.whatManagerSees"></p>
+                                </details>
                             </div>
                             <button class="lk-btn lk-btn--ghost" id="teamManageBtn" style="display:none;"></button>
                         </div>
@@ -4526,7 +4554,6 @@
   </div>
 </div>
 
-<div id="updateToastContainer" class="update-toast-container"></div>
 
 <!-- ── PRO Upgrade Modal ─────────────────────────────────────── -->
 <div id="upgradeModal" class="modal" style="z-index:9999;">

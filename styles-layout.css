@@ -2212,7 +2212,7 @@
 .find-bar {
     display: none;
     position: fixed;
-    top: 48px;
+    top: calc(48px + var(--update-strip-h, 0px));
     right: 16px;
     z-index: 8000;
     background: var(--bg-secondary);

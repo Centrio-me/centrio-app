@@ -138,7 +138,7 @@ function createFoldersUiApi({
             return
         }
         folderPanel.style.left = `${rect.right}px`
-        folderPanel.style.top = '36px'
+        folderPanel.style.top = 'calc(36px + var(--update-strip-h, 0px))'
         folderPanel.style.bottom = '26px'
         folderPanel.style.maxHeight = ''
     }

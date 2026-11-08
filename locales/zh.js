@@ -609,6 +609,20 @@ module.exports = {
     },
 
     updater: {
+        stripDownloading: "正在下载 {v} · {n}%",
+        stripReady: "Centrio {v} 已就绪",
+        stripReadyHint: "标签页和登录状态都会保留",
+        stripRestart: "重新启动",
+        stripLater: "稍后",
+        stripInstalling: "正在安装 {v}",
+        stripInstallingHint: "Centrio 将自动重新打开",
+        stripUpdated: "已更新至 {v}",
+        stripDownloadFailed: "无法下载 {v}",
+        stripInstallFailed: "无法安装 {v}",
+        stripRetry: "重试",
+        stripFromSite: "从网站下载",
+        stripClose: "关闭",
+        statusUpdate: "更新到 {v}",
         errorTitle: '⚠ 更新错误',
         errorDesc: '无法下载更新。',
         title: '更新',
@@ -1389,6 +1403,20 @@ module.exports = {
         folderMeta: "服务：4 · 未读：3",
     },
 
+    teamControl: {
+        lockedByManager: "由主管设置",
+        noteTitle: "主管的消息",
+        noteOk: "知道了",
+        whatManagerSeesTitle: "主管能看到什么",
+        whatManagerSees: "主管能看到：你是否已登录工作通讯工具、其中有多少未读消息以及客户等待了多久、应用是否打开以及你是否在电脑前、当前打开的是哪个工作通讯工具。主管看不到你的聊天内容、屏幕和个人通讯工具。",
+        joinedNotice: "你已加入团队「{org}」。工作通讯工具由主管配置。",
+        paused: "主管已关闭「{name}」",
+        resumed: "主管已开启「{name}」",
+        reloaded: "主管已重新加载「{name}」",
+        relogin: "主管请你重新登录「{name}」",
+        sessionsEnded: "此电脑上的工作登录已结束",
+        strictOn: "主管已开启严格模式",
+    },
     teamTasks: {
 
         title: "主管任务",

@@ -626,6 +626,20 @@ module.exports = {
     },
 
     updater: {
+        stripDownloading: "Скачиваем {v} · {n}%",
+        stripReady: "Centrio {v} готова",
+        stripReadyHint: "Вкладки и вход сохранятся",
+        stripRestart: "Перезапустить",
+        stripLater: "Позже",
+        stripInstalling: "Устанавливаем {v}",
+        stripInstallingHint: "Centrio откроется сам",
+        stripUpdated: "Обновлено до {v}",
+        stripDownloadFailed: "Не удалось скачать {v}",
+        stripInstallFailed: "Не удалось установить {v}",
+        stripRetry: "Повторить",
+        stripFromSite: "Скачать с сайта",
+        stripClose: "Закрыть",
+        statusUpdate: "Обновить до {v}",
         title:          'Обновление',
         close:          'Закрыть',
         newAvailable:   '🔔 Новая версия доступна',
@@ -1453,6 +1467,20 @@ module.exports = {
         folderMeta: "Сервисов: 4 · новых: 3",
     },
 
+    teamControl: {
+        lockedByManager: "Это настроил руководитель",
+        noteTitle: "Сообщение от руководителя",
+        noteOk: "Понятно",
+        whatManagerSeesTitle: "Что видит руководитель",
+        whatManagerSees: "Руководитель видит: вошли ли вы в рабочие мессенджеры, сколько в них непрочитанных и как долго ждут клиенты, открыто ли приложение и были ли вы у компьютера, какой рабочий мессенджер открыт. Руководитель не видит ваши переписки, экран и личные мессенджеры.",
+        joinedNotice: "Вы в команде «{org}». Рабочие мессенджеры настраивает руководитель.",
+        paused: "Руководитель выключил «{name}»",
+        resumed: "Руководитель включил «{name}»",
+        reloaded: "Руководитель перезагрузил «{name}»",
+        relogin: "Руководитель просит войти в «{name}» заново",
+        sessionsEnded: "Рабочие входы на этом компьютере завершены",
+        strictOn: "Руководитель включил строгий режим",
+    },
     teamTasks: {
 
         title: "От руководителя",

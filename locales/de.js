@@ -609,6 +609,20 @@ module.exports = {
     },
 
     updater: {
+        stripDownloading: "{v} wird geladen · {n}%",
+        stripReady: "Centrio {v} ist bereit",
+        stripReadyHint: "Tabs und Anmeldungen bleiben erhalten",
+        stripRestart: "Neu starten",
+        stripLater: "Später",
+        stripInstalling: "{v} wird installiert",
+        stripInstallingHint: "Centrio öffnet sich von selbst",
+        stripUpdated: "Aktualisiert auf {v}",
+        stripDownloadFailed: "{v} konnte nicht geladen werden",
+        stripInstallFailed: "{v} konnte nicht installiert werden",
+        stripRetry: "Erneut versuchen",
+        stripFromSite: "Von der Website laden",
+        stripClose: "Schließen",
+        statusUpdate: "Auf {v} aktualisieren",
         title: 'Aktualisierung',
         close: 'Schließen',
         newAvailable: '🔔 Neue Version verfügbar',
@@ -1389,6 +1403,20 @@ module.exports = {
         folderMeta: "Dienste: 4 · ungelesen: 3",
     },
 
+    teamControl: {
+        lockedByManager: "Von Ihrer Führungskraft festgelegt",
+        noteTitle: "Nachricht von Ihrer Führungskraft",
+        noteOk: "Verstanden",
+        whatManagerSeesTitle: "Was Ihre Führungskraft sieht",
+        whatManagerSees: "Ihre Führungskraft sieht, ob Sie in den Arbeits-Messengern angemeldet sind, wie viele ungelesene Nachrichten es gibt und wie lange Kunden warten, ob die App geöffnet ist und Sie am Computer sind und welcher Arbeits-Messenger geöffnet ist. Ihre Chats, Ihren Bildschirm und Ihre privaten Messenger sieht sie nicht.",
+        joinedNotice: "Sie sind im Team „{org}“. Die Arbeits-Messenger richtet Ihre Führungskraft ein.",
+        paused: "Ihre Führungskraft hat „{name}“ ausgeschaltet",
+        resumed: "Ihre Führungskraft hat „{name}“ eingeschaltet",
+        reloaded: "Ihre Führungskraft hat „{name}“ neu geladen",
+        relogin: "Ihre Führungskraft bittet Sie, sich erneut bei „{name}“ anzumelden",
+        sessionsEnded: "Die Arbeitsanmeldungen auf diesem Computer wurden beendet",
+        strictOn: "Ihre Führungskraft hat den strengen Modus eingeschaltet",
+    },
     teamTasks: {
 
         title: "Von der Leitung",

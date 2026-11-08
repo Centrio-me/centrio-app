@@ -131,6 +131,10 @@ function createSidebarDndApi({
         el.style.cursor = 'grab'
 
         el.addEventListener('dragstart', (e) => {
+            if (state.orgStrict && String(id).startsWith('org:')) {
+                e.preventDefault()
+                return
+            }
             // In the new folder view the services sit INSIDE the folder element (which is draggable too): without
             // this the folder's own handler ran next and replaced the dragged service with the folder.
             e.stopPropagation()

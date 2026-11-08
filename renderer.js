@@ -12,13 +12,15 @@
 const state = require('./renderer/state')
 const { tGet, applyI18n, initI18n, setCurrentLanguage, getCurrentLanguage } = require('./renderer/i18n')
 const { getCurrentLocale, getUserInitial, hashPassword } = require('./renderer/helpers')
+const { visibleMessengers } = require('./renderer/team-strict')
+const { showTeamNotice } = require('./renderer/team-toast')
 const { getFocusedMessengerId } = require('./renderer/focused-messenger')
 const { popularMessengers, syntaxAiPromo, folderIcons, PAGE_SIZE, isChatWidgetMessenger } = require('./renderer/constants')
 const { createCloudStore, createCloudApi } = require('./renderer/cloud')
 const { createSoundsApi } = require('./renderer/sounds')
 const { bindDownloads } = require('./renderer/downloads')
 const { createProxyApi } = require('./renderer/proxy')
-const { bindUpdater, showUpdateBanner } = require('./renderer/updater')
+const { bindUpdater } = require('./renderer/updater')
 
 const { createStatusBarApi } = require('./renderer/status-bar')
 const { createTooltipsApi } = require('./renderer/tooltips')
@@ -1642,7 +1644,31 @@ function applyZoomWhenReady(webview, zoomLevel) {
 // Set once the webview API exists: brings a sleeping tab back (its page is loaded again).
 let wakeTabRef = null
 
+// TEAM strict mode (2026-11-08): personal messengers are hidden (never deleted) while the owner keeps
+// the employee to the work ones; the main process also keeps team tabs on their own sites.
+function applyTeamStrictMode(strict) {
+    const changed = state.orgStrict === false && strict === true
+    state.orgStrict = strict
+    document.body.classList.toggle('team-strict', strict)
+    const shown = new Set(visibleMessengers(state.activeMessengers, { strict, teamWorkspaceActive: true }).map(m => m.id))
+    state.activeMessengers.forEach(m => {
+        const hide = !shown.has(m.id)
+        const side = document.getElementById(`sidebar-${m.id}`)
+        const tab = document.getElementById(`tab-${m.id}`)
+        if (side) side.hidden = hide
+        if (tab) tab.hidden = hide
+    })
+    if (state.activeTabId && !shown.has(state.activeTabId)) {
+        const first = state.activeMessengers.find(m => shown.has(m.id))
+        if (first) switchTab(first.id)
+    }
+    const assigned = Object.fromEntries(state.activeMessengers.filter(m => m.orgAssigned).map(m => [m.id, m.url]))
+    invokeIpc('team:set-strict', { strict, assigned }).catch(() => {})
+    if (changed) showTeamNotice(tGet('teamControl.strictOn'))
+}
+
 function switchTab(id) {
+    if (state.orgStrict && !String(id).startsWith('org:') && state.activeMessengers.some(m => m.id === id && !m.orgAssigned)) return
     if (state.sleepingTabs.has(id) && typeof wakeTabRef === 'function') wakeTabRef(id)
     // A messenger in its own window: the tab shows a placeholder, and the window itself comes to the front.
     if (state.detachedTabs.has(id)) detachedApi?.focus(id)
@@ -4184,6 +4210,9 @@ function applyTabZoom(level) {
             state.orgCanAddOwnMessengers = allowed
             updateAddButtonState()
         },
+        setStrictMode: (strict) => applyTeamStrictMode(strict),
+        onTeamEvent: (handler) => ipcRenderer.on('team-event', (data) => handler(data)),
+        switchToMessenger: (id) => switchTab(id),
         setTeamQuickReplies: (replies) => quickRepliesApi?.setTeamReplies(replies),
         applyOrgStructure,
         refreshTeamTasks: () => teamTasksUi.refresh(),
@@ -4225,7 +4254,6 @@ function applyTabZoom(level) {
     bindUpdater({
         ipcRenderer,
         invokeIpc,
-        showUpdateBanner,
         tGet
     })
 

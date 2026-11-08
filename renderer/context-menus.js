@@ -70,6 +70,16 @@ function createContextMenusApi({
         const ctxRemove = document.getElementById('ctxRemove')
         if (ctxRemove) ctxRemove.style.display = (messenger && messenger.orgAssigned) ? 'none' : 'flex'
 
+        // Strict mode (TEAM control, 2026-11-08): the owner set this messenger up, the employee cannot change it.
+        const lockedByManager = !!(state.orgStrict && messenger && messenger.orgAssigned)
+        ;['ctxEdit', 'ctxMoveToFolder', 'ctxChangeIcon', 'ctxMute', 'ctxVpn'].forEach((itemId) => {
+            const item = document.getElementById(itemId)
+            if (item) item.style.display = lockedByManager ? 'none' : ''
+        })
+        if (lockedByManager) document.getElementById('ctxRemoveFromFolder').style.display = 'none'
+        const lockedNote = document.getElementById('ctxLockedNote')
+        if (lockedNote) lockedNote.style.display = lockedByManager ? 'flex' : 'none'
+
         // FEATURE (2026-09-14, live-запрос) — пункт "в пространство"
         // показывается только когда плагин включён, пространства есть, и
         // мессенджер вне папки (внутри папки видимость решает сама папка —
@@ -77,7 +87,8 @@ function createContextMenusApi({
         const ctxMoveToWorkspace = document.getElementById('ctxMoveToWorkspace')
         if (ctxMoveToWorkspace) {
             const showWs = typeof isWorkspacesEnabled === 'function' && isWorkspacesEnabled() &&
-                state.workspaces.length > 0 && messenger && !messenger.folderId
+                state.workspaces.length > 0 && messenger && !messenger.folderId &&
+                !(state.orgStrict && messenger.orgAssigned)
             ctxMoveToWorkspace.style.display = showWs ? 'flex' : 'none'
         }
 

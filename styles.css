@@ -1800,7 +1800,7 @@ body.platform-darwin .titlebar-left  { padding-left: 78px; } /* отступ п�
 .folder-panel {
     position: fixed;
     left: 48px;
-    top: 36px;
+    top: calc(36px + var(--update-strip-h, 0px));
     bottom: 26px;
     width: 0;
     background: var(--bg-secondary);

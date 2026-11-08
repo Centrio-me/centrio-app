@@ -1,5 +1,5 @@
 const { ipcMain } = require('electron')
-const { installUpdate, checkForUpdates } = require('../services/updater')
+const { installUpdate, checkForUpdates, takeJustUpdated } = require('../services/updater')
 
 function safeHandle(channel, handler) {
     try {
@@ -18,6 +18,8 @@ function registerUpdaterIpc() {
             return { success: false, error: error.message }
         }
     })
+
+    safeHandle('update:just-updated', async () => takeJustUpdated())
 
     safeHandle('check-for-updates', async () => {
         try {

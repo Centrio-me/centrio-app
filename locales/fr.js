@@ -609,6 +609,20 @@ module.exports = {
     },
 
     updater: {
+        stripDownloading: "Téléchargement de {v} · {n}%",
+        stripReady: "Centrio {v} est prête",
+        stripReadyHint: "Vos onglets et connexions seront conservés",
+        stripRestart: "Redémarrer",
+        stripLater: "Plus tard",
+        stripInstalling: "Installation de {v}",
+        stripInstallingHint: "Centrio s'ouvrira tout seul",
+        stripUpdated: "Mis à jour vers {v}",
+        stripDownloadFailed: "Impossible de télécharger {v}",
+        stripInstallFailed: "Impossible d'installer {v}",
+        stripRetry: "Réessayer",
+        stripFromSite: "Télécharger depuis le site",
+        stripClose: "Fermer",
+        statusUpdate: "Mettre à jour vers {v}",
         errorTitle: '⚠ Erreur de mise à jour',
         errorDesc: 'Échec du téléchargement de la mise à jour.',
         title: 'Mise à jour',
@@ -1389,6 +1403,20 @@ module.exports = {
         folderMeta: "Services : 4 · non lus : 3",
     },
 
+    teamControl: {
+        lockedByManager: "Défini par votre responsable",
+        noteTitle: "Message de votre responsable",
+        noteOk: "Compris",
+        whatManagerSeesTitle: "Ce que voit votre responsable",
+        whatManagerSees: "Votre responsable voit si vous êtes connecté aux messageries de travail, combien de messages non lus elles contiennent et combien de temps les clients attendent, si l’application est ouverte et si vous êtes devant l’ordinateur, et quelle messagerie de travail est ouverte. Il ne voit ni vos conversations, ni votre écran, ni vos messageries personnelles.",
+        joinedNotice: "Vous faites partie de l’équipe « {org} ». Votre responsable configure les messageries de travail.",
+        paused: "Votre responsable a désactivé « {name} »",
+        resumed: "Votre responsable a activé « {name} »",
+        reloaded: "Votre responsable a rechargé « {name} »",
+        relogin: "Votre responsable vous demande de vous reconnecter à « {name} »",
+        sessionsEnded: "Les connexions de travail sur cet ordinateur ont été fermées",
+        strictOn: "Votre responsable a activé le mode strict",
+    },
     teamTasks: {
 
         title: "De la direction",

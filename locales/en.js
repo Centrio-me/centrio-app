@@ -608,6 +608,20 @@ module.exports = {
     },
 
     updater: {
+        stripDownloading: "Downloading {v} · {n}%",
+        stripReady: "Centrio {v} is ready",
+        stripReadyHint: "Your tabs and sign-ins will stay",
+        stripRestart: "Restart",
+        stripLater: "Later",
+        stripInstalling: "Installing {v}",
+        stripInstallingHint: "Centrio will reopen by itself",
+        stripUpdated: "Updated to {v}",
+        stripDownloadFailed: "Couldn't download {v}",
+        stripInstallFailed: "Couldn't install {v}",
+        stripRetry: "Try again",
+        stripFromSite: "Download from the site",
+        stripClose: "Close",
+        statusUpdate: "Update to {v}",
         title:          'Update',
         close:          'Close',
         newAvailable:   '🔔 New version available',
@@ -1388,6 +1402,20 @@ module.exports = {
         folderMeta: "Services: 4 · unread: 3",
     },
 
+    teamControl: {
+        lockedByManager: "Set by your manager",
+        noteTitle: "Message from your manager",
+        noteOk: "Got it",
+        whatManagerSeesTitle: "What your manager sees",
+        whatManagerSees: "Your manager sees whether you are signed in to the work messengers, how many unread messages they have and how long clients wait, whether the app is open and you are at your computer, and which work messenger is open. Your manager does not see your chats, your screen or your personal messengers.",
+        joinedNotice: "You are in the “{org}” team. Your manager sets up the work messengers.",
+        paused: "Your manager turned off “{name}”",
+        resumed: "Your manager turned on “{name}”",
+        reloaded: "Your manager reloaded “{name}”",
+        relogin: "Your manager asks you to sign in to “{name}” again",
+        sessionsEnded: "Work sign-ins on this computer have been ended",
+        strictOn: "Your manager turned on strict mode",
+    },
     teamTasks: {
 
         title: "From your manager",

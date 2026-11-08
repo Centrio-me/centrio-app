@@ -1,0 +1,141 @@
+/* Компоненты, специфичные ТОЛЬКО для ЛК TEAM (аналогов в обычном личном
+   кабинете нет: строка аудита, ряд участника, переключатель периода оплаты
+   мест, степпер количества мест, выпадающий список). Стилизованы теми же
+   токенами, что dashboard-design.css (тёмная поверхность #0d1421/#101724,
+   бордер #233047/#30405a, акцент #437cff), чтобы не выбиваться из общего
+   языка дизайна.
+
+   Всё остальное (glass-card, btn-*, badge, section-title, field-label,
+   field-input, mini-stat*, form-msg, nav-item и вся структура сайдбара/
+   топбара) теперь идёт напрямую из dashboard-design.css через общий класс
+   .dash-shell на обёртке страницы — команда/личный кабинет используют
+   ОДИН файл стилей, не два похожих. См. team/page.tsx (импорт
+   '../dashboard/dashboard-design.css') и Журнал реализации TEAM в Obsidian,
+   запись от 2026-09-28, для истории: раньше здесь дублировались все эти
+   правила под другим цветом (бирюза вместо синего) — то и было причиной
+   "дизайн не как в обычном ЛК". */
+.team-shell .field-select { width: 100%; min-width: 0; min-height: 44px; padding: 10px 14px; background: #0d1421; border: 1px solid #30405a; border-radius: 8px; color: #eaf0fb; font-size: 14px; line-height: 1.5; font-family: inherit; transition: border-color .18s,box-shadow .18s; }
+.team-shell .field-select:focus { border-color: #689aff; box-shadow: 0 0 0 3px #437cff18; outline: none; }
+.team-shell .field-select:disabled { color: #98a9c1; background: #121b2a; }
+.team-shell .audit-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 9px 0; font-size: 12.5px; color: #bac9df; border-bottom: 1px solid #1a2334; }
+.team-shell .audit-row:last-child { border-bottom: none; }
+.team-shell .member-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid #1a2334; }
+.team-shell .member-row:last-child { border-bottom: none; }
+.team-shell .member-avatar { flex-shrink: 0; width: 36px; height: 36px; border-radius: 50%; background: #192c4c; color: #aaccff; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; }
+.team-shell .period-toggle { display: inline-flex; gap: 2px; padding: 3px; background: #0d1421; border: 1px solid #233047; border-radius: 10px; }
+.team-shell .period-toggle button { padding: 8px 14px; border-radius: 7px; border: none; background: transparent; color: #9cabbe; font-size: 12.5px; font-weight: 550; font-family: inherit; cursor: pointer; transition: background .18s, color .18s; }
+.team-shell .period-toggle button.active { background: #437cff; color: #fff; }
+.team-shell .stepper { display: inline-flex; align-items: center; gap: 14px; padding: 6px 14px; background: #0d1421; border: 1px solid #30405a; border-radius: 10px; }
+.team-shell .stepper button { width: 28px; height: 28px; border-radius: 7px; border: 1px solid #30405a; background: #151f30; color: #eaf0fb; font-size: 16px; line-height: 1; cursor: pointer; transition: background .18s; }
+.team-shell .stepper button:hover:not(:disabled) { background: #202e43; }
+.team-shell .stepper button:disabled { opacity: .4; cursor: not-allowed; }
+.team-shell .err { color: #ffa3ac; }
+
+/* Мобильная адаптация no-org (создание организации) карточки — единственный
+   экран, у которого нет sidebar/topbar (см. team/page.tsx), поэтому его не
+   покрывают адаптивные правила dashboard-design.css для .dash-sidebar. */
+@media (max-width: 480px) {
+  .team-shell .field-select { font-size: 13px; }
+}
+
+/* ── Быстрые ответы + Оповещения «Клиент ждёт ответа» (2026-09-30) ──── */
+.team-shell .qr-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; flex-wrap: wrap; }
+.team-shell .qr-list { display: flex; flex-direction: column; margin-top: 18px; }
+.team-shell .qr-empty { padding: 22px; border: 1px dashed #30405a; border-radius: 10px; color: #8a9bb5; font-size: 13px; text-align: center; }
+.team-shell .qr-item { display: flex; align-items: flex-start; gap: 16px; padding: 14px 0; border-bottom: 1px solid #1a2334; }
+.team-shell .qr-item:last-child { border-bottom: none; }
+.team-shell .qr-item-title { font-size: 14px; font-weight: 650; color: #eaf0fb; margin-bottom: 4px; }
+.team-shell .qr-item-text { font-size: 12.5px; line-height: 1.55; color: #9cabbe; white-space: pre-wrap; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.team-shell .qr-item-actions { display: flex; gap: 8px; flex-shrink: 0; }
+.team-shell .qr-item-actions .btn-ghost, .team-shell .qr-item-actions .btn-danger { min-height: 34px; padding: 6px 12px; font-size: 12px; }
+.team-shell .qr-form { display: flex; flex-direction: column; gap: 14px; margin-top: 18px; padding: 18px; border: 1px solid #29456b; border-radius: 12px; background: #0f1827; }
+.team-shell .qr-label-row { display: flex; align-items: baseline; justify-content: space-between; }
+.team-shell .qr-counter { font-size: 11.5px; color: #778ba9; font-variant-numeric: tabular-nums; }
+.team-shell .qr-counter.at-limit { color: #f59e0b; }
+.team-shell .qr-textarea { resize: vertical; min-height: 120px; font-family: inherit; }
+.team-shell .qr-footer { margin-top: 10px; font-size: 11.5px; color: #778ba9; }
+
+.team-shell .switch-row { display: inline-flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 550; color: #eaf0fb; cursor: pointer; flex-shrink: 0; }
+.team-shell .switch { appearance: none; -webkit-appearance: none; position: relative; width: 40px; height: 22px; margin: 0; border-radius: 999px; background: #233047; border: 1px solid #30405a; cursor: pointer; transition: background .18s, border-color .18s; }
+.team-shell .switch::after { content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #9cabbe; transition: transform .18s, background .18s; }
+.team-shell .switch:checked { background: #437cff; border-color: #548aff; }
+.team-shell .switch:checked::after { transform: translateX(18px); background: #fff; }
+.team-shell .check-row { display: inline-flex; align-items: center; gap: 9px; font-size: 13px; color: #bac9df; cursor: pointer; }
+.team-shell .check-row input, .team-shell .channel input[type="checkbox"] { width: 16px; height: 16px; accent-color: #437cff; flex-shrink: 0; }
+
+.team-shell .alerts-warning { margin-top: 16px; padding: 12px 14px; border-radius: 10px; border: 1px solid #5a4418; background: #2a2112; color: #f5c46b; font-size: 12.5px; line-height: 1.5; }
+.team-shell .alerts-fieldset { border: 0; padding: 0; margin: 0; min-width: 0; transition: opacity .18s; }
+.team-shell .alerts-fieldset:disabled { opacity: .45; }
+.team-shell .alerts-section { padding: 20px 0; border-bottom: 1px solid #1a2334; }
+.team-shell .alerts-section:first-child { margin-top: 8px; }
+.team-shell .alerts-section-title { font-size: 11px; font-weight: 650; letter-spacing: .1em; text-transform: uppercase; color: #778ba9; margin: 0 0 14px; }
+.team-shell .alerts-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.team-shell .alerts-hint { margin-top: 10px; font-size: 12px; line-height: 1.5; color: #778ba9; }
+
+.team-shell .chip-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.team-shell .chip { min-height: 32px; padding: 6px 13px; border-radius: 999px; border: 1px solid #30405a; background: #0d1421; color: #9cabbe; font-size: 12.5px; font-weight: 550; cursor: pointer; transition: background .18s, color .18s, border-color .18s; }
+.team-shell .chip:hover:not(:disabled) { border-color: #4a5f80; color: #eaf0fb; }
+.team-shell .chip.on { background: #192c4c; border-color: #437cff; color: #cfe0ff; }
+
+.team-shell .segmented { display: inline-flex; gap: 2px; padding: 3px; background: #0d1421; border: 1px solid #233047; border-radius: 10px; flex-wrap: wrap; }
+.team-shell .segmented button { padding: 8px 14px; border-radius: 7px; border: none; background: transparent; color: #9cabbe; font-size: 12.5px; font-weight: 550; cursor: pointer; transition: background .18s, color .18s; }
+.team-shell .segmented button.active { background: #437cff; color: #fff; }
+
+.team-shell .channel-list { display: flex; flex-direction: column; gap: 10px; }
+.team-shell .channel { display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; border: 1px solid #233047; border-radius: 12px; background: #0d1421; cursor: pointer; transition: border-color .18s, background .18s; }
+.team-shell .channel input[type="checkbox"] { margin-top: 2px; }
+.team-shell .channel.on { border-color: #29456b; background: #101c30; }
+.team-shell .channel-name { display: block; font-size: 13.5px; font-weight: 650; color: #eaf0fb; cursor: pointer; }
+.team-shell .channel-hint { font-size: 12px; line-height: 1.5; color: #8a9bb5; margin-top: 2px; }
+.team-shell .channel-linked { font-size: 12.5px; font-weight: 600; color: #78d5aa; }
+.team-shell .channel .btn-ghost { min-height: 34px; padding: 6px 12px; font-size: 12px; }
+
+.team-shell .alerts-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 20px; }
+.team-shell .alerts-dirty { font-size: 12px; color: #f5c46b; }
+.team-shell .alerts-live { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px; margin-top: 26px; padding-top: 22px; border-top: 1px solid #1a2334; }
+.team-shell .alerts-late { color: #f59e0b; font-weight: 650; flex-shrink: 0; }
+.team-shell .alerts-ok { color: #9cabbe; flex-shrink: 0; }
+.team-shell .alerts-offline { color: #778ba9; }
+
+/* Tasks tab (TasksPanel.tsx) */
+.team-shell .task-row { display: flex; gap: 14px; flex-wrap: wrap; }
+.team-shell .task-check { display: inline-flex; align-items: center; gap: 8px; min-height: 42px; font-size: 13px; color: #cdd9ec; cursor: pointer; }
+.team-shell .task-group { margin: 18px 0 6px; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #8a9bb5; }
+.team-shell .task-meta { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 6px; font-size: 12px; color: #8a9bb5; }
+.team-shell .task-meta strong { color: #cdd9ec; font-weight: 600; }
+.team-shell .task-unseen { color: #f5c46b; }
+.team-shell .task-urgent { display: inline-block; margin-right: 8px; padding: 1px 7px; border-radius: 6px; background: #3a1d22; color: #ff8a8f; font-size: 11px; font-weight: 700; }
+.team-shell .task-lastcomment { margin-top: 8px; padding: 6px 10px; border-left: 2px solid #3a4d78; font-size: 12.5px; color: #9cabbe; overflow-wrap: anywhere; }
+.team-shell .task-lastcomment strong { color: #cdd9ec; font-weight: 600; }
+.team-shell .task-comments-btn { margin-top: 8px; padding: 0; border: 0; background: none; color: #87b7ff; font: inherit; font-size: 12.5px; cursor: pointer; }
+.team-shell .task-comments-btn:hover { text-decoration: underline; }
+.team-shell .task-thread { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+.team-shell .task-thread-empty { font-size: 12.5px; color: #778ba9; }
+.team-shell .task-comment { padding: 8px 12px; border: 1px solid #233047; border-radius: 10px; background: #0d1421; }
+.team-shell .task-comment.own { border-color: #29456b; background: #101c30; }
+.team-shell .task-comment-head { display: flex; justify-content: space-between; gap: 10px; font-size: 11.5px; color: #778ba9; }
+.team-shell .task-comment-head strong { color: #cdd9ec; font-weight: 600; }
+.team-shell .task-comment-body { margin-top: 3px; font-size: 13px; color: #eaf0fb; white-space: pre-wrap; overflow-wrap: anywhere; }
+.team-shell .task-comment-form { display: flex; gap: 10px; align-items: flex-end; }
+.team-shell .task-comment-form textarea { flex: 1; }
+.team-shell .task-done .qr-item-title { text-decoration: line-through; color: #7f8ea6; }
+
+/* Folders tab (StructurePanel.tsx) */
+.team-shell .st-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px; margin-top: 18px; }
+.team-shell .st-block { padding: 16px; border: 1px solid #233047; border-radius: 12px; background: #0d1421; }
+.team-shell .st-block h4 { font-size: 13px; font-weight: 700; color: #eaf0fb; margin-bottom: 4px; }
+.team-shell .st-hint { font-size: 12px; color: #778ba9; margin-bottom: 10px; }
+.team-shell .st-add { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0 12px; }
+.team-shell .st-add input { flex: 1; min-width: 140px; }
+.team-shell .st-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 8px 0; border-top: 1px solid #1a2334; }
+.team-shell .st-name { flex: 1; min-width: 120px; font-size: 13.5px; color: #eaf0fb; overflow-wrap: anywhere; }
+.team-shell .st-small { max-width: 190px; }
+.team-shell .st-actions { display: flex; gap: 6px; }
+.team-shell .st-edit { display: flex; gap: 6px; flex: 1; flex-wrap: wrap; }
+.team-shell .st-edit input { flex: 1; min-width: 120px; }
+.team-shell .st-empty { padding: 10px 0; font-size: 12.5px; color: #778ba9; }
+
+@media (max-width: 720px) {
+  .team-shell .alerts-grid, .team-shell .alerts-live { grid-template-columns: minmax(0, 1fr); }
+  .team-shell .qr-item { flex-direction: column; gap: 10px; }
+}

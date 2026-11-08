@@ -16,6 +16,7 @@ const validReceiveChannels = new Set([
     'notification-open-chat',
     'notification-reply',
     'update-status',
+    'team-event',
     // BUGFIX (2026-09-06, live report "Центрио думает" — ассистент никогда
     // не получал ответ): этот allowlist не обновлялся по мере добавления
     // новых фич, из-за чего ipcRenderer.on(...) на эти каналы молча
@@ -265,6 +266,19 @@ const validInvokeChannels = new Set([
     'get-webview-preload-path',
     'get-window-visibility-state',
     'install-update',
+    'update:just-updated',
+    'team:set-strict',
+    'team:decide-nav',
+    'api-org-push-presence',
+    'api-org-get-notes',
+    'api-org-read-note',
+    'api-org-device-commands',
+    'api-org-device-command-done',
+    'team:idle-seconds',
+    'team:wipe-sessions',
+    'team:device-proof',
+    'team-events:start',
+    'team-events:stop',
     'lock-bg:choose-custom',
     'lock-bg:clear',
     'lock-bg:get',

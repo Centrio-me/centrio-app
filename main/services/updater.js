@@ -57,10 +57,15 @@ const AUTO_INSTALL_STARTUP_WINDOW_S = 120
 const AUTO_INSTALL_MAX_ATTEMPTS = 2
 const AUTO_INSTALL_DELAY_MS = 5000
 let autoInstallScheduled = false
+let justUpdated = null
 
 function getAutoInstallAttempts(version) {
     const rec = store.get('autoInstall', null)
     return rec && rec.version === version ? (rec.attempts || 0) : 0
+}
+
+function failedToInstallBefore(version) {
+    return getAutoInstallAttempts(version) >= AUTO_INSTALL_MAX_ATTEMPTS
 }
 
 function shouldAutoInstallOnLaunch(version) {
@@ -171,6 +176,7 @@ function initUpdater(getMainWindow) {
         sendUpdateStatus(getMainWindow, {
             status: 'downloaded',
             version: info.version,
+            failedBefore: failedToInstallBefore(info.version),
             label: t('updater.downloaded'),
             message: `Обновление ${info.version} скачано и готово к установке.`
         })
@@ -242,6 +248,21 @@ function installUpdate({ auto = false } = {}) {
     autoUpdater.quitAndInstall(true, true)
 }
 
+// The strip says "updated" once per version: the pending record can outlive one launch
+// because of the grace window below, so the version shown is remembered separately.
+function rememberJustUpdated(pending, currentVersion) {
+    if (pending.toVersion !== currentVersion) return
+    if (store.get('updatedNoticeShown', null) === currentVersion) return
+    store.set('updatedNoticeShown', currentVersion)
+    justUpdated = { version: currentVersion }
+}
+
+function takeJustUpdated() {
+    const value = justUpdated
+    justUpdated = null
+    return value
+}
+
 // Called once at startup (see initApp.js). Compares the version the app is
 // running with the update it downloaded last time.
 //   • version matches            → applied successfully;
@@ -260,6 +281,7 @@ function checkPendingUpdateOutcome({ appendCrashLog, reportCrashToServer } = {})
         if (!pending) return
 
         const currentVersion = app.getVersion()
+        rememberJustUpdated(pending, currentVersion)
 
         // Grace window: an install+relaunch cycle (or a download that just
         // finished) must not be judged before it had time to complete.
@@ -299,5 +321,6 @@ module.exports = {
     initUpdater,
     checkForUpdates,
     installUpdate,
-    checkPendingUpdateOutcome
+    checkPendingUpdateOutcome,
+    takeJustUpdated
 }

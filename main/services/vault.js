@@ -46,6 +46,15 @@ async function getPublicKey(userId) {
     return { success: true, publicKey: entry.publicKey, deviceId: getDeviceId(), name }
 }
 
+// Signs the device proof for /api/org-device (TEAM control, 2026-11-08): still works after the person
+// was removed from the team, so this device can fetch and confirm its pending wipe.
+function signDeviceProof(userId, deviceKeyId) {
+    const entry = (store.get(KEYS_STORE_KEY, {}) || {})[userId]
+    if (!entry || !secureStorageAvailable()) return null
+    const privateKey = safeStorage.decryptString(Buffer.from(entry.privateEnc, 'base64'))
+    return require('./teamDeviceProof').signProof(privateKey, deviceKeyId)
+}
+
 async function decrypt(userId, blob, aad) {
     const entry = (store.get(KEYS_STORE_KEY, {}) || {})[userId]
     if (!entry || !secureStorageAvailable()) throw new Error('NO_KEY')
@@ -53,44 +62,8 @@ async function decrypt(userId, blob, aad) {
     return vaultCrypto.decryptWithDeviceKey(blob, privateKey, entry.publicKey, aad)
 }
 
-// ── which hosts may receive the password ─────────────────────────────────────────────────────────────────
-// Second-level labels that are themselves registry suffixes (co.uk, com.ru, spb.ru...): without this, a site on
-// "firma.spb.ru" would be treated as the same site as ANY *.spb.ru page, which anyone can register.
-const SUFFIX_LABELS = new Set(['co', 'com', 'org', 'net', 'gov', 'edu', 'ac', 'spb', 'msk', 'nov', 'ru', 'ne', 'or', 'go'])
-// Hosting services where every customer gets a subdomain: "alice.github.io" and "bob.github.io" are different sites.
-const SHARED_HOSTING_SUFFIXES = ['github.io', 'gitlab.io', 'herokuapp.com', 'netlify.app', 'pages.dev', 'workers.dev', 'vercel.app', 'blogspot.com', 'myshopify.com', 'web.app', 'firebaseapp.com', 'appspot.com', 'azurewebsites.net', 'cloudfront.net', 'wordpress.com', 'wixsite.com', 'weebly.com', 'tilda.ws', 'ucoz.ru', 'narod.ru']
-
-function baseDomain(hostname) {
-    const host = String(hostname || '').toLowerCase()
-    if (/^\d{1,3}(\.\d{1,3}){3}$/.test(host) || host.includes(':')) return host // an IP address is its own site
-    const parts = host.split('.').filter(Boolean)
-    for (const suffix of SHARED_HOSTING_SUFFIXES) {
-        if (host.endsWith('.' + suffix)) return parts.slice(-(suffix.split('.').length + 1)).join('.')
-    }
-    if (parts.length <= 2) return parts.join('.')
-    const tld = parts[parts.length - 1]
-    const second = parts[parts.length - 2]
-    if (tld.length === 2 && SUFFIX_LABELS.has(second) && parts.length >= 3) return parts.slice(-3).join('.')
-    return parts.slice(-2).join('.')
-}
-
-// Sign-in providers a site legitimately redirects to (their own domain differs from the site's).
-const PROVIDER_DOMAINS = {
-    'yandex.ru': ['yandex.ru', 'yandex.com', 'ya.ru'],
-    'ya.ru': ['yandex.ru', 'yandex.com', 'ya.ru'],
-    'mail.ru': ['mail.ru'],
-    'vk.com': ['vk.com', 'vk.ru'],
-    'vk.ru': ['vk.com', 'vk.ru'],
-    'google.com': ['google.com'],
-    'gmail.com': ['google.com']
-}
-
-function allowedBaseDomains(assignedUrl) {
-    let host
-    try { host = new URL(assignedUrl).hostname } catch { return [] }
-    const base = baseDomain(host)
-    return [...new Set([base, ...(PROVIDER_DOMAINS[base] || [])])]
-}
+// ── which hosts may receive the password: see main/services/signInDomains.js ──────────────────────────────
+const { baseDomain, allowedBaseDomains } = require('./signInDomains')
 
 function hostIsAllowed(pageUrl, assignedUrl) {
     let host
@@ -242,4 +215,4 @@ async function autofill({ userId, messengerId, blob, aad, assignedUrl }) {
     return result
 }
 
-module.exports = { getPublicKey, autofill, fillSecretIntoMessenger, secureStorageAvailable, hostIsAllowed, allowedBaseDomains, fillLoginFormInPage }
+module.exports = { getPublicKey, signDeviceProof, autofill, fillSecretIntoMessenger, secureStorageAvailable, hostIsAllowed, allowedBaseDomains, fillLoginFormInPage }

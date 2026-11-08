@@ -171,6 +171,21 @@ async function ticketMultipart(token, path, fields, images) {
     return { status: res.status, data }
 }
 
+// /api/org-device takes extra headers (X-Device-Key, X-Device-Proof), so it does not go through request().
+async function deviceRequest(method, path, token, extraHeaders) {
+    const headers = { 'Content-Type': 'application/json', ...deviceHeaders(), ...extraHeaders }
+    if (token) headers.Authorization = `Bearer ${token}`
+    const res = await fetch(API_URL + path, { method, headers, body: method === 'POST' ? '{}' : undefined })
+    const data = await res.json().catch(() => null)
+    if (!res.ok) {
+        const error = new Error((data && data.error) || `HTTP ${res.status}`)
+        error.status = res.status
+        error.response = { status: res.status, data }
+        throw error
+    }
+    return { data }
+}
+
 async function request(method, path, body, token) {
     try {
         return await requestOnce(method, path, body, token)
@@ -407,6 +422,28 @@ module.exports = {
 
     orgPushMessengerStats(token, orgId, stats) {
         return request('POST', `/api/org/${orgId}/messenger-stats`, { stats }, token)
+    },
+
+    // TEAM control (2026-11-08): presence beats, notes from the owner, commands for this device.
+    orgPushPresence(token, orgId, beat) {
+        return request('POST', `/api/org/${encodeURIComponent(orgId)}/presence`, beat, token)
+    },
+
+    orgGetNotes(token, orgId) {
+        return request('GET', `/api/org/${encodeURIComponent(orgId)}/notes?mine=1`, null, token)
+    },
+
+    orgReadNote(token, orgId, noteId) {
+        return request('POST', `/api/org/${encodeURIComponent(orgId)}/notes/${encodeURIComponent(noteId)}/read`, {}, token)
+    },
+
+    // token may be null: a device removed from the team proves itself with its key headers instead.
+    async orgDeviceCommands(token, deviceHeaders = {}) {
+        return deviceRequest('GET', '/api/org-device/commands', token, deviceHeaders)
+    },
+
+    async orgDeviceCommandDone(token, commandId, deviceHeaders = {}) {
+        return deviceRequest('POST', `/api/org-device/commands/${encodeURIComponent(commandId)}/done`, token, deviceHeaders)
     },
 
     orgGetQuickReplies(token, orgId) {
