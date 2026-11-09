@@ -102,9 +102,10 @@ const popularMessengers = [
     { name: 'Mistral',          url: 'https://chat.mistral.ai',             icon: 'assets/logomessenger/mistral.png',       color: '#FF7000', category: 'ai' },
     { name: 'DeepSeek',         url: 'https://chat.deepseek.com',           icon: 'assets/logomessenger/deepseek.png',      color: '#4D6BFE', category: 'ai' },
     { name: 'Алиса',            url: 'https://alice.yandex.ru/',            icon: 'assets/logomessenger/alice.png',         color: '#8C1EFF', category: 'ai' },
-    // Алиса PRO (2026-08-28, live user request) — платная версия Алисы,
-    // отдельный сервис/URL от обычной Алисы выше, иконку прислал пользователь.
-    { name: 'Алиса PRO',        url: 'https://alicepro.yandex.ru',          icon: 'assets/logomessenger/alicepro.png',      color: '#9B4DE0', category: 'ai' },
+    // 3.7.3: «Алиса PRO» (alicepro.yandex.ru) Яндекс заменил на «Алису AI для бизнеса» — она работает на alice.yandex.ru
+    // под рабочим аккаунтом Яндекс 360; в Алисе PRO старые проекты остались только для просмотра. Уже добавленные
+    // вкладки «Алиса PRO» не трогаем — у кого-то там нужные проекты.
+    { name: 'Алиса для бизнеса', url: 'https://alice.yandex.ru/',           icon: 'assets/logomessenger/alicepro.png',      color: '#9B4DE0', category: 'ai' },
     // ── Медиа (2026-08-28, live user request — новая категория: онлайн-музыка
     // и онлайн-кинотеатры, чтобы держать их открытыми вкладками так же, как
     // мессенджеры). Иконки для сервисов без записи в каталоге simple-icons

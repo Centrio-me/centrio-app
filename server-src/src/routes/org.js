@@ -1,4 +1,5 @@
 const router  = require('express').Router()
+const taskRules = require('../lib/team-task-rules')
 const axios    = require('axios')
 const { v4: uuidv4 } = require('uuid')
 const authMiddleware = require('../middleware/auth')
@@ -1566,6 +1567,7 @@ function parseTaskBody(body, { partial }) {
 }
 
 const TASK_COMMENT_MAX = 1000
+const TASK_REQUESTS_PER_MEMBER_OPEN = 50
 const TASK_COMMENTS_PER_TASK = 200
 
 async function decorateTasks(tasks) {
@@ -1595,11 +1597,12 @@ async function decorateTasks(tasks) {
   })
 }
 
+// 3.7.3: tasks go both ways — an employee also sees (and comments on) the requests he sent to a manager.
+const taskCtx = (req) => ({ userId: req.user.id, role: req.orgMembership?.role })
+
 async function findAccessibleTask(req) {
-  const manager = ['OWNER', 'ADMIN'].includes(req.orgMembership?.role)
   const task = await prisma.orgTask.findFirst({ where: { id: req.params.id, orgId: req.params.orgId } })
-  if (!task || (!manager && task.assigneeId !== req.user.id)) return null
-  return task
+  return task && taskRules.canSee(task, taskCtx(req)) ? task : null
 }
 
 router.get('/:orgId/tasks/:id/comments', authMiddleware, requireOrgRole(['OWNER', 'ADMIN', 'MEMBER']), async (req, res) => {
@@ -1641,10 +1644,9 @@ router.post('/:orgId/tasks/:id/comments', memberActionLimiter, authMiddleware, r
 
 router.get('/:orgId/tasks', authMiddleware, requireOrgRole(['OWNER', 'ADMIN', 'MEMBER']), async (req, res) => {
   try {
-    const manager = ['OWNER', 'ADMIN'].includes(req.orgMembership?.role)
-    const where = { orgId: req.params.orgId }
-    if (!manager) where.assigneeId = req.user.id
-    else if (req.query.assigneeId) where.assigneeId = String(req.query.assigneeId)
+    const ctx = taskCtx(req)
+    const where = { orgId: req.params.orgId, ...taskRules.listFilter(ctx) }
+    if (taskRules.isManager(ctx) && req.query.assigneeId) where.assigneeId = String(req.query.assigneeId)
     if (req.query.status === 'OPEN' || req.query.status === 'DONE') where.status = req.query.status
     const tasks = await prisma.orgTask.findMany({
       where, select: TASK_SELECT, take: 500,
@@ -1658,13 +1660,22 @@ router.get('/:orgId/tasks', authMiddleware, requireOrgRole(['OWNER', 'ADMIN', 'M
   }
 })
 
-router.post('/:orgId/tasks', memberActionLimiter, authMiddleware, requireOrgRole(['OWNER', 'ADMIN']), async (req, res) => {
+router.post('/:orgId/tasks', memberActionLimiter, authMiddleware, requireOrgRole(['OWNER', 'ADMIN', 'MEMBER']), async (req, res) => {
   try {
     const parsed = parseTaskBody(req.body, { partial: false })
     if (parsed.error) return res.status(400).json({ success: false, error: parsed.error })
+    const ctx = taskCtx(req)
     const assigneeId = String(req.body?.assigneeId || '')
     const member = await prisma.orgMember.findFirst({ where: { orgId: req.params.orgId, userId: assigneeId, status: 'ACTIVE' } })
     if (!member) return res.status(400).json({ success: false, error: 'Сотрудник не найден в команде' })
+    // 3.7.3: an employee sends tasks to a manager only (team-task-rules.js)
+    if (!taskRules.canAssign(ctx, { userId: member.userId, role: member.role })) {
+      return res.status(403).json({ success: false, error: 'Задачу можно поставить только руководителю' })
+    }
+    if (!taskRules.isManager(ctx)) {
+      const mineOpen = await prisma.orgTask.count({ where: { orgId: req.params.orgId, createdById: ctx.userId, status: 'OPEN' } })
+      if (mineOpen >= TASK_REQUESTS_PER_MEMBER_OPEN) return res.status(409).json({ success: false, error: `Максимум ${TASK_REQUESTS_PER_MEMBER_OPEN} открытых запросов` })
+    }
     const open = await prisma.orgTask.count({ where: { orgId: req.params.orgId, status: 'OPEN' } })
     if (open >= TASKS_PER_ORG_OPEN) return res.status(409).json({ success: false, error: `Максимум ${TASKS_PER_ORG_OPEN} открытых задач` })
     const task = await prisma.orgTask.create({
@@ -1696,13 +1707,13 @@ router.post('/:orgId/tasks/seen', memberActionLimiter, authMiddleware, requireOr
 
 router.patch('/:orgId/tasks/:id', memberActionLimiter, authMiddleware, requireOrgRole(['OWNER', 'ADMIN', 'MEMBER']), async (req, res) => {
   try {
-    const manager = ['OWNER', 'ADMIN'].includes(req.orgMembership?.role)
+    const ctx = taskCtx(req)
     const existing = await prisma.orgTask.findFirst({ where: { id: req.params.id, orgId: req.params.orgId } })
-    if (!existing || (!manager && existing.assigneeId !== req.user.id)) {
+    if (!existing || !taskRules.canSee(existing, ctx)) {
       return res.status(404).json({ success: false, error: 'Задача не найдена' })
     }
     const data = {}
-    if (manager) {
+    if (taskRules.canEditFields(ctx)) {
       const parsed = parseTaskBody(req.body, { partial: true })
       if (parsed.error) return res.status(400).json({ success: false, error: parsed.error })
       Object.assign(data, parsed)
@@ -1713,7 +1724,7 @@ router.patch('/:orgId/tasks/:id', memberActionLimiter, authMiddleware, requireOr
         data.seenAt = null
       }
     }
-    if (req.body?.status === 'DONE' || req.body?.status === 'OPEN') {
+    if ((req.body?.status === 'DONE' || req.body?.status === 'OPEN') && taskRules.canSetStatus(existing, ctx)) {
       data.status = req.body.status
       data.doneAt = req.body.status === 'DONE' ? new Date() : null
       if (req.body.status === 'DONE' && !existing.seenAt) data.seenAt = new Date()
@@ -1731,9 +1742,14 @@ router.patch('/:orgId/tasks/:id', memberActionLimiter, authMiddleware, requireOr
   }
 })
 
-router.delete('/:orgId/tasks/:id', memberActionLimiter, authMiddleware, requireOrgRole(['OWNER', 'ADMIN']), async (req, res) => {
+router.delete('/:orgId/tasks/:id', memberActionLimiter, authMiddleware, requireOrgRole(['OWNER', 'ADMIN', 'MEMBER']), async (req, res) => {
   try {
-    const deleted = await prisma.orgTask.deleteMany({ where: { id: req.params.id, orgId: req.params.orgId } })
+    // 3.7.3: an employee may withdraw his own open request
+    const existing = await prisma.orgTask.findFirst({ where: { id: req.params.id, orgId: req.params.orgId } })
+    if (!existing || !taskRules.canSee(existing, taskCtx(req)) || !taskRules.canDelete(existing, taskCtx(req))) {
+      return res.status(404).json({ success: false, error: 'Задача не найдена' })
+    }
+    const deleted = await prisma.orgTask.deleteMany({ where: { id: existing.id, orgId: req.params.orgId } })
     if (deleted.count === 0) return res.status(404).json({ success: false, error: 'Задача не найдена' })
     await logOrgAudit(req.params.orgId, req.user.id, 'task.delete', null)
     res.json({ success: true })

@@ -46,6 +46,7 @@ const CAPTIONS = {
     'SyntaxAI': ['Много нейросетей', 'Many AI models'],
     'Алиса': ['Голосовой ассистент', 'Voice assistant'],
     'Алиса PRO': ['Нейросеть Яндекса', 'Yandex AI'],
+    'Алиса для бизнеса': ['Рабочий ИИ Яндекс 360', 'Yandex 360 work AI'],
     'Google Meet': ['Видеовстречи Google', 'Google video calls'],
     'Microsoft Teams': ['Встречи и чаты', 'Meetings and chats'],
     'Webex': ['Видеоконференции', 'Video conferencing'],

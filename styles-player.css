@@ -81,3 +81,16 @@
 @media (prefers-reduced-motion: reduce) {
     .mp-card, .mp-btn, .mp-range::-webkit-slider-thumb { transition: none; }
 }
+
+/* ── 3.7.3: team tasks both ways (renderer/team-tasks.js, renderer/team-task-groups.js) ── */
+.team-tasks-group { margin: 12px 0 4px; font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--text-secondary); }
+.team-tasks-group:first-of-type { margin-top: 4px; }
+.team-task-state { flex-shrink: 0; width: 13px; height: 13px; margin-top: 3px; border-radius: 50%; border: 1.5px dashed var(--text-muted); }
+.team-task-state.is-done { border: 0; background: var(--accent); box-shadow: inset 0 0 0 3px var(--bg-hover); }
+.team-task-status { padding: 0 6px; border-radius: 999px; background: color-mix(in srgb, #f59e0b 16%, transparent); color: #d97706; font-weight: 600; }
+.team-task-status.is-done { background: color-mix(in srgb, #22c55e 16%, transparent); color: #16a34a; }
+.team-task-actions { display: flex; align-items: center; gap: 12px; }
+.team-task-actions .team-task-comments-btn { margin-top: 6px; }
+.team-task-withdraw { margin-top: 6px; padding: 0; border: 0; background: none; color: var(--text-muted); font: inherit; font-size: 11.5px; cursor: pointer; }
+.team-task-withdraw:hover { color: var(--danger, #ef4444); text-decoration: underline; }
+.team-task-withdraw:disabled { opacity: .5; cursor: wait; }

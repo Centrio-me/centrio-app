@@ -313,6 +313,10 @@ function registerApiIpc() {
         return wrapApi(() => api.orgUpdateTask(token, String(orgId || ''), String(taskId || ''), { status, comment }))
     })
 
+    ipcMain.handle('api-org-delete-task', async (event, token, orgId, taskId) => {
+        return wrapApi(() => api.orgDeleteTask(token, String(orgId || ''), String(taskId || '')))
+    })
+
     ipcMain.handle('api-org-get-my-structure', async (event, token, orgId) => {
         return wrapApi(() => api.orgGetMyStructure(token, String(orgId || '')))
     })

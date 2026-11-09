@@ -17,6 +17,7 @@ const { showTeamNotice } = require('./renderer/team-toast')
 const { getFocusedMessengerId, getVisibleMessengerIds } = require('./renderer/focused-messenger')
 const { paintTitlebar } = require('./renderer/titlebar-tabs')
 const { createTaskCalendar } = require('./renderer/task-calendar')
+const { defaultVpnFor } = require('./shared/vpn-default')
 const { popularMessengers, syntaxAiPromo, folderIcons, PAGE_SIZE, isChatWidgetMessenger } = require('./renderer/constants')
 const { createCloudStore, createCloudApi } = require('./renderer/cloud')
 const { createSoundsApi } = require('./renderer/sounds')
@@ -2712,7 +2713,9 @@ function applyTabZoom(level) {
         // The sidebar icon reads the per-app VPN mode from the renderer store when it is created, so the
         // choice made in the add dialog ("Без VPN") must be there BEFORE the item is drawn; the IPC call below
         // only persists it in the main process and applies the proxy.
-        store.set('vpnAppModes', { ...(store.get('vpnAppModes', {}) || {}), [id]: options.vpn !== false })
+        // 3.7.3: without an explicit choice a Russian service goes without the VPN (shared/vpn-default.js)
+        const useVpn = typeof options.vpn === 'boolean' ? options.vpn : defaultVpnFor(newMessenger.url)
+        store.set('vpnAppModes', { ...(store.get('vpnAppModes', {}) || {}), [id]: useVpn })
 
         if (isChatWidgetMessenger(newMessenger)) {
             state.activeMessengers.unshift(newMessenger)
@@ -2757,7 +2760,7 @@ function applyTabZoom(level) {
         // elsewhere) and — critically — applies the real proxy immediately
         // if VPN is currently connected. When VPN isn't active this is a
         // harmless no-op that just persists the default mode.
-        invokeIpc('vpn-set-app-vpn', id, options.vpn !== false).catch(() => {})
+        invokeIpc('vpn-set-app-vpn', id, useVpn).catch(() => {})
 
         track('messenger_added', { first: state.activeMessengers.length === 1 })
         reachMilestone('service')

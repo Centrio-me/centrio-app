@@ -465,6 +465,10 @@ module.exports = {
     orgUpdateTask(token, orgId, taskId, patch) {
         return request('PATCH', `/api/org/${encodeURIComponent(orgId)}/tasks/${encodeURIComponent(taskId)}`, patch, token)
     },
+    // 3.7.3: an employee withdraws his own open request (a manager deletes any task)
+    orgDeleteTask(token, orgId, taskId) {
+        return request('DELETE', `/api/org/${encodeURIComponent(orgId)}/tasks/${encodeURIComponent(taskId)}`, null, token)
+    },
     orgGetMyStructure(token, orgId) {
         return request('GET', `/api/org/${encodeURIComponent(orgId)}/my-structure`, null, token)
     },

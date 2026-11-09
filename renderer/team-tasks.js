@@ -12,6 +12,8 @@
 //
 // Data comes from renderer/org-team.js (setTasks); this module only renders
 // and talks to the API through the same authorizedInvoke wrapper.
+const { groupTeamTasks, canToggle, canWithdraw, assignTargets } = require('./team-task-groups')
+
 const ANNOUNCED_KEY = 'centrio-team-tasks-announced'
 const COMMENTS_SEEN_KEY = 'centrio-team-task-comments-seen'
 const COMMENTS_ANNOUNCED_KEY = 'centrio-team-task-comments-announced'
@@ -46,6 +48,29 @@ function createTeamTasksUi({ authorizedInvoke, cloudStore, tGet, playSound, noti
         let text = tGet(`teamTasks.${key}`) || fallback
         for (const [k, v] of Object.entries(params || {})) text = text.replace(`{${k}}`, v)
         return text
+    }
+
+    const GROUP_TITLES = { forMe: 'От руководителя', myRequests: 'Мои запросы руководителю', fromTeam: 'От сотрудников', toTeam: 'Задачи сотрудникам' }
+    // 3.7.3 strings live under v373.teamTasks
+    const tx = (key, fallback, params) => {
+        let text = tGet(`v373.teamTasks.${key}`) || fallback
+        for (const [k, v] of Object.entries(params || {})) text = text.replace(`{${k}}`, v)
+        return text
+    }
+    function meCtx() {
+        const { userId, role } = getOrgContext()
+        return { userId, manager: role === 'OWNER' || role === 'ADMIN' }
+    }
+
+    async function withdrawTask(task, button) {
+        const { orgId } = getOrgContext()
+        if (!orgId) return
+        button.disabled = true
+        try {
+            const result = await authorizedInvoke('api-org-delete-task', orgId, task.id)
+            if (!(result?.success && result.data?.success)) { button.disabled = false; return }
+        } catch { button.disabled = false; return }
+        await refresh()
     }
 
     function getOrgContext() {
@@ -88,7 +113,9 @@ function createTeamTasksUi({ authorizedInvoke, cloudStore, tGet, playSound, noti
 
     function relevantTasks() {
         const { role } = getOrgContext()
-        return role === 'OWNER' || role === 'ADMIN' ? tasks : mine(tasks)
+        const { userId } = getOrgContext()
+        // 3.7.3: an employee also follows comments on the requests he sent to a manager
+        return role === 'OWNER' || role === 'ADMIN' ? tasks : tasks.filter((x) => x.assigneeId === userId || x.createdById === userId)
     }
 
     function unreadCommentTasks() {
@@ -224,7 +251,7 @@ function createTeamTasksUi({ authorizedInvoke, cloudStore, tGet, playSound, noti
         const send = el('button', 'team-comment-send', t('send', 'Отправить'))
         send.type = 'submit'
         actions.appendChild(send)
-        if (task.status === 'OPEN') {
+        if (task.status === 'OPEN' && canToggle(task, meCtx())) {
             const done = el('button', 'team-comment-done', t('markDone', 'Выполнено'))
             done.type = 'button'
             done.title = t('markDoneHint', 'Отметить выполненной и приложить комментарий')
@@ -249,12 +276,17 @@ function createTeamTasksUi({ authorizedInvoke, cloudStore, tGet, playSound, noti
     function renderTask(task, manager) {
         const isNew = !task.seenAt && task.assigneeId === getOrgContext().userId
         const row = el('div', `team-task${task.status === 'DONE' ? ' is-done' : ''}${isNew ? ' is-new' : ''}`)
-        const check = el('input', 'team-task-check')
-        check.type = 'checkbox'
-        check.checked = task.status === 'DONE'
-        check.setAttribute('aria-label', t('done', 'Выполнено'))
-        check.addEventListener('change', () => toggle(task, check.checked))
-        row.appendChild(check)
+        if (canToggle(task, meCtx())) {
+            const check = el('input', 'team-task-check')
+            check.type = 'checkbox'
+            check.checked = task.status === 'DONE'
+            check.setAttribute('aria-label', t('done', 'Выполнено'))
+            check.addEventListener('change', () => toggle(task, check.checked))
+            row.appendChild(check)
+        } else {
+            // a request the employee sent: its state, not a checkbox (only the manager closes it)
+            row.appendChild(el('span', `team-task-state${task.status === 'DONE' ? ' is-done' : ''}`))
+        }
 
         const body = el('div', 'team-task-body')
         body.appendChild(el('div', 'team-task-title', task.title))
@@ -262,10 +294,14 @@ function createTeamTasksUi({ authorizedInvoke, cloudStore, tGet, playSound, noti
         const meta = el('div', 'team-task-meta')
         if (task.priority === 'HIGH') meta.appendChild(el('span', 'team-task-high', t('high', 'Срочно')))
         if (task.dueAt) meta.appendChild(el('span', 'team-task-due', t('due', 'до {date}', { date: formatDue(task.dueAt) })))
-        const who = manager && task.assigneeId !== getOrgContext().userId
+        const who = task.assigneeId !== getOrgContext().userId
             ? t('to', 'для {name}', { name: task.assigneeName })
             : t('from', 'от {name}', { name: task.createdByName })
         meta.appendChild(el('span', 'team-task-who', who))
+        if (!canToggle(task, meCtx())) {
+            const done = task.status === 'DONE'
+            meta.appendChild(el('span', `team-task-status${done ? ' is-done' : ''}`, done ? tx('requestDone', 'Выполнено') : tx('requestWaiting', 'Ждёт ответа')))
+        }
         body.appendChild(meta)
 
         const toggleBtn = el('button', `team-task-comments-btn${hasUnreadComment(task) ? ' has-new' : ''}`)
@@ -276,7 +312,15 @@ function createTeamTasksUi({ authorizedInvoke, cloudStore, tGet, playSound, noti
             ? t('commentsCount', 'Комментарии ({n})', { n: count })
             : t('comment', 'Комментировать')
         toggleBtn.addEventListener('click', () => toggleThread(task))
-        body.appendChild(toggleBtn)
+        const actionsRow = el('div', 'team-task-actions')
+        actionsRow.appendChild(toggleBtn)
+        if (canWithdraw(task, meCtx())) {
+            const withdraw = el('button', 'team-task-withdraw', tx('withdraw', 'Отозвать'))
+            withdraw.type = 'button'
+            withdraw.addEventListener('click', () => withdrawTask(task, withdraw))
+            actionsRow.appendChild(withdraw)
+        }
+        body.appendChild(actionsRow)
         if (expanded.has(task.id)) body.appendChild(renderThread(task))
 
         row.appendChild(body)
@@ -287,8 +331,7 @@ function createTeamTasksUi({ authorizedInvoke, cloudStore, tGet, playSound, noti
         const form = el('form', 'team-task-form')
         const select = el('select', 'team-task-select')
         select.setAttribute('aria-label', t('assignee', 'Кому'))
-        const { userId } = getOrgContext()
-        members.filter((m) => m.userId !== userId).forEach((m) => {
+        assignTargets(members, meCtx()).forEach((m) => {
             const option = el('option', '', m.name || m.email || '—')
             option.value = m.userId
             select.appendChild(option)
@@ -296,7 +339,7 @@ function createTeamTasksUi({ authorizedInvoke, cloudStore, tGet, playSound, noti
         const input = el('input', 'team-task-input')
         input.type = 'text'
         input.maxLength = 160
-        input.placeholder = t('placeholder', 'Что нужно сделать?')
+        input.placeholder = meCtx().manager ? t('placeholder', 'Что нужно сделать?') : tx('requestPlaceholder', 'Попросить руководителя: посмотреть договор, согласовать…')
         form.append(select, input)
         form.addEventListener('submit', async (event) => {
             event.preventDefault()
@@ -326,38 +369,49 @@ function createTeamTasksUi({ authorizedInvoke, cloudStore, tGet, playSound, noti
     function render() {
         const { role } = getOrgContext()
         const manager = role === 'OWNER' || role === 'ADMIN'
-        const visible = manager ? tasks : mine(tasks)
+        const visible = relevantTasks()
         // Keep a half-typed comment/task when a background refresh re-renders.
         const drafts = [...box.querySelectorAll('textarea.team-comment-input')].map((node) => node.value)
         const focusedThread = document.activeElement?.classList?.contains('team-comment-input')
         box.textContent = ''
-        if (!role || (!manager && visible.length === 0)) { box.style.display = 'none'; return }
+        const canSend = assignTargets(members, meCtx()).length > 0
+        if (!role || (visible.length === 0 && !canSend)) { box.style.display = 'none'; return }
 
         box.style.display = ''
-        box.appendChild(el('div', 'team-tasks-title', t('title', 'От руководителя')))
-        if (manager && members.length > 1) box.appendChild(renderForm())
-        const open = visible.filter((x) => x.status === 'OPEN')
-        const done = visible.filter((x) => x.status === 'DONE').slice(0, VISIBLE_DONE)
-        if (open.length === 0 && done.length === 0) box.appendChild(el('div', 'team-tasks-empty', t('empty', 'Пока нет задач от руководителя')))
-        open.forEach((x) => box.appendChild(renderTask(x, manager)))
-        if (done.length) {
-            box.appendChild(el('div', 'team-tasks-sub', t('doneSection', 'Выполненные')))
-            done.forEach((x) => box.appendChild(renderTask(x, manager)))
+        box.appendChild(el('div', 'team-tasks-title', manager ? tx('teamTitle', 'Задачи команды') : t('title', 'От руководителя')))
+        if (canSend) box.appendChild(renderForm())
+        // 3.7.3: tasks go both ways, shown in groups (renderer/team-task-groups.js)
+        const groups = groupTeamTasks(visible, meCtx())
+        if (!groups.length) {
+            box.appendChild(el('div', 'team-tasks-empty', manager
+                ? t('empty', 'Пока нет задач от руководителя')
+                : tx('emptyMember', 'Задач пока нет. Если нужно, чтобы руководитель что-то посмотрел или согласовал, напишите выше.')))
         }
+        groups.forEach((group) => {
+            if (groups.length > 1 || group.key !== 'forMe') box.appendChild(el('div', 'team-tasks-group', tx(`group_${group.key}`, GROUP_TITLES[group.key])))
+            const open = group.items.filter((x) => x.status === 'OPEN')
+            const done = group.items.filter((x) => x.status === 'DONE').slice(0, VISIBLE_DONE)
+            open.forEach((x) => box.appendChild(renderTask(x, manager)))
+            if (done.length) {
+                box.appendChild(el('div', 'team-tasks-sub', t('doneSection', 'Выполненные')))
+                done.forEach((x) => box.appendChild(renderTask(x, manager)))
+            }
+        })
         const inputs = box.querySelectorAll('textarea.team-comment-input')
         drafts.forEach((value, index) => { if (inputs[index] && value) inputs[index].value = value })
         if (focusedThread && inputs[0]) inputs[0].focus()
     }
 
     async function loadMembers(orgId, role) {
-        if (!(role === 'OWNER' || role === 'ADMIN') || members.length) return
+        // 3.7.3: an employee needs the list too — to pick a manager for a request
+        if (!role || members.length) return
         try {
             const list = unwrap(await authorizedInvoke('api-org-get-members', orgId))
             const raw = Array.isArray(list) ? list : list?.members
             if (Array.isArray(raw)) {
                 members = raw
                     .filter((m) => m.userId || m.user?.id)
-                    .map((m) => ({ userId: m.userId || m.user.id, name: m.user?.name || m.name, email: m.user?.email || m.email }))
+                    .map((m) => ({ userId: m.userId || m.user.id, name: m.user?.name || m.name, email: m.user?.email || m.email, role: m.role || null }))
             }
         } catch {}
     }

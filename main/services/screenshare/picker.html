@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src data:">
+<title>Centrio</title>
+<style>
+    @font-face { font-family: 'Geist'; font-weight: 100 900; src: url('../../../assets/fonts/site/geist-latin.woff2') format('woff2'); unicode-range: U+0000-00FF, U+0131, U+2000-206F; }
+    @font-face { font-family: 'Geist'; font-weight: 100 900; src: url('../../../assets/fonts/site/geist-cyrillic.woff2') format('woff2'); unicode-range: U+0301, U+0400-045F, U+0490-0491, U+2116; }
+    :root {
+        --bg: #141416; --card: #1c1c20; --card-hover: #232328; --line: rgba(255, 255, 255, .08); --text: #f2f2f4; --muted: #8e8e98;
+        --accent: #6366f1; --accent-soft: rgba(99, 102, 241, .18);
+        color-scheme: dark;
+    }
+    :root[data-theme="light"] {
+        --bg: #f6f6f8; --card: #ffffff; --card-hover: #f0f0f4; --line: rgba(0, 0, 0, .08); --text: #17171c; --muted: #6b6b76;
+        --accent: #5b4bff; --accent-soft: rgba(91, 75, 255, .12);
+        color-scheme: light;
+    }
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+    html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font-family: Geist, 'Segoe UI', Arial, sans-serif; }
+    body { display: flex; flex-direction: column; border: 1px solid var(--line); }
+    header { display: flex; align-items: center; gap: 12px; padding: 18px 22px 12px; -webkit-app-region: drag; }
+    header .ttl { flex: 1; min-width: 0; }
+    header h1 { margin: 0; font-size: 17px; font-weight: 750; letter-spacing: -.02em; }
+    header p { margin: 3px 0 0; font-size: 12.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .x { -webkit-app-region: no-drag; width: 30px; height: 30px; border: 0; border-radius: 8px; background: none; color: var(--muted); cursor: pointer; font-size: 18px; line-height: 1; }
+    .x:hover { background: var(--card-hover); color: var(--text); }
+    .tabs { display: flex; gap: 4px; margin: 0 22px; padding: 3px; border-radius: 10px; background: var(--card); border: 1px solid var(--line); align-self: flex-start; }
+    .tabs button { height: 30px; padding: 0 14px; border: 0; border-radius: 7px; background: none; color: var(--muted); font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; }
+    .tabs button.on { background: var(--accent); color: #fff; }
+    .grid { flex: 1; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; padding: 14px 22px; align-content: start; }
+    .item { display: flex; flex-direction: column; gap: 8px; padding: 8px; border-radius: 12px; border: 2px solid transparent; background: var(--card); cursor: pointer; text-align: left; font: inherit; color: inherit; transition: border-color .15s, background .15s; }
+    .item:hover { background: var(--card-hover); }
+    .item.on { border-color: var(--accent); background: var(--accent-soft); }
+    .item:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .shot { width: 100%; aspect-ratio: 16 / 9; border-radius: 8px; background: #000; object-fit: contain; display: block; }
+    .name { display: flex; align-items: center; gap: 7px; font-size: 12.5px; font-weight: 600; min-width: 0; }
+    .name img { width: 16px; height: 16px; flex-shrink: 0; }
+    .name span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .empty { grid-column: 1 / -1; padding: 40px 0; text-align: center; color: var(--muted); font-size: 13px; }
+    footer { display: flex; align-items: center; gap: 10px; padding: 14px 22px 18px; border-top: 1px solid var(--line); }
+    .sound { display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--muted); cursor: pointer; flex: 1; }
+    .sound input { width: 16px; height: 16px; accent-color: var(--accent); }
+    .btn { height: 36px; padding: 0 18px; border-radius: 9px; border: 1px solid var(--line); background: var(--card); color: var(--text); font: inherit; font-size: 13px; font-weight: 650; cursor: pointer; }
+    .btn:hover { background: var(--card-hover); }
+    .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .btn.primary:disabled { opacity: .45; cursor: default; }
+</style>
+</head>
+<body>
+    <header>
+        <div class="ttl"><h1 id="title"></h1><p id="site"></p></div>
+        <button class="x" id="close" aria-label="Close">✕</button>
+    </header>
+    <div class="tabs" role="tablist">
+        <button id="tabScreens" class="on" role="tab"></button>
+        <button id="tabWindows" role="tab"></button>
+    </div>
+    <div class="grid" id="grid" role="listbox"></div>
+    <footer>
+        <label class="sound" id="soundRow" hidden><input type="checkbox" id="sound"><span id="soundText"></span></label>
+        <span style="flex:1" id="spacer"></span>
+        <button class="btn" id="cancel"></button>
+        <button class="btn primary" id="share" disabled></button>
+    </footer>
+    <script src="picker.js"></script>
+</body>
+</html>

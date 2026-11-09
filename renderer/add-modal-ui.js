@@ -10,6 +10,7 @@
 // (--tile-glow), the SyntaxAI promo is the first entry of the AI category and
 // the popular items are shown both under "Популярные" and in their own category.
 const { getCaption } = require('./add-modal-catalog')
+const { defaultVpnFor } = require('../shared/vpn-default')
 
 const CATEGORY_ORDER = ['messengers', 'mail', 'productivity', 'ai', 'media', 'documents', 'calls']
 const CATEGORY_LABEL_KEYS = {
@@ -298,7 +299,7 @@ function createAddModalUiApi({
     // ---- side card --------------------------------------------------------
     function selectMessenger(messenger) {
         ui.selected = messenger
-        ui.options = { name: messenger.name, folderId: '', vpn: true }
+        ui.options = { name: messenger.name, folderId: '', vpn: defaultVpnFor(messenger.url) }
         renderSide()
         fillMessengerGrid()
     }
@@ -389,7 +390,7 @@ function createAddModalUiApi({
     async function commit(messenger, { keepOpen, quick = false }) {
         if (messenger.custom && requirePro && !requirePro('customMessenger')) return
         const options = quick
-            ? { name: messenger.name, folderId: '', vpn: true }
+            ? { name: messenger.name, folderId: '', vpn: defaultVpnFor(messenger.url) }
             : { ...ui.options, name: (ui.options.name || '').trim() || messenger.name }
         const payload = { ...messenger }
         delete payload.custom

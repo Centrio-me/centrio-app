@@ -81,6 +81,7 @@ function initApp({
         }, FEW_HOURS)
 
         registerShortcuts({ getMainWindow, showMainWindow })
+        require('../services/screenShare').init({ getMainWindow })
 
         // Handle protocol URL passed as CLI arg at startup (Windows + Linux)
         // macOS uses the 'open-url' event instead

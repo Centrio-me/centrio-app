@@ -15,6 +15,7 @@ const {
 const { isOAuthProviderUrl, isYandexInternalSsoHost } = require('../services/oauthProviders')
 const { popularMessengers } = require('../../renderer/constants')
 const { FIND_MEDIA_SOURCE, READ_LEVEL_SOURCE } = require('../../shared/media-elements')
+const { findTabForUrl } = require('../services/linkRouting')
 
 // BUGFIX (2026-09-10, "Яндекс почта попадает в медиалеер всё равно" — live
 // user report, persisted despite the messenger.category === 'media' gate
@@ -2004,6 +2005,17 @@ function registerAppEvents({
                     // processors, "open in new tab" links to another
                     // service) still make sense to hand to the real browser.
                     const messenger = findMessengerRecordForSession(contents.session)
+                    // 3.7.3: a link to another service the person keeps as a tab (Yandex Mail -> Alice) opens in that
+                    // tab, not in a separate window (main/services/linkRouting.js).
+                    if (messenger?.id) {
+                        const target = findTabForUrl(store.get('messengers', []), navUrl, messenger.id)
+                        const mainWin = getMainWindow()
+                        if (target && mainWin && !mainWin.isDestroyed()) {
+                            mainWin.webContents.send('open-link-in-tab', { messengerId: target.id, url: navUrl })
+                            if (!childWindow.isDestroyed()) childWindow.destroy()
+                            return
+                        }
+                    }
                     if (messenger?.url) {
                         try {
                             if (baseDomain(new URL(navUrl).hostname) === baseDomain(new URL(messenger.url).hostname)) {
@@ -2191,6 +2203,8 @@ function registerAppEvents({
                         if (typeof guestSession.setPermissionCheckHandler === 'function') {
                             guestSession.setPermissionCheckHandler((_webContents, permission) => ALLOWED_PERMISSIONS.has(permission))
                         }
+                        // 3.7.3: screen sharing in calls (Telemost, Meet, Zoom) — Centrio's own picker (main/services/screenShare.js)
+                        require('../services/screenShare').attach(guestSession)
 
                         // BUGFIX (2026-08-26): a session-level Firefox
                         // User-Agent override for accounts.google.* used to be

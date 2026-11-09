@@ -154,6 +154,20 @@ function bindWindowUi({
     // 3.7.3: the notification centre (bell) opens a messenger the same way as a pop-up notification
     // (stays in the split, or the preset / own window chosen for it) — renderer/app-notif-bind.js
     window.__centrioOpenForNotification = openForNotification
+
+    // 3.7.3: another service asked to open a link that belongs to a tab the person already has (Yandex Mail -> Alice):
+    // that tab comes to the front and opens it. The main process found the tab by its exact host; checked here again.
+    ipcRenderer.on('open-link-in-tab', (payload) => {
+        const messengerId = payload && payload.messengerId
+        const url = payload && payload.url
+        const messenger = (state.activeMessengers || []).find((m) => m.id === messengerId)
+        if (!messenger || typeof url !== 'string') return
+        const host = (raw) => { try { const u = new URL(raw); return /^https?:$/.test(u.protocol) ? u.hostname.replace(/^www\./, '') : '' } catch { return '' } }
+        if (!host(url) || host(url) !== host(messenger.url)) return
+        openForNotification(messengerId)
+        const webview = document.getElementById(`webview-${messengerId}`)
+        if (webview && typeof webview.loadURL === 'function') webview.loadURL(url).catch(() => {})
+    })
 }
 
 module.exports = {
