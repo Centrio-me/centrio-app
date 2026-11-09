@@ -1,4 +1,5 @@
 const { setCurrentLanguage, getCurrentLanguage } = require('./i18n')
+const { applyThemeFx } = require('./theme-fx-layer')
 
 // ── Adaptive Theme ────────────────────────────────────────────────────────────
 let _adaptiveActive = false
@@ -243,7 +244,9 @@ function createSettingsUiApi({
         if (!_adaptiveActive) {
             _clearAdaptiveVars()
         }
-        root.setAttribute('data-theme', effectiveTheme)
+        // 3.7.3: «Аврора» and «Время суток» ride on a base theme (renderer/theme-fx-layer.js); when the time of day
+        // moves on, the same theme is applied again and lands on its new base
+        root.setAttribute('data-theme', applyThemeFx(effectiveTheme, () => applyTheme(theme)))
 
         const settings = getSettings()
         if (settings.accentColor && effectiveTheme !== 'adaptive') {

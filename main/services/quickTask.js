@@ -1,3 +1,4 @@
+const { resolveTheme } = require('../../shared/theme-fx')
 // Quick task (3.7.2): a global shortcut opens a small input over every window, wherever the person is working.
 // The typed text is parsed Todoist-style (shared/task-parse.js: "Отчёт завтра !1") and sent to the main window,
 // which stores it with the other tasks (renderer/todos-bind.js) — tasks have one home and one sync path.
@@ -47,7 +48,7 @@ function describe(text) {
 }
 
 function createWindow() {
-    const dark = (store.get('settings', {}) || {}).theme !== 'light'
+    const dark = resolveTheme((store.get('settings', {}) || {}).theme, new Date().getHours()).base !== 'light'
     win = new BrowserWindow({
         width: WIDTH,
         height: HEIGHT,

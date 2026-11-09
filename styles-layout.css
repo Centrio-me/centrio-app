@@ -1870,8 +1870,18 @@
     box-shadow: 0 0 16px currentColor;
 }
 
+/* 3.7.3 ("кружок разных цветов нужно увести в пастельные цвета и сделать, чтобы не выглядело как квадрат внутри
+   круга"): soft pastel hues that melt into a light centre, like a real colour wheel. The saturated conic used to
+   show hard straight seams at the centre that read as a square; the soft centre has no seams at all. */
 .accent-custom {
-    background: conic-gradient(#f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00) !important;
+    background:
+        radial-gradient(circle closest-side, rgba(255, 255, 255, .92), rgba(255, 255, 255, .35) 55%, rgba(255, 255, 255, 0) 100%),
+        conic-gradient(from 0deg, #ffb3ba, #ffdfba, #fff6ba, #baffc9, #bae1ff, #c9baff, #ffbaf0, #ffb3ba) !important;
+    /* the real cause of the square: the picture was laid out over the inner box only and tiled again into the
+       transparent 2px border around it — now it covers the whole circle once */
+    background-origin: border-box !important;
+    background-clip: border-box !important;
+    background-repeat: no-repeat !important;
     border-radius: 50% !important;
 }
 .accent-custom.has-color {

@@ -38,7 +38,11 @@ module.exports = {
             "embedded": "Одна поверхность, мессенджер как окно",
             "dock": "Стеклянная панель со свечением",
             "light": "Светлое оформление",
-            "adaptive": "Цвет открытого мессенджера"
+            "adaptive": "Цвет открытого мессенджера",
+            "auroraName": "Аврора",
+            "aurora": "Северное сияние за стеклом",
+            "daytimeName": "Время суток",
+            "daytime": "Утро, день, вечер и ночь сами"
         }
     },
     "en": {
@@ -78,7 +82,11 @@ module.exports = {
             "embedded": "One surface, the messenger as a window",
             "dock": "A glass dock with a glow",
             "light": "Light look",
-            "adaptive": "The colour of the open messenger"
+            "adaptive": "The colour of the open messenger",
+            "auroraName": "Aurora",
+            "aurora": "Northern lights behind glass",
+            "daytimeName": "Time of day",
+            "daytime": "Morning, day, evening and night on their own"
         }
     },
     "de": {
@@ -118,7 +126,11 @@ module.exports = {
             "embedded": "Eine Fläche, der Messenger als Fenster",
             "dock": "Gläserne Leiste mit Leuchten",
             "light": "Helles Design",
-            "adaptive": "Die Farbe des offenen Messengers"
+            "adaptive": "Die Farbe des offenen Messengers",
+            "auroraName": "Aurora",
+            "aurora": "Polarlicht hinter Glas",
+            "daytimeName": "Tageszeit",
+            "daytime": "Morgen, Tag, Abend und Nacht von selbst"
         }
     },
     "es": {
@@ -158,7 +170,11 @@ module.exports = {
             "embedded": "Una sola superficie, el mensajero como ventana",
             "dock": "Barra de cristal con brillo",
             "light": "Aspecto claro",
-            "adaptive": "El color del mensajero abierto"
+            "adaptive": "El color del mensajero abierto",
+            "auroraName": "Aurora",
+            "aurora": "Aurora boreal tras el cristal",
+            "daytimeName": "Hora del día",
+            "daytime": "Mañana, día, tarde y noche solos"
         }
     },
     "fr": {
@@ -198,7 +214,11 @@ module.exports = {
             "embedded": "Une seule surface, la messagerie en fenêtre",
             "dock": "Barre de verre lumineuse",
             "light": "Apparence claire",
-            "adaptive": "La couleur de la messagerie ouverte"
+            "adaptive": "La couleur de la messagerie ouverte",
+            "auroraName": "Aurore",
+            "aurora": "Aurore boréale derrière le verre",
+            "daytimeName": "Moment de la journée",
+            "daytime": "Matin, jour, soir et nuit tout seuls"
         }
     },
     "it": {
@@ -238,7 +258,11 @@ module.exports = {
             "embedded": "Un’unica superficie, il messenger come finestra",
             "dock": "Barra di vetro luminosa",
             "light": "Aspetto chiaro",
-            "adaptive": "Il colore del messenger aperto"
+            "adaptive": "Il colore del messenger aperto",
+            "auroraName": "Aurora",
+            "aurora": "Aurora boreale dietro il vetro",
+            "daytimeName": "Ora del giorno",
+            "daytime": "Mattina, giorno, sera e notte da soli"
         }
     },
     "zh": {
@@ -278,7 +302,11 @@ module.exports = {
             "embedded": "整体界面，聊天工具如窗口",
             "dock": "带光晕的玻璃侧栏",
             "light": "浅色外观",
-            "adaptive": "采用当前聊天工具的颜色"
+            "adaptive": "采用当前聊天工具的颜色",
+            "auroraName": "极光",
+            "aurora": "玻璃后的北极光",
+            "daytimeName": "昼夜",
+            "daytime": "早晨、白天、傍晚和夜晚自动切换"
         }
     }
 }

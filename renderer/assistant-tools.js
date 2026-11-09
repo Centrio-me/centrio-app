@@ -35,7 +35,7 @@ const SETTINGS_SECTIONS = [
 // (index.html: .theme-item/.density-item/#settingCloseBehavior/...), чтобы
 // модель не могла записать в store значение, не поддерживаемое интерфейсом.
 const SETTINGS_SCHEMA = {
-    theme: { kind: 'enum', values: ['embedded', 'dock', 'light', 'adaptive'] },
+    theme: { kind: 'enum', values: ['embedded', 'dock', 'light', 'adaptive', 'aurora', 'daytime'] },
     density: { kind: 'enum', values: ['compact', 'normal', 'comfortable'] },
     closeBehavior: { kind: 'enum', values: ['tray', 'minimize', 'quit'] },
     language: { kind: 'enum', values: ['ru', 'en', 'de', 'es', 'fr', 'it', 'zh'] },

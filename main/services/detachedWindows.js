@@ -1,3 +1,4 @@
+const { resolveTheme } = require('../../shared/theme-fx')
 // Messengers that live in their own window ("Открыть в отдельном окне" in the sidebar context menu).
 //
 // The window is a small frameless host (main/services/detached/detachedWindow.html) with our own title bar and one
@@ -161,7 +162,7 @@ function buildInitData(entry) {
         preloadUrl: require('../ipc/api').getWebviewPreloadPath(),
         userAgent,
         accent: settings.accentColor || '#7b68ee',
-        theme: settings.theme === 'light' ? 'light' : 'dark',
+        theme: resolveTheme(settings.theme, new Date().getHours()).base === 'light' ? 'light' : 'dark',
         strings,
         state: stateFor(entry)
     }

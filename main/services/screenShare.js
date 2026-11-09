@@ -1,3 +1,4 @@
+const { resolveTheme } = require('../../shared/theme-fx')
 // Screen sharing in calls (3.7.3): Telemost, Google Meet, Zoom and others call getDisplayMedia(), which Electron
 // answers "Not supported" unless the app offers screens and windows itself. Centrio shows its own picker (screens,
 // windows with previews, the sound of the computer on Windows) and gives the page only what the person picked.
@@ -48,7 +49,7 @@ function ownerFor() {
 
 function openPicker(items, site, owner, requester) {
     return new Promise((resolve) => {
-        const dark = (store.get('settings', {}) || {}).theme !== 'light'
+        const dark = resolveTheme((store.get('settings', {}) || {}).theme, new Date().getHours()).base !== 'light'
         let win = null
         let timer = null
         let settled = false
