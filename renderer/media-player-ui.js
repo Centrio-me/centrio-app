@@ -380,6 +380,9 @@ function createMediaPlayerUiApi({ state, tGet, switchTab, mediaPlayerBtn }) {
         mute.addEventListener('click', (e) => { e.stopPropagation(); toggleMute(id) })
         range.addEventListener('pointerdown', () => { card.dataset.dragging = '1' })
         range.addEventListener('pointerup', () => { delete card.dataset.dragging })
+        // released outside the slider or interrupted: the poll may move it again
+        range.addEventListener('pointercancel', () => { delete card.dataset.dragging })
+        range.addEventListener('lostpointercapture', () => { delete card.dataset.dragging })
         range.addEventListener('input', () => {
             const level = Number(range.value) / 100
             setVolume(id, level)

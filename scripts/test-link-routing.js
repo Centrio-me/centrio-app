@@ -33,3 +33,22 @@ test('only http(s) links and well-formed tabs are considered', () => {
     assert.equal(findTabForUrl([{ id: 'x', url: 'not a url' }], 'https://alice.yandex.ru/', 'mail'), null)
     assert.equal(findTabForUrl(null, 'https://alice.yandex.ru/', 'mail'), null)
 })
+
+// ── review fixes ──
+const opener = { id: 'mail1', url: 'https://mail.yandex.ru/' }
+const multi = [opener, { id: 'mail2', url: 'https://mail.yandex.ru/?uid=2' }, { id: 'alice', url: 'https://alice.yandex.ru/' }]
+
+test('a link to the opener\'s own site is never sent to another account\'s tab', () => {
+    assert.equal(findTabForUrl(multi, 'https://mail.yandex.ru/compose', 'mail1', opener.url), null)
+})
+
+test('two tabs of the target site: nothing is guessed', () => {
+    const two = [opener, { id: 'a1', url: 'https://alice.yandex.ru/' }, { id: 'a2', url: 'https://alice.yandex.ru/' }]
+    assert.equal(findTabForUrl(two, 'https://alice.yandex.ru/chat', 'mail1', opener.url), null)
+})
+
+test('the scheme and port must match the tab: an http link never goes into an https tab', () => {
+    assert.equal(findTabForUrl(multi, 'http://alice.yandex.ru/chat', 'mail1', opener.url), null)
+    assert.equal(findTabForUrl(multi, 'https://alice.yandex.ru:8443/chat', 'mail1', opener.url), null)
+    assert.equal(findTabForUrl(multi, 'https://alice.yandex.ru/chat', 'mail1', opener.url)?.id, 'alice')
+})

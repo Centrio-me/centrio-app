@@ -162,11 +162,23 @@ function bindWindowUi({
         const url = payload && payload.url
         const messenger = (state.activeMessengers || []).find((m) => m.id === messengerId)
         if (!messenger || typeof url !== 'string') return
-        const host = (raw) => { try { const u = new URL(raw); return /^https?:$/.test(u.protocol) ? u.hostname.replace(/^www\./, '') : '' } catch { return '' } }
-        if (!host(url) || host(url) !== host(messenger.url)) return
-        openForNotification(messengerId)
+        // same scheme, host (www ignored) and port as the tab, like main/services/linkRouting.js
+        const key = (raw) => { try { const u = new URL(raw); return /^https?:$/.test(u.protocol) ? `${u.protocol}//${u.hostname.replace(/^www\./, '')}:${u.port}` : '' } catch { return '' } }
+        if (!key(url) || key(url) !== key(messenger.url)) return
+        const openOutside = () => ipcRenderer.send('open-url', url) // the link is never lost
+        const before = document.getElementById(`webview-${messengerId}`)
+        // a call or a video playing in that tab is not interrupted
+        try { if (before && typeof before.isCurrentlyAudible === 'function' && before.isCurrentlyAudible()) { openOutside(); return } } catch {}
+        openForNotification(messengerId) // also wakes a sleeping tab
+        if (state.detachedTabs && state.detachedTabs.has(messengerId)) { openOutside(); return }
         const webview = document.getElementById(`webview-${messengerId}`)
-        if (webview && typeof webview.loadURL === 'function') webview.loadURL(url).catch(() => {})
+        if (!webview || typeof webview.loadURL !== 'function') { openOutside(); return }
+        const load = () => { try { webview.loadURL(url).catch(openOutside) } catch { openOutside() } }
+        // a tab that was asleep is just loading again: open the link once its page is ready
+        let ready = false
+        try { ready = typeof webview.getWebContentsId === 'function' && !!webview.getWebContentsId() && !webview.isLoading() } catch { ready = false }
+        if (ready) load()
+        else webview.addEventListener('dom-ready', load, { once: true })
     })
 }
 

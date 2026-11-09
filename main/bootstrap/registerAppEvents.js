@@ -2008,7 +2008,7 @@ function registerAppEvents({
                     // 3.7.3: a link to another service the person keeps as a tab (Yandex Mail -> Alice) opens in that
                     // tab, not in a separate window (main/services/linkRouting.js).
                     if (messenger?.id) {
-                        const target = findTabForUrl(store.get('messengers', []), navUrl, messenger.id)
+                        const target = findTabForUrl(store.get('messengers', []), navUrl, messenger.id, messenger.url)
                         const mainWin = getMainWindow()
                         if (target && mainWin && !mainWin.isDestroyed()) {
                             mainWin.webContents.send('open-link-in-tab', { messengerId: target.id, url: navUrl })

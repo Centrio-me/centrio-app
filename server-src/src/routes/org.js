@@ -1567,7 +1567,8 @@ function parseTaskBody(body, { partial }) {
 }
 
 const TASK_COMMENT_MAX = 1000
-const TASK_REQUESTS_PER_MEMBER_OPEN = 50
+const TASK_REQUESTS_PER_MEMBER_OPEN = 30
+const TASK_REQUESTS_PER_ORG_OPEN = 300
 const TASK_COMMENTS_PER_TASK = 200
 
 async function decorateTasks(tasks) {
@@ -1672,12 +1673,20 @@ router.post('/:orgId/tasks', memberActionLimiter, authMiddleware, requireOrgRole
     if (!taskRules.canAssign(ctx, { userId: member.userId, role: member.role })) {
       return res.status(403).json({ success: false, error: 'Задачу можно поставить только руководителю' })
     }
+    // Employees' requests and managers' tasks have separate caps, so requests can never block a manager from
+    // assigning work (review 3.7.3).
+    const managerIds = (await prisma.orgMember.findMany({
+      where: { orgId: req.params.orgId, status: 'ACTIVE', role: { in: ['OWNER', 'ADMIN'] } }, select: { userId: true }
+    })).map((m) => m.userId)
     if (!taskRules.isManager(ctx)) {
       const mineOpen = await prisma.orgTask.count({ where: { orgId: req.params.orgId, createdById: ctx.userId, status: 'OPEN' } })
       if (mineOpen >= TASK_REQUESTS_PER_MEMBER_OPEN) return res.status(409).json({ success: false, error: `Максимум ${TASK_REQUESTS_PER_MEMBER_OPEN} открытых запросов` })
+      const requestsOpen = await prisma.orgTask.count({ where: { orgId: req.params.orgId, status: 'OPEN', createdById: { notIn: managerIds } } })
+      if (requestsOpen >= TASK_REQUESTS_PER_ORG_OPEN) return res.status(409).json({ success: false, error: 'В команде слишком много открытых запросов' })
+    } else {
+      const open = await prisma.orgTask.count({ where: { orgId: req.params.orgId, status: 'OPEN', createdById: { in: managerIds } } })
+      if (open >= TASKS_PER_ORG_OPEN) return res.status(409).json({ success: false, error: `Максимум ${TASKS_PER_ORG_OPEN} открытых задач` })
     }
-    const open = await prisma.orgTask.count({ where: { orgId: req.params.orgId, status: 'OPEN' } })
-    if (open >= TASKS_PER_ORG_OPEN) return res.status(409).json({ success: false, error: `Максимум ${TASKS_PER_ORG_OPEN} открытых задач` })
     const task = await prisma.orgTask.create({
       data: { orgId: req.params.orgId, assigneeId, createdById: req.user.id, ...parsed },
       select: TASK_SELECT
@@ -1730,8 +1739,9 @@ router.patch('/:orgId/tasks/:id', memberActionLimiter, authMiddleware, requireOr
       if (req.body.status === 'DONE' && !existing.seenAt) data.seenAt = new Date()
     }
     const task = await prisma.orgTask.update({ where: { id: existing.id }, data, select: TASK_SELECT })
-    const resultNote = req.body?.status === 'DONE' ? sanitizeQuickReplyText(req.body?.comment, TASK_COMMENT_MAX) : ''
-    if (resultNote) {
+    // the result note goes with a status change that was actually applied, and within the comment cap (review 3.7.3)
+    const resultNote = data.status === 'DONE' ? sanitizeQuickReplyText(req.body?.comment, TASK_COMMENT_MAX) : ''
+    if (resultNote && await prisma.orgTaskComment.count({ where: { taskId: existing.id } }) < TASK_COMMENTS_PER_TASK) {
       await prisma.orgTaskComment.create({ data: { taskId: existing.id, authorId: req.user.id, body: resultNote } })
     }
     const [out] = await decorateTasks([task])
