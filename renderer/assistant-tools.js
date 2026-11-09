@@ -93,7 +93,7 @@ function summarizeNote(n) {
     }
 }
 
-function bindAssistantTools({ state, store, tGet, switchTab, openSettings, invokeIpc, authorizedInvoke, getRecentNotifications, searchRecentNotifications, applySettings, mediaPlayerApi, getSplitApi, cloudStore, hasEffectivePro }) {
+function bindAssistantTools({ state, store, tGet, switchTab, openSettings, invokeIpc, authorizedInvoke, getRecentNotifications, searchRecentNotifications, applySettings, mediaPlayerApi, getSplitApi, cloudStore, hasEffectivePro, extraTools = null }) {
     function getTodosData() {
         const data = store.get('todos', null)
         if (!data || Array.isArray(data) || !Array.isArray(data.lists)) {
@@ -597,7 +597,7 @@ function bindAssistantTools({ state, store, tGet, switchTab, openSettings, invok
     ]
 
     async function executeAssistantTool(name, args) {
-        const handler = handlers[name]
+        const handler = handlers[name] || extraTools?.handlers?.[name]
         if (!handler) return { error: 'unknown_tool', name }
         try {
             return await handler(args || {})
@@ -607,7 +607,7 @@ function bindAssistantTools({ state, store, tGet, switchTab, openSettings, invok
         }
     }
 
-    return { getToolSchemas: () => TOOL_SCHEMAS, executeAssistantTool }
+    return { getToolSchemas: () => [...TOOL_SCHEMAS, ...(extraTools?.schemas || [])], executeAssistantTool }
 }
 
 module.exports = { bindAssistantTools }

@@ -268,7 +268,10 @@ const ALLOWED_STORE_ROOTS = new Set([
     // store:secure-* под assistant.byok.<provider>.keyEnc), адрес Ollama,
     // локальная история чата. См. main/services/aiProviders/index.js и
     // renderer/assistant-bind.js. Никогда не синхронизируется с облаком.
-    'assistant'
+    'assistant',
+    // 3.7.1: hibernation of unused tabs (renderer/hibernation.js), personal work hours
+    // (renderer/work-hours.js) and the morning summary state (renderer/morning-summary.js).
+    'hibernate', 'workHours', 'morningSummary'
 ])
 
 const DANGEROUS_KEY_SEGMENTS = new Set(['__proto__', 'constructor', 'prototype'])

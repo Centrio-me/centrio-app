@@ -2,6 +2,7 @@
 // main/bootstrap/registerAppEvents.js) keeps every notification the site created under a short id; this asks the
 // page to "click" that notification, which is what the site itself does to open the right conversation. If the
 // notification object is gone (page reloaded, sleeping tab, service-worker push) the optional fallback runs.
+const { pageFor } = require('./page-handle')
 const ID_RE = /^n\d{1,9}$/
 const OPEN_DELAY_MS = 150
 const RETRY_MS = 400
@@ -11,7 +12,7 @@ function openNotifiedChat(messengerId, nid, onMiss) {
     const miss = () => { if (typeof onMiss === 'function') onMiss() }
     if (!messengerId || !ID_RE.test(String(nid || ''))) { miss(); return }
     const attempt = (n) => {
-        const webview = document.getElementById(`webview-${messengerId}`)
+        const webview = pageFor(messengerId) // also a messenger in its own window (3.7.1)
         if (!webview || typeof webview.executeJavaScript !== 'function') {
             if (n < MAX_ATTEMPTS) setTimeout(() => attempt(n + 1), RETRY_MS); else miss()
             return

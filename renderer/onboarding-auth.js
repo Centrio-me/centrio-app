@@ -10,6 +10,7 @@ const { showTelegramWait, clearTelegramWait } = require('./telegram-wait')
 // промежуточном состоянии).
 const { requireConsent } = require('./consent-ui')
 const { track } = require('./stats')
+const { stepAfterServices, stepAfterLogin } = require('./onboarding-flow')
 const RECOMMENDED_COUNT = 11
 const FRESH_TRIAL_MS = 30 * 60 * 1000
 
@@ -68,8 +69,22 @@ function bindOnboardingScreen({
     // из экрана 2, если триал не показывался). ──
     const navHistory = ['services']
     let accountFromReady = false
+    // Set when the account step was opened from the services step: adds the chosen services after sign-in.
+    let servicesPick = null
+
+    // The account step either is required (came from the services step) or is the plain "I have an account".
+    function setAccountRequired(required) {
+        const title = document.querySelector('#onboardingScreen .onb-card-title')
+        const sub = document.querySelector('#onboardingScreen .onb-card-sub')
+        const skip = document.getElementById('onbSkipBtn')
+        if (title) title.textContent = tGet(required ? 'onb.requiredTitle' : 'onb.cardTitle')
+        if (sub) sub.textContent = tGet(required ? 'onb.requiredSub' : 'onb.cardSub')
+        if (skip) skip.textContent = required ? `← ${tGet('html.k002')}` : tGet('onb.skip')
+    }
 
     function openAccountStep() {
+        servicesPick = null
+        setAccountRequired(false)
         goTo('auth')
     }
 
@@ -99,9 +114,20 @@ function bindOnboardingScreen({
     function continueAfterLogin() {
         ;(cloudSyncAfterLogin || cloudSyncPush)()
         const user = cloudStore.getUser()
-        if (user && user.orgSummary && user.orgSummary.orgId) { leaveOnboarding(); return }
-        if (accountFromReady) { goToReady(); return }
+        if (accountFromReady && !(user && user.orgSummary && user.orgSummary.orgId)) { goToReady(); return }
+        const next = stepAfterLogin({ inTeam: !!(user && user.orgSummary && user.orgSummary.orgId), fromServices: !!servicesPick })
+        if (next === 'leave') { leaveOnboarding(); return }
+        if (next === 'trial') { const pick = servicesPick; servicesPick = null; goToTrial(pick); return }
         goTo('services')
+    }
+
+    // «Продолжить» on the services step: without an account the account step comes first.
+    function proceedFromServices(addServices) {
+        if (stepAfterServices({ loggedIn: cloudStore.isLoggedIn() }) === 'trial') { goToTrial(addServices); return }
+        track('onboarding_account_required')
+        servicesPick = addServices || (() => {})
+        setAccountRequired(true)
+        goTo('auth')
     }
 
     function goBack() {
@@ -447,9 +473,9 @@ function bindOnboardingScreen({
     }
 
     // Services are added after the trial: otherwise the fourth one meets the free limit on the very first screen.
-    document.getElementById('onbServicesContinueBtn')?.addEventListener('click', () => goToTrial(addSelectedMessengers))
+    document.getElementById('onbServicesContinueBtn')?.addEventListener('click', () => proceedFromServices(addSelectedMessengers))
 
-    document.getElementById('onbServicesSkipBtn')?.addEventListener('click', () => goToTrial())
+    document.getElementById('onbServicesSkipBtn')?.addEventListener('click', () => proceedFromServices())
 
     // ── Шаг 3: Pro-триал на 7 дней ──────────────────────────────
     // Раньше выдавался только зарегистрированным (через промокод PRO14 на

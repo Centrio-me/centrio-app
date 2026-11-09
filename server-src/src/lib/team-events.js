@@ -45,6 +45,8 @@ const AUDIT_PREFIX_TO_EVENT = [
     ['settings.', 'settings'],
     ['vpn.', 'settings'],
     ['quickReply.', 'settings'],
+    // Work hours live in the alert settings: members' apps refetch the schedule (3.7.1).
+    ['alerts.update', 'settings'],
     ['workspace.', 'structure'],
     ['folder.', 'structure'],
     ['task.', 'tasks']

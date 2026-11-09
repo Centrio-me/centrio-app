@@ -1081,6 +1081,8 @@ module.exports = {
         f3d: 'Ein Konto synchronisiert Dienste und Einstellungen zwischen Geräten.',
         cardTitle: 'Kostenlos starten',
         cardSub: 'Ein Konto hält deine Dienste und Einstellungen überall synchron.',
+        requiredTitle: "Erstelle ein Konto, um zu starten",
+        requiredSub: "Kostenlos und in einer Minute erledigt. Deine Dienste bleiben gespeichert, dazu 7 Tage PRO geschenkt.",
         regTitle: "Konto erstellen",
         regSub: "Dein Konto speichert Dienste und Einstellungen auf allen Geräten. Starte mit 7 Tagen Pro.",
         regGoogle: "Weiter mit Google",
@@ -1786,3 +1788,4 @@ module.exports = {
         assignLabel: 'Arbeitsbereich',
     },
 }
+module.exports.v371 = require('./v371').de

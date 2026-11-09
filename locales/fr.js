@@ -1081,6 +1081,8 @@ module.exports = {
         f3d: 'Un compte synchronise tes services et réglages entre appareils.',
         cardTitle: 'Commencer gratuitement',
         cardSub: 'Un compte garde tes services et réglages synchronisés partout.',
+        requiredTitle: "Créez un compte pour commencer",
+        requiredSub: "C’est gratuit et prend une minute. Vos services sont conservés et 7 jours de PRO vous sont offerts.",
         regTitle: "Créer un compte",
         regSub: "Votre compte conserve services et réglages sur tous vos appareils. Commencez avec 7 jours de Pro.",
         regGoogle: "Continuer avec Google",
@@ -1787,3 +1789,4 @@ module.exports = {
         k025: 'Annuler',
     },
 }
+module.exports.v371 = require('./v371').fr

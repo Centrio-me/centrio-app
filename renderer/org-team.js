@@ -27,7 +27,8 @@ function createOrgTeamApi({
     refreshAllVpnBadges = () => {}, // (active) => void — keeps the sidebar VPN badges/state.vpnActive in sync, see renderer.js
     setCanAddOwnMessengers = () => {}, // (allowed: boolean) => void — gates the "+" add-messenger button, see renderer.js/add-modal-bind.js
     setStrictMode = () => {}, // (strict: boolean) => void — TEAM strict mode, see renderer/team-strict.js and renderer.js
-    setTeamQuickReplies = () => {}, // (replies) => void — renderer/quick-replies-bind.js
+    setTeamQuickReplies = () => {},
+    setTeamSchedule = () => {}, // ({schedule, timeZone}) => void — renderer/work-hours.js // (replies) => void — renderer/quick-replies-bind.js
     applyOrgStructure = () => {}, // ({ workspaces, folders }) => void — owner-managed workspaces/folders, see renderer.js
     refreshTeamTasks = () => {}, // () => Promise — renderer/team-tasks.js, polled every TASKS_POLL_MS
     notifyOwnerAlert = () => {}, // ({ title, body }) => void — OS notification + bell entry for the owner/admin
@@ -272,6 +273,14 @@ function createOrgTeamApi({
             const result = await authorizedInvoke('api-org-get-quick-replies', orgId)
             const replies = unwrap(result)
             if (Array.isArray(replies)) setTeamQuickReplies(replies)
+        } catch {}
+    }
+
+    // Team work hours (3.7.1): kept for renderer/work-hours.js, which keeps team messengers quiet outside them.
+    async function syncSchedule(orgId) {
+        try {
+            const data = unwrap(await authorizedInvoke('api-org-get-schedule', orgId))
+            if (data && typeof data === 'object') setTeamSchedule({ schedule: data.schedule || null, timeZone: data.timeZone || null })
         } catch {}
     }
 
@@ -595,7 +604,7 @@ function createOrgTeamApi({
             syncAssignments(orgId)
             break
         case 'settings':
-            syncForcedSettings(orgId); syncSharedVpn(orgId); syncQuickReplies(orgId)
+            syncForcedSettings(orgId); syncSharedVpn(orgId); syncQuickReplies(orgId); syncSchedule(orgId)
             break
         case 'member':
             syncMemberPermission(orgId); syncAssignments(orgId)
@@ -629,6 +638,7 @@ function createOrgTeamApi({
             syncMemberPermission(orgId),
             syncSharedVpn(orgId),
             syncQuickReplies(orgId),
+            syncSchedule(orgId),
             pushStats(orgId)
         ])
     }

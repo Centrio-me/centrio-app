@@ -446,6 +446,11 @@ module.exports = {
         return deviceRequest('POST', `/api/org-device/commands/${encodeURIComponent(commandId)}/done`, token, deviceHeaders)
     },
 
+    // The team's work hours (3.7.1): outside them team messengers stay quiet.
+    orgGetSchedule(token, orgId) {
+        return request('GET', `/api/org/${encodeURIComponent(orgId)}/schedule`, null, token)
+    },
+
     orgGetQuickReplies(token, orgId) {
         return request('GET', `/api/org/${encodeURIComponent(orgId)}/quick-replies`, null, token)
     },

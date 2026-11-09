@@ -51,6 +51,19 @@ async function livePersonFor(orgId, member, now, clock) {
     })
 }
 
+// ── GET /api/org/:orgId/schedule ───────────────────────────────────────
+// The team's work hours for every member (3.7.1): outside them the desktop app keeps team messengers quiet.
+// Set by the owner on the site (Оповещения → Рабочее время); null schedule = no hours set.
+router.get('/:orgId/schedule', authMiddleware, requireOrgRole(['OWNER', 'ADMIN', 'MEMBER']), async (req, res) => {
+    try {
+        const clock = await loadTeamClock(req.params.orgId)
+        res.json({ success: true, data: { schedule: clock.schedule, timeZone: clock.timeZone } })
+    } catch (err) {
+        console.error('Org schedule error:', err.message)
+        res.status(500).json({ success: false, error: 'Не удалось получить рабочее время' })
+    }
+})
+
 // ── POST /api/org/:orgId/presence ──────────────────────────────────────
 // Sent by the desktop app every 30 s while the person is in a team.
 router.post('/:orgId/presence', authMiddleware, presenceLimiter, requireOrgRole(['OWNER', 'ADMIN', 'MEMBER']), async (req, res) => {

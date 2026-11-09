@@ -1,0 +1,41 @@
+// 3.7.1 strings of the quick switcher (Ctrl+K / Ctrl+P), merged into locales/v371.js. Keywords help find an action by
+// other words (and in another language); a language without its own keywords falls back to English.
+module.exports = {
+    ru: { placeholder: 'Сервис, сплит или действие…',
+        group_services: 'Сервисы', group_presets: 'Сохранённые сплиты', group_actions: 'Действия',
+        presetUnnamed: 'Сплит без названия', presetWord: 'сплит',
+        settings: 'Открыть настройки', settingsKw: 'настройки, параметры, settings',
+        notifications: 'Настройки уведомлений', notificationsKw: 'уведомления, звук, notifications',
+        workHours: 'Рабочее время', workHoursKw: 'график, расписание, часы, work hours',
+        tabSleep: 'Сон вкладок', tabSleepKw: 'память, гибернация, усыпить, sleep',
+        restorePoints: 'Точки восстановления', restorePointsKw: 'откат, резервная копия, бэкап, восстановить, backup',
+        shortcuts: 'Горячие клавиши', shortcutsKw: 'клавиши, сочетания, shortcuts',
+        assistant: 'Спросить ассистента', assistantKw: 'ии, ai, нейросеть, помощник',
+        summary: 'Что я пропустил', summaryKw: 'сводка, пропущенное, утро, summary',
+        tabManager: 'Диспетчер вкладок', tabManagerKw: 'память, процессор, вкладки',
+        dndOn: 'Включить «Не беспокоить» на час', dndOnKw: 'тишина, без звука, dnd',
+        dndOff: 'Выключить «Не беспокоить»', dndOffKw: 'тишина, звук, dnd',
+        sleepNow: 'Усыпить неактивные вкладки', sleepNowKw: 'память, освободить, sleep'
+    },
+    en: { placeholder: 'Service, split or action…',
+        group_services: 'Services', group_presets: 'Saved splits', group_actions: 'Actions',
+        presetUnnamed: 'Unnamed split', presetWord: 'split',
+        settings: 'Open settings', settingsKw: 'settings, preferences',
+        notifications: 'Notification settings', notificationsKw: 'notifications, sound',
+        workHours: 'Work hours', workHoursKw: 'schedule, hours',
+        tabSleep: 'Tab sleep', tabSleepKw: 'memory, hibernate, sleep',
+        restorePoints: 'Restore points', restorePointsKw: 'backup, restore, undo',
+        shortcuts: 'Keyboard shortcuts', shortcutsKw: 'keys, hotkeys',
+        assistant: 'Ask the assistant', assistantKw: 'ai, help',
+        summary: 'What did I miss', summaryKw: 'summary, missed, morning',
+        tabManager: 'Tab manager', tabManagerKw: 'memory, cpu, tabs',
+        dndOn: 'Turn on Do not disturb for an hour', dndOnKw: 'quiet, mute, dnd',
+        dndOff: 'Turn off Do not disturb', dndOffKw: 'quiet, sound, dnd',
+        sleepNow: 'Put inactive tabs to sleep', sleepNowKw: 'memory, free, sleep'
+    },
+    de: { placeholder: 'Dienst, Split oder Aktion…', group_services: 'Dienste', group_presets: 'Gespeicherte Splits', group_actions: 'Aktionen', settings: 'Einstellungen öffnen', notifications: 'Benachrichtigungen', workHours: 'Arbeitszeit', tabSleep: 'Tab-Ruhezustand', restorePoints: 'Wiederherstellungspunkte', shortcuts: 'Tastenkürzel', assistant: 'Assistenten fragen', summary: 'Was habe ich verpasst', tabManager: 'Tab-Manager', dndOn: '„Nicht stören“ für eine Stunde', dndOff: '„Nicht stören“ ausschalten', sleepNow: 'Inaktive Tabs schlafen legen' },
+    es: { placeholder: 'Servicio, división o acción…', group_services: 'Servicios', group_presets: 'Divisiones guardadas', group_actions: 'Acciones', settings: 'Abrir ajustes', notifications: 'Notificaciones', workHours: 'Horario laboral', tabSleep: 'Suspensión de pestañas', restorePoints: 'Puntos de restauración', shortcuts: 'Atajos de teclado', assistant: 'Preguntar al asistente', summary: 'Qué me perdí', tabManager: 'Gestor de pestañas', dndOn: 'No molestar durante una hora', dndOff: 'Desactivar No molestar', sleepNow: 'Suspender pestañas inactivas' },
+    fr: { placeholder: 'Service, écran partagé ou action…', group_services: 'Services', group_presets: 'Écrans partagés enregistrés', group_actions: 'Actions', settings: 'Ouvrir les réglages', notifications: 'Notifications', workHours: 'Heures de travail', tabSleep: 'Veille des onglets', restorePoints: 'Points de restauration', shortcuts: 'Raccourcis clavier', assistant: 'Demander à l’assistant', summary: 'Qu’ai-je manqué', tabManager: 'Gestionnaire d’onglets', dndOn: 'Ne pas déranger pendant une heure', dndOff: 'Désactiver Ne pas déranger', sleepNow: 'Mettre en veille les onglets inactifs' },
+    it: { placeholder: 'Servizio, schermo diviso o azione…', group_services: 'Servizi', group_presets: 'Schermi divisi salvati', group_actions: 'Azioni', settings: 'Apri impostazioni', notifications: 'Notifiche', workHours: 'Orario di lavoro', tabSleep: 'Sospensione schede', restorePoints: 'Punti di ripristino', shortcuts: 'Scorciatoie', assistant: 'Chiedi all’assistente', summary: 'Cosa mi sono perso', tabManager: 'Gestione schede', dndOn: 'Non disturbare per un’ora', dndOff: 'Disattiva Non disturbare', sleepNow: 'Sospendi le schede inattive' },
+    zh: { placeholder: '服务、分屏或操作…', group_services: '服务', group_presets: '已保存的分屏', group_actions: '操作', settings: '打开设置', notifications: '通知设置', workHours: '工作时间', tabSleep: '标签页休眠', restorePoints: '还原点', shortcuts: '快捷键', assistant: '询问助手', summary: '我错过了什么', tabManager: '标签页管理器', dndOn: '开启勿扰一小时', dndOff: '关闭勿扰', sleepNow: '让不活跃的标签页休眠' }
+}

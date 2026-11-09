@@ -87,6 +87,17 @@ function bindContextActionsUi({
         document.getElementById('ctxFilesToggle')?.classList.toggle('on', files[m.id] === true)
     })
 
+    // Hibernation (3.7.1): this tab is never put to sleep on its own.
+    document.getElementById('ctxKeepAwake')?.addEventListener('click', (e) => {
+        const m = getMessengerById(state.contextTargetId)
+        const hib = window.__centrioHibernation
+        if (!m || !hib) { hideAllMenus(); return }
+        e.stopPropagation()
+        const keep = hib.getTabChoice(m.id) !== 'never'
+        hib.setTabChoice(m.id, keep ? 'never' : 'auto')
+        document.getElementById('ctxKeepAwakeToggle')?.classList.toggle('on', keep)
+    })
+
     document.getElementById('ctxMute')?.addEventListener('click', () => {
         const m = getMessengerById(state.contextTargetId)
         if (!m) {

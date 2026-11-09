@@ -40,6 +40,8 @@
     <link rel="stylesheet" href="./styles-features.css">
     <link rel="stylesheet" href="./styles-tools.css">
     <link rel="stylesheet" href="./cabinet.css">
+    <link rel="stylesheet" href="./styles-371.css">
+    <link rel="stylesheet" href="./styles-settings-v2.css">
     <link rel="stylesheet" href="assets/fonts/site/fonts.css">
 </head>
 <body>
@@ -1132,6 +1134,23 @@
     </div>
     <div class="changelog-popup-body">
         <div class="changelog-entry">
+            <div class="changelog-version">v3.7.1</div>
+            <ul class="changelog-list">
+                <li>Новое: сон вкладок. Сервис, которым вы не пользовались полчаса, сам засыпает и не занимает память, а при открытии просыпается. Мессенджеры и почта по умолчанию не засыпают, чтобы не пропускать сообщения. Любую вкладку можно оставить бодрой: правая кнопка → «Не усыплять».</li>
+                <li>Новое: точки восстановления. Раз в день Centrio сам сохраняет копию ваших сервисов, папок, сплитов, быстрых ответов и настроек, а кнопка «Сохранить сейчас» делает копию в любой момент. Вернуть всё как было можно в Настройки → Система.</li>
+                <li>Новое: рабочее время. Задайте свой график и отметьте рабочие сервисы: вне рабочих часов они не присылают всплывающих окон и не звучат, а сообщения ждут в центре уведомлений.</li>
+                <li>Новое: утренняя сводка. Утром ассистент сам напишет, кто писал, пока вас не было, и предложит открыть нужный мессенджер. Только имена и количество, без текста сообщений, и сводка собирается на вашем компьютере.</li>
+                <li>Новое: сообщения ассистента видны, даже когда его панель закрыта: рядом с кнопкой появляется карточка, а на кнопке загорается точка.</li>
+                <li>Новое: ассистент научился усыплять вкладки, настраивать рабочее время, включать «Не беспокоить», сохранять точки восстановления и отвечать на вопрос «что я пропустил».</li>
+                <li>Новое: быстрый переход по Ctrl+K. Ищет сервисы, сохранённые сплиты и действия, понимает русские названия и текст, набранный не в той раскладке.</li>
+                <li>Новое: окно настроек переделано в стиле личного кабинета, и в нём появился поиск по настройкам.</li>
+                <li>Новое: мессенджеры в отдельных окнах открываются снова после перезапуска, а уведомления от них открывают нужный чат и позволяют ответить прямо из уведомления.</li>
+                <li>Новое: чтобы начать работу, нужно создать аккаунт. Это бесплатно, выбранные сервисы сохраняются, а 7 дней ПРО — в подарок.</li>
+                <li>Новое для команд: вне рабочего времени, которое руководитель задаёт на сайте, рабочие мессенджеры сотрудника не присылают уведомлений и не звучат. Сообщения не теряются.</li>
+                <li>Исправлено: в строке состояния тариф ПРО на год снова называется по-человечески.</li>
+            </ul>
+        </div>
+        <div class="changelog-entry">
             <div class="changelog-version">v3.7.0</div>
             <ul class="changelog-list">
                 <li>Новое: обновление выглядит по-новому. Пока версия скачивается, под заголовком бежит тонкая полоса цвета вашей темы, а когда всё готово, сверху выезжает строка «Перезапустить» — она ничего не закрывает.</li>
@@ -1967,6 +1986,14 @@
         </svg>
         <span data-i18n="ctx.filesInWindows"></span>
         <span class="ctx-toggle" id="ctxFilesToggle"><span class="ctx-toggle-knob"></span></span>
+    </div>
+    <div class="context-item context-item-toggle" id="ctxKeepAwake">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="4"/>
+            <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>
+        </svg>
+        <span data-i18n="v371.hib.keepAwake"></span>
+        <span class="ctx-toggle" id="ctxKeepAwakeToggle"><span class="ctx-toggle-knob"></span></span>
     </div>
     <div class="context-item" id="ctxMute">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
@@ -2941,6 +2968,7 @@
             <input type="file" id="soundFileInput" accept="audio/*" style="display:none;">
         </div>
     </div>
+    <div class="settings-group" id="workHoursGroup"></div>
 </div>
 
                 <!-- Горячие клавиши -->
@@ -3191,6 +3219,7 @@
                             <span data-i18n="assistant.settings.proUpgrade"></span>
                         </button>
                     </div>
+                    <div class="settings-group" id="morningSummaryGroup"></div>
                 </div>
 
                 <!-- Сеть -->
@@ -3368,6 +3397,9 @@
 
                         </div>
                     </div>
+
+                    <div class="settings-group" id="hibernateGroup"></div>
+                    <div class="settings-group" id="restorePointsGroup"></div>
 
                     <div class="settings-group">
                         <div class="settings-group-title" data-i18n="settings.resetLabel"></div>

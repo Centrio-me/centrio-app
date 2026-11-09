@@ -1,4 +1,5 @@
 const { getFocusedMessengerId, getVisibleMessengerIds } = require('./focused-messenger')
+const { rankItems } = require('./quick-switcher-logic')
 
 function createSearchUiApi({
     state,
@@ -13,7 +14,8 @@ function createSearchUiApi({
     tGet,
     switchTab,
     isMessengerMuted,
-    updateMuteAllBtn
+    updateMuteAllBtn,
+    getSwitcherItems = null
 }) {
     // Where Ctrl+F searches: the messenger the user picked in the find bar, otherwise the one that has the focus (in a
     // split — the focused pane, not simply the left one).
@@ -192,6 +194,7 @@ function createSearchUiApi({
     function openQuickSearch() {
         quickSearch.classList.add('show')
         quickSearchInput.value = ''
+        if (typeof getSwitcherItems === 'function') quickSearchInput.placeholder = tGet('v371.qs.placeholder')
         renderQuickSearchResults('')
         setTimeout(() => quickSearchInput.focus(), 50)
     }
@@ -206,6 +209,12 @@ function createSearchUiApi({
         // Command execution mode
         if (q.startsWith('/')) {
             renderCommands(q)
+            return
+        }
+
+        // 3.7.1: services, saved split screens and app actions, ranked together (renderer/quick-switcher-logic.js)
+        if (typeof getSwitcherItems === 'function') {
+            renderSwitcher(query)
             return
         }
 
@@ -251,6 +260,65 @@ function createSearchUiApi({
                 closeQuickSearch()
             })
 
+            quickSearchResults.appendChild(item)
+        })
+    }
+
+    const GROUP_ICONS = {
+        presets: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M12 4v16"/></svg>',
+        actions: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>'
+    }
+
+    function renderSwitcher(query) {
+        const ranked = rankItems(getSwitcherItems(), query)
+        quickSearchResults.textContent = ''
+        if (!ranked.length) {
+            const empty = document.createElement('div')
+            empty.className = 'quick-search-empty'
+            empty.textContent = tGet('search.empty')
+            quickSearchResults.appendChild(empty)
+            return
+        }
+        let lastGroup = null
+        ranked.forEach((entry, idx) => {
+            if (entry.group !== lastGroup) {
+                lastGroup = entry.group
+                const header = document.createElement('div')
+                header.className = 'quick-search-group'
+                header.textContent = tGet(`v371.qs.group_${entry.group}`)
+                quickSearchResults.appendChild(header)
+            }
+            const item = document.createElement('div')
+            item.className = 'quick-search-item' + (idx === 0 ? ' selected' : '')
+            if (entry.group === 'services') {
+                const img = document.createElement('img')
+                img.width = 24
+                img.height = 24
+                img.alt = ''
+                img.className = 'quick-search-item-icon'
+                img.src = entry.icon || 'assets/logo.png'
+                img.addEventListener('error', () => { img.src = 'assets/logo.png' })
+                item.appendChild(img)
+            } else {
+                const glyph = document.createElement('span')
+                glyph.className = `quick-search-item-glyph is-${entry.group}`
+                glyph.innerHTML = GROUP_ICONS[entry.group] || ''
+                item.appendChild(glyph)
+            }
+            const name = document.createElement('span')
+            name.className = 'quick-search-item-name'
+            name.textContent = entry.label
+            item.appendChild(name)
+            if (entry.badge > 0) {
+                const badge = document.createElement('span')
+                badge.className = 'quick-search-item-badge'
+                badge.textContent = String(entry.badge)
+                item.appendChild(badge)
+            }
+            item.addEventListener('click', () => {
+                closeQuickSearch()
+                try { entry.run() } catch { /* the action's own module reports problems */ }
+            })
             quickSearchResults.appendChild(item)
         })
     }

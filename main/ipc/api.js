@@ -285,6 +285,10 @@ function registerApiIpc() {
         return wrapApi(() => api.orgDeviceCommandDone(token || null, String(commandId || ''), deviceHeaders || {}))
     })
 
+    ipcMain.handle('api-org-get-schedule', async (event, token, orgId) => {
+        return wrapApi(() => api.orgGetSchedule(token, String(orgId || '')))
+    })
+
     ipcMain.handle('api-org-get-quick-replies', async (event, token, orgId) => {
         return wrapApi(() => api.orgGetQuickReplies(token, String(orgId || '')))
     })

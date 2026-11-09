@@ -113,8 +113,18 @@ function createDetachedApi({ state, invokeIpc, ipcRenderer, tGet, tabsContent, g
         markSidebar(id, false)
     }
 
+    // Windows that were open when the app was closed come back (3.7.1), once the tabs exist.
+    const REOPEN_DELAY_MS = 2500
+    async function reopenAfterRestart() {
+        const ids = await invokeIpc('detached:reopen-list').catch(() => [])
+        for (const id of Array.isArray(ids) ? ids : []) {
+            if (getMessengerById(id)) await detach(id)
+        }
+    }
+
     function bind() {
         ipcRenderer.on('detached:closed', (id) => restore(String(id)))
+        setTimeout(reopenAfterRestart, REOPEN_DELAY_MS)
     }
 
     return { detach, focus, restore, isDetached, onMessengerRemoved, bind }

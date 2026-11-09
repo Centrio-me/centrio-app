@@ -850,6 +850,8 @@ model AdTouch {
   content   String?
   term      String?
   landing   String?
+  ymClientId String?
+  yclid     String?
   createdAt DateTime @default(now())
 }
 

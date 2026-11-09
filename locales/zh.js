@@ -1081,6 +1081,8 @@ module.exports = {
         f3d: '账户可在多设备间同步服务和设置。',
         cardTitle: '免费开始使用',
         cardSub: '账户会在各处保持你的服务和设置同步。',
+        requiredTitle: "创建账户即可开始",
+        requiredSub: "免费，只需一分钟。已选服务会保留，并赠送 7 天 PRO。",
         regTitle: "创建账户",
         regSub: "账户会在所有设备上保存你的服务和设置。先免费体验 7 天 Pro。",
         regGoogle: "使用 Google 继续",
@@ -1786,3 +1788,4 @@ module.exports = {
         assignLabel: '工作区',
     },
 }
+module.exports.v371 = require('./v371').zh

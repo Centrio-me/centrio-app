@@ -188,6 +188,8 @@ function initUpdater(getMainWindow) {
 
     autoUpdater.on('error', (err) => {
         writeError('Event: error', err && err.stack ? err.stack : err)
+        // Kept for the next 'update-failed-to-apply' report (main/services/updateDiagnostics.js scrubs the paths).
+        try { store.set('updateLastError', { at: Date.now(), message: String(err?.message || err).slice(0, 600) }) } catch {}
 
         sendUpdateStatus(getMainWindow, {
             status: 'error',
@@ -275,6 +277,26 @@ function takeJustUpdated() {
 //     installs), which hid the real cause.
 // Detection only, not a rollback — Electron has no supported way to revert an
 // in-place NSIS install from JS.
+// What the failed install report carries besides the versions (3.7.1): see main/services/updateDiagnostics.js.
+function updaterCacheDirName() {
+    try {
+        const yml = require('fs').readFileSync(require('path').join(process.resourcesPath, 'app-update.yml'), 'utf8')
+        const match = /^updaterCacheDirName:\s*(.+)$/m.exec(yml)
+        return match ? match[1].trim().replace(/^['"]|['"]$/g, '') : null
+    } catch { return null }
+}
+
+function installDiagnostics() {
+    try {
+        const { collectInstallDiagnostics } = require('./updateDiagnostics')
+        const last = store.get('updateLastError', null)
+        const recent = last && Date.now() - Number(last.at) < 7 * 24 * 60 * 60 * 1000 ? last.message : null
+        return collectInstallDiagnostics({ execPath: process.execPath, updaterCacheDirName: updaterCacheDirName(), lastError: recent })
+    } catch (err) {
+        return { error: String(err?.message || err).slice(0, 100) }
+    }
+}
+
 function checkPendingUpdateOutcome({ appendCrashLog, reportCrashToServer } = {}) {
     try {
         const pending = store.get('pendingUpdate', null)
@@ -298,7 +320,7 @@ function checkPendingUpdateOutcome({ appendCrashLog, reportCrashToServer } = {})
                 'update install was triggered but the app is still on', currentVersion,
                 'expected', pending.toVersion, '(from', pending.fromVersion + ')'
             )
-            const detail = { fromVersion: pending.fromVersion, toVersion: pending.toVersion, actualVersion: currentVersion, auto: !!pending.auto }
+            const detail = { fromVersion: pending.fromVersion, toVersion: pending.toVersion, actualVersion: currentVersion, auto: !!pending.auto, diag: installDiagnostics() }
             appendCrashLog && appendCrashLog('update-failed-to-apply', detail)
             reportCrashToServer && reportCrashToServer('update-failed-to-apply', detail)
         } else {

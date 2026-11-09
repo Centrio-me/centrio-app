@@ -1081,6 +1081,8 @@ module.exports = {
         f3d: 'Una cuenta sincroniza tus servicios y ajustes entre dispositivos.',
         cardTitle: 'Empieza gratis',
         cardSub: 'Una cuenta mantiene tus servicios y ajustes sincronizados en todas partes.',
+        requiredTitle: "Crea una cuenta para empezar",
+        requiredSub: "Es gratis y lleva un minuto. Tus servicios se guardan y recibes 7 días de PRO de regalo.",
         regTitle: "Crear una cuenta",
         regSub: "Tu cuenta guarda servicios y ajustes en todos tus dispositivos. Empieza con 7 días de Pro.",
         regGoogle: "Continuar con Google",
@@ -1786,3 +1788,4 @@ module.exports = {
         assignLabel: 'Espacio de trabajo',
     },
 }
+module.exports.v371 = require('./v371').es

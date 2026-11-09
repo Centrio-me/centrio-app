@@ -1080,6 +1080,8 @@ module.exports = {
         f3d: 'An account syncs your services and settings across devices.',
         cardTitle: 'Get started for free',
         cardSub: 'An account keeps your services and settings in sync everywhere.',
+        requiredTitle: "Create an account to start",
+        requiredSub: "It is free and takes a minute. Your chosen services are kept, and you get 7 days of PRO as a gift.",
         regTitle: "Create an account",
         regSub: "Your account keeps services and settings on every device. Start with 7 days of Pro.",
         regGoogle: "Continue with Google",
@@ -1789,3 +1791,5 @@ module.exports = {
         k067: 'Continue',
     },
 }
+
+module.exports.v371 = require('./v371').en

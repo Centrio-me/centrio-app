@@ -25,6 +25,13 @@ const { bindUpdater } = require('./renderer/updater')
 const { createStatusBarApi } = require('./renderer/status-bar')
 const { createTooltipsApi } = require('./renderer/tooltips')
 const { createUnreadApi } = require('./renderer/unread')
+const { createHibernation } = require('./renderer/hibernation')
+const { createWorkHours } = require('./renderer/work-hours')
+const { bindSettings371 } = require('./renderer/settings-371')
+const { bindAssistantTools371 } = require('./renderer/assistant-tools-371')
+const { createMorningSummary } = require('./renderer/morning-summary')
+const { createSwitcherItems } = require('./renderer/quick-switcher-items')
+const { bindSettingsShell } = require('./renderer/settings-shell')
 const { createLockApi } = require('./renderer/lock')
 const { createCloudUiApi } = require('./renderer/cloud-ui')
 const { bindSupportTicketsUi } = require('./renderer/support-tickets-ui')
@@ -562,6 +569,10 @@ async function bootstrap() {
         ['split.saved', null],
         ['splitPresets', []],
         ['filesInWindows', {}],
+        // 3.7.1: hibernation, personal work hours, morning summary (renderer/hibernation.js, work-hours.js, morning-summary.js)
+        ['hibernate', {}],
+        ['workHours', {}],
+        ['morningSummary', {}],
         ['dndUntil', 0],
         ['dndLastHours', 1],
         ['quickReplies', []],
@@ -1696,7 +1707,11 @@ function switchTab(id) {
         }
     }
 
+    const previousTabId = state.activeTabId
     state.activeTabId = id
+    // Hibernation counts idle time from the moment a tab was last in front (renderer/hibernation.js).
+    if (previousTabId && previousTabId !== id) document.dispatchEvent(new CustomEvent('centrio-tab-switched', { detail: { id: previousTabId } }))
+    document.dispatchEvent(new CustomEvent('centrio-tab-switched', { detail: { id } }))
     // BUGFIX ("не сохраняется выбранный мессенджер"): state.activeTabId only
     // ever lived in memory — it was read into the cloud-push payload's
     // settings.extra.activeTabId (see getPushPayload above), but nothing
@@ -1822,7 +1837,20 @@ function switchTab(id) {
         tGet,
         switchTab,
         isMessengerMuted,
-        updateMuteAllBtn: () => updateMuteAllBtn()
+        updateMuteAllBtn: () => updateMuteAllBtn(),
+        // 3.7.1: services, saved split screens and app actions in one list
+        getSwitcherItems: createSwitcherItems({
+            state,
+            store,
+            tGet,
+            switchTab,
+            getSplitApi: () => splitApi,
+            openSettingsSection: (section) => {
+                document.getElementById('settingsBtn')?.click()
+                setTimeout(() => document.querySelector(`.settings-nav-item[data-section="${section}"]`)?.click(), 120)
+            },
+            openAssistant: () => document.getElementById('assistantBtn')?.click()
+        })
     })
 
     const onboardingTourApi = createOnboardingTourApi({ store, tGet })
@@ -2333,7 +2361,10 @@ function applyTabZoom(level) {
         // "PRO · Осталось 24 дн." — the plan as a badge, the number of days emphasised, the colour of the whole
         // pill follows how much is left (green → orange → red, same blend as the bar).
         const unit = tGet('sidebar.daysShort') || 'дн.'
-        planEl.textContent = info.plan === 'TRIAL' ? 'PRO · TRIAL' : info.plan
+        // the plan in words, as in the account window (ПРО, ПРО Год), never the internal code PRO_YEAR
+        const proWord = tGet('cloud.planPro') || 'PRO'
+        const planLabels = { PRO: proWord, PRO_YEAR: `${proWord} ${tGet('cloud.planYear') || ''}`.trim(), TRIAL: `${proWord} · TRIAL` }
+        planEl.textContent = planLabels[info.plan] || info.plan
         text.textContent = ''
         text.appendChild(document.createTextNode(`${tGet('sidebar.daysLeftTooltip') || 'Осталось'} `))
         const days = document.createElement('b')
@@ -3698,7 +3729,8 @@ function applyTabZoom(level) {
     })
 
     // Do not disturb: the speaker button in the title bar and its hotkey (renderer/dnd.js).
-    createDndApi({ state, store, tGet, setMuteAll, isMessengerMuted, updateMuteIcon, saveData })
+    // The assistant turns it on and off too (renderer/assistant-tools-371.js).
+    window.__centrioDnd = createDndApi({ state, store, tGet, setMuteAll, isMessengerMuted, updateMuteIcon, saveData })
 
     bindWindowUi({
         store,
@@ -3839,6 +3871,7 @@ function applyTabZoom(level) {
 
         const m = state.activeMessengers.find(x => x.id === id)
         document.getElementById('ctxFilesToggle')?.classList.toggle('on', (store.get('filesInWindows', {}) || {})[id] === true)
+        document.getElementById('ctxKeepAwakeToggle')?.classList.toggle('on', window.__centrioHibernation?.getTabChoice(id) === 'never')
         const dmLabel = document.getElementById('ctxDarkModeLabel')
         const dmItem = document.getElementById('ctxDarkMode')
         const extState = store.get('extensionsState', {})
@@ -4076,6 +4109,14 @@ function applyTabZoom(level) {
     })
 
     createTabManager({ state, store, invokeIpc, switchTab, sleepTab, wakeTab })
+    // Unused tabs fall asleep on their own (3.7.1); settings, the tab menu and the assistant reach it through this handle.
+    window.__centrioHibernation = createHibernation({ state, store, sleepTab, isMessengerMuted })
+    window.__centrioSleepTab = sleepTab
+    // Work hours (3.7.1): outside them team messengers / the person's work services stay quiet (renderer/webview-notify.js).
+    window.__centrioWorkHours = createWorkHours({ state, store })
+    bindSettings371({ state, store, tGet, invokeIpc, getMorningSummary: () => window.__centrioMorningSummary })
+    // The settings window in the account window's look, with a search (3.7.1)
+    bindSettingsShell({ tGet })
 
     // What the cloud/team sync did last, a manual "Sync now" and a record of failures (shown here and in the admin panel)
     createSyncStatus({
@@ -4140,6 +4181,8 @@ function applyTabZoom(level) {
     // с main/ipc/assistant.js. Сам клик по кнопке #assistantBtn вешает
     // bindAssistantUi() изнутри себя (см. её btn.addEventListener) — здесь
     // отдельный обработчик больше не нужен, в отличие от прежней заглушки.
+    // Morning summary + the assistant's bubble (3.7.1); created right after the assistant panel below.
+    let morningSummaryApi = null
     const assistantToolsApi = bindAssistantTools({
         state,
         store,
@@ -4161,16 +4204,28 @@ function applyTabZoom(level) {
         // consistent with webviewTabsApi's identical need above).
         getSplitApi: () => splitApi,
         cloudStore,
-        hasEffectivePro
+        hasEffectivePro,
+        // 3.7.1: what was missed, tab sleep, work hours, do not disturb, restore points, quick replies
+        extraTools: bindAssistantTools371({ state, store, invokeIpc, buildSummary: () => morningSummaryApi?.current() })
     })
 
-    bindAssistantUi({
+    const assistantUiApi = bindAssistantUi({
         store,
         ipcRenderer,
         invokeIpc,
         tGet,
         toolsApi: assistantToolsApi,
         openRightPanel: () => toggleRightPanel('assistant'),
+        hasEffectivePro
+    })
+    morningSummaryApi = window.__centrioMorningSummary = createMorningSummary({
+        state,
+        store,
+        tGet,
+        switchTab,
+        assistantUi: assistantUiApi,
+        openAssistant: () => openRightPanel('assistant'),
+        getNotifications: () => appNotifApi?.getRecentNotifications?.() || [],
         hasEffectivePro
     })
 
@@ -4213,7 +4268,8 @@ function applyTabZoom(level) {
         setStrictMode: (strict) => applyTeamStrictMode(strict),
         onTeamEvent: (handler) => ipcRenderer.on('team-event', (data) => handler(data)),
         switchToMessenger: (id) => switchTab(id),
-        setTeamQuickReplies: (replies) => quickRepliesApi?.setTeamReplies(replies),
+        setTeamQuickReplies: (replies) => { window.__centrioTeamQuickReplies = Array.isArray(replies) ? replies : []; quickRepliesApi?.setTeamReplies(replies) },
+        setTeamSchedule: (value) => window.__centrioWorkHours?.setTeamSchedule(value),
         applyOrgStructure,
         refreshTeamTasks: () => teamTasksUi.refresh(),
         notifyOwnerAlert: ({ title, body }) => {

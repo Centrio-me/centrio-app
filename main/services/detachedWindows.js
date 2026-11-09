@@ -286,6 +286,8 @@ function createWindow(record, { key, linkWindow, startUrl }) {
 
     // A plain right-click in the messenger: cut/copy/paste/select-all (the page itself shows no menu in a <webview>).
     win.webContents.on('did-attach-webview', (_e, guest) => {
+        entry.guest = guest
+        guest.once('destroyed', () => { if (entry.guest === guest) entry.guest = null })
         guest.on('context-menu', (_ev, params) => showEditMenu(win, guest, params))
     })
 
@@ -323,11 +325,44 @@ function close(id) {
 }
 
 // On quit: the windows go away together with the app, so the main window is not told to bring the pages back.
+// Which messengers had their own window is remembered: the next start opens those windows again (3.7.1).
+const REOPEN_KEY = 'detachedReopen'
 function closeAll() {
+    try { store.set(REOPEN_KEY, list()) } catch { /* quitting anyway */ }
     closingAll = true
     for (const entry of [...entries.values()]) if (!entry.win.isDestroyed()) entry.win.destroy()
     entries.clear()
     idByHost.clear()
+}
+
+// The messengers to open in their own window again after a restart; asked once, then forgotten.
+function takeReopenList() {
+    const ids = store.get(REOPEN_KEY, [])
+    store.delete(REOPEN_KEY)
+    return Array.isArray(ids) ? ids.filter((id) => typeof id === 'string' && id.length <= 200) : []
+}
+
+// The page inside a separate window, for the main window's notification click and reply (renderer/page-handle.js).
+function guestOf(id) {
+    const entry = entries.get(String(id))
+    const guest = entry && !entry.linkWindow ? entry.guest : null
+    return guest && !guest.isDestroyed() ? guest : null
+}
+async function execInPage(id, code) {
+    const guest = guestOf(id)
+    if (!guest) throw new Error('no_page')
+    return guest.executeJavaScript(String(code), true)
+}
+async function insertTextInPage(id, text) {
+    const guest = guestOf(id)
+    if (!guest) throw new Error('no_page')
+    return guest.insertText(String(text))
+}
+function inputToPage(id, event) {
+    const guest = guestOf(id)
+    if (!guest || !event || typeof event.type !== 'string') return false
+    guest.sendInputEvent({ type: event.type, keyCode: String(event.keyCode || ''), modifiers: Array.isArray(event.modifiers) ? event.modifiers.map(String) : [] })
+    return true
 }
 
 function isOpen(id) {
@@ -423,5 +458,6 @@ function isDetachedGuest(contents) {
 
 module.exports = {
     init, open, openLink, focus, close, closeAll, isOpen, list, onUnread,
+    takeReopenList, execInPage, insertTextInPage, inputToPage,
     handleInit, handleControl, handleGuestKey, isDetachedGuest
 }

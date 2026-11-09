@@ -1,0 +1,205 @@
+/* Settings window in the account window's language (3.7.1, renderer/settings-shell.js).
+   Same size, rail, nav buttons, header, cards and rows as cabinet.css (.lk-*); every colour from the active theme. */
+#settingsModal .modal-content.sx {
+    --sx-muted: color-mix(in srgb, var(--text-primary) 62%, transparent);
+    --sx-card: var(--bg-secondary);
+    --sx-gap: 14px;
+    width: min(1040px, 94vw) !important;
+    max-width: min(1040px, 94vw) !important;
+    height: min(680px, 90vh);
+    max-height: 90vh;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    padding: 0 !important;
+    border-radius: 18px !important;
+    background: var(--bg-primary) !important;
+    overflow: hidden;
+}
+
+/* The old title bar: only its close button stays, in the corner, like in the account window */
+#settingsModal .sx > .modal-header {
+    position: absolute;
+    top: 14px;
+    right: 18px;
+    z-index: 3;
+    padding: 0 !important;
+    border: 0 !important;
+    background: none !important;
+}
+#settingsModal .sx > .modal-header h3 { display: none; }
+
+#settingsModal .sx .settings-layout {
+    flex: 1;
+    min-height: 0;
+    height: auto;
+    background: none;
+}
+
+/* ── Rail ── */
+#settingsModal .sx .settings-sidebar {
+    width: 248px;
+    padding: 22px 14px 14px;
+    gap: 3px;
+    background: var(--bg-secondary);
+    border-right: 1px solid var(--border);
+    box-sizing: border-box;
+}
+.sx-rail-head { display: flex; flex-direction: column; gap: 14px; padding: 0 6px 12px; }
+.sx-rail-title { color: var(--text-primary); font-size: 20px; font-weight: 600; letter-spacing: -.02em; }
+.sx-search {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 38px;
+    padding: 0 11px;
+    border: 1px solid var(--border-light);
+    border-radius: 10px;
+    background: var(--bg-primary);
+    color: var(--sx-muted);
+    transition: border-color .16s, box-shadow .16s;
+    cursor: text;
+}
+.sx-search:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-dim); color: var(--text-primary); }
+.sx-search-input {
+    flex: 1;
+    min-width: 0;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: var(--text-primary);
+    font: inherit;
+    font-size: 13px;
+}
+.sx-search-input::placeholder { color: var(--sx-muted); }
+.sx-search-input::-webkit-search-cancel-button { filter: grayscale(1); opacity: .6; }
+
+#settingsModal .sx .settings-nav-item {
+    min-height: 42px;
+    padding: 0 12px;
+    gap: 11px;
+    border: 1px solid transparent;
+    border-radius: 9px;
+    color: var(--sx-muted);
+    font-size: 13.5px;
+    font-weight: 500;
+    transition: background .16s, color .16s, opacity .16s;
+    transform: none;
+    box-shadow: none;
+}
+#settingsModal .sx .settings-nav-item svg { width: 17px; height: 17px; opacity: 1; transform: none; }
+#settingsModal .sx .settings-nav-item:hover { background: var(--bg-hover, var(--bg-active)); color: var(--text-primary); transform: none; }
+#settingsModal .sx .settings-nav-item:active { background: var(--bg-active); }
+#settingsModal .sx .settings-nav-item.active {
+    border-color: var(--accent);
+    background: var(--accent-dim);
+    color: var(--text-primary);
+    box-shadow: none;
+}
+#settingsModal .sx .settings-nav-item.active svg { color: var(--text-primary); transform: none; }
+#settingsModal .sx .settings-nav-item.active::before { display: none; }
+#settingsModal .sx .settings-nav-item.sx-dim { opacity: .35; }
+
+/* ── Main column ── */
+.sx-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.sx-head {
+    height: 68px;
+    flex: none;
+    display: flex;
+    align-items: center;
+    padding: 0 64px 0 28px;
+    border-bottom: 1px solid var(--border);
+    box-sizing: border-box;
+}
+.sx-head-text { min-width: 0; display: flex; align-items: baseline; gap: 12px; }
+.sx-title { margin: 0; color: var(--text-primary); font-size: 20px; font-weight: 600; letter-spacing: -.02em; white-space: nowrap; }
+.sx-sub { overflow: hidden; color: var(--sx-muted); font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+
+#settingsModal .sx .settings-content {
+    flex: 1;
+    min-height: 0;
+    padding: 22px 28px 26px;
+    background: none;
+}
+#settingsModal .sx .settings-section { gap: var(--sx-gap); animation: sxIn .22s cubic-bezier(.16, 1, .3, 1); }
+@keyframes sxIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+/* Cards */
+#settingsModal .sx .settings-group {
+    gap: 0;
+    padding: 17px 20px;
+    border: 1px solid var(--border);
+    border-radius: 13px;
+    background: var(--sx-card);
+}
+#settingsModal .sx .settings-group:hover { border-color: var(--border); }
+#settingsModal .sx .settings-group:empty { display: none; }
+#settingsModal .sx .settings-group-title {
+    margin: 0 0 6px;
+    padding: 0;
+    border: 0;
+    color: var(--text-primary);
+    font-size: 13.5px;
+    font-weight: 600;
+    letter-spacing: 0;
+    text-transform: none;
+}
+
+/* Rows with hairlines between them */
+#settingsModal .sx .settings-row {
+    min-height: 52px;
+    padding: 9px 0;
+    border-top: 1px solid var(--border);
+    border-radius: 0;
+    box-sizing: border-box;
+}
+#settingsModal .sx .settings-group-title + .settings-row,
+#settingsModal .sx .settings-group > .settings-row:first-child { border-top: 0; }
+#settingsModal .sx .settings-label span:first-child { font-size: 13.5px; font-weight: 500; }
+#settingsModal .sx .settings-hint { color: var(--sx-muted) !important; font-size: 12px !important; line-height: 1.45 !important; max-width: 52ch; }
+
+/* Controls in the account window's style */
+#settingsModal .sx .vsc-select {
+    min-height: 36px;
+    border: 1px solid var(--border-light);
+    border-radius: 9px;
+    background: var(--bg-tertiary);
+    font-size: 13px;
+}
+#settingsModal .sx .vsc-btn-secondary {
+    min-height: 36px;
+    padding: 0 14px;
+    border: 1px solid var(--border-light);
+    border-radius: 9px;
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    font-size: 13px;
+    font-weight: 500;
+}
+#settingsModal .sx .vsc-btn-secondary:hover { background: var(--bg-active); }
+#settingsModal .sx button:focus-visible,
+#settingsModal .sx .settings-nav-item:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* The 3.7.1 groups follow the same rhythm */
+#settingsModal .sx .v371-note { padding: 8px 0 2px; font-size: 12px; color: var(--sx-muted); }
+#settingsModal .sx .v371-sub { margin-top: 6px; padding-top: 12px; border-top: 1px solid var(--border); }
+#settingsModal .sx .v371-team-hours { margin: 4px 0 10px; border-radius: 11px; }
+
+/* Search results */
+#settingsModal.sx-searching .settings-section.sx-hit { display: flex; }
+#settingsModal.sx-searching .settings-section:not(.sx-hit) { display: none; }
+#settingsModal .sx .sx-hidden { display: none !important; }
+.sx-empty { padding: 40px 0; color: var(--sx-muted); font-size: 13.5px; text-align: center; }
+
+#settingsModal .sx .settings-footer { flex: none; padding: 0 28px; border: 0; background: none; }
+#settingsModal .sx .settings-footer:empty,
+#settingsModal .sx .settings-status:empty { display: none; }
+
+@media (max-width: 760px) {
+    #settingsModal .sx .settings-sidebar { width: 200px; }
+    .sx-head { padding-left: 20px; }
+    #settingsModal .sx .settings-content { padding: 18px 20px 22px; }
+}
+@media (prefers-reduced-motion: reduce) {
+    #settingsModal .sx .settings-section { animation: none; }
+}

@@ -17,6 +17,7 @@
 //     other boxes of the page are checked to stay as they were, and only ONE send action is taken; the second way to
 //     send is tried only while the very same text is still sitting in the box and nothing was sent. A reply that
 //     cannot be proven is reported as a failure, never repeated.
+const { pageFor } = require('./page-handle')
 const OPEN_SETTLE_MS = 700
 const SETTLE_AFTER_TYPING_MS = 250
 const RESULT_WAIT_MS = 3000
@@ -408,7 +409,7 @@ async function waitForComposer(run) {
 // is set when the caller gave up waiting, after which nothing may be typed or sent any more.
 async function deliverReply(messenger, nid, text, notice, ctx) {
     const adapter = messenger && adapterFor(messenger.url)
-    const webview = messenger && document.getElementById(`webview-${messenger.id}`)
+    const webview = messenger && pageFor(messenger.id) // also a messenger in its own window (3.7.1)
     if (!adapter || !webview || typeof webview.executeJavaScript !== 'function') return 'failed'
     const wanted = normalize(text)
     if (!wanted) return 'failed'

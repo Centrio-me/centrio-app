@@ -154,6 +154,11 @@ function createWebviewNotifyApi({
             addMessengerNotification(title, body, messenger.name, messenger.id, actionUrl, payload.nid, isFallbackNotice ? 'count' : '')
         }
 
+        // Outside work hours (team schedule or the person's own, 3.7.1) the message is kept in the notification centre
+        // and in the morning summary, but there is no sound and no pop-up.
+        const quietBy = window.__centrioWorkHours?.reasonFor?.(messenger)
+        if (quietBy) { note(`off-hours:${quietBy}`); return }
+
         if (shouldPlaySound) playNotifSound(messenger.id)
         if (!shouldShowNotification) { note('fallback-skipped-tab-in-front'); return }
         note('shown')

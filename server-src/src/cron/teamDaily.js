@@ -78,7 +78,7 @@ async function sendExpiryNotices(now) {
         if (days === null) continue
         await sendOrgExpiryEmail(org.owner, org.name, org.seatsExpiresAt, days).catch((e) => console.error('[team-daily] expiry email failed:', e.message))
         if (org.alertTelegramChatId) {
-            const when = days === 0 ? 'сегодня' : days === 1 ? 'завтра' : `через ${days} дня`
+            const when = days === 0 ? 'сегодня' : days === 1 ? 'завтра' : `через ${days} ${days === 3 ? "дня" : "дней"}`
             await sendDirectMessage(org.alertTelegramChatId, `Подписка команды «${org.name}» заканчивается ${when}. Продлить: https://centrio.me/team`).catch(() => {})
         }
         await prisma.orgAuditLog.create({ data: { orgId: org.id, actorUserId: 'system', action: 'expiry.notice', metaJson: { for: forKey, days } } })

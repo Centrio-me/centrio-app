@@ -474,7 +474,7 @@ async function sendRegistrationCodeEmail(email, code) {
 async function sendOrgExpiryEmail(owner, orgName, expiresAt, days) {
   if (!owner?.email) return { ok: false, reason: 'no_recipient' }
   const date = new Date(expiresAt).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', timeZone: 'Europe/Moscow' })
-  const when = days === 0 ? 'сегодня' : days === 1 ? 'завтра' : `через ${days} дня`
+  const when = days === 0 ? 'сегодня' : days === 1 ? 'завтра' : `через ${days} ${days === 3 ? "дня" : "дней"}`
   return sendEmail({
     to: owner.email,
     subject: `Подписка команды «${orgName}» заканчивается ${when}`,

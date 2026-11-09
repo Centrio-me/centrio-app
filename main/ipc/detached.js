@@ -22,6 +22,18 @@ function registerDetachedIpc({ getMainWindow }) {
     ipcMain.handle('detached:focus', (event, id) => (fromMainWindow(event) ? detached.focus(id) : false))
     ipcMain.handle('detached:close', (event, id) => (fromMainWindow(event) ? detached.close(id) : false))
     ipcMain.handle('detached:list', (event) => (fromMainWindow(event) ? detached.list() : []))
+    // 3.7.1: windows open again after a restart; the main window reaches the page in a separate window to open the
+    // notified chat and to reply from a notification (only the main window may ask).
+    ipcMain.handle('detached:reopen-list', (event) => (fromMainWindow(event) ? detached.takeReopenList() : []))
+    ipcMain.handle('detached:exec', async (event, id, code) => {
+        if (!fromMainWindow(event)) throw new Error('forbidden')
+        return detached.execInPage(id, code)
+    })
+    ipcMain.handle('detached:insert-text', async (event, id, text) => {
+        if (!fromMainWindow(event)) throw new Error('forbidden')
+        return detached.insertTextInPage(id, text)
+    })
+    ipcMain.handle('detached:input', (event, id, input) => (fromMainWindow(event) ? detached.inputToPage(id, input) : false))
 
     ipcMain.handle('detached:init', (event) => detached.handleInit(event.sender))
     ipcMain.on('detached:control', (event, action, value) => detached.handleControl(event.sender, action, value))

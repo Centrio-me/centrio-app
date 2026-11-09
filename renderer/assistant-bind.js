@@ -31,7 +31,18 @@ const TOOL_LABEL_KEYS = {
     create_note: 'assistant.toolCreateNote',
     add_checklist_item: 'assistant.toolAddChecklistItem',
     toggle_note_pin: 'assistant.toolToggleNotePin',
-    delete_note: 'assistant.toolDeleteNote'
+    delete_note: 'assistant.toolDeleteNote',
+    get_missed_summary: 'v371.ai.toolSummary',
+    sleep_unused_tabs: 'v371.ai.toolSleep',
+    get_tab_sleep_settings: 'v371.ai.toolSleepSettings',
+    set_tab_sleep_settings: 'v371.ai.toolSleepSettings',
+    set_tab_keep_awake: 'v371.ai.toolKeepAwake',
+    get_work_hours: 'v371.ai.toolWorkHours',
+    set_work_hours: 'v371.ai.toolWorkHours',
+    set_do_not_disturb: 'v371.ai.toolDnd',
+    list_restore_points: 'v371.ai.toolRestore',
+    create_restore_point: 'v371.ai.toolRestoreSave',
+    list_quick_replies: 'v371.ai.toolReplies'
 }
 
 const ERROR_MESSAGE_KEYS = {
@@ -128,9 +139,11 @@ function bindAssistantUi({ store, ipcRenderer, invokeIpc, tGet, toolsApi, openRi
         const examples = EXAMPLE_PROMPT_KEYS
             .map(key => tGet(`assistant.${key}`))
             .filter(Boolean)
-        const cards = CAPABILITY_CARDS
-            .map(c => ({ icon: c.icon, title: tGet(`assistant.${c.key}Title`), prompt: tGet(`assistant.${c.key}Prompt`) }))
-            .filter(c => c.title && c.prompt)
+        // 3.7.1: «Что я пропустил?» goes first and takes the place of «Что нового» (it asked about the same), so the grid stays two by two.
+        const missedCard = { icon: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>', title: tGet('v371.ai.capMissedTitle'), prompt: tGet('v371.ai.capMissedPrompt') }
+        const cards = [missedCard, ...CAPABILITY_CARDS.filter(c => c.key !== 'cap4')
+            .map(c => ({ icon: c.icon, title: tGet(`assistant.${c.key}Title`), prompt: tGet(`assistant.${c.key}Prompt`) }))]
+            .filter(c => c.title && c.prompt && !c.title.startsWith('v371.'))
         const cardsHtml = cards.map(c => `<button type="button" class="assistant-cap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${c.icon}</svg><b>${escapeHtml(c.title)}</b><span>«${escapeHtml(c.prompt)}»</span></button>`).join('')
         const examplesHtml = examples.length
             ? `<div class="assistant-empty-label">${escapeHtml(tGet('assistant.emptyTryLabel'))}</div><div class="assistant-empty-examples">${examples.map(text => `<button type="button" class="assistant-example-chip">${escapeHtml(text)}</button>`).join('')}</div>`
@@ -290,7 +303,7 @@ function bindAssistantUi({ store, ipcRenderer, invokeIpc, tGet, toolsApi, openRi
 
     function buildApiMessages() {
         return [
-            { role: 'system', content: tGet('assistant.systemPrompt') },
+            { role: 'system', content: `${tGet('assistant.systemPrompt')} ${tGet('v371.ai.systemExtra')}` },
             ...history.map(m => ({ role: m.role, content: m.content }))
         ]
     }
@@ -490,7 +503,19 @@ function bindAssistantUi({ store, ipcRenderer, invokeIpc, tGet, toolsApi, openRi
     loadHistory()
     renderHistory()
 
+    // A message the assistant writes on its own (morning summary, 3.7.1): it lands in the chat history like any answer.
+    function addProactiveMessage(text) {
+        const content = String(text || '').trim()
+        if (!content) return
+        history.push({ role: 'assistant', content })
+        saveHistory()
+        if (!activeRequestId) renderHistory()
+    }
+
     return {
+        addProactiveMessage,
+        ask: (text) => sendMessage(String(text || '')),
+        isBusy: () => !!activeRequestId,
         cancelActive() {
             if (activeRequestId) ipcRenderer.send('assistant:cancel', { requestId: activeRequestId })
         }
