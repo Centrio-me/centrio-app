@@ -1,0 +1,83 @@
+/* ═══ 3.7.3: mini-player popup, variant B (approved by the owner) ═══════════════════════════════════════════
+   One card per source with its own prev/play/next and its own volume (renderer/media-player-ui.js).
+   Colours come from the theme tokens, so light, dark and glass themes all work. */
+
+.media-player-popup.mp-v2 {
+    width: 340px;
+    min-width: 0;
+    max-width: calc(100vw - 80px);
+    padding: 0 0 8px;
+    border-radius: 18px;
+    border: 1px solid var(--border-light);
+    box-shadow: 0 24px 60px rgba(0, 0, 0, .45), 0 2px 8px rgba(0, 0, 0, .2);
+    overflow: hidden;
+}
+
+.mp-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px 10px; }
+.mp-head b { font-size: 13.5px; font-weight: 700; color: var(--text-bright); letter-spacing: -.01em; }
+.mp-count { min-width: 20px; height: 20px; padding: 0 7px; border-radius: 999px; background: var(--bg-active); color: var(--text-secondary); font-size: 11px; font-weight: 700; line-height: 20px; text-align: center; font-variant-numeric: tabular-nums; }
+
+.mp-list { display: flex; flex-direction: column; gap: 8px; padding: 0 8px; max-height: min(70vh, 560px); overflow-y: auto; }
+
+.mp-card {
+    padding: 12px;
+    border-radius: 14px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    transition: border-color .2s, background .2s;
+}
+.mp-card.is-playing {
+    border-color: color-mix(in srgb, var(--accent) 50%, transparent);
+    background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 14%, var(--bg-tertiary)), color-mix(in srgb, var(--accent) 4%, var(--bg-tertiary)));
+}
+
+.mp-top { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+.mp-icon { width: 34px; height: 34px; flex-shrink: 0; border-radius: 10px; object-fit: cover; background: var(--bg-active); }
+.mp-text { flex: 1; min-width: 0; }
+.mp-meta { font-size: 11.5px; font-weight: 600; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mp-card.is-playing .mp-meta { color: color-mix(in srgb, var(--accent) 70%, var(--text-bright)); }
+.mp-title { margin-top: 1px; font-size: 13px; font-weight: 600; color: var(--text-bright); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mp-top:hover .mp-title { text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--text-bright) 35%, transparent); text-underline-offset: 3px; }
+.mp-close { flex-shrink: 0; align-self: flex-start; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 7px; background: none; color: var(--text-secondary); display: flex; align-items: center; justify-content: center; cursor: pointer; opacity: 0; transition: opacity .15s, background .15s, color .15s; }
+.mp-card:hover .mp-close, .mp-close:focus-visible { opacity: 1; }
+.mp-close:hover { background: var(--danger-dim, rgba(239, 68, 68, .14)); color: var(--danger, #ef4444); }
+
+.mp-bottom { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+.mp-pill { display: flex; align-items: center; gap: 2px; padding: 3px; flex-shrink: 0; border-radius: 999px; background: color-mix(in srgb, var(--bg-secondary) 70%, transparent); border: 1px solid var(--border); }
+.mp-btn { width: 28px; height: 28px; padding: 0; border: 0; border-radius: 50%; background: none; color: var(--text-primary); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: background .15s, transform .1s; }
+.mp-btn:hover { background: var(--bg-active); }
+.mp-btn:active { transform: scale(.92); }
+.mp-btn.mp-toggle { width: 30px; height: 30px; background: var(--bg-active); }
+.mp-card.is-playing .mp-btn.mp-toggle { background: var(--accent); color: #fff; }
+.mp-btn:focus-visible, .mp-mute:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.mp-vol { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; }
+.mp-mute { flex-shrink: 0; width: 26px; height: 26px; padding: 0; border: 0; border-radius: 8px; background: none; color: var(--text-secondary); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: background .15s, color .15s; }
+.mp-mute:hover { background: var(--bg-active); color: var(--text-bright); }
+.mp-mute.is-muted { color: var(--danger, #ef4444); }
+.mp-pct { width: 34px; flex-shrink: 0; text-align: right; font-size: 11.5px; font-weight: 600; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+
+/* the volume slider: a filled track in the accent colour and a round white thumb */
+.mp-range { --fill: 100%; flex: 1; min-width: 0; height: 18px; margin: 0; background: none; -webkit-appearance: none; appearance: none; cursor: pointer; }
+.mp-range::-webkit-slider-runnable-track {
+    height: 6px; border-radius: 6px;
+    background: linear-gradient(90deg, var(--accent) 0, color-mix(in srgb, var(--accent) 70%, #fff) var(--fill), color-mix(in srgb, var(--text-primary) 14%, transparent) var(--fill));
+}
+.mp-range::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 14px; height: 14px; margin-top: -4px; border-radius: 50%;
+    background: #fff; box-shadow: 0 2px 6px rgba(0, 0, 0, .35); transition: transform .12s;
+}
+.mp-range:hover::-webkit-slider-thumb, .mp-range:active::-webkit-slider-thumb { transform: scale(1.15); }
+.mp-range:focus-visible { outline: none; }
+.mp-range:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 45%, transparent), 0 2px 6px rgba(0, 0, 0, .35); }
+.mp-range:disabled { cursor: default; opacity: .4; }
+.mp-range:disabled::-webkit-slider-thumb { display: none; }
+
+.mp-empty { padding: 22px 14px 18px; text-align: center; }
+.mp-empty-title { font-size: 13px; font-weight: 700; color: var(--text-primary); }
+.mp-empty-text { margin-top: 4px; font-size: 12px; line-height: 1.5; color: var(--text-secondary); }
+
+@media (prefers-reduced-motion: reduce) {
+    .mp-card, .mp-btn, .mp-range::-webkit-slider-thumb { transition: none; }
+}

@@ -57,7 +57,11 @@
 // dismisses it with the new × button. `playing` is now a per-entry flag
 // instead of presence-in-the-Map, so a paused source keeps its row with a
 // "Play" button in place of "Pause".
-const { FIND_MEDIA_SOURCE, PICK_RESUME_SOURCE } = require('../shared/media-elements')
+const { FIND_MEDIA_SOURCE, PICK_RESUME_SOURCE, SET_VOLUME_SOURCE, clampVolume } = require('../shared/media-elements')
+
+// 3.7.3: a level set from the popup wins over the page's report for this long (the page may answer late)
+const VOLUME_HOLD_MS = 2500
+const VOLUME_SEND_MS = 80
 
 function createMediaPlayerUiApi({ state, tGet, switchTab, mediaPlayerBtn }) {
     const mediaState = new Map() // messengerId -> { title, hasNext, hasPrev, playing, addedAt }
@@ -195,150 +199,284 @@ function createMediaPlayerUiApi({ state, tGet, switchTab, mediaPlayerBtn }) {
         popupEl.style.right = `${Math.round(window.innerWidth - rect.left + 8)}px`
     }
 
-    function renderPopup() {
-        const el = ensurePopup()
+    // ── 3.7.3: the popup redesigned (variant B, approved by the owner) ──────────────────────────────────────────
+    // One card per source: icon, "VK Видео · играет", the title, prev/play/next in a pill, and the source's own
+    // volume. Cards are created once and then only updated (the page reports every 2 s): a rebuilt card would
+    // drop the slider from under the mouse. Everything that comes from a page (titles) goes in as text only.
+    const SVG_NS = 'http://www.w3.org/2000/svg'
+    const ICONS = {
+        prev: 'M6 5h2v14H6zM20 5v14L9 12z',
+        next: 'M16 5h2v14h-2zM4 5l11 7-11 7z',
+        play: 'M7 4.5l13 7.5-13 7.5z',
+        pause: 'M6 5h4v14H6zM14 5h4v14h-4z',
+        close: 'M18 6 6 18M6 6l12 12'
+    }
+    const t = (key, fallback) => (tGet ? tGet(key) : '') || fallback
 
-        if (!el.querySelector('.media-player-popup-header')) {
-            const header = document.createElement('div')
-            header.className = 'media-player-popup-header'
-            header.textContent = tGet ? tGet('rightbar.mediaPlayer') : 'Медиаплеер'
-            el.appendChild(header)
+    function svgIcon(path, size, stroke) {
+        const svg = document.createElementNS(SVG_NS, 'svg')
+        svg.setAttribute('width', String(size))
+        svg.setAttribute('height', String(size))
+        svg.setAttribute('viewBox', '0 0 24 24')
+        svg.setAttribute('aria-hidden', 'true')
+        const p = document.createElementNS(SVG_NS, 'path')
+        p.setAttribute('d', path)
+        if (stroke) {
+            svg.setAttribute('fill', 'none')
+            p.setAttribute('stroke', 'currentColor')
+            p.setAttribute('stroke-width', '2.4')
+            p.setAttribute('stroke-linecap', 'round')
+        } else {
+            svg.setAttribute('fill', 'currentColor')
         }
+        svg.appendChild(p)
+        return svg
+    }
 
-        const ids = trackedIds()
+    // Speaker with 0, 1 or 2 waves, or crossed out when muted
+    function speakerIcon(level, muted) {
+        const svg = document.createElementNS(SVG_NS, 'svg')
+        svg.setAttribute('width', '16')
+        svg.setAttribute('height', '16')
+        svg.setAttribute('viewBox', '0 0 24 24')
+        svg.setAttribute('fill', 'none')
+        svg.setAttribute('stroke', 'currentColor')
+        svg.setAttribute('stroke-width', '2')
+        svg.setAttribute('stroke-linecap', 'round')
+        svg.setAttribute('stroke-linejoin', 'round')
+        svg.setAttribute('aria-hidden', 'true')
+        const paths = ['M11 5 6 9H3v6h3l5 4z']
+        if (muted || level === 0) paths.push('M22 9l-6 6M16 9l6 6')
+        else {
+            paths.push('M15.5 8.5a5 5 0 0 1 0 7')
+            if (level > 0.5) paths.push('M18.5 5.5a9 9 0 0 1 0 13')
+        }
+        paths.forEach((d) => { const p = document.createElementNS(SVG_NS, 'path'); p.setAttribute('d', d); svg.appendChild(p) })
+        return svg
+    }
 
-        // BUGFIX (2026-09-10, "в медиа моргает почему-то выбор. Наводишь -
-        // она не подсвечивается, а моргает" — live user report): renderPopup()
-        // used to wipe the whole popup (el.innerHTML = '') and rebuild every
-        // row from scratch on every single onMediaState update — including
-        // ones from a source the user isn't even looking at. That destroyed
-        // and recreated the DOM node under the cursor on every poll tick,
-        // which resets :hover (a new element starts unhovered until the next
-        // mousemove/compositor pass re-evaluates it), reading as a flicker
-        // instead of a steady highlight. Now existing rows are updated in
-        // place by id — only rows for ids that appeared/disappeared are
-        // actually added/removed, so a row already under the mouse keeps its
-        // own DOM identity (and hover state) across updates.
-        const existingRows = new Map()
-        el.querySelectorAll('.media-player-popup-item[data-id]').forEach((row) => {
-            existingRows.set(row.dataset.id, row)
+    function el(tag, className, text) {
+        const node = document.createElement(tag)
+        if (className) node.className = className
+        if (text != null) node.textContent = text
+        return node
+    }
+
+    function iconButton(className, path, label) {
+        const b = el('button', `mp-btn ${className}`)
+        b.type = 'button'
+        b.title = label
+        b.setAttribute('aria-label', label)
+        b.appendChild(svgIcon(path, 14))
+        return b
+    }
+
+    function webviewOf(id) {
+        return document.getElementById(`webview-${id}`)
+    }
+
+    function isMuted(id) {
+        const wv = webviewOf(id)
+        try { return !!(wv && typeof wv.isAudioMuted === 'function' && wv.isAudioMuted()) } catch { return false }
+    }
+
+    // Sound on/off for the whole tab (works for every site, also ones that play through Web Audio, like Yandex Music).
+    function toggleMute(id) {
+        const wv = webviewOf(id)
+        if (!wv || typeof wv.setAudioMuted !== 'function') return
+        try { wv.setAudioMuted(!isMuted(id)) } catch {}
+        renderPopup()
+    }
+
+    let volumeTimer = null
+    let volumePending = null
+    // The page gets the new level at most every 80 ms while the slider moves, and once more when it stops.
+    function sendVolume(id, value) {
+        volumePending = { id, value }
+        if (volumeTimer) return
+        volumeTimer = setTimeout(() => {
+            volumeTimer = null
+            const job = volumePending
+            volumePending = null
+            if (!job) return
+            const wv = webviewOf(job.id)
+            if (!wv || typeof wv.executeJavaScript !== 'function') return
+            const script = `(function(){ ${FIND_MEDIA_SOURCE} ${SET_VOLUME_SOURCE} return __centrioSetVolume(document, ${JSON.stringify(job.value)}) })()`
+            try { wv.executeJavaScript(script, true).catch(() => {}) } catch {}
+        }, VOLUME_SEND_MS)
+    }
+
+    function setVolume(id, value) {
+        const level = clampVolume(value)
+        if (level == null) return
+        const info = mediaState.get(id)
+        if (info) mediaState.set(id, { ...info, volume: level, volumeSetAt: Date.now() })
+        // turning the volume up while the tab is muted brings the sound back
+        if (level > 0 && isMuted(id)) {
+            try { webviewOf(id).setAudioMuted(false) } catch {}
+        }
+        sendVolume(id, level)
+    }
+
+    function createCard(id) {
+        const card = el('div', 'mp-card')
+        card.dataset.id = id
+
+        const top = el('div', 'mp-top')
+        top.title = t('mediaPlayer.openTab', 'Открыть вкладку')
+        const icon = el('img', 'mp-icon')
+        icon.alt = ''
+        icon.width = 34
+        icon.height = 34
+        icon.addEventListener('error', () => { icon.src = 'assets/logo.png' }, { once: true })
+        const text = el('div', 'mp-text')
+        const meta = el('div', 'mp-meta')
+        const title = el('div', 'mp-title')
+        text.append(meta, title)
+        const close = el('button', 'mp-close')
+        close.type = 'button'
+        close.title = t('mediaPlayer.remove', 'Убрать')
+        close.setAttribute('aria-label', close.title)
+        close.appendChild(svgIcon(ICONS.close, 12, true))
+        top.append(icon, text, close)
+
+        const bottom = el('div', 'mp-bottom')
+        const pill = el('div', 'mp-pill')
+        const prev = iconButton('mp-prev', ICONS.prev, t('mediaPlayer.previous', 'Предыдущий трек'))
+        const toggle = iconButton('mp-toggle', ICONS.play, t('mediaPlayer.play', 'Play'))
+        const next = iconButton('mp-next', ICONS.next, t('mediaPlayer.next', 'Следующий трек'))
+        pill.append(prev, toggle, next)
+
+        const vol = el('div', 'mp-vol')
+        const mute = el('button', 'mp-mute')
+        mute.type = 'button'
+        const range = el('input', 'mp-range')
+        range.type = 'range'
+        range.min = '0'
+        range.max = '100'
+        range.step = '1'
+        range.setAttribute('aria-label', t('v373.mp.volume', 'Громкость'))
+        const pct = el('span', 'mp-pct')
+        vol.append(mute, range, pct)
+        bottom.append(pill, vol)
+        card.append(top, bottom)
+
+        top.addEventListener('click', (e) => {
+            if (e.target.closest('.mp-close')) return
+            switchTab(id)
+            closePopup()
         })
+        close.addEventListener('click', (e) => {
+            e.stopPropagation()
+            mediaState.delete(id)
+            renderPopup()
+        })
+        prev.addEventListener('click', (e) => { e.stopPropagation(); sendCommand(id, 'previous') })
+        next.addEventListener('click', (e) => { e.stopPropagation(); sendCommand(id, 'next') })
+        toggle.addEventListener('click', (e) => {
+            e.stopPropagation()
+            sendCommand(id, mediaState.get(id)?.playing ? 'pause' : 'play')
+        })
+        mute.addEventListener('click', (e) => { e.stopPropagation(); toggleMute(id) })
+        range.addEventListener('pointerdown', () => { card.dataset.dragging = '1' })
+        range.addEventListener('pointerup', () => { delete card.dataset.dragging })
+        range.addEventListener('input', () => {
+            const level = Number(range.value) / 100
+            setVolume(id, level)
+            paintLevel(card, level, false)
+        })
+        range.addEventListener('change', () => { delete card.dataset.dragging })
+        // the wheel over the volume nudges it by 5 %
+        vol.addEventListener('wheel', (e) => {
+            if (range.disabled) return
+            e.preventDefault()
+            const level = clampVolume(Number(range.value) / 100 + (e.deltaY < 0 ? 0.05 : -0.05))
+            range.value = String(Math.round(level * 100))
+            setVolume(id, level)
+            paintLevel(card, level, false)
+        }, { passive: false })
+        return card
+    }
 
-        let empty = el.querySelector('.media-player-popup-empty')
-        if (!ids.length) {
-            if (!empty) {
-                empty = document.createElement('div')
-                empty.className = 'media-player-popup-empty'
-                el.appendChild(empty)
-            }
-            empty.textContent = tGet ? tGet('mediaPlayer.nothingPlaying') : 'Сейчас ничего не воспроизводится'
-        } else if (empty) {
+    function paintLevel(card, level, muted) {
+        const range = card.querySelector('.mp-range')
+        const pct = Math.round(level * 100)
+        if (card.dataset.dragging !== '1') range.value = String(pct)
+        range.style.setProperty('--fill', `${muted ? 0 : pct}%`)
+        card.querySelector('.mp-pct').textContent = muted ? '0%' : `${pct}%`
+        const mute = card.querySelector('.mp-mute')
+        mute.textContent = ''
+        mute.appendChild(speakerIcon(level, muted))
+        const label = muted ? t('v373.mp.unmute', 'Включить звук') : t('v373.mp.mute', 'Выключить звук')
+        mute.title = label
+        mute.setAttribute('aria-label', label)
+        mute.classList.toggle('is-muted', muted)
+    }
+
+    function updateCard(card, id, messenger, info) {
+        card.classList.toggle('is-playing', !!info.playing)
+        const icon = card.querySelector('.mp-icon')
+        const src = messenger.icon || 'assets/logo.png'
+        if (icon.getAttribute('src') !== src) icon.setAttribute('src', src)
+        const state = info.playing ? t('v373.mp.playing', 'играет') : t('v373.mp.paused', 'пауза')
+        card.querySelector('.mp-meta').textContent = `${messenger.name} · ${state}`
+        const title = info.title && info.title !== messenger.name ? info.title : ''
+        const titleEl = card.querySelector('.mp-title')
+        titleEl.textContent = title || messenger.name
+        titleEl.title = title
+        const toggle = card.querySelector('.mp-toggle')
+        const label = info.playing ? t('mediaPlayer.pause', 'Пауза') : t('mediaPlayer.play', 'Play')
+        toggle.title = label
+        toggle.setAttribute('aria-label', label)
+        toggle.querySelector('path').setAttribute('d', info.playing ? ICONS.pause : ICONS.play)
+        // A site without a <video>/<audio> (Web Audio, e.g. Yandex Music): only on/off works
+        const range = card.querySelector('.mp-range')
+        range.disabled = info.hasElement === false
+        card.querySelector('.mp-vol').title = range.disabled ? t('v373.mp.onlyMute', 'Здесь звук только включается и выключается') : ''
+        paintLevel(card, typeof info.volume === 'number' ? info.volume : 1, isMuted(id))
+    }
+
+    function renderPopup() {
+        const el0 = ensurePopup()
+        el0.classList.add('mp-v2')
+
+        let head = el0.querySelector('.mp-head')
+        if (!head) {
+            el0.textContent = '' // the old layout, if any
+            head = el('div', 'mp-head')
+            head.append(el('b', '', t('rightbar.mediaPlayer', 'Медиаплеер')), el('span', 'mp-count'))
+            el0.appendChild(head)
+            el0.appendChild(el('div', 'mp-list'))
+        }
+        const list = el0.querySelector('.mp-list')
+        const ids = trackedIds()
+        const count = head.querySelector('.mp-count')
+        count.textContent = ids.length ? String(ids.length) : ''
+        count.hidden = !ids.length
+
+        let empty = list.querySelector('.mp-empty')
+        if (!ids.length && !empty) {
+            empty = el('div', 'mp-empty')
+            empty.append(el('div', 'mp-empty-title', t('mediaPlayer.nothingPlaying', 'Сейчас ничего не воспроизводится')),
+                el('div', 'mp-empty-text', t('v373.mp.emptyHint', 'Включите видео или музыку во вкладке — она появится здесь.')))
+            list.appendChild(empty)
+        } else if (ids.length && empty) {
             empty.remove()
         }
 
-        const seen = new Set()
-
+        const existing = new Map([...list.querySelectorAll('.mp-card')].map((c) => [c.dataset.id, c]))
         ids.forEach((id) => {
             const messenger = getMessenger(id)
             if (!messenger) return
-            const info = mediaState.get(id) || {}
-            seen.add(id)
-
-            const subtitle = info.title && info.title !== messenger.name ? info.title : ''
-            const prevLabel  = tGet ? tGet('mediaPlayer.previous') : 'Предыдущий трек'
-            const pauseLabel = tGet ? tGet('mediaPlayer.pause')    : 'Пауза'
-            const playLabel  = tGet ? tGet('mediaPlayer.play')     : 'Play'
-            const nextLabel  = tGet ? tGet('mediaPlayer.next')     : 'Следующий трек'
-            const removeLabel = tGet ? tGet('mediaPlayer.remove')  : 'Убрать'
-            // Play/pause is a single toggle button now (was always "Pause"
-            // when a source could only exist while playing).
-            const toggleSvg = info.playing
-                ? `<rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/>`
-                : `<path d="M6 4l14 8-14 8V4z"/>`
-
-            let row = existingRows.get(id)
-            const isNew = !row
-            if (isNew) {
-                row = document.createElement('div')
-                row.dataset.id = id
-                el.appendChild(row)
+            let card = existing.get(id)
+            if (!card) {
+                card = createCard(id)
+                list.appendChild(card)
             }
-            row.className = 'media-player-popup-item' + (info.playing ? '' : ' paused')
-            // BUGFIX (2026-09-10, "прыгают кнопки переключения. То показаны,
-            // то нет. Пусть они все по-умолчанию показываются" — live user
-            // report): hasNext/hasPrev come from a best-effort detection of
-            // whether the page registered a MediaSession action handler,
-            // polled every 2s — flaky enough (handler re-registered on
-            // navigation, momentarily undetected, etc.) that the buttons
-            // visibly flickered in and out. Always show prev/next now;
-            // sendCommand() already no-ops safely if the page never
-            // registered a handler for that action, so showing the button
-            // even when unsupported has no real downside.
-            row.innerHTML = `
-                <img src="${messenger.icon || ''}" alt="" width="28" height="28">
-                <div class="media-player-popup-info">
-                    <span class="media-player-popup-name">${messenger.name}</span>
-                    <span class="media-player-popup-title" style="display:${subtitle ? '' : 'none'}">${subtitle}</span>
-                </div>
-                <div class="media-player-popup-controls">
-                    <button type="button" class="media-player-popup-btn media-player-popup-prev" title="${prevLabel}">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h2v14H6zM20 5v14l-11-7z"/></svg>
-                    </button>
-                    <button type="button" class="media-player-popup-btn media-player-popup-toggle" title="${info.playing ? pauseLabel : playLabel}">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">${toggleSvg}</svg>
-                    </button>
-                    <button type="button" class="media-player-popup-btn media-player-popup-next" title="${nextLabel}">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M16 5h2v14h-2zM4 5v14l11-7z"/></svg>
-                    </button>
-                    <button type="button" class="media-player-popup-btn media-player-popup-remove" title="${removeLabel}">
-                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                    </button>
-                </div>
-            `
-            // BUGFIX (2026-09-10, "Вк-видео — иконка всё ещё битая в
-            // медиаплеере" — live user report, persisted even after adding
-            // an inline onerror="..." fallback in the previous fix): this
-            // app's CSP is `script-src 'self'` with NO 'unsafe-inline' (see
-            // index.html) — inline event-handler attributes like onerror="…"
-            // are inline scripts and get silently blocked by CSP, so that
-            // fallback never actually ran. Same root cause the app already
-            // hit once before (main/services/entitlement.js's sibling
-            // comments, the whole preload-allowlist saga) just in a new
-            // spot: anything that looks like inline JS in this app's HTML is
-            // dead on arrival. Attaching the listener from actual script
-            // (this file already executes under CSP's allowed 'self') works.
-            const iconImg = row.querySelector('img')
-            iconImg.addEventListener('error', () => {
-                iconImg.onerror = null
-                iconImg.src = 'assets/logo.png'
-            })
-            row.addEventListener('click', () => {
-                switchTab(id)
-                closePopup()
-            })
-            row.querySelector('.media-player-popup-prev').addEventListener('click', (e) => {
-                e.stopPropagation()
-                sendCommand(id, 'previous')
-            })
-            row.querySelector('.media-player-popup-toggle').addEventListener('click', (e) => {
-                e.stopPropagation()
-                sendCommand(id, info.playing ? 'pause' : 'play')
-            })
-            row.querySelector('.media-player-popup-next').addEventListener('click', (e) => {
-                e.stopPropagation()
-                sendCommand(id, 'next')
-            })
-            row.querySelector('.media-player-popup-remove').addEventListener('click', (e) => {
-                e.stopPropagation()
-                mediaState.delete(id)
-                renderPopup()
-            })
+            existing.delete(id)
+            updateCard(card, id, messenger, mediaState.get(id) || {})
         })
-
-        // Remove rows for ids no longer tracked (tab closed / dismissed).
-        existingRows.forEach((row, id) => {
-            if (!seen.has(id)) row.remove()
-        })
+        existing.forEach((card) => card.remove())
     }
 
     function togglePopup() {
@@ -397,11 +535,18 @@ function createMediaPlayerUiApi({ state, tGet, switchTab, mediaPlayerBtn }) {
         const existing = mediaState.get(messengerId)
         if (!existing && !payload.playing) return
 
+        // 3.7.3: each source carries its own volume. While the person moves a slider the page's report would
+        // snap it back, so a value set here a moment ago wins over the poll for a short while.
+        const reported = clampVolume(payload.volume)
+        const recentlySet = existing && existing.volumeSetAt && Date.now() - existing.volumeSetAt < VOLUME_HOLD_MS
         mediaState.set(messengerId, {
             title: typeof payload.title === 'string' ? payload.title : '',
             hasNext: !!payload.hasNext,
             hasPrev: !!payload.hasPrev,
             playing: !!payload.playing,
+            hasElement: payload.hasElement !== false,
+            volume: recentlySet ? existing.volume : (reported == null ? (existing ? existing.volume : 1) : reported),
+            volumeSetAt: recentlySet ? existing.volumeSetAt : 0,
             addedAt: existing ? existing.addedAt : Date.now()
         })
 

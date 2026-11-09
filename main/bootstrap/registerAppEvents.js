@@ -14,7 +14,7 @@ const {
 } = require('../ipc/window')
 const { isOAuthProviderUrl, isYandexInternalSsoHost } = require('../services/oauthProviders')
 const { popularMessengers } = require('../../renderer/constants')
-const { FIND_MEDIA_SOURCE } = require('../../shared/media-elements')
+const { FIND_MEDIA_SOURCE, READ_LEVEL_SOURCE } = require('../../shared/media-elements')
 
 // BUGFIX (2026-09-10, "Яндекс почта попадает в медиалеер всё равно" — live
 // user report, persisted despite the messenger.category === 'media' gate
@@ -923,6 +923,7 @@ const MEDIA_CONTROL_PATCH_SCRIPT = `(function() {
 // 3.7.2: media inside shadow roots counts too (VK Video keeps its <video> there) — shared/media-elements.js
 const MEDIA_STATE_DETECT_SCRIPT = `(function() {
     ${FIND_MEDIA_SOURCE}
+    ${READ_LEVEL_SOURCE}
     var playing = false
     var els = __centrioFindMedia(document)
     for (var i = 0; i < els.length; i++) {
@@ -948,7 +949,9 @@ const MEDIA_STATE_DETECT_SCRIPT = `(function() {
             hasPrev = typeof actions.previoustrack === 'function'
         } catch (e) {}
     }
-    return { playing: playing, title: title, hasNext: hasNext, hasPrev: hasPrev }
+    // 3.7.3: the mini-player shows each source's own volume
+    var level = __centrioReadLevel(document)
+    return { playing: playing, title: title, hasNext: hasNext, hasPrev: hasPrev, hasElement: level.hasElement, volume: level.volume, muted: level.muted }
 })()`
 
 const MEDIA_STATE_POLL_MS = 2000
@@ -977,6 +980,7 @@ function startMediaStatePolling(contents, getMainWindow) {
     let lastTitle = ''
     let lastHasNext = false
     let lastHasPrev = false
+    let lastLevelKey = ""
 
     // BUGFIX (2026-09-16, "если музыка долго играет, то медиплеер думает,
     // что ничего уже не играет" — live user report): contents.executeJavaScript()
@@ -1010,14 +1014,19 @@ function startMediaStatePolling(contents, getMainWindow) {
             const title = typeof result.title === 'string' ? result.title : ''
             const hasNext = !!result.hasNext
             const hasPrev = !!result.hasPrev
-            if (playing === lastPlaying && title === lastTitle && hasNext === lastHasNext && hasPrev === lastHasPrev) return
+            const hasElement = !!result.hasElement
+            const volume = Number.isFinite(Number(result.volume)) ? Math.min(1, Math.max(0, Number(result.volume))) : 1
+            const muted = !!result.muted
+            const levelKey = `${hasElement}|${volume}|${muted}`
+            if (playing === lastPlaying && title === lastTitle && hasNext === lastHasNext && hasPrev === lastHasPrev && levelKey === lastLevelKey) return
+            lastLevelKey = levelKey
             lastPlaying = playing
             lastTitle = title
             lastHasNext = hasNext
             lastHasPrev = hasPrev
             const win = getMainWindow()
             if (!win || win.isDestroyed()) return
-            win.webContents.send('media-state', messengerId, { playing, title, hasNext, hasPrev })
+            win.webContents.send('media-state', messengerId, { playing, title, hasNext, hasPrev, hasElement, volume, muted })
         }).catch(() => {}).finally(() => {
             if (settled) return
             settled = true

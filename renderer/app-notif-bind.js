@@ -160,7 +160,10 @@ function bindAppNotifUi({
             updateBadge()
         }
 
-        if (n.messengerId && typeof switchTab === 'function') {
+        // 3.7.3: same routing as a pop-up notification (split / chosen preset / own window), see window-bind.js
+        if (n.messengerId && typeof window.__centrioOpenForNotification === 'function') {
+            try { window.__centrioOpenForNotification(n.messengerId) } catch {}
+        } else if (n.messengerId && typeof switchTab === 'function') {
             try { switchTab(n.messengerId) } catch {}
         }
 

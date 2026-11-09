@@ -150,6 +150,10 @@ function bindWindowUi({
         }
         openForNotification(messengerId)
     })
+
+    // 3.7.3: the notification centre (bell) opens a messenger the same way as a pop-up notification
+    // (stays in the split, or the preset / own window chosen for it) — renderer/app-notif-bind.js
+    window.__centrioOpenForNotification = openForNotification
 }
 
 module.exports = {

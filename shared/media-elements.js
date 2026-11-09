@@ -39,4 +39,43 @@ function pickResumeTarget(elements) {
 const FIND_MEDIA_SOURCE = `var __centrioFindMedia = ${findMediaElements.toString()};`
 const PICK_RESUME_SOURCE = pickResumeTarget.toString()
 
-module.exports = { findMediaElements, pickResumeTarget, FIND_MEDIA_SOURCE, PICK_RESUME_SOURCE }
+
+// ── Volume per source (3.7.3) ─────────────────────────────────────
+// Self-contained so their source can be injected into a page too: in a page the finder is __centrioFindMedia, in Node
+// (tests) it is findMediaElements. A typeof check on a missing name is safe in both.
+function clampVolume(value) {
+    var n = Number(value)
+    if (value === null || value === '' || !isFinite(n)) return null
+    return n < 0 ? 0 : (n > 1 ? 1 : n)
+}
+
+function setMediaVolume(rootNode, value) {
+    var n = Number(value)
+    if (value === null || value === '' || !isFinite(n)) return 0
+    var level = n < 0 ? 0 : (n > 1 ? 1 : n)
+    var find = typeof __centrioFindMedia === 'function' ? __centrioFindMedia : findMediaElements
+    var list = find(rootNode)
+    for (var i = 0; i < list.length; i++) {
+        try {
+            list[i].volume = level
+            // moving the slider up brings the sound back if the site had muted the element
+            if (level > 0) list[i].muted = false
+        } catch (e) {}
+    }
+    return list.length
+}
+
+function readMediaLevel(rootNode) {
+    var find = typeof __centrioFindMedia === 'function' ? __centrioFindMedia : findMediaElements
+    var list = find(rootNode)
+    if (!list.length) return { hasElement: false, volume: 1, muted: false }
+    var pick = list[0]
+    for (var i = 0; i < list.length; i++) { if (!list[i].paused) { pick = list[i]; break } }
+    var v = Number(pick.volume)
+    return { hasElement: true, volume: isFinite(v) ? Math.round(v * 100) / 100 : 1, muted: !!pick.muted }
+}
+
+const SET_VOLUME_SOURCE = `var __centrioSetVolume = ${setMediaVolume.toString()};`
+const READ_LEVEL_SOURCE = `var __centrioReadLevel = ${readMediaLevel.toString()};`
+
+module.exports = { findMediaElements, pickResumeTarget, FIND_MEDIA_SOURCE, PICK_RESUME_SOURCE, clampVolume, setMediaVolume, readMediaLevel, SET_VOLUME_SOURCE, READ_LEVEL_SOURCE }
