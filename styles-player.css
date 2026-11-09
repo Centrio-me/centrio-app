@@ -94,3 +94,69 @@
 .team-task-withdraw { margin-top: 6px; padding: 0; border: 0; background: none; color: var(--text-muted); font: inherit; font-size: 11.5px; cursor: pointer; }
 .team-task-withdraw:hover { color: var(--danger, #ef4444); text-decoration: underline; }
 .team-task-withdraw:disabled { opacity: .5; cursor: wait; }
+
+/* ── 3.7.3: achievement and tip cards in the style of the app (renderer/app-hints.js) ── */
+#appHintStack { gap: 10px; }
+#appHintStack .app-hint {
+    position: relative; overflow: hidden;
+    display: flex; align-items: center; gap: 13px;
+    width: 316px; padding: 14px 36px 16px 14px;
+    border: 1px solid var(--border-light); border-radius: 16px;
+    background: var(--bg-secondary);
+    box-shadow: 0 18px 48px rgba(0, 0, 0, .45), 0 2px 8px rgba(0, 0, 0, .2);
+    animation: hint-in .42s cubic-bezier(.16, 1, .3, 1);
+    transition: transform .2s, opacity .2s, background .2s;
+}
+#appHintStack .app-hint.is-leaving { opacity: 0; transform: translateX(16px) scale(.98); }
+#appHintStack .app-hint--badge {
+    border-color: color-mix(in srgb, var(--accent) 38%, var(--border-light));
+    background:
+        radial-gradient(120% 140% at 0% 0%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 55%),
+        var(--bg-secondary);
+}
+#appHintStack .app-hint--link { cursor: pointer; }
+#appHintStack .app-hint--link:hover { background-color: var(--bg-tertiary, var(--bg-active)); transform: translateY(-1px); }
+
+#appHintStack .app-hint-icon {
+    position: relative; flex-shrink: 0; overflow: hidden;
+    width: 46px; height: 46px; border-radius: 13px;
+    display: grid; place-items: center;
+    background: linear-gradient(145deg, color-mix(in srgb, var(--accent) 70%, #fff), var(--accent));
+    color: #fff;
+    box-shadow: 0 6px 18px color-mix(in srgb, var(--accent) 45%, transparent), inset 0 1px 0 rgba(255, 255, 255, .35);
+    animation: hint-pop .5s cubic-bezier(.34, 1.56, .64, 1) .08s both;
+}
+#appHintStack .app-hint-icon svg { width: 22px; height: 22px; }
+/* one light sweep over the icon when the card appears */
+#appHintStack .app-hint-icon::after {
+    content: ''; position: absolute; inset: -40%;
+    background: linear-gradient(115deg, transparent 40%, rgba(255, 255, 255, .55) 50%, transparent 60%);
+    transform: translateX(-100%); animation: hint-shine 1.1s ease-out .35s 1 forwards;
+}
+
+#appHintStack .app-hint-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+#appHintStack .app-hint-eyebrow { font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: color-mix(in srgb, var(--accent) 75%, var(--text-bright)); }
+#appHintStack .app-hint b { display: block; color: var(--text-bright); font-size: 14px; font-weight: 700; letter-spacing: -.01em; line-height: 1.3; }
+#appHintStack .app-hint p { margin: 2px 0 0; color: var(--text-secondary); font-size: 12.5px; line-height: 1.45; }
+
+#appHintStack .app-hint-close { top: 8px; right: 8px; width: 24px; height: 24px; border-radius: 7px; opacity: .55; transition: opacity .15s, background .15s; }
+#appHintStack .app-hint:hover .app-hint-close { opacity: 1; }
+#appHintStack .app-hint-close:hover { background: var(--bg-active); }
+
+/* how long the card stays: a thin line that runs out (it waits while the mouse is over the card) */
+#appHintStack .app-hint-life {
+    position: absolute; left: 0; right: 0; bottom: 0; height: 2px;
+    background: color-mix(in srgb, var(--accent) 70%, transparent);
+    transform-origin: left; animation: hint-life var(--life, 8000ms) linear forwards;
+}
+#appHintStack .app-hint.is-held .app-hint-life { animation-play-state: paused; }
+#appHintStack .app-hint:not(.app-hint--badge) .app-hint-life { background: color-mix(in srgb, var(--text-secondary) 40%, transparent); }
+
+@keyframes hint-in { from { opacity: 0; transform: translateX(24px) scale(.96); } to { opacity: 1; transform: none; } }
+@keyframes hint-pop { from { transform: scale(.4) rotate(-12deg); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes hint-shine { to { transform: translateX(100%); } }
+@keyframes hint-life { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+@media (prefers-reduced-motion: reduce) {
+    #appHintStack .app-hint, #appHintStack .app-hint-icon { animation: none; }
+    #appHintStack .app-hint-icon::after { display: none; }
+}
