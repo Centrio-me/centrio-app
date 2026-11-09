@@ -33,6 +33,12 @@ module.exports = {
             "requestDone": "Выполнено",
             "withdraw": "Отозвать",
             "emptyMember": "Задач пока нет. Если нужно, чтобы руководитель что-то посмотрел или согласовал, напишите выше."
+        },
+        "themes": {
+            "embedded": "Одна поверхность, мессенджер как окно",
+            "dock": "Стеклянная панель со свечением",
+            "light": "Светлое оформление",
+            "adaptive": "Цвет открытого мессенджера"
         }
     },
     "en": {
@@ -67,6 +73,12 @@ module.exports = {
             "requestDone": "Done",
             "withdraw": "Withdraw",
             "emptyMember": "No tasks yet. If your manager needs to review or approve something, write it above."
+        },
+        "themes": {
+            "embedded": "One surface, the messenger as a window",
+            "dock": "A glass dock with a glow",
+            "light": "Light look",
+            "adaptive": "The colour of the open messenger"
         }
     },
     "de": {
@@ -101,6 +113,12 @@ module.exports = {
             "requestDone": "Erledigt",
             "withdraw": "Zurückziehen",
             "emptyMember": "Noch keine Aufgaben. Wenn die Leitung etwas prüfen oder freigeben soll, schreiben Sie es oben."
+        },
+        "themes": {
+            "embedded": "Eine Fläche, der Messenger als Fenster",
+            "dock": "Gläserne Leiste mit Leuchten",
+            "light": "Helles Design",
+            "adaptive": "Die Farbe des offenen Messengers"
         }
     },
     "es": {
@@ -135,6 +153,12 @@ module.exports = {
             "requestDone": "Hecho",
             "withdraw": "Retirar",
             "emptyMember": "Aún no hay tareas. Si el responsable debe revisar o aprobar algo, escríbelo arriba."
+        },
+        "themes": {
+            "embedded": "Una sola superficie, el mensajero como ventana",
+            "dock": "Barra de cristal con brillo",
+            "light": "Aspecto claro",
+            "adaptive": "El color del mensajero abierto"
         }
     },
     "fr": {
@@ -169,6 +193,12 @@ module.exports = {
             "requestDone": "Fait",
             "withdraw": "Retirer",
             "emptyMember": "Pas encore de tâches. Si le responsable doit relire ou valider quelque chose, écrivez-le ci-dessus."
+        },
+        "themes": {
+            "embedded": "Une seule surface, la messagerie en fenêtre",
+            "dock": "Barre de verre lumineuse",
+            "light": "Apparence claire",
+            "adaptive": "La couleur de la messagerie ouverte"
         }
     },
     "it": {
@@ -203,6 +233,12 @@ module.exports = {
             "requestDone": "Fatto",
             "withdraw": "Ritira",
             "emptyMember": "Ancora nessuna attività. Se il responsabile deve rivedere o approvare qualcosa, scrivilo sopra."
+        },
+        "themes": {
+            "embedded": "Un’unica superficie, il messenger come finestra",
+            "dock": "Barra di vetro luminosa",
+            "light": "Aspetto chiaro",
+            "adaptive": "Il colore del messenger aperto"
         }
     },
     "zh": {
@@ -237,6 +273,12 @@ module.exports = {
             "requestDone": "已完成",
             "withdraw": "撤回",
             "emptyMember": "暂无任务。如需主管查看或审批，请在上方填写。"
+        },
+        "themes": {
+            "embedded": "整体界面，聊天工具如窗口",
+            "dock": "带光晕的玻璃侧栏",
+            "light": "浅色外观",
+            "adaptive": "采用当前聊天工具的颜色"
         }
     }
 }
