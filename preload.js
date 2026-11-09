@@ -39,6 +39,7 @@ const validReceiveChannels = new Set([
     'oauth-popup-started',
     'oauth-popup-done',
     'shortcut-action',
+    'quick-task:add',
     'oauth-signin-finished',
     'oauth-popup-closed',
     'auto-launch-result',

@@ -14,6 +14,7 @@ const { buildBeat } = require('./team-presence')
 const { runCommand } = require('./team-commands')
 const { createTeamNotes } = require('./team-notes')
 const { showTeamNotice } = require('./team-toast')
+const { ownAssignments } = require('./org-own-assignments')
 
 function createOrgTeamApi({
     authorizedInvoke,
@@ -143,11 +144,14 @@ function createOrgTeamApi({
             await syncStructure(orgId)
             const result = await authorizedInvoke('api-org-get-messenger-assignments', orgId)
             if (isMembershipLost(result)) { await handleMembershipLost(); return }
-            const assignments = unwrap(result)
-            if (!Array.isArray(assignments)) {
+            const roster = unwrap(result)
+            if (!Array.isArray(roster)) {
                 window.__centrioSync?.report('team', false, { code: (result && (result.code || result.status)) || 'bad_response', message: (result && result.error) || 'assignments' })
                 return
             }
+            // An owner/admin receives the whole team's roster: only his own rows become tabs here (3.7.2).
+            const me = cloudStore.getUser()
+            const assignments = ownAssignments(roster, { id: me?.id, role: me?.orgSummary?.orgRole, isOwner: me?.orgSummary?.orgIsOwner === true })
             window.__centrioSync?.report('team', true, { detail: assignments.length })
             // Messengers from the owner are here: the first-run wizard must not keep covering them.
             if (assignments.length > 0 && document.body.classList.contains('onb-active')) window.__centrioLeaveOnboarding?.()

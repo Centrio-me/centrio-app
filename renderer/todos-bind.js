@@ -28,6 +28,8 @@ function stampChanged(data) {
     return { ...data, items: (data.items || []).map(t => (savedSnapshot.get(t.id) === contentOf(t) ? t : { ...t, updatedAt: now })) }
 }
 
+const { parseQuickTask, isoDate, dayTasks, overdueTasks } = require('../shared/task-parse')
+
 const DEFAULT_LIST_ID = 'default'
 const REMINDER_CHECK_INTERVAL_MS = 60 * 1000
 
@@ -44,13 +46,16 @@ function migrateItem(t) {
     }
 }
 
-function bindTodosUi({ store, tGet, ipcRenderer, openRightPanel, closeRightPanel }) {
+function bindTodosUi({ store, tGet, ipcRenderer, openRightPanel, closeRightPanel, getLang = () => 'ru' }) {
     const btn         = document.getElementById('todosBtn')
     const panel       = document.getElementById('todosPanel')
     const list        = document.getElementById('todosList')
     const addForm     = document.getElementById('todoAddForm')
     const addInput    = document.getElementById('todoAddInput')
     const tabStarred  = document.getElementById('todosTabStarred')
+    const tabToday    = document.getElementById('todosTabToday')
+    const tabUpcoming = document.getElementById('todosTabUpcoming')
+    const addPreview  = document.getElementById('todoAddPreview')
     const listTabsEl  = document.getElementById('todosListTabs')
     const listAddBtn   = document.getElementById('todoListAddBtn')
     const listAddInput = document.getElementById('todoListAddInput')
@@ -87,6 +92,9 @@ function bindTodosUi({ store, tGet, ipcRenderer, openRightPanel, closeRightPanel
     function getData() {
         let data = store.get('todos', null)
         let dirty = false
+        // 3.7.2: nothing read is not "no tasks" — the cache may simply not hold them. Build the default list in memory
+        // only; writing it would replace the tasks on disk with an empty list (that is how tasks got lost on restart).
+        const nothingRead = data == null
         if (!data || Array.isArray(data) || !Array.isArray(data.lists)) {
             // Миграция старого плоского формата (или пустое хранилище).
             const oldItems = Array.isArray(data) ? data : []
@@ -103,7 +111,7 @@ function bindTodosUi({ store, tGet, ipcRenderer, openRightPanel, closeRightPanel
             data.items = data.items.map(migrateItem)
             dirty = true
         }
-        if (dirty) store.set('todos', data)
+        if (dirty && !nothingRead) store.set('todos', data)
         takeSnapshot(data)
         return data
     }
@@ -112,6 +120,8 @@ function bindTodosUi({ store, tGet, ipcRenderer, openRightPanel, closeRightPanel
         const stamped = stampChanged(data)
         store.set('todos', stamped)
         takeSnapshot(stamped)
+        // the calendar redraws its marks from this (renderer/task-calendar.js)
+        document.dispatchEvent(new CustomEvent('centrio-tasks-changed'))
     }
 
     function escapeHtml(str) {
@@ -135,6 +145,52 @@ function bindTodosUi({ store, tGet, ipcRenderer, openRightPanel, closeRightPanel
             </button>
         `).join('')
         tabStarred?.classList.toggle('active', activeTab === 'starred')
+        tabToday?.classList.toggle('active', activeTab === 'today')
+        tabUpcoming?.classList.toggle('active', activeTab === 'upcoming')
+        if (tabToday) {
+            const today = isoDate(new Date())
+            const n = data.items.filter(t => !t.done && t.dueDate && t.dueDate <= today).length
+            const badge = tabToday.querySelector('.todos-tab-count')
+            if (badge) { badge.textContent = n ? String(n) : ''; badge.hidden = !n }
+        }
+    }
+
+    const SMART_TABS = new Set(['starred', 'today', 'upcoming'])
+
+    // What the open tab shows. Smart tabs (3.7.2): "Сегодня" = due today plus overdue, "Предстоящие" = every task with
+    // a date from today on, grouped by day — the same tasks the calendar marks.
+    function visibleGroups(data) {
+        const today = isoDate(new Date())
+        if (activeTab === 'starred') return [{ title: '', items: data.items.filter(t => t.starred) }]
+        if (activeTab === 'today') {
+            return [
+                { title: tGet('v372.tasks.overdue'), items: overdueTasks(data.items, today), overdue: true },
+                { title: data.items.some(t => t.dueDate && t.dueDate < today && !t.done) ? tGet('v372.tasks.today') : '', items: dayTasks(data.items, today) },
+            ].filter(g => g.items.length)
+        }
+        if (activeTab === 'upcoming') {
+            const dated = data.items.filter(t => t.dueDate && t.dueDate >= today && !t.done)
+            const days = [...new Set(dated.map(t => t.dueDate))].sort()
+            return days.map(day => ({ title: dayTitle(day), items: dated.filter(t => t.dueDate === day) }))
+        }
+        return [{ title: '', items: data.items.filter(t => t.listId === activeTab) }]
+    }
+
+    function dayTitle(day) {
+        const today = isoDate(new Date())
+        const tomorrow = isoDate(new Date(Date.now() + 86400000))
+        const date = new Date(day + 'T00:00:00')
+        const long = date.toLocaleDateString(getLang(), { weekday: 'long', day: 'numeric', month: 'long' })
+        if (day === today) return `${tGet('v372.tasks.today')} · ${long}`
+        if (day === tomorrow) return `${tGet('v372.tasks.tomorrow')} · ${long}`
+        return long.charAt(0).toUpperCase() + long.slice(1)
+    }
+
+    function previewText(parsed) {
+        const parts = []
+        if (parsed.dueDate) parts.push(dayTitle(parsed.dueDate))
+        if (parsed.priority !== 'none') parts.push(tGet('todos.priority' + parsed.priority[0].toUpperCase() + parsed.priority.slice(1)))
+        return parts.join(' · ')
     }
 
     async function deleteList(listId) {
@@ -165,16 +221,19 @@ function bindTodosUi({ store, tGet, ipcRenderer, openRightPanel, closeRightPanel
 
     function renderList() {
         const data = getData()
-        const visible = activeTab === 'starred'
-            ? data.items.filter(t => t.starred)
-            : data.items.filter(t => t.listId === activeTab)
+        const groups = visibleGroups(data)
 
-        if (visible.length === 0) {
-            list.innerHTML = `<div class="app-notif-empty">${escapeHtml(tGet('todos.empty') || 'Нет задач')}</div>`
+        if (groups.every(g => g.items.length === 0)) {
+            const emptyKey = activeTab === 'today' ? 'v372.tasks.emptyToday' : activeTab === 'upcoming' ? 'v372.tasks.emptyUpcoming' : 'todos.empty'
+            list.innerHTML = `<div class="app-notif-empty">${escapeHtml(tGet(emptyKey) || tGet('todos.empty') || 'Нет задач')}</div>`
             return
         }
 
-        list.innerHTML = visible.map(todo => `
+        list.innerHTML = groups.map(g => `${g.title ? `<div class="todo-group-title${g.overdue ? ' is-overdue' : ''}">${escapeHtml(g.title)}<span>${g.items.length}</span></div>` : ''}${renderItems(g.items)}`).join('')
+    }
+
+    function renderItems(visible) {
+        return visible.map(todo => `
             <div class="todo-item ${todo.done ? 'done' : ''}" data-id="${todo.id}">
                 <div class="todo-item-check" data-action="toggle">
                     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
@@ -389,18 +448,47 @@ function bindTodosUi({ store, tGet, ipcRenderer, openRightPanel, closeRightPanel
     addForm?.addEventListener('submit', (e) => {
         e.preventDefault()
         e.stopPropagation()
-        const text = (addInput?.value || '').trim()
-        if (!text) return
-        const data = getData()
-        // Добавление задачи, пока открыта вкладка "Важное" (без своего
-        // списка), кладёт её в первый обычный список — иначе непонятно,
-        // куда её сохранять.
-        const listId = activeTab === 'starred' ? (data.lists[0]?.id || DEFAULT_LIST_ID) : activeTab
-        data.items.unshift(migrateItem({ id: Date.now(), text, done: false, starred: false, listId }))
-        saveData(data)
+        const raw = (addInput?.value || '').trim()
+        if (!raw) return
+        // 3.7.2: "Отчёт завтра !1" — the date and priority come out of the text (shared/task-parse.js).
+        // In the "Сегодня" tab a task without a date is for today, so it shows up right where it was typed.
+        const parsed = parseQuickTask(raw)
+        const dueDate = parsed.dueDate || (activeTab === 'today' || activeTab === 'upcoming' ? isoDate(new Date()) : null)
+        addTask({ text: parsed.text, dueDate, priority: parsed.priority, starred: activeTab === 'starred' })
         if (addInput) addInput.value = ''
-        renderList()
+        if (addPreview) addPreview.textContent = ''
+        renderAll()
     })
+
+    addInput?.addEventListener('input', () => {
+        if (!addPreview) return
+        const raw = addInput.value.trim()
+        addPreview.textContent = raw ? previewText(parseQuickTask(raw)) : ''
+    })
+
+    // Adds a task: from this panel, the calendar and the global quick-task window. A smart tab has no list of its
+    // own, so the task goes to the open list or the first one.
+    function addTask({ text, dueDate = null, priority = 'none', starred = false, listId = null }) {
+        const clean = String(text || '').trim().slice(0, 200)
+        if (!clean) return null
+        const data = getData()
+        const target = listId && data.lists.some(l => l.id === listId)
+            ? listId
+            : (SMART_TABS.has(activeTab) ? (data.lists[0]?.id || DEFAULT_LIST_ID) : activeTab)
+        const item = migrateItem({ id: Date.now() + Math.floor(Math.random() * 1000), text: clean, done: false, starred: !!starred, listId: target, dueDate, priority })
+        data.items.unshift(item)
+        saveData(data)
+        return item
+    }
+
+    function toggleTask(id) {
+        const data = getData()
+        const item = data.items.find(t => String(t.id) === String(id))
+        if (!item) return
+        item.done = !item.done
+        saveData(data)
+        refresh()
+    }
 
     // ── Подробности задачи (2026-09-11) ───────────────────────────────────
     function renderDetailSubtasks() {
@@ -545,6 +633,8 @@ function bindTodosUi({ store, tGet, ipcRenderer, openRightPanel, closeRightPanel
         e.stopPropagation()
         setActiveTab('starred')
     })
+    tabToday?.addEventListener('click', (e) => { e.stopPropagation(); setActiveTab('today') })
+    tabUpcoming?.addEventListener('click', (e) => { e.stopPropagation(); setActiveTab('upcoming') })
 
     listTabsEl?.addEventListener('click', (e) => {
         e.stopPropagation()
@@ -629,9 +719,25 @@ function bindTodosUi({ store, tGet, ipcRenderer, openRightPanel, closeRightPanel
     // Tasks changed from outside (the phone, through the cloud): redraw if the panel is on screen.
     function refresh() {
         if (panel.classList.contains('active')) renderAll()
+        document.dispatchEvent(new CustomEvent('centrio-tasks-changed'))
     }
 
-    return { closePanel, refresh }
+    // Opens the panel on the "Сегодня" tab or on a given task (calendar, quick-task window).
+    function showTab(tab) {
+        setActiveTab(tab)
+        // openRightPanel toggles: only open it when it is not on screen already
+        if (!panel.classList.contains('active')) openPanel()
+    }
+
+    return {
+        closePanel,
+        refresh,
+        addTask: (task) => { const item = addTask(task); refresh(); return item },
+        toggleTask,
+        getItems: () => getData().items,
+        openTask: (id) => openTaskDetail(id),
+        showTab
+    }
 }
 
 module.exports = { bindTodosUi }

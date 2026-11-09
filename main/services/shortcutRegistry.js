@@ -20,6 +20,9 @@ const DEFINITIONS = [
     { id: 'settings', accel: 'Ctrl+,' },
     // Do not disturb on / off (renderer/dnd.js)
     { id: 'dnd', accel: 'Ctrl+Alt+D' },
+    // 3.7.2: lock Centrio with its PIN (renderer/lock.js), and the quick task window from anywhere (main/services/quickTask.js)
+    { id: 'lock', accel: 'Ctrl+Shift+L' },
+    { id: 'quickTask', accel: 'Ctrl+Alt+Space', global: true },
     // Saved split screens: the Nth action opens the Nth saved layout (pressed again, it closes the split).
     ...Array.from({ length: 9 }, (_, i) => ({ id: `splitPreset${i + 1}`, accel: `Ctrl+Shift+${i + 1}` }))
 ]

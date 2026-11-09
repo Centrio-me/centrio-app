@@ -16,6 +16,7 @@ function createCloudUiApi({
     const PRO_PLANS = new Set(['PRO', 'PRO_YEAR', 'TEAM'])
     const FREE_MESSENGER_LIMIT = 3
     const SOON_DAYS = 3
+    const DAYS_LEFT_SHOW_FROM = 7
     const DAY_MS = 86400000
     const PLURAL_RULES = new Set(['one', 'few'])
 
@@ -533,6 +534,9 @@ function createCloudUiApi({
         const isKnown = Number.isFinite(left) && left >= 0
         el.textContent = isKnown ? _daysLeftText(left) : (tGet('cloud.subNoExpiry') || '—')
         el.classList.toggle('is-soon', isKnown && left <= SOON_DAYS)
+        // 3.7.2 (owner's decision): the days-left count is shown only in the last week of PRO; the band keeps the
+        // plan name and the end date the rest of the time. It replaced the status-bar strip, which is gone.
+        el.style.display = isKnown && left <= DAYS_LEFT_SHOW_FROM ? '' : 'none'
     }
 
     function _renderAutoRenew(status) {

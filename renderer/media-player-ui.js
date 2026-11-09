@@ -57,6 +57,8 @@
 // dismisses it with the new × button. `playing` is now a per-entry flag
 // instead of presence-in-the-Map, so a paused source keeps its row with a
 // "Play" button in place of "Pause".
+const { FIND_MEDIA_SOURCE, PICK_RESUME_SOURCE } = require('../shared/media-elements')
+
 function createMediaPlayerUiApi({ state, tGet, switchTab, mediaPlayerBtn }) {
     const mediaState = new Map() // messengerId -> { title, hasNext, hasPrev, playing, addedAt }
     let popupEl = null
@@ -109,17 +111,29 @@ function createMediaPlayerUiApi({ state, tGet, switchTab, mediaPlayerBtn }) {
                 var a = window.__centrioMediaActions;
                 if (a && typeof a.pause === 'function') { a.pause({ action: 'pause' }); }
             } catch (e) {}
-            document.querySelectorAll('video, audio').forEach(function (el) {
+            ${FIND_MEDIA_SOURCE}
+            __centrioFindMedia(document).forEach(function (el) {
                 if (!el.paused) { try { el.pause() } catch (e) {} }
             });
         })()`,
+        // 3.7.2: shadow roots included (VK Video), and the element to resume is the one already watched, not an ad slot
+        // A page's own "play" handler may do nothing when called from outside (VK Video): if nothing plays a moment
+        // later, the element itself is started.
         play: `(function(){
+            ${FIND_MEDIA_SOURCE}
+            var pickResumeTarget = ${PICK_RESUME_SOURCE};
+            function startElement() {
+                var all = __centrioFindMedia(document);
+                for (var i = 0; i < all.length; i++) { if (!all[i].paused) return; }
+                var el = pickResumeTarget(all);
+                if (el && typeof el.play === 'function') { el.play().catch(function () {}) }
+            }
+            var handled = false;
             try {
                 var a = window.__centrioMediaActions;
-                if (a && typeof a.play === 'function') { a.play({ action: 'play' }); return; }
+                if (a && typeof a.play === 'function') { a.play({ action: 'play' }); handled = true; }
             } catch (e) {}
-            var el = document.querySelector('video, audio');
-            if (el && typeof el.play === 'function') { el.play().catch(function () {}) }
+            if (handled) setTimeout(startElement, 500); else startElement();
         })()`,
         next: `(function(){
             try {

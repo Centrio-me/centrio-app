@@ -74,6 +74,58 @@ function bindContextActionsUi({
         if (m && typeof detachMessenger === 'function') detachMessenger(m.id)
     })
 
+    // 3.7.2: where a click on this service's notification opens it (renderer/notif-target.js reads the choice).
+    document.getElementById('ctxNotifOpen')?.addEventListener('click', (e) => {
+        e.stopPropagation() // see ctxMoveToFolder below: a bubbling click would close the submenu at once
+        const messenger = getMessengerById(state.contextTargetId)
+        const btnRect = document.getElementById('ctxNotifOpen')?.getBoundingClientRect()
+        hideAllMenus({ keepContextMenu: true })
+        const menu = document.getElementById('folderSelectMenu') || document.getElementById('folderPickMenu')
+        if (!messenger || !menu) return
+        const t = (key) => (tGet ? tGet(`v372.notifOpen.${key}`) : key)
+        const current = (store.get('notifOpenIn', {}) || {})[messenger.id] || ''
+        const choose = (value) => {
+            const all = { ...(store.get('notifOpenIn', {}) || {}) }
+            if (value) all[messenger.id] = value
+            else delete all[messenger.id]
+            store.set('notifOpenIn', all)
+            hideAllMenus()
+        }
+        const addItem = (label, value) => {
+            const item = document.createElement('div')
+            item.className = 'context-item' + (current === value ? ' is-checked' : '')
+            const mark = document.createElement('span')
+            mark.className = 'ctx-check'
+            mark.textContent = current === value ? '✓' : ''
+            const text = document.createElement('span')
+            text.textContent = label
+            item.append(mark, text)
+            item.addEventListener('click', (ev) => { ev.stopPropagation(); choose(value) })
+            menu.appendChild(item)
+        }
+        menu.textContent = ''
+        addItem(t('normal'), '')
+        addItem(t('window'), 'window')
+        const presets = (store.get('splitPresets', []) || []).filter(p => Array.isArray(p.memberIds) && p.memberIds.length > 1 && p.memberIds.includes(messenger.id))
+        if (presets.length) {
+            const divider = document.createElement('div')
+            divider.className = 'context-divider'
+            menu.appendChild(divider)
+            presets.forEach(p => addItem(t('preset').replace('{name}', p.name), `preset:${p.id}`))
+        } else {
+            const note = document.createElement('div')
+            note.className = 'context-item context-locked-note'
+            note.setAttribute('aria-disabled', 'true')
+            note.textContent = t('noPresets')
+            menu.appendChild(note)
+        }
+        menu.classList.add('show')
+        if (btnRect) {
+            menu.style.left = `${btnRect.right + 6}px`
+            menu.style.top = `${btnRect.top}px`
+        }
+    })
+
     // Every file this service opens appears in a window of its own (main/services/fileWindows.js).
     document.getElementById('ctxFilesWindow')?.addEventListener('click', (e) => {
         const m = getMessengerById(state.contextTargetId)

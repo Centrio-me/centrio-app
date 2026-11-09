@@ -212,3 +212,16 @@
     color: var(--accent);
 }
 .quick-search-item-glyph.is-presets { background: var(--bg-active); color: var(--text-primary); }
+
+/* 3.7.2: header shows every pane of a split, the focused one highlighted (renderer/titlebar-tabs.js) */
+.titlebar-tab-chip { display: inline-flex; align-items: center; gap: 7px; min-width: 0; flex-shrink: 1; }
+.titlebar-active-tab.is-split { gap: 4px; }
+.titlebar-active-tab.is-split .titlebar-tab-chip { padding: 3px 9px 3px 7px; border-radius: 7px; border: 1px solid transparent; max-width: 170px; transition: background .15s, border-color .15s; }
+.titlebar-active-tab.is-split .titlebar-tab-chip .titlebar-active-tab-name { font-size: 12px; opacity: .7; }
+.titlebar-active-tab.is-split .titlebar-tab-chip.is-focused { background: var(--bg-tertiary, rgba(255,255,255,.06)); border-color: var(--border); }
+.titlebar-active-tab.is-split .titlebar-tab-chip.is-focused .titlebar-active-tab-name { opacity: 1; color: var(--text-primary); }
+
+/* 3.7.2: "Open notifications" submenu in the service context menu */
+#ctxNotifOpen .ctx-sub-arrow { margin-left: auto; opacity: .5; font-size: 14px; line-height: 1; }
+.context-menu .ctx-check { display: inline-block; width: 14px; flex-shrink: 0; color: var(--accent); font-weight: 700; }
+.context-menu .context-item.is-checked { color: var(--text-primary); }

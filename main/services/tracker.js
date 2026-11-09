@@ -44,25 +44,43 @@ function _getFocusedSecs() {
 }
 
 // ── Per-service time ──────────────────────────────────────────────
-// The renderer only says WHICH messenger has the focus (active tab / focused pane of a split). The clock lives here:
-// a second goes to that messenger only while the app window itself has focus, so a minimised or background Centrio,
-// or a tab that is merely open, never earns time. The sum of the services can therefore never exceed the app time.
-let _activeService = null
+// The renderer only says WHICH messengers are on screen: the active tab, or every pane of a split (3.7.2: in a split
+// they are all in use at once, so each earns the time — before only the focused pane did, and a split showed up as
+// "only Telegram"). The clock lives here: time is credited only while the app window itself has focus, so a
+// minimised or background Centrio, or a tab that is merely open in the background, never earns time.
+let _activeServices = []
 let _lastTick = Date.now()
 let _tickTimer = null
 const MAX_TICK_MS = 2500 // a longer gap means the computer slept: do not credit it
 
+function setActiveServices(names) {
+    _tickService() // credit the time up to now to the previous messengers first
+    const list = Array.isArray(names) ? names.filter(n => typeof n === 'string' && n) : []
+    _activeServices = [...new Set(list)]
+}
+
 function setActiveService(name) {
-    _tickService() // credit the time up to now to the previous messenger first
-    _activeService = name || null
+    setActiveServices(name ? [name] : [])
 }
 
 function _tickService() {
     const now = Date.now()
     const dt = now - _lastTick
     _lastTick = now
-    if (!_isFocused || !_activeService || dt <= 0 || dt > MAX_TICK_MS) return
-    _serviceAccum[_activeService] = (_serviceAccum[_activeService] || 0) + dt / 1000
+    if (!_isFocused || _activeServices.length === 0 || dt <= 0 || dt > MAX_TICK_MS) return
+    for (const name of _activeServices) {
+        _serviceAccum[name] = (_serviceAccum[name] || 0) + dt / 1000
+    }
+}
+
+function _resetForTest() {
+    Object.keys(_serviceAccum).forEach(k => delete _serviceAccum[k])
+    _activeServices = []
+    _lastTick = Date.now()
+}
+
+function _serviceSecondsForTest() {
+    return Object.fromEntries(Object.entries(_serviceAccum).map(([k, v]) => [k, Math.round(v)]))
 }
 
 // Kept for older renderers that still report whole seconds themselves.
@@ -167,8 +185,11 @@ module.exports = {
     onBlur,
     addServiceTime,
     setActiveService,
+    setActiveServices,
     _tickService, // exported for the unit test
-    getActiveService: () => _activeService,
+    _resetForTest,
+    _serviceSecondsForTest,
+    getActiveService: () => _activeServices[0] || null,
     addNotif,
     addMsgSent,
     addMsgReceived,

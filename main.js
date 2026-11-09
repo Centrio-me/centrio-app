@@ -271,7 +271,9 @@ const ALLOWED_STORE_ROOTS = new Set([
     'assistant',
     // 3.7.1: hibernation of unused tabs (renderer/hibernation.js), personal work hours
     // (renderer/work-hours.js) and the morning summary state (renderer/morning-summary.js).
-    'hibernate', 'workHours', 'morningSummary'
+    'hibernate', 'workHours', 'morningSummary', 'notifOpenIn',
+    // 3.7.2: order of the tabs in the top bar (renderer/webview-tabs-bind.js) was written but never allowed, so lost
+    'tabOrder'
 ])
 
 const DANGEROUS_KEY_SEGMENTS = new Set(['__proto__', 'constructor', 'prototype'])

@@ -513,7 +513,9 @@ function registerApiIpc() {
     // Renderer says which messenger has the focus; the clock itself runs in main/services/tracker.js
     ipcMain.handle('tracker:set-active-service', async (event, name) => {
         try {
-            tracker.setActiveService(typeof name === 'string' ? name : null)
+            // 3.7.2: a split sends the names of every visible pane; older renderers send one name
+            if (Array.isArray(name)) tracker.setActiveServices(name.slice(0, 8))
+            else tracker.setActiveService(typeof name === 'string' ? name : null)
             return { success: true }
         } catch {
             return { success: false }

@@ -2,6 +2,7 @@ const { app, globalShortcut } = require('electron')
 const { focusWindow, withWindow } = require('../utils/window')
 const registry = require('./shortcutRegistry')
 const detachedWindows = require('./detachedWindows')
+const quickTask = require('./quickTask')
 
 // Actions that already have a renderer handler (renderer/window-bind.js) keep their channel.
 const RENDERER_CHANNELS = {
@@ -88,14 +89,22 @@ function attachShortcutHandling(contents) {
     })
 }
 
+// Actions that work even when Centrio is hidden or another program has the focus.
+const GLOBAL_HANDLERS = {
+    hideShow: () => toggleWindowVisibility(currentDeps),
+    quickTask: () => quickTask.toggle()
+}
+
 function registerGlobalShortcuts() {
     globalShortcut.unregisterAll()
-    const hideShow = registry.list().find(item => item.id === 'hideShow')
-    if (hideShow && hideShow.accel) {
+    for (const item of registry.list()) {
+        const handler = item.global && item.accel ? GLOBAL_HANDLERS[item.id] : null
+        if (!handler) continue
         try {
-            globalShortcut.register(hideShow.accel, () => toggleWindowVisibility(currentDeps))
+            // another program may already own the combination: register() then returns false, nothing breaks
+            if (!globalShortcut.register(item.accel, handler)) console.warn('[shortcuts] taken by another program:', item.accel)
         } catch (err) {
-            console.warn('[shortcuts] cannot register', hideShow.accel, err.message)
+            console.warn('[shortcuts] cannot register', item.accel, err.message)
         }
     }
 
@@ -109,6 +118,7 @@ function registerGlobalShortcuts() {
 
 function registerShortcuts({ getMainWindow, showMainWindow }) {
     currentDeps = { getMainWindow, showMainWindow }
+    quickTask.register({ getMainWindow, showMainWindow })
     registerGlobalShortcuts()
 
     withWindow(getMainWindow, (win) => attachShortcutHandling(win.webContents))

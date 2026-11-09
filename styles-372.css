@@ -1,0 +1,126 @@
+/* ═══ 3.7.2 ═══════════════════════════════════════════════════════════════
+   Calendar with tasks (renderer/task-calendar.js), task panel smart tabs (renderer/todos-bind.js),
+   quick task window shares the same look (quick-task.html). Colours come from the theme tokens. */
+
+/* ── Calendar popup: month on the left, the picked day on the right ── */
+.calendar-popup.tcal {
+    width: 620px;
+    max-width: calc(100vw - 16px);
+    padding: 0;
+    display: flex;
+    overflow: hidden;
+    border-radius: 16px;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, .5), 0 0 0 1px rgba(255, 255, 255, .02);
+    animation: tcal-in .16s ease-out;
+    /* above the split zone frames (renderer/split.js puts them at 99998-100000) */
+    z-index: 100001;
+}
+@keyframes tcal-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .calendar-popup.tcal { animation: none; } }
+
+.tcal-month { width: 276px; flex-shrink: 0; padding: 16px 14px 12px; border-right: 1px solid var(--border); display: flex; flex-direction: column; }
+.tcal .cal-header { margin-bottom: 10px; }
+.tcal .cal-month-label { font-size: 14px; letter-spacing: -.01em; text-transform: none; }
+.tcal-nav { display: flex; align-items: center; gap: 4px; }
+.tcal-today-btn { height: 26px; padding: 0 9px; border-radius: 7px; border: 1px solid var(--border); background: none; color: var(--text-secondary); font: inherit; font-size: 11.5px; font-weight: 600; cursor: pointer; transition: background .15s, color .15s; }
+.tcal-today-btn:hover { background: var(--bg-active); color: var(--text-bright); }
+
+.tcal .cal-grid { gap: 3px; }
+.tcal .cal-day {
+    position: relative;
+    display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+    height: 36px; padding: 6px 0 0;
+    border: 1px solid transparent; border-radius: 9px;
+    background: none; font: inherit; font-size: 12px; font-variant-numeric: tabular-nums;
+    color: var(--text-secondary); cursor: pointer;
+    transition: background .12s, border-color .12s, color .12s;
+}
+.tcal .cal-day:hover { background: var(--bg-active); color: var(--text-bright); }
+.tcal .cal-day:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.tcal .cal-day.other-month { opacity: .35; }
+.tcal .cal-day.weekend { color: rgba(248, 113, 113, .85); }
+.tcal .cal-day.today { background: none; color: var(--accent); font-weight: 800; }
+.tcal .cal-day.selected { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 700; }
+.tcal .cal-day.today.selected { color: #fff; }
+.tcal .cal-day.today:not(.selected)::after { content: ''; position: absolute; inset: 2px; border-radius: 8px; border: 1px solid var(--accent); opacity: .55; pointer-events: none; }
+.cal-dots { display: flex; gap: 2px; margin-top: 4px; height: 4px; }
+.cal-dots i { width: 4px; height: 4px; border-radius: 50%; background: var(--accent); }
+.cal-dots i.is-done { background: var(--text-secondary); opacity: .5; }
+.cal-dots i.is-overdue { background: var(--danger); }
+.tcal .cal-day.selected .cal-dots i { background: #fff; opacity: .9; }
+.tcal-quick-hint { margin-top: auto; padding-top: 10px; font-size: 11px; color: var(--text-secondary); opacity: .8; }
+.tcal-quick-hint:empty { display: none; }
+
+.tcal-day { flex: 1; min-width: 0; display: flex; flex-direction: column; padding: 16px 16px 12px; min-height: 330px; max-height: 420px; }
+.tcal-day-head { margin-bottom: 10px; }
+.tcal-day-title { font-size: 18px; font-weight: 750; letter-spacing: -.02em; color: var(--text-bright); }
+.tcal-day-sub { margin-top: 2px; font-size: 12px; color: var(--text-secondary); }
+.tcal-day-sub:empty { display: none; }
+
+.tcal-list { flex: 1; overflow-y: auto; margin: 0 -6px; padding: 0 6px; }
+.tcal-group { margin: 6px 0 4px; font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-secondary); }
+.tcal-group.is-overdue { color: var(--danger); }
+.tcal-task { display: flex; align-items: center; gap: 10px; padding: 7px 6px; border-radius: 8px; transition: background .12s; }
+.tcal-task:hover { background: var(--bg-active); }
+.tcal-check {
+    flex-shrink: 0; width: 18px; height: 18px; padding: 0; border-radius: 50%;
+    border: 1.6px solid var(--text-secondary); background: none; color: transparent;
+    display: flex; align-items: center; justify-content: center; cursor: pointer;
+    transition: background .15s, color .15s, border-color .15s;
+}
+.tcal-check.prio-high { border-color: #f87171; background: rgba(248, 113, 113, .1); }
+.tcal-check.prio-medium { border-color: #fb923c; background: rgba(251, 146, 60, .1); }
+.tcal-check.prio-low { border-color: #60a5fa; background: rgba(96, 165, 250, .1); }
+.tcal-check:hover { color: currentColor; }
+.tcal-check.prio-none:hover { color: var(--text-secondary); }
+.tcal-check.prio-high:hover { color: #f87171; }
+.tcal-check.prio-medium:hover { color: #fb923c; }
+.tcal-check.prio-low:hover { color: #60a5fa; }
+.tcal-task.is-done .tcal-check { background: var(--text-secondary); border-color: var(--text-secondary); color: var(--bg-secondary); }
+.tcal-task-text { flex: 1; min-width: 0; padding: 0; border: 0; background: none; font: inherit; font-size: 13px; color: var(--text-primary); text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+.tcal-task.is-done .tcal-task-text { color: var(--text-secondary); text-decoration: line-through; }
+.tcal-task-date { flex-shrink: 0; font-size: 11px; font-weight: 600; color: var(--danger); }
+
+.tcal-empty { padding: 26px 8px; text-align: center; }
+.tcal-empty-title { font-size: 13.5px; font-weight: 700; color: var(--text-primary); }
+.tcal-empty-text { margin-top: 4px; font-size: 12px; line-height: 1.5; color: var(--text-secondary); }
+
+.tcal-add { position: relative; display: flex; align-items: center; gap: 8px; margin-top: 8px; padding: 0 12px; height: 40px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg-tertiary, rgba(255, 255, 255, .03)); transition: border-color .15s, box-shadow .15s; }
+.tcal-add:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
+.tcal-add-plus { color: var(--accent); font-size: 18px; font-weight: 600; line-height: 1; }
+.tcal-add input { flex: 1; min-width: 0; border: 0; outline: 0; background: none; color: var(--text-bright); font: inherit; font-size: 13px; }
+.tcal-add input::placeholder { color: var(--text-secondary); }
+.tcal-add-hint { flex-shrink: 0; max-width: 45%; font-size: 11px; font-weight: 600; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tcal-add-hint.is-moved { color: var(--accent); }
+
+.tcal-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 8px; }
+.tcal-syntax { font-size: 10.5px; color: var(--text-secondary); opacity: .75; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tcal-link { flex-shrink: 0; padding: 0; border: 0; background: none; color: var(--accent); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+.tcal-link:hover { text-decoration: underline; }
+
+@media (max-width: 680px) {
+    .calendar-popup.tcal { flex-direction: column; width: 320px; }
+    .tcal-month { width: auto; border-right: 0; border-bottom: 1px solid var(--border); }
+    .tcal-day { min-height: 240px; }
+}
+
+/* ── Task panel: smart tabs, day groups, parsed date preview ── */
+.todos-tab .todos-tab-count { min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; background: var(--danger); color: #fff; font-size: 10px; font-weight: 700; line-height: 16px; text-align: center; }
+.todos-tab.active .todos-tab-count { background: #fff; color: var(--accent); }
+.todo-group-title { display: flex; align-items: center; justify-content: space-between; margin: 12px 4px 4px; font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--text-secondary); }
+.todo-group-title:first-child { margin-top: 2px; }
+.todo-group-title span { font-variant-numeric: tabular-nums; opacity: .7; }
+.todo-group-title.is-overdue { color: var(--danger); }
+.todo-add-preview { display: flex; align-items: center; gap: 6px; margin: 6px 2px 0; font-size: 11.5px; font-weight: 600; color: var(--accent); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.todo-add-preview::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+.todo-add-preview:empty { display: none; }
+
+/* ── 3.7.2: tasks in the calendar are PRO; without it the day side offers PRO ── */
+.tcal.is-locked .tcal-add, .tcal.is-locked .tcal-syntax, .tcal.is-locked .tcal-quick-hint { display: none; }
+.tcal-pro { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; margin-top: 6px; padding: 18px; border-radius: 12px; border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border)); background: color-mix(in srgb, var(--accent) 8%, transparent); }
+.tcal-pro-badge { padding: 2px 8px; border-radius: 999px; background: var(--accent); color: #fff; font-size: 10.5px; font-weight: 800; letter-spacing: .06em; }
+.tcal-pro-title { font-size: 15px; font-weight: 750; color: var(--text-bright); letter-spacing: -.01em; }
+.tcal-pro-text { font-size: 12.5px; line-height: 1.55; color: var(--text-secondary); }
+.tcal-pro-btn { margin-top: 4px; height: 34px; padding: 0 14px; border: 0; border-radius: 9px; background: var(--accent); color: #fff; font: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer; transition: filter .15s; }
+.tcal-pro-btn:hover { filter: brightness(1.1); }
+.tcal-pro-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }

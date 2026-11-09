@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:">
+<title>Centrio</title>
+<style>
+    @font-face { font-family: 'Geist'; font-weight: 100 900; src: url('../../../assets/fonts/site/geist-latin.woff2') format('woff2'); unicode-range: U+0000-00FF, U+0131, U+2000-206F; }
+    @font-face { font-family: 'Geist'; font-weight: 100 900; src: url('../../../assets/fonts/site/geist-cyrillic.woff2') format('woff2'); unicode-range: U+0301, U+0400-045F, U+0490-0491, U+2116; }
+    :root {
+        --bg: rgba(22, 22, 26, .96); --line: rgba(255, 255, 255, .09); --text: #f4f4f6; --muted: #9a9aa6;
+        --accent: #7c6cff; --chip: rgba(124, 108, 255, .16); --chip-text: #c7c0ff; --ok: #4ade80;
+        color-scheme: dark;
+    }
+    :root[data-theme="light"] {
+        --bg: rgba(255, 255, 255, .97); --line: rgba(0, 0, 0, .08); --text: #17171c; --muted: #6b6b76;
+        --accent: #5b4bff; --chip: rgba(91, 75, 255, .1); --chip-text: #4a3ae0; --ok: #16a34a;
+        color-scheme: light;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; background: transparent; font-family: Geist, 'Segoe UI', Arial, sans-serif; overflow: hidden; }
+    body { padding: 14px 18px 22px; }
+    .card {
+        height: 100%; display: flex; flex-direction: column; justify-content: center; gap: 10px;
+        padding: 0 18px; border-radius: 16px; background: var(--bg); border: 1px solid var(--line);
+        box-shadow: 0 18px 50px rgba(0, 0, 0, .45), 0 2px 8px rgba(0, 0, 0, .25);
+        -webkit-app-region: drag;
+        animation: pop .14s ease-out;
+    }
+    @keyframes pop { from { opacity: 0; transform: translateY(-6px) scale(.985); } to { opacity: 1; transform: none; } }
+    @media (prefers-reduced-motion: reduce) { .card { animation: none; } }
+    .row { display: flex; align-items: center; gap: 12px; -webkit-app-region: no-drag; }
+    .ring { flex-shrink: 0; width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--accent); transition: background .2s, border-color .2s; }
+    .ring.prio-high { border-color: #f87171; } .ring.prio-medium { border-color: #fb923c; } .ring.prio-low { border-color: #60a5fa; }
+    .ring.is-ok { background: var(--ok); border-color: var(--ok); }
+    input { flex: 1; min-width: 0; border: 0; outline: 0; background: none; color: var(--text); font: inherit; font-size: 18px; font-weight: 500; letter-spacing: -.01em; }
+    input::placeholder { color: var(--muted); font-weight: 400; }
+    .meta { display: flex; align-items: center; gap: 8px; min-height: 24px; padding-left: 32px; -webkit-app-region: no-drag; }
+    .chip { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: 999px; background: var(--chip); color: var(--chip-text); font-size: 12px; font-weight: 600; white-space: nowrap; }
+    .chip.is-muted { background: transparent; border: 1px dashed var(--line); color: var(--muted); }
+    .chip svg { width: 12px; height: 12px; }
+    .hint { margin-left: auto; font-size: 11px; color: var(--muted); white-space: nowrap; }
+    .hint.is-error { color: #f87171; font-weight: 600; }
+    [hidden] { display: none !important; }
+    body.is-locked .chip { height: auto; padding: 0; background: none; color: var(--muted); white-space: normal; line-height: 1.45; font-weight: 500; flex: 1; min-width: 0; }
+    body.is-locked .ring { border-color: var(--accent); background: var(--chip); }
+    body.is-locked input { cursor: default; }
+    body.is-locked input::placeholder { color: var(--text); font-weight: 600; }
+    .done { color: var(--ok); font-size: 13px; font-weight: 600; }
+</style>
+</head>
+<body>
+    <div class="card">
+        <div class="row">
+            <span class="ring" id="ring" aria-hidden="true"></span>
+            <input id="text" maxlength="200" autocomplete="off" spellcheck="true" aria-label="Task">
+        </div>
+        <div class="meta" id="meta">
+            <span class="chip is-muted" id="date"></span>
+            <span class="chip" id="prio" hidden></span>
+            <span class="hint" id="hint"></span>
+        </div>
+    </div>
+    <script src="quickTask.js"></script>
+</body>
+</html>

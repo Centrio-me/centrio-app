@@ -14,6 +14,7 @@ const {
 } = require('../ipc/window')
 const { isOAuthProviderUrl, isYandexInternalSsoHost } = require('../services/oauthProviders')
 const { popularMessengers } = require('../../renderer/constants')
+const { FIND_MEDIA_SOURCE } = require('../../shared/media-elements')
 
 // BUGFIX (2026-09-10, "Яндекс почта попадает в медиалеер всё равно" — live
 // user report, persisted despite the messenger.category === 'media' gate
@@ -919,9 +920,11 @@ const MEDIA_CONTROL_PATCH_SCRIPT = `(function() {
     return 'patched'
 })()`
 
+// 3.7.2: media inside shadow roots counts too (VK Video keeps its <video> there) — shared/media-elements.js
 const MEDIA_STATE_DETECT_SCRIPT = `(function() {
+    ${FIND_MEDIA_SOURCE}
     var playing = false
-    var els = document.querySelectorAll('video, audio')
+    var els = __centrioFindMedia(document)
     for (var i = 0; i < els.length; i++) {
         if (!els[i].paused && !els[i].ended) { playing = true; break }
     }

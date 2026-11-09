@@ -1,6 +1,7 @@
 const { getVisualMessengerOrder } = require('./tab-order')
 const { openNotifiedChat } = require('./notif-open-chat')
 const { sendReply } = require('./notif-reply')
+const { pickNotificationTarget } = require('./notif-target')
 
 const { SUPPORT_NOTIFICATION_PREFIX } = require('./support-tickets-ui')
 
@@ -11,8 +12,35 @@ function bindWindowUi({
     switchTab,
     showLockScreen,
     openSettings,
-    exitSplitMode
+    exitSplitMode,
+    getSplitApi = () => null,
+    detachMessenger = null
 }) {
+    // Opens the messenger a notification belongs to, respecting the split on screen and the person's choice.
+    function openForNotification(messengerId) {
+        const splitApi = getSplitApi()
+        const choice = (store.get('notifOpenIn', {}) || {})[messengerId]
+        const presets = splitApi?.getPresets?.() || []
+        const target = pickNotificationTarget({ state, id: messengerId, choice, presets })
+        if (target.kind === 'pane' && splitApi?.focusPresetMember) {
+            splitApi.focusPresetMember(messengerId)
+            return
+        }
+        if (target.kind === 'window' && typeof detachMessenger === 'function') {
+            detachMessenger(messengerId)
+            return
+        }
+        if (target.kind === 'preset' && splitApi?.applyPreset) {
+            const alreadyOpen = state.splitMode && state.splitPresetId === target.presetId
+            if (alreadyOpen || splitApi.applyPreset(target.presetId)) {
+                splitApi.focusPresetMember(messengerId)
+                return
+            }
+        }
+        if (state.splitMode && typeof exitSplitMode === 'function') exitSplitMode()
+        switchTab(messengerId)
+    }
+
     document.getElementById('minimizeBtn')?.addEventListener('click', () => {
         ipcRenderer.send('minimize-window')
     })
@@ -120,8 +148,7 @@ function bindWindowUi({
             document.dispatchEvent(new CustomEvent('open-support-ticket', { detail: { id: messengerId.slice(SUPPORT_NOTIFICATION_PREFIX.length) } }))
             return
         }
-        if (state.splitMode && typeof exitSplitMode === 'function') exitSplitMode()
-        switchTab(messengerId)
+        openForNotification(messengerId)
     })
 }
 

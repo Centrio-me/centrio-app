@@ -1789,3 +1789,6 @@ module.exports = {
     },
 }
 module.exports.v371 = require('./v371').es
+module.exports.v372 = require('./v372').es
+// 3.7.2: PRO pitch for tasks in the calendar and the quick task (requirePro('calendar'))
+Object.assign(module.exports.pro, module.exports.v372.pro)

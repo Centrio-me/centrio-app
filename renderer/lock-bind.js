@@ -1,4 +1,7 @@
+const { showTeamNotice } = require('./team-toast')
+
 function bindLockUi({
+    tGet,
     state,
     isPasswordEnabled,
     showLockScreen,
@@ -58,6 +61,15 @@ function bindLockUi({
 
     document.getElementById('lockBtn')?.addEventListener('click', () => {
         if (isPasswordEnabled()) showLockScreen()
+    })
+
+    // 3.7.2: the rebindable "lock" shortcut (Ctrl+Shift+L by default). Without a PIN there is nothing to lock with:
+    // say where to set one instead of silently doing nothing.
+    document.addEventListener('centrio-shortcut', (e) => {
+        if (e.detail?.action !== 'lock') return
+        if (isPasswordEnabled()) { showLockScreen(); return }
+        const text = typeof tGet === 'function' ? tGet('v372.lock.noPin') : ''
+        if (text) showTeamNotice(text)
     })
 
     document.getElementById('forgotPinBtn')?.addEventListener('click', () => showForgotPinConfirm())

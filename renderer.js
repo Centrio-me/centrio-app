@@ -14,7 +14,9 @@ const { tGet, applyI18n, initI18n, setCurrentLanguage, getCurrentLanguage } = re
 const { getCurrentLocale, getUserInitial, hashPassword } = require('./renderer/helpers')
 const { visibleMessengers } = require('./renderer/team-strict')
 const { showTeamNotice } = require('./renderer/team-toast')
-const { getFocusedMessengerId } = require('./renderer/focused-messenger')
+const { getFocusedMessengerId, getVisibleMessengerIds } = require('./renderer/focused-messenger')
+const { paintTitlebar } = require('./renderer/titlebar-tabs')
+const { createTaskCalendar } = require('./renderer/task-calendar')
 const { popularMessengers, syntaxAiPromo, folderIcons, PAGE_SIZE, isChatWidgetMessenger } = require('./renderer/constants')
 const { createCloudStore, createCloudApi } = require('./renderer/cloud')
 const { createSoundsApi } = require('./renderer/sounds')
@@ -573,6 +575,13 @@ async function bootstrap() {
         ['hibernate', {}],
         ['workHours', {}],
         ['morningSummary', {}],
+        ['notifOpenIn', {}],
+        // 3.7.2 BUGFIX: these were read with the cache-only store.get() but never hydrated. 'todos' came back empty
+        // on every start, and the task panel then saved that empty list over the real one (tasks lost on restart since
+        // 2.5); 'tabOrder' never restored the tab order; 'globalProxy' went to the cloud empty.
+        ['todos', null],
+        ['tabOrder', []],
+        ['globalProxy', {}],
         ['dndUntil', 0],
         ['dndLastHours', 1],
         ['quickReplies', []],
@@ -1785,21 +1794,8 @@ function switchTab(id) {
     // открыта" — live user request): #titlebarActiveTab mirrors whatever
     // messenger just became active. Same dead-code caveat as above — lives
     // here now, not in renderer/messengers.js.
-    const activeTabIndicator = document.getElementById('titlebarActiveTab')
-    if (activeTabIndicator && activeMessenger) {
-        activeTabIndicator.style.display = 'flex'
-        const iconEl = document.getElementById('titlebarActiveTabIcon')
-        if (iconEl) {
-            iconEl.style.display = ''
-            // CSP-safe onerror (script-src 'self' blocks inline onerror="...") —
-            // .onerror assignment, not addEventListener, so it doesn't stack a
-            // new listener on every switch.
-            iconEl.onerror = () => { iconEl.style.display = 'none' }
-            iconEl.src = activeMessenger.icon || ''
-        }
-        const nameEl = document.getElementById('titlebarActiveTabName')
-        if (nameEl) nameEl.textContent = activeMessenger.name || ''
-    }
+    // 3.7.2: one shared painter; in a split it shows every pane (renderer/titlebar-tabs.js)
+    if (activeMessenger) paintTitlebar(state)
 
     if (activeMessenger) {
         state.tabZoomLevel = typeof activeMessenger.zoomLevel === 'number'
@@ -2271,6 +2267,7 @@ function applyTabZoom(level) {
             : (css.getPropertyValue('--success').trim() || '#22c55e')
     }
 
+    const STATUS_BAR_SUB_HIDDEN = true
     // Компактная подпись подписки в нижнем статус-баре, справа от счётчика
     // непрочитанных: прогресс-бар + "осталось 92 дн." + ссылка "Продлить".
     // Скрыта, если план FREE без активного локального триала (нечего
@@ -2284,6 +2281,15 @@ function applyTabZoom(level) {
         const bar    = document.getElementById('statusSubProgress')
         const fill   = document.getElementById('statusSubProgressFill')
         if (!sep || !item || !text || !planEl || !renew || !bar || !fill) return
+
+        // 3.7.2 (owner's decision): the days left of PRO are no longer shown in the status bar — only in the account
+        // window, and only during the last 7 days (renderer/cloud-ui.js). The rest of this function is kept for now
+        // so the strip can come back with one line if needed.
+        if (STATUS_BAR_SUB_HIDDEN) {
+            sep.style.display = 'none'
+            item.style.display = 'none'
+            return
+        }
 
         const user = cloudStore.getUser()
         const plan = (user?.plan || 'FREE').toUpperCase()
@@ -3608,6 +3614,7 @@ function applyTabZoom(level) {
     })
 
     bindLockUi({
+        tGet,
         state,
         store,
         isPasswordEnabled,
@@ -3739,7 +3746,10 @@ function applyTabZoom(level) {
         switchTab,
         showLockScreen,
         openSettings,
-        exitSplitMode: () => splitApi?.exitSplitMode?.()
+        exitSplitMode: () => splitApi?.exitSplitMode?.(),
+        // 3.7.2: a notification click stays in the split / opens the chosen preset or window (renderer/notif-target.js)
+        getSplitApi: () => splitApi,
+        detachMessenger: (id) => detachedApi?.detach(id)
     })
 
     bindAppEvents({
@@ -4095,8 +4105,20 @@ function applyTabZoom(level) {
         tGet,
         ipcRenderer,
         openRightPanel: () => toggleRightPanel('todos'),
-        closeRightPanel
+        closeRightPanel,
+        getLang: () => getCurrentLanguage() || 'ru'
     })
+    // 3.7.2: a task typed in the global quick-task window (main/services/quickTask.js) lands with the other tasks.
+    ipcRenderer.on('quick-task:add', (task) => {
+        if (!task || typeof task.text !== 'string') return
+        const dueDate = typeof task.dueDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(task.dueDate) ? task.dueDate : null
+        const priority = ['none', 'low', 'medium', 'high'].includes(task.priority) ? task.priority : 'none'
+        const item = todosUiApiRef?.addTask?.({ text: task.text, dueDate, priority })
+        // the quick window says "added" only after this confirmation (main/services/quickTask.js)
+        if (item && typeof task.id === 'string') ipcRenderer.send('quick-task:ack', task.id)
+    })
+    // Quick task without PRO: Enter in its window brings up the PRO offer here (main/services/quickTask.js).
+    document.addEventListener('centrio-shortcut', (e) => { if (e.detail?.action === 'proUpgrade') requirePro('calendar') })
 
     const quickRepliesApi = quickRepliesApiRef = bindQuickRepliesUi({
         store,
@@ -4334,16 +4356,19 @@ function applyTabZoom(level) {
         if (cloudStore.isLoggedIn()) cloudSyncPush()
     }, 5 * 60 * 1000)
 
-    // ── Usage tracker: tell the main process WHICH messenger has the focus ──────
-    // The main process owns the clock: it adds a second to the messenger only while the app window itself has focus
-    // (see main/services/tracker.js). Here we only say which messenger that is: the active tab, or in a split the pane
-    // that has focus — never a tab that is merely open in the background.
+    // ── Usage tracker: tell the main process WHICH messengers are on screen ──────
+    // The main process owns the clock: it adds time only while the app window itself has focus
+    // (see main/services/tracker.js). Here we only say which messengers those are: the active tab, or in a split every
+    // visible pane (3.7.2: they are all in use at once) — never a tab that is merely open in the background.
     setInterval(() => {
-        const focusedId = getFocusedMessengerId(state)
-        const name = state.activeMessengers.find(m => m.id === focusedId)?.name || null
-        if (name !== _tkLastService) {
-            _tkLastService = name
-            invokeIpc('tracker:set-active-service', name).catch(() => {})
+        paintTitlebar(state) // cheap: redraws only when panes or focus changed
+        const names = getVisibleMessengerIds(state)
+            .map(id => state.activeMessengers.find(m => m.id === id)?.name)
+            .filter(Boolean)
+        const key = names.join('\u0001')
+        if (key !== _tkLastService) {
+            _tkLastService = key
+            invokeIpc('tracker:set-active-service', names).catch(() => {})
         }
     }, 1000)
 
@@ -4502,96 +4527,8 @@ function applyTabZoom(level) {
         }
     }
 
-    // ── Попап-календарь при клике на дату в статусбаре ──────────────
-    ;(function initCalendarPopup() {
-        const dateBtn = document.getElementById('statusDate')
-        const popup   = document.getElementById('calendarPopup')
-        if (!dateBtn || !popup) return
-
-        let calYear  = new Date().getFullYear()
-        let calMonth = new Date().getMonth()
-
-        const MONTH_NAMES = [
-            'Январь','Февраль','Март','Апрель','Май','Июнь',
-            'Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'
-        ]
-
-        function renderCalendar() {
-            const label = document.getElementById('calMonthLabel')
-            const grid  = document.getElementById('calGrid')
-            if (!label || !grid) return
-
-            label.textContent = `${MONTH_NAMES[calMonth]} ${calYear}`
-            grid.innerHTML = ''
-
-            const today     = new Date()
-            const firstDay  = new Date(calYear, calMonth, 1)
-            // Monday-first: getDay() returns 0=Sun, shift so Mon=0
-            let startOffset = (firstDay.getDay() + 6) % 7
-            const daysInMonth   = new Date(calYear, calMonth + 1, 0).getDate()
-            const daysInPrevMonth = new Date(calYear, calMonth, 0).getDate()
-
-            // Prev month fill
-            for (let i = startOffset - 1; i >= 0; i--) {
-                const d = document.createElement('div')
-                d.className = 'cal-day other-month'
-                d.textContent = daysInPrevMonth - i
-                grid.appendChild(d)
-            }
-            // Current month
-            for (let day = 1; day <= daysInMonth; day++) {
-                const d = document.createElement('div')
-                const dow = (new Date(calYear, calMonth, day).getDay() + 6) % 7 // 5=Sat,6=Sun
-                d.className = 'cal-day' +
-                    (dow >= 5 ? ' weekend' : '') +
-                    (day === today.getDate() && calMonth === today.getMonth() && calYear === today.getFullYear() ? ' today' : '')
-                d.textContent = day
-                grid.appendChild(d)
-            }
-            // Next month fill
-            const totalCells = startOffset + daysInMonth
-            const remain = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7)
-            for (let i = 1; i <= remain; i++) {
-                const d = document.createElement('div')
-                d.className = 'cal-day other-month'
-                d.textContent = i
-                grid.appendChild(d)
-            }
-        }
-
-        document.getElementById('calPrevBtn')?.addEventListener('click', (e) => {
-            e.stopPropagation()
-            calMonth--; if (calMonth < 0) { calMonth = 11; calYear-- }
-            renderCalendar()
-        })
-        document.getElementById('calNextBtn')?.addEventListener('click', (e) => {
-            e.stopPropagation()
-            calMonth++; if (calMonth > 11) { calMonth = 0; calYear++ }
-            renderCalendar()
-        })
-
-        dateBtn.addEventListener('click', (e) => {
-            e.stopPropagation()
-            const visible = popup.style.display !== 'none'
-            if (!visible) {
-                calYear = new Date().getFullYear()
-                calMonth = new Date().getMonth()
-                renderCalendar()
-                const rect = dateBtn.getBoundingClientRect()
-                popup.style.bottom  = (window.innerHeight - rect.top + 6) + 'px'
-                popup.style.left    = Math.min(rect.left, window.innerWidth - 270) + 'px'
-                popup.style.display = 'block'
-            } else {
-                popup.style.display = 'none'
-            }
-        })
-
-        document.addEventListener('click', (e) => {
-            if (popup.style.display !== 'none' && !popup.contains(e.target) && e.target !== dateBtn) {
-                popup.style.display = 'none'
-            }
-        })
-    })()
+    // ── Календарь с задачами (3.7.2): дата в статусбаре → месяц с отметками задач, задачи дня и быстрое добавление ──
+    createTaskCalendar({ getTodosApi: () => todosUiApiRef, tGet, getLang: () => getCurrentLanguage() || 'ru', invokeIpc, isPro: () => hasEffectivePro(), requirePro })
 
     // ── Попап changelog при клике на версию в статусбаре ────────────
     ;(function initVersionPopup() {

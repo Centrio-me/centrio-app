@@ -11,7 +11,9 @@ const LABEL_KEYS = {
     prevTab: 'shortcuts.prev',
     reload: 'shortcuts.reload',
     settings: 'shortcuts.openSettings',
-    dnd: 'shortcuts.dnd'
+    dnd: 'shortcuts.dnd',
+    lock: 'v372.shortcuts.lock',
+    quickTask: 'v372.shortcuts.quickTask'
 }
 
 const { shortcutKeyName } = require('../shared/shortcutKeys')
