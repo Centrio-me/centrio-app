@@ -57,7 +57,22 @@ function buildTimeline(raw, now) {
             time: String(m.time || '')
         })
     }
-    return rows
+    return markGroups(rows)
+}
+
+// Messages in a row from the same person (same side, same author, no day between) make one group, like in messengers:
+// the name only on the first one, the bubbles closer together.
+// Telegram itself leaves the name off the second and later messages of a group: an incoming message without a name
+// continues the group above it.
+function markGroups(rows) {
+    const who = []
+    rows.forEach((r, i) => {
+        if (r.type !== 'msg') { who[i] = null; return }
+        const prev = rows[i - 1]
+        who[i] = !r.out && !r.author && prev && prev.type === 'msg' && !prev.out ? who[i - 1] : `${r.out ? 'out' : 'in'}:${r.author}`
+    })
+    const same = (i, j) => who[i] != null && who[j] != null && who[i] === who[j]
+    return rows.map((r, i) => (r.type !== 'msg' ? r : { ...r, groupStart: !same(i - 1, i), groupEnd: !same(i, i + 1) }))
 }
 
 /** A short string that changes whenever what is shown changes. */

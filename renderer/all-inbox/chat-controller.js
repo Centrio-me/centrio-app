@@ -1,7 +1,7 @@
 'use strict'
 // «Все мессенджеры» (3.8): keeps our conversation window in step with the chat open in the tab behind it, and sends
 // what is typed through that tab with real input (the messenger itself sends it, nothing goes around it).
-const { chatAdapterFor, fullPicture } = require('./chat-adapters')
+const { chatAdapterFor, fullPicture, withImageMemo, resolveImages } = require('./chat-adapters')
 const { buildTimeline, signature } = require('./timeline')
 const { createChatView } = require('./chat-view')
 const { sameChat } = require('./same-chat')
@@ -71,14 +71,14 @@ function createChatController({ state, webviewOf, host, ipcRenderer }) {
         if (!w) return
         reading = true
         try {
-            const data = await withTimeout(w.executeJavaScript(current.adapter.CHAT).catch(() => null), READ_TIMEOUT_MS)
+            const data = await withTimeout(w.executeJavaScript(current.script).catch(() => null), READ_TIMEOUT_MS)
             if (!current || !data || !Array.isArray(data.messages)) return
             // only the chat the person chose is shown and written to
             current.match = sameChat(current.chat.title, data.title)
             view.setMismatch(!current.match, data.title)
             if (!current.match) return
             if (!current.confirmed) { current.confirmed = true; if (typeof current.onConfirmed === 'function') current.onConfirmed() }
-            const rows = buildTimeline(data.messages, Date.now())
+            const rows = buildTimeline(resolveImages(data.messages, current.images), Date.now())
             view.update(rows, signature(rows))
             view.setCanWrite(data.canWrite !== false)
             const sub = [data.subtitle, current.chat.messengerName].filter(Boolean).join(' · ')
@@ -188,7 +188,9 @@ function createChatController({ state, webviewOf, host, ipcRenderer }) {
     function open(chat, adapterId, onConfirmed) {
         const adapter = chatAdapterFor(adapterId)
         if (!adapter) { close(); return false }
-        current = { chat, adapter, match: false, onConfirmed, confirmed: false }
+        // pictures cross from the tab once per opened chat (chat-adapters.js withImageMemo)
+        const session = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`
+        current = { chat, adapter, match: false, onConfirmed, confirmed: false, script: withImageMemo(adapter.CHAT, session), images: new Map() }
         view.show(chat)
         view.setMismatch(true, '')
         clearInterval(timer)

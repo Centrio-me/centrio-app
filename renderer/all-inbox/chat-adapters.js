@@ -236,4 +236,36 @@ function chatAdapterFor(adapterId) {
     return CHAT_ADAPTERS[adapterId] || null
 }
 
-module.exports = { chatAdapterFor, fullPicture, MAX_MESSAGES }
+/**
+ * The chat is read every second and a half; its pictures (data URLs, tens of KB each) cross from the tab only the first
+ * time in a session — after that the page sends «@m<id>» and resolveImages() takes the picture we already have.
+ * A new session (another chat opened) starts clean on both sides.
+ */
+function withImageMemo(chatScript, session) {
+    return `(function () {
+        var s = ${JSON.stringify(String(session))};
+        var memo = window.__ciSentImages && window.__ciSentImages.s === s ? window.__ciSentImages : (window.__ciSentImages = { s: s, k: {} });
+        var r = ${chatScript};
+        if (!r || !r.messages) return r;
+        for (var i = 0; i < r.messages.length; i++) {
+            var m = r.messages[i];
+            if (!m.media || m.media.indexOf('data:') !== 0) continue;
+            var key = 'm' + m.id;
+            if (memo.k[key] === m.media.length) m.media = '@' + key;
+            else memo.k[key] = m.media.length;
+        }
+        return r;
+    })()`
+}
+
+/** Messages with «@m<id>» pictures filled in from the cache (new copies; new pictures are added to the cache). */
+function resolveImages(messages, cache) {
+    return (messages || []).map((m) => {
+        if (!m || typeof m.media !== 'string' || !m.media) return m
+        if (m.media.startsWith('@')) return { ...m, media: cache.get(m.media.slice(1)) || '' }
+        if (m.media.startsWith('data:')) cache.set('m' + m.id, m.media)
+        return m
+    })
+}
+
+module.exports = { chatAdapterFor, fullPicture, withImageMemo, resolveImages, MAX_MESSAGES }

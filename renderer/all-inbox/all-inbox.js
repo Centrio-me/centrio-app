@@ -63,6 +63,7 @@ function createAllInbox({ state, switchTab, tGet, ipcRenderer }) {
     let timer = null
     let reading = false
     let sources = []
+    const lastChats = new Map()
     let filter = readStorage(FILTER_KEY, 'all')
     let source = readStorage(SOURCE_KEY, '')
     let lastListSig = ''
@@ -85,9 +86,12 @@ function createAllInbox({ state, switchTab, tGet, ipcRenderer }) {
         if (reading) return
         reading = true
         try {
+            // a tab that is asleep or slow this time keeps the chats it gave last time: the list never blinks
+            const kept = (m) => (lastChats.has(m.id) ? { messenger: m, chats: lastChats.get(m.id) } : null)
             const jobs = (state.activeMessengers || []).map(async (m) => {
                 const view = webviewOf(m.id)
-                if (!view || state.sleepingTabs?.has(m.id) || typeof view.executeJavaScript !== 'function') return null
+                if (!view || typeof view.executeJavaScript !== 'function') return null
+                if (state.sleepingTabs?.has(m.id)) return kept(m)
                 let url = ''
                 try { url = view.getURL() } catch { return null }
                 const adapter = adapterFor(url)
@@ -98,7 +102,9 @@ function createAllInbox({ state, switchTab, tGet, ipcRenderer }) {
                 // a messenger that was never opened since start-up does not start in a page without layout
                 // (Telegram waits for a frame to draw): it gets an invisible layout until its chats show up
                 view.classList.toggle(WARM_CLASS, !(Array.isArray(chats) && chats.length))
-                return Array.isArray(chats) ? { messenger: m, chats } : null
+                if (!Array.isArray(chats) || (!chats.length && lastChats.get(m.id)?.length)) return kept(m)
+                lastChats.set(m.id, chats)
+                return { messenger: m, chats }
             })
             sources = (await Promise.all(jobs)).filter(Boolean)
             render()

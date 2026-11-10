@@ -255,3 +255,16 @@ webview.inbox-warm:not(.active) { display: flex; opacity: 0; pointer-events: non
 
 /* «Избранное»: a bookmark, like in Telegram */
 .ai-ava.is-saved, .aic-ava.is-saved { background: linear-gradient(160deg, #6fb7f5, #3a8fe0); color: #fff; }
+
+/* messages in a row from the same person: one group, bubbles close together, the tail only on the last one */
+.aic-list { gap: 2px; }
+.aic-row.is-first { margin-top: 6px; }
+.aic-row.is-in .aic-bubble { border-radius: 6px 16px 16px 6px; }
+.aic-row.is-in.is-first .aic-bubble { border-top-left-radius: 16px; }
+.aic-row.is-in.is-last .aic-bubble { border-bottom-left-radius: 4px; }
+.aic-row.is-in.is-first.is-last .aic-bubble { border-radius: 16px 16px 16px 4px; }
+.aic-row.is-out .aic-bubble { border-radius: 16px 6px 6px 16px; }
+.aic-row.is-out.is-first .aic-bubble { border-top-right-radius: 16px; }
+.aic-row.is-out.is-last .aic-bubble { border-bottom-right-radius: 4px; }
+.aic-row.is-out.is-first.is-last .aic-bubble { border-radius: 16px 16px 4px 16px; }
+.aic-bubble.kind-sticker { border-radius: 0 !important; }

@@ -118,9 +118,9 @@ function createChatView({ host, onSend, onOpenInTab, onClose, onOlder, onLink, o
     lightbox.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeZoom() })
 
     function bubble(m) {
-        const row = el('div', `aic-row ${m.out ? 'is-out' : 'is-in'}`)
+        const row = el('div', `aic-row ${m.out ? 'is-out' : 'is-in'}${m.groupStart ? ' is-first' : ''}${m.groupEnd ? ' is-last' : ''}`)
         const b = el('div', `aic-bubble kind-${m.kind}`)
-        if (m.author && !m.out) b.append(el('div', 'aic-author', m.author))
+        if (m.author && !m.out && m.groupStart !== false) b.append(el('div', 'aic-author', m.author))
         if (m.forwarded) b.append(el('div', 'aic-fwd', `Переслано от ${m.forwarded}`))
         if (m.reply) b.append(el('div', 'aic-reply', m.reply))
         if (m.media && (m.kind === 'photo' || m.kind === 'sticker' || m.kind === 'video')) {
