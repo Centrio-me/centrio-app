@@ -124,8 +124,21 @@ async function registerSession () {
 }
 
 // ── Start / stop ──────────────────────────────────────────────────
+// «Удалил программу» (3.7.4, Windows): the uninstaller reads the install id from a file next to the profile, and
+// while signed in the install is linked to the account once per launch (main/services/uninstallMark.js).
+const uninstallMark = require('./uninstallMark')
+const linkOnce = uninstallMark.createLinker((token, body) => require('./api').linkVisitor(token, body))
+
+function linkAccount (token) {
+    if (!countsAsVisitor()) return Promise.resolve()
+    return linkOnce(token, getVisitorId(), app.getVersion())
+}
+
 function start () {
     if (_interval) return
+    if (uninstallMark.shouldWriteUninstallFile({ platform: process.platform, countsAsVisitor: countsAsVisitor() })) {
+        uninstallMark.writeUninstallFile(app.getPath('userData'), getVisitorId(), app.getVersion())
+    }
     // Регистрируем сессию при запуске
     registerSession().catch(() => {})
     // Периодический пинг
@@ -150,4 +163,4 @@ function onAuthStateChange () {
     }
 }
 
-module.exports = { start, stop, onAuthStateChange, getVisitorId, track, countsAsVisitor }
+module.exports = { start, stop, onAuthStateChange, getVisitorId, track, countsAsVisitor, linkAccount }

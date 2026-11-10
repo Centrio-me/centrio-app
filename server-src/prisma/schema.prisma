@@ -361,8 +361,14 @@ model Visitor {
   lastSeenAt      DateTime @default(now())
   sessions        Int      @default(1)
   messengersCount Int      @default(0)
+  // 3.7.4: the account this install was signed in to, and when the Windows uninstaller removed it (lib/uninstall-mark.js)
+  userId           String?
+  uninstalledAt    DateTime?
+  uninstallVersion String?
 
   @@index([lastSeenAt])
+  @@index([userId])
+  @@index([uninstalledAt])
 }
 
 model LoginEvent {

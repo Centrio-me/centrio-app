@@ -143,7 +143,10 @@ function registerApiIpc() {
     })
 
     ipcMain.handle('api-me', async (event, token) => {
-        return wrapApiAndPersistUser(() => api.me(token))
+        const result = await wrapApiAndPersistUser(() => api.me(token))
+        // 3.7.4: a signed-in launch links this install to the account (once per launch, fire and forget)
+        if (result.success) require('../services/visitor-tracker').linkAccount(token).catch(() => {})
+        return result
     })
 
     ipcMain.handle('api-refresh', async (event, refreshToken) => {
