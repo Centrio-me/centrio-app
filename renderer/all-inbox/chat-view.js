@@ -165,6 +165,8 @@ function createChatView({ host, onSend, onOpenInTab, onClose, onOlder, onLink, o
             const ids = new Set()
             for (const r of rows) {
                 if (r.type === 'day') { const day = el('div', 'aic-day'); day.append(el('span', '', r.label)); frag.append(day); continue }
+                // an event in the chat: a small note in the middle, like Telegram's service messages
+                if (r.type === 'note') { const note = el('div', 'aic-note'); note.append(el('span', '', r.text)); frag.append(note); continue }
                 const node = renderMessage(r, ctx)
                 ids.add(r.id)
                 // what came in since the last look slides in softly, like in Telegram

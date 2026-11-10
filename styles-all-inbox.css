@@ -441,3 +441,18 @@ html[data-fx] .aic-head { background: rgba(10, 12, 20, .5); }
 .aic-line .aic-bar { background: var(--in-bg); }
 html[data-fx] .aic-line .aic-bar { background: rgba(22, 25, 38, .92); backdrop-filter: blur(14px); }
 .aic-down { background: var(--in-bg); }
+
+/* an event in the chat (a gift, someone joined, a pinned message): a small note in the middle */
+.aic-note { display: flex; justify-content: center; margin: 8px 0; }
+.aic-note > span {
+    max-width: min(80%, 460px); padding: 5px 12px; border-radius: 14px; background: rgba(0, 0, 0, .3); color: #fff;
+    font-size: 13px; font-weight: 500; line-height: 1.35; text-align: center; backdrop-filter: blur(10px);
+}
+html[data-mode="light"] .aic-note > span, html[data-theme="light"] .aic-note > span { background: rgba(0, 0, 0, .22); }
+
+/* a two-sided conversation: the column is wide enough that someone else's messages stay on the left
+   and one's own clearly on the right, even in a wide window */
+.aic-list { max-width: 980px; }
+.aic-line, .aic-tray { max-width: 980px; }
+.aic-bubble { max-width: min(68%, 560px); }
+.aic-row.is-in + .aic-row.is-out, .aic-row.is-out + .aic-row.is-in { margin-top: 8px; }

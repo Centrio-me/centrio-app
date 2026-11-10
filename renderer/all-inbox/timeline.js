@@ -52,8 +52,11 @@ function buildTimeline(raw, now) {
         const kind = KINDS.has(m.kind) ? m.kind : 'text'
         if (kind === 'service') {
             const text = String(m.text || '').trim()
-            if (text) rows.push({ type: 'day', label: text, id: m.id })
-            if (text) lastDay = text
+            if (!text) continue
+            // an event in the chat (someone joined, a gift, a pinned message) is a small note; a date divides the days
+            if (m.note === true) { rows.push({ type: 'note', text: text.slice(0, 300), id: String(m.id) }); continue }
+            rows.push({ type: 'day', label: text, id: m.id })
+            lastDay = text
             continue
         }
         if (m.at) {

@@ -113,7 +113,13 @@ const telegram = {
             var b = bubbles[i], cls = ' ' + b.className + ' ';
             var mid = b.getAttribute('data-mid');
             var at = Number(b.getAttribute('data-timestamp')) * 1000 || 0;
-            if (/ service /.test(cls)) { out.push({ id: 's' + mid, kind: 'service', text: __ciText(b), at: at }); continue; }
+            // Telegram's date bubbles are drawn by us from the exact times; its other service bubbles are events (a note)
+            if (/ service /.test(cls)) {
+                if (/ is-date /.test(cls)) continue;
+                var noteEl = b.querySelector('.service-msg') || b;
+                out.push({ id: 's' + mid, kind: 'service', note: true, text: String(noteEl.innerText || '').split('\\n').map(function (x) { return x.trim(); }).filter(Boolean).join(' · ').slice(0, 300), at: at });
+                continue;
+            }
             var kind = 'text';
             if (/ voice-message /.test(cls) || b.querySelector('.audio.is-voice, .voice')) kind = 'voice';
             else if (/ sticker /.test(cls) || /emoji-big/.test(cls)) kind = 'sticker';

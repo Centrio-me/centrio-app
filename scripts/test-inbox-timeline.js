@@ -132,3 +132,14 @@ test('two photos stand side by side, four make a square', () => {
     const four = buildTimeline([pic('1', 0), pic('2', 0), pic('3', 0), pic('4', 0)], NOW).filter((r) => r.type === 'msg')[0].album
     assert.deepEqual(four.map((a) => [a.x, a.y]), [[0, 0], [0.5, 0], [0, 0.5], [0.5, 0.5]])
 })
+
+test('a service event is a small note in the middle, a date stays a day separator', () => {
+    const rows = buildTimeline([
+        { id: 'c1', kind: 'service', text: '12 марта' },
+        { id: '1', text: 'привет', time: '12:53' },
+        { id: 's2', kind: 'service', text: 'Анна вступила в группу', note: true },
+        { id: 'c3', kind: 'service', text: 'Вчера' }
+    ], NOW)
+    assert.deepEqual(rows.map((r) => r.type), ['day', 'msg', 'note', 'day'])
+    assert.equal(rows[2].text, 'Анна вступила в группу')
+})
