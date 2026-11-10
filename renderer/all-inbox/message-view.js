@@ -37,7 +37,7 @@ function meta(m, floating) {
     return box
 }
 
-function textBlock(m, onLink) {
+function textBlock(m, onLink, withMeta = true) {
     const node = el('div', 'aic-text')
     for (const part of linkParts(m.text)) {
         if (!part.url) { node.append(document.createTextNode(part.text)); continue }
@@ -47,8 +47,24 @@ function textBlock(m, onLink) {
         a.addEventListener('click', (e) => { e.preventDefault(); onLink(part.url) })
         node.append(a)
     }
-    node.append(meta(m, false))
+    if (withMeta) node.append(meta(m, false))
     return node
+}
+
+// a link preview under the text: a colour bar, the site, the title, a few lines and the picture; a click opens the link
+function webpageCard(m, onLink) {
+    const w = m.webpage
+    const card = el('div', 'aic-webpage')
+    if (w.site) card.append(el('div', 'aic-webpage-site', w.site))
+    if (w.title) card.append(el('div', 'aic-webpage-title', w.title))
+    if (w.text) card.append(el('div', 'aic-webpage-text', w.text))
+    if (w.image) { const img = el('img', 'aic-webpage-img'); img.src = w.image; img.alt = ''; img.decoding = 'async'; card.append(img) }
+    if (w.url) {
+        card.classList.add('is-link')
+        card.title = w.url
+        card.addEventListener('click', () => onLink(w.url))
+    }
+    return card
 }
 
 function photo(m, onZoom) {
@@ -182,6 +198,7 @@ function renderMessage(m, ctx) {
     } else if (m.kind !== 'text' && m.kind !== 'photo') b.append(card(m, ctx.onOpenInTab))
 
     if (jumbo) b.append(el('div', 'aic-jumbo', m.text), meta(m, true))
+    else if (m.text && m.webpage) { b.classList.add('has-webpage'); b.append(textBlock(m, ctx.onLink, false), webpageCard(m, ctx.onLink), meta(m, false)) }
     else if (m.text) b.append(textBlock(m, ctx.onLink))
     else b.append(meta(m, hasMedia || sticker))
 

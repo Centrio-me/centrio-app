@@ -23,6 +23,14 @@ function cleanAlbum(album) {
     }))
 }
 
+// a link preview: the site, the title, a little text, a picture from a safe source, the address only if it is a web one
+function cleanWebpage(w) {
+    if (!w || typeof w !== 'object' || !(w.title || w.text || w.site)) return null
+    const cut = (v, n) => String(v || '').replace(/\s+/g, ' ').trim().slice(0, n)
+    const url = typeof w.url === 'string' && /^https?:\/\//i.test(w.url) ? w.url.slice(0, 500) : ''
+    return { site: cut(w.site, 60), title: cut(w.title, 140), text: cut(w.text, 280), image: picture(w.image), url }
+}
+
 function cleanReactions(list) {
     if (!Array.isArray(list)) return []
     return list.filter((r) => r && typeof r.e === 'string' && r.e).slice(0, MAX_REACTIONS)
@@ -91,6 +99,7 @@ function buildTimeline(raw, now) {
             replyColor: colour(m.replyColor),
             reactions: cleanReactions(m.reactions),
             size: String(m.size || '').slice(0, 20),
+            webpage: cleanWebpage(m.webpage),
             // the page's own key for this picture: a click asks the page for it in full size
             picture: typeof m.picture === 'string' ? m.picture.slice(0, 80) : '',
             time: String(m.time || '')

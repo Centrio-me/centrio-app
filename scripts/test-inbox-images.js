@@ -49,3 +49,10 @@ test('the page side swaps a picture it already sent for its key, the second time
     const second = memo(win).messages[0]
     assert.deepEqual([second.media, second.avatar, second.album[0].src], ['@m1', '@g7', '@m1_0'])
 })
+
+test('the picture of a link preview crosses once too', () => {
+    const cache = new Map()
+    resolveImages([{ id: '5', webpage: { title: 'T', image: 'data:image/jpeg;base64,W' } }], cache)
+    const out = resolveImages([{ id: '5', webpage: { title: 'T', image: '@w5' } }], cache)
+    assert.equal(out[0].webpage.image, 'data:image/jpeg;base64,W')
+})

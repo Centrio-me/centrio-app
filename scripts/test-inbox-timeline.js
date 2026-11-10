@@ -143,3 +143,12 @@ test('a service event is a small note in the middle, a date stays a day separato
     assert.deepEqual(rows.map((r) => r.type), ['day', 'msg', 'note', 'day'])
     assert.equal(rows[2].text, 'Анна вступила в группу')
 })
+
+test('a link preview comes through checked: site, title, text and a picture only from a safe source', () => {
+    const [row] = buildTimeline([{ id: '1', at: at(10, 9), text: 'https://centrio.me', webpage: { site: 'Centrio', title: 'Все мессенджеры', text: 'В одном окне', image: 'data:image/png;base64,A', url: 'https://centrio.me' } }], NOW).filter((r) => r.type === 'msg')
+    assert.deepEqual(row.webpage, { site: 'Centrio', title: 'Все мессенджеры', text: 'В одном окне', image: 'data:image/png;base64,A', url: 'https://centrio.me' })
+    const [bad] = buildTimeline([{ id: '2', at: at(10, 9), text: 'x', webpage: { title: 'T', image: 'file:///c:/x', url: 'javascript:alert(1)' } }], NOW).filter((r) => r.type === 'msg')
+    assert.deepEqual([bad.webpage.image, bad.webpage.url], ['', ''])
+    const [none] = buildTimeline([{ id: '3', at: at(10, 9), text: 'x' }], NOW).filter((r) => r.type === 'msg')
+    assert.equal(none.webpage, null)
+})

@@ -507,3 +507,20 @@ html[data-mode="light"] .aic-note > span, html[data-theme="light"] .aic-note > s
 /* a picture sent as a file: its square preview instead of the file icon */
 .aic-card-icon.has-thumb { flex-basis: 54px; width: 54px; height: 54px; border-radius: 10px; overflow: hidden; background: rgba(127, 127, 127, .2); }
 .aic-card-icon.has-thumb img { width: 100%; height: 100%; object-fit: cover; }
+
+/* a link preview under the text, like Telegram's: colour bar, site, title, a few lines, the picture */
+.aic-bubble.has-webpage { padding-bottom: 24px; }
+.aic-bubble.has-webpage .aic-text::after { display: none; }
+.aic-webpage {
+    --quote: var(--name, #6ab2f2);
+    display: flex; flex-direction: column; gap: 2px; margin-top: 6px; padding: 6px 10px 8px 10px; border-left: 3px solid var(--quote);
+    border-radius: 6px; background: color-mix(in srgb, var(--quote) 12%, transparent); max-width: 420px;
+}
+.aic-row.is-out .aic-webpage { --quote: #fff; }
+html[data-mode="light"] .aic-row.is-out .aic-webpage, html[data-theme="light"] .aic-row.is-out .aic-webpage { --quote: var(--out-meta); }
+.aic-webpage.is-link { cursor: pointer; transition: background .12s ease; }
+.aic-webpage.is-link:hover { background: color-mix(in srgb, var(--quote) 20%, transparent); }
+.aic-webpage-site { color: var(--quote); font-size: 13px; font-weight: 600; }
+.aic-webpage-title { font-size: 13.5px; font-weight: 600; }
+.aic-webpage-text { font-size: 13.5px; opacity: .9; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; white-space: pre-line; }
+.aic-webpage-img { margin-top: 6px; width: 100%; max-height: 240px; object-fit: cover; border-radius: 6px; }

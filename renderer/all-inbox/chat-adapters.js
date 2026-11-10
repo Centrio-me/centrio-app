@@ -49,7 +49,20 @@ const telegram = {
         var titles = chat.querySelectorAll('.chat-info .peer-title');
         var bubbles = chat.querySelectorAll('.bubbles-inner .bubble[data-mid]');
         // the message's own picture, not the small one of the message it replies to
-        function own(b, sel) { var all = b.querySelectorAll(sel); for (var o = 0; o < all.length; o++) if (!all[o].closest('.reply')) return all[o]; return null; }
+        function own(b, sel) { var all = b.querySelectorAll(sel); for (var o = 0; o < all.length; o++) if (!all[o].closest('.reply, .webpage')) return all[o]; return null; }
+        // a link preview: the site, the title, a little text and its picture, as Telegram shows it under the text
+        function webpageOf(b, mid) {
+            var w = b.querySelector('.webpage');
+            if (!w) return null;
+            var pic = w.querySelector('img.media-photo');
+            return {
+                url: w.getAttribute('href') || '',
+                site: __ciText(w.querySelector('.webpage-name')),
+                title: __ciText(w.querySelector('.webpage-title')),
+                text: __ciText(w.querySelector('.webpage-text')),
+                image: pic ? __ciPicture('tgw' + mid, pic) : ''
+            };
+        }
         function __ciRgb(s) { var m = /rgba?\\((\\d+),\\s*(\\d+),\\s*(\\d+)/.exec(s || ''); return m ? 'rgb(' + m[1] + ', ' + m[2] + ', ' + m[3] + ')' : ''; }
         // a group of messages from one person: its avatar and its name colour, read once per group
         var groups = [];
@@ -161,6 +174,7 @@ const telegram = {
                 album: album,
                 picture: !album && img && img.tagName === 'IMG' && kind === 'photo' ? 'tg' + mid : '',
                 reactions: reactionsOf(b),
+                webpage: webpageOf(b, mid),
                 time: __ciText(b.querySelector('.time .time-inner, .time')).replace(/[^0-9:]/g, '').slice(-5)
             });
         }
@@ -352,6 +366,7 @@ function withImageMemo(chatScript, session) {
             m.media = once(m.media, 'm' + m.id);
             m.avatar = once(m.avatar, m.avatarKey);
             if (m.album) for (var j = 0; j < m.album.length; j++) m.album[j].src = once(m.album[j].src, m.album[j].key);
+            if (m.webpage) m.webpage.image = once(m.webpage.image, 'w' + m.id);
         }
         return r;
     })()`
@@ -373,6 +388,7 @@ function resolveImages(messages, cache) {
         if (m.media) out.media = resolveOne(m.media, 'm' + m.id, cache)
         if (m.avatar) out.avatar = resolveOne(m.avatar, m.avatarKey, cache)
         if (Array.isArray(m.album)) out.album = m.album.map((a) => ({ ...a, src: resolveOne(a && a.src, a && a.key, cache) }))
+        if (m.webpage && m.webpage.image) out.webpage = { ...m.webpage, image: resolveOne(m.webpage.image, 'w' + m.id, cache) }
         return out
     })
 }
