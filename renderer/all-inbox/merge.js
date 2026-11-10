@@ -1,6 +1,6 @@
 'use strict'
 // «Все мессенджеры» (3.8): the chat lists read from every tab (renderer/all-inbox/adapters.js) become one list.
-const { parseListTime } = require('../../shared/inbox-time')
+const { parseListTime, formatListTime } = require('../../shared/inbox-time')
 
 const MAX_TITLE = 120
 const MAX_PREVIEW = 200
@@ -31,8 +31,9 @@ function mergeInbox(sources, now, filter = {}) {
                 messengerIcon: m.icon || '',
                 title: chat.title.trim().slice(0, MAX_TITLE),
                 preview: String(chat.preview || '').replace(/\s+/g, ' ').trim().slice(0, MAX_PREVIEW),
-                timeLabel: String(chat.time || '').trim(),
-                at: parseListTime(chat.time, now),
+                // an exact time from the messenger (Telegram's own data) wins over the label read off the page
+                timeLabel: Number(chat.at) > 0 ? formatListTime(Number(chat.at), now) : String(chat.time || '').trim(),
+                at: Number(chat.at) > 0 ? Number(chat.at) : parseListTime(chat.time, now),
                 unread,
                 muted: chat.muted === true,
                 avatar: typeof chat.avatar === 'string' ? chat.avatar : ''

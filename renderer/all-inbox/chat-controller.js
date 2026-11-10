@@ -1,7 +1,7 @@
 'use strict'
 // «Все мессенджеры» (3.8): keeps our conversation window in step with the chat open in the tab behind it, and sends
 // what is typed through that tab with real input (the messenger itself sends it, nothing goes around it).
-const { chatAdapterFor } = require('./chat-adapters')
+const { chatAdapterFor, fullPicture } = require('./chat-adapters')
 const { buildTimeline, signature } = require('./timeline')
 const { createChatView } = require('./chat-view')
 const { sameChat } = require('./same-chat')
@@ -12,6 +12,7 @@ const OLDER_THROTTLE_MS = 1500
 const FOCUS_SETTLE_MS = 120
 const TYPE_SETTLE_MS = 80
 const AFTER_SEND_MS = 600
+const PICTURE_TIMEOUT_MS = 6000
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms))
 const withTimeout = (p, ms) => Promise.race([p, wait(ms).then(() => null)])
@@ -39,7 +40,15 @@ function createChatController({ state, webviewOf, host }) {
         onSend: send,
         onOpenInTab: () => close(),
         onClose: () => close(),
-        onOlder: older
+        onOlder: older,
+        // links open in the browser through the main process's usual scheme check
+        onLink: (url) => { try { require('electron').ipcRenderer.send('open-url', url) } catch {} },
+        onPicture: async (key) => {
+            const w = tab()
+            if (!w) return ''
+            const data = await withTimeout(w.executeJavaScript(fullPicture(key)).catch(() => ''), PICTURE_TIMEOUT_MS)
+            return typeof data === 'string' && data.startsWith('data:image/') ? data : ''
+        }
     })
 
     function tab() {

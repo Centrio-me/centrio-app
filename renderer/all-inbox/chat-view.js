@@ -2,6 +2,8 @@
 // «Все мессенджеры» (3.8): our own conversation window over the messenger's tab. It only draws what timeline.js gives
 // and hands typed text back; the tab behind it does the real work.
 
+const { linkParts } = require('./linkify')
+
 const NEAR_BOTTOM_PX = 120
 const TOP_LOAD_PX = 40
 
@@ -20,9 +22,10 @@ function initials(title) {
 const KIND_LABEL = { voice: 'Голосовое сообщение', video: 'Видео', sticker: 'Стикер', file: 'Файл', photo: 'Фото' }
 
 /**
- * @param {{ host: HTMLElement, onSend: (text: string) => Promise<boolean>, onOpenInTab: () => void, onClose: () => void, onOlder: () => void }} deps
+ * @param {{ host: HTMLElement, onSend: (text: string) => Promise<boolean>, onOpenInTab: () => void, onClose: () => void,
+ *   onOlder: () => void, onLink: (url: string) => void, onPicture: (key: string) => Promise<string> }} deps
  */
-function createChatView({ host, onSend, onOpenInTab, onClose, onOlder }) {
+function createChatView({ host, onSend, onOpenInTab, onClose, onOlder, onLink, onPicture }) {
     const root = el('section', 'aic')
     root.hidden = true
     root.innerHTML = `
@@ -41,8 +44,10 @@ function createChatView({ host, onSend, onOpenInTab, onClose, onOlder }) {
             <button type="submit" class="aic-send" aria-label="Отправить" title="Отправить (Enter)">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
             </button>
-        </form>`
+        </form>
+        <div class="aic-lightbox" tabindex="-1" hidden title="Закрыть"><img alt=""></div>`
     host.appendChild(root)
+    const lightbox = root.querySelector('.aic-lightbox')
 
     const q = (s) => root.querySelector(s)
     const scroll = q('.aic-scroll')
@@ -78,6 +83,33 @@ function createChatView({ host, onSend, onOpenInTab, onClose, onOlder }) {
     q('.aic-x').addEventListener('click', onClose)
     scroll.addEventListener('scroll', () => { if (scroll.scrollTop < TOP_LOAD_PX) onOlder() }, { passive: true })
 
+    function textWithLinks(text) {
+        const node = el('div', 'aic-text')
+        for (const part of linkParts(text)) {
+            if (!part.url) { node.append(document.createTextNode(part.text)); continue }
+            const a = el('a', 'aic-link', part.text)
+            a.href = part.url
+            a.title = part.url
+            a.addEventListener('click', (e) => { e.preventDefault(); onLink(part.url) })
+            node.append(a)
+        }
+        return node
+    }
+
+    // a photo opens over the conversation: the small copy at once, the full one as soon as the page gives it
+    async function zoom(m) {
+        const img = lightbox.querySelector('img')
+        img.src = m.media
+        lightbox.hidden = false
+        lightbox.focus()
+        const shown = m.media
+        const full = m.picture ? await onPicture(m.picture).catch(() => '') : ''
+        if (full && !lightbox.hidden && img.src === shown) img.src = full
+    }
+    function closeZoom() { lightbox.hidden = true; lightbox.querySelector('img').removeAttribute('src') }
+    lightbox.addEventListener('click', closeZoom)
+    lightbox.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeZoom() })
+
     function bubble(m) {
         const row = el('div', `aic-row ${m.out ? 'is-out' : 'is-in'}`)
         const b = el('div', `aic-bubble kind-${m.kind}`)
@@ -89,6 +121,11 @@ function createChatView({ host, onSend, onOpenInTab, onClose, onOlder }) {
             img.src = m.media
             img.alt = ''
             img.loading = 'lazy'
+            if (m.kind === 'photo') {
+                img.classList.add('is-zoomable')
+                img.title = 'Открыть крупно'
+                img.addEventListener('click', () => zoom(m))
+            }
             b.append(img)
         } else if (m.kind !== 'text') {
             const card = el('button', 'aic-card')
@@ -100,7 +137,7 @@ function createChatView({ host, onSend, onOpenInTab, onClose, onOlder }) {
             card.addEventListener('click', onOpenInTab)
             b.append(card)
         }
-        if (m.text) b.append(el('div', 'aic-text', m.text))
+        if (m.text) b.append(textWithLinks(m.text))
         const meta = el('div', 'aic-meta', m.time)
         if (m.out) meta.append(el('span', `aic-check${m.read ? ' is-read' : ''}`, m.read ? '✓✓' : '✓'))
         b.append(meta)
@@ -145,7 +182,7 @@ function createChatView({ host, onSend, onOpenInTab, onClose, onOlder }) {
             input.disabled = on
             if (on) { lastSig = ''; list.replaceChildren() }
         },
-        hide() { root.hidden = true },
+        hide() { closeZoom(); root.hidden = true },
         isShown: () => !root.hidden
     }
 }

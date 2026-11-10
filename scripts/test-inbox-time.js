@@ -49,3 +49,14 @@ test('anything else has no time', () => {
     assert.equal(parseListTime(null, NOW), 0)
     assert.equal(parseListTime('Черновик', NOW), 0)
 })
+
+const { formatListTime } = require('../shared/inbox-time')
+
+test('an exact time is written the way chat lists do', () => {
+    assert.equal(formatListTime(at(2026, 10, 10, 9, 5), NOW), '09:05')
+    assert.equal(formatListTime(at(2026, 10, 9, 23, 0), NOW), 'Вчера')
+    assert.equal(formatListTime(at(2026, 10, 6, 12, 0), NOW), 'Пт')
+    assert.equal(formatListTime(at(2026, 9, 22, 12, 0), NOW), '22 окт.')
+    assert.equal(formatListTime(at(2025, 11, 16, 12, 0), NOW), '16.12.2025')
+    assert.equal(formatListTime(0, NOW), '')
+})

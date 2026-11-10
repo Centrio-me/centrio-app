@@ -43,3 +43,11 @@ test('the signature changes when a message is read or a new one comes', () => {
     assert.notEqual(signature(a), signature(c))
     assert.equal(signature(a), signature(buildTimeline([{ id: '1', text: 'x', out: true }], NOW)))
 })
+
+test('a photo keeps the key its page uses to give the picture in full size', () => {
+    const rows = buildTimeline([{ id: '7', kind: 'photo', media: 'data:image/jpeg;base64,AA', picture: 'tg7', at: NOW }], NOW)
+    const msg = rows.find((r) => r.type === 'msg')
+    assert.equal(msg.picture, 'tg7')
+    const plain = buildTimeline([{ id: '8', kind: 'text', text: 'Привет', at: NOW }], NOW).find((r) => r.type === 'msg')
+    assert.equal(plain.picture, '')
+})

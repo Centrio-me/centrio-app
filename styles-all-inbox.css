@@ -146,3 +146,19 @@ html[data-fx] .aic-head { border-bottom-color: rgba(255, 255, 255, .06); }
 .aic-warn { margin: 10px 16px 0; padding: 9px 12px; border-radius: 10px; background: rgba(245, 158, 11, .12); color: #f59e0b; font-size: 12.5px; line-height: 1.4; }
 .aic-warn[hidden] { display: none; }
 .aic-compose.is-blocked { opacity: .5; pointer-events: none; }
+
+/* links in messages open in the browser; photos open large over the conversation */
+.aic-link { color: inherit; text-decoration: underline; text-decoration-color: color-mix(in srgb, currentColor 45%, transparent); text-underline-offset: 2px; cursor: pointer; }
+.aic-link:hover { text-decoration-color: currentColor; }
+.aic-bubble.is-in .aic-link, .aic-row.is-in .aic-link { color: var(--accent, #5aa9ff); }
+.aic-media.is-zoomable { cursor: zoom-in; }
+.aic-lightbox {
+    position: absolute; inset: 0; z-index: 5;
+    display: flex; align-items: center; justify-content: center;
+    padding: 24px; background: rgba(4, 6, 12, .86); cursor: zoom-out; outline: none;
+    animation: aic-fade .15s ease-out;
+}
+.aic-lightbox[hidden] { display: none; }
+.aic-lightbox img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 10px; box-shadow: 0 20px 60px rgba(0, 0, 0, .5); }
+@keyframes aic-fade { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .aic-lightbox { animation: none; } }

@@ -71,4 +71,21 @@ function parseListTime(label, now) {
     return 0
 }
 
-module.exports = { parseListTime }
+const SHORT_MONTHS = ['янв.', 'февр.', 'мар.', 'апр.', 'мая', 'июн.', 'июл.', 'авг.', 'сент.', 'окт.', 'нояб.', 'дек.']
+const SHORT_DAYS = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб']
+const pad = (n) => String(n).padStart(2, '0')
+
+/** An exact time written the way chat lists do: «09:05», «Вчера», «Пт», «22 окт.», «16.12.2025». */
+function formatListTime(at, now) {
+    if (!at) return ''
+    const d = new Date(at)
+    const today = startOfDay(now)
+    const day = startOfDay(at)
+    if (day === today) return `${pad(d.getHours())}:${pad(d.getMinutes())}`
+    if (day === today - DAY_MS) return 'Вчера'
+    if (day > today - 7 * DAY_MS) return SHORT_DAYS[d.getDay()]
+    if (d.getFullYear() === new Date(now).getFullYear()) return `${d.getDate()} ${SHORT_MONTHS[d.getMonth()]}`
+    return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()}`
+}
+
+module.exports = { parseListTime, formatListTime }

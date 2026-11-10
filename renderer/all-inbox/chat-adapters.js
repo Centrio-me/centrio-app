@@ -30,6 +30,7 @@ function __ciCleanText(el, drop) {
     var clone = el.cloneNode(true);
     var gone = clone.querySelectorAll(drop);
     for (var i = 0; i < gone.length; i++) gone[i].remove();
+    __ciEmojiText(clone);
     return String(clone.innerText || clone.textContent || '').replace(/\\n{3,}/g, '\\n\\n').trim();
 }
 `
@@ -69,6 +70,7 @@ const telegram = {
                 name: __ciText(b.querySelector('.document-name')),
                 duration: __ciText(b.querySelector('.audio-time, .video-time')),
                 media: img && img.tagName === 'IMG' ? __ciPicture('tg' + mid, img) : '',
+                picture: img && img.tagName === 'IMG' && kind === 'photo' ? 'tg' + mid : '',
                 time: __ciText(b.querySelector('.time .time-inner, .time')).replace(/[^0-9:]/g, '').slice(-5)
             });
         }
@@ -129,6 +131,7 @@ const max = {
                     text: text,
                     name: kind === 'file' ? __ciText(w.querySelector('[class*=file] [class*=name], [class*=document] [class*=name]')) : '',
                     media: photo ? __ciPicture('max' + id, photo) : '',
+                    picture: photo ? 'max' + id : '',
                     time: time
                 });
             }
@@ -156,9 +159,32 @@ const max = {
 
 const CHAT_ADAPTERS = { telegram, max }
 
+const FULL_PICTURE_MAX = 1600
+
+/** A page script that gives a picture shown in the conversation in full size (up to 1600 px), or '' */
+function fullPicture(key) {
+    return `(function () {
+        var c = (window.__centrioInboxImages || {})[${JSON.stringify(String(key))}];
+        if (!c || !c.src) return '';
+        return new Promise(function (resolve) {
+            var img = new Image();
+            img.onload = function () {
+                try {
+                    var w = img.naturalWidth, h = img.naturalHeight, k = Math.min(1, ${FULL_PICTURE_MAX} / Math.max(w, h));
+                    var cv = document.createElement('canvas'); cv.width = Math.round(w * k); cv.height = Math.round(h * k);
+                    cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+                    resolve(cv.toDataURL('image/jpeg', 0.9));
+                } catch (e) { resolve(''); }
+            };
+            img.onerror = function () { resolve(''); };
+            img.src = c.src;
+        });
+    })()`
+}
+
 /** @param {string} adapterId the id of the chat-list adapter (adapters.js) */
 function chatAdapterFor(adapterId) {
     return CHAT_ADAPTERS[adapterId] || null
 }
 
-module.exports = { chatAdapterFor, MAX_MESSAGES }
+module.exports = { chatAdapterFor, fullPicture, MAX_MESSAGES }

@@ -47,3 +47,9 @@ test('the same chat reported twice by one page appears once', () => {
     const list = mergeInbox([{ messenger: { id: 'x', name: 'X' }, chats: [{ key: 'a', title: 'A', time: '10:00' }, { key: 'a', title: 'A', time: '10:00' }] }], NOW)
     assert.equal(list.length, 1)
 })
+
+test('an exact time from the messenger wins over the label, and gets a label', () => {
+    const list = mergeInbox([{ messenger: { id: 'tg', name: 'TG' }, chats: [{ key: '1', title: 'A', at: new Date(2026, 10, 10, 9, 5).getTime() }] }], NOW)
+    assert.equal(list[0].at, new Date(2026, 10, 10, 9, 5).getTime())
+    assert.equal(list[0].timeLabel, '09:05')
+})

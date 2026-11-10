@@ -52,6 +52,8 @@ function buildTimeline(raw, now) {
             name: String(m.name || ''),
             duration: String(m.duration || ''),
             media: typeof m.media === 'string' && /^(data:image\/|https:)/.test(m.media) ? m.media : '',
+            // the page's own key for this picture: a click asks the page for it in full size
+            picture: typeof m.picture === 'string' ? m.picture.slice(0, 80) : '',
             time: String(m.time || '')
         })
     }
