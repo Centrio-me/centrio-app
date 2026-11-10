@@ -19,6 +19,8 @@
 // existing click listener/positioning/Pro-gate logic already works unchanged
 // in its new location. This file only owns Reload/Mute/Back and the
 // hamburger open/close toggle.
+const { isTabGone } = require("./tab-recovery")
+
 function bindTitlebarQuickMenuUi ({
     state,
     isMessengerMuted,
@@ -93,7 +95,10 @@ function bindTitlebarQuickMenuUi ({
     }
 
     document.getElementById('tqmReload')?.addEventListener('click', () => {
-        activeWebview()?.reload()
+        const active = activeWebview()
+        active?.reload()
+        // a tab whose page died (black, no right-click menu) comes back too, wherever it is — the other half of a split included
+        document.querySelectorAll('webview').forEach((wv) => { if (wv !== active && isTabGone(wv)) { try { wv.reload() } catch {} } })
     })
 
     // #tqmMute (do not disturb) is bound in renderer/dnd.js.
