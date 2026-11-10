@@ -4,6 +4,7 @@
 // The lists are read from the tabs' pages (adapters.js) only while the panel is open; nothing leaves the computer.
 const { adapterFor } = require('./adapters')
 const { mergeInbox } = require('./merge')
+const { createChatController, clickAt } = require('./chat-controller')
 
 const POLL_MS = 4000
 const READ_TIMEOUT_MS = 2500
@@ -55,6 +56,8 @@ function createAllInbox({ state, switchTab, tGet }) {
     let sources = []
     let filter = readStorage(FILTER_KEY, 'all')
     let activeId = ''
+    const contentArea = document.getElementById('contentArea')
+    const chats = contentArea ? createChatController({ state, webviewOf: (id) => document.getElementById(`webview-${id}`), host: contentArea }) : null
 
     function webviewOf(messengerId) {
         return document.getElementById(`webview-${messengerId}`)
@@ -152,13 +155,11 @@ function createAllInbox({ state, switchTab, tGet }) {
         try { adapter = adapterFor(view.getURL()) } catch {}
         if (!adapter) return
         const point = await withTimeout(view.executeJavaScript(adapter.locate(chat.key)).catch(() => null), READ_TIMEOUT_MS)
-        if (!point || typeof point.x !== 'number') return
-        // the pages only react to real clicks; a tab with its own zoom takes the point in screen pixels
-        let zoom = 1
-        try { zoom = Number(view.getZoomFactor()) || 1 } catch {}
-        const x = Math.round(point.x * zoom)
-        const y = Math.round(point.y * zoom)
-        for (const type of ['mouseDown', 'mouseUp']) view.sendInputEvent({ type, x, y, button: 'left', clickCount: 1 })
+        if (!point || typeof point.x !== 'number') { chats?.close(); return }
+        // the pages only react to real clicks
+        clickAt(view, point)
+        // our conversation window goes over the tab, which keeps working behind it
+        chats?.open(chat, adapter.id)
         setTimeout(readAll, 900)
     }
 
@@ -174,6 +175,7 @@ function createAllInbox({ state, switchTab, tGet }) {
     function setOpen(next) {
         open = next
         if (open) place()
+        else chats?.close()
         document.body.classList.toggle('all-inbox-open', open)
         button.classList.toggle('active', open)
         panel.hidden = !open
@@ -196,7 +198,7 @@ function createAllInbox({ state, switchTab, tGet }) {
     }))
 
     if (readStorage(OPEN_KEY, '') === '1') setOpen(true)
-    return { setOpen, refresh: readAll, isOpen: () => open }
+    return { setOpen, refresh: readAll, isOpen: () => open, openChatView: (chat, adapterId) => chats?.open(chat, adapterId) }
 }
 
 module.exports = { createAllInbox }

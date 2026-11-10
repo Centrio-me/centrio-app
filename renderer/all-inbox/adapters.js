@@ -124,4 +124,4 @@ function adapterFor(url) {
     return ADAPTERS.find((a) => a.match(String(url || ''))) || null
 }
 
-module.exports = { adapterFor, ADAPTERS, MAX_CHATS }
+module.exports = { adapterFor, ADAPTERS, MAX_CHATS, AVATAR_HELPER }
