@@ -31,9 +31,9 @@ html[data-fx] .folder-panel { background: var(--fx-panel); }
    window does not end in a dark block (owner, 3.7.3) */
 html[data-fx] .right-panel,
 html[data-fx] .right-panel.open { background: var(--fx-side); }
-/* the open panel stands apart from the messenger like a card: a gap, and rounded corners on the left like the page */
-html[data-fx] .right-panel.open { margin: 8px 0 8px 8px; border-radius: 20px 0 0 20px; }
-html[data-fx] .main-container:has(.right-panel.open) .right-activity-bar { border-left-color: var(--fx-side-line); }
+/* the open panel is a card of its own like the page: a gap on both sides and all corners rounded (owner) */
+html[data-fx] .right-panel.open { margin: 8px 6px 8px 8px; border-radius: 20px; }
+html[data-fx] .main-container:has(.right-panel.open) .right-activity-bar { border-left-color: transparent; }
 
 /* ── Аврора ── */
 html[data-fx="aurora"] {
