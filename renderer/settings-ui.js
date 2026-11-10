@@ -254,6 +254,9 @@ function createSettingsUiApi({
             root.style.setProperty('--accent-hover', settings.accentColor)
         }
 
+        // 3.7.4: messengers in their own windows take the same theme and accent at once
+        if (typeof invokeIpc === 'function') invokeIpc('detached:retheme', effectiveTheme, settings.accentColor || '').catch(() => {})
+
         // Немедленно применяем цвет текущего мессенджера при активации темы
         if (_adaptiveActive && typeof getActiveWebview === 'function') {
             updateAdaptiveTheme(getActiveWebview, 300)

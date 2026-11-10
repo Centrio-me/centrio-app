@@ -123,6 +123,7 @@ const validInvokeChannels = new Set([
     'battery:has',
     'detached:open',
     'detached:open-link',
+    'detached:retheme',
     'pagemenu:action',
     'detached:focus',
     'detached:close',

@@ -1,4 +1,4 @@
-const { resolveTheme } = require('../../shared/theme-fx')
+const { windowLook } = require('../../shared/theme-fx')
 // Messengers that live in their own window ("Открыть в отдельном окне" in the sidebar context menu).
 //
 // The window is a small frameless host (main/services/detached/detachedWindow.html) with our own title bar and one
@@ -147,6 +147,56 @@ function pushState(entry) {
     entry.win.webContents.send('detached:state', stateFor(entry))
 }
 
+// 3.7.4: a separate window carries the whole look of the main one (palette, Аврора / Время суток with its time of day,
+// the accent), not only light or dark. The main window tells us when the theme changes (detached:retheme); the time
+// of day moves on by itself, so a light minute timer re-sends the look when the phase changes.
+const ACCENT_RE = /^#[0-9a-f]{6}$/i
+const LOOK_CHECK_MS = 60 * 1000
+const BG = { light: '#eef0f4', aurora: '#04060c', dark: '#0d0d10' }
+let current = { theme: null, accent: null }
+let lastLookKey = ''
+let lookTimer = null
+
+function lookNow() {
+    const settings = store.get('settings', {}) || {}
+    const theme = current.theme || settings.theme
+    const accentRaw = current.accent || settings.accentColor
+    const look = windowLook(theme, new Date().getHours())
+    return { ...look, accent: ACCENT_RE.test(String(accentRaw || '')) ? accentRaw : '#7b68ee' }
+}
+
+function backgroundFor(look) {
+    if (look.fx === 'aurora') return BG.aurora
+    return look.mode === 'light' ? BG.light : BG.dark
+}
+
+function sendLook(force) {
+    const look = lookNow()
+    const key = JSON.stringify(look)
+    if (!force && key === lastLookKey) return
+    lastLookKey = key
+    for (const entry of entries.values()) {
+        if (entry.win.isDestroyed()) continue
+        try { entry.win.setBackgroundColor(backgroundFor(look)) } catch {}
+        entry.win.webContents.send('detached:theme', look)
+    }
+}
+
+/** The main window changed the theme or the accent. @param {unknown} theme @param {unknown} accent */
+function retheme(theme, accent) {
+    if (typeof theme === 'string' && /^[a-z]{2,20}$/.test(theme)) current = { ...current, theme }
+    if (typeof accent === 'string' && ACCENT_RE.test(accent)) current = { ...current, accent }
+    sendLook(true)
+}
+
+function watchLook() {
+    if (lookTimer) return
+    lookTimer = setInterval(() => {
+        if (entries.size === 0) { clearInterval(lookTimer); lookTimer = null; return }
+        sendLook(false)
+    }, LOOK_CHECK_MS)
+}
+
 function buildInitData(entry) {
     const settings = store.get('settings', {}) || {}
     const strings = {}
@@ -161,8 +211,7 @@ function buildInitData(entry) {
         partition: `persist:${entry.record.id}`,
         preloadUrl: require('../ipc/api').getWebviewPreloadPath(),
         userAgent,
-        accent: settings.accentColor || '#7b68ee',
-        theme: resolveTheme(settings.theme, new Date().getHours()).base === 'light' ? 'light' : 'dark',
+        look: lookNow(),
         strings,
         state: stateFor(entry)
     }
@@ -246,7 +295,8 @@ function openLink(rawRecord, rawUrl) {
 function createWindow(record, { key, linkWindow, startUrl }) {
     const saved = linkWindow ? {} : savedState(record.id)
     const startBounds = visibleBounds(saved.bounds)
-    const dark = (store.get('settings', {}) || {}).theme !== 'light'
+    const look = lookNow()
+    lastLookKey = JSON.stringify(look)
     const layout = startBounds || defaultBounds()
     const win = new BrowserWindow({
         width: layout.width,
@@ -259,7 +309,7 @@ function createWindow(record, { key, linkWindow, startUrl }) {
         show: false,
         title: record.name,
         icon: path.join(__dirname, '..', '..', 'assets', 'logo.ico'),
-        backgroundColor: dark ? '#0f0f10' : '#f4f4f5',
+        backgroundColor: backgroundFor(look),
         autoHideMenuBar: true,
         webPreferences: {
             preload: path.join(__dirname, 'detached', 'detachedPreload.js'),
@@ -277,6 +327,7 @@ function createWindow(record, { key, linkWindow, startUrl }) {
     entries.set(key, entry)
     idByHost.set(win.webContents.id, key)
 
+    watchLook()
     if (entry.pinned) win.setAlwaysOnTop(true)
     if (opacity < 1) win.setOpacity(opacity)
     if (saved.maximized) win.maximize()
@@ -458,6 +509,7 @@ function isDetachedGuest(contents) {
 }
 
 module.exports = {
+    retheme,
     init, open, openLink, focus, close, closeAll, isOpen, list, onUnread,
     takeReopenList, execInPage, insertTextInPage, inputToPage,
     handleInit, handleControl, handleGuestKey, isDetachedGuest
