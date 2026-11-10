@@ -3,6 +3,8 @@
 // <html data-fx="aurora|daytime" data-tod="morning|day|evening|night">; styles-themes-fx.css draws the rest.
 // The animation stops while the window is hidden (no GPU work for nobody) and for «Уменьшить движение».
 const { resolveTheme } = require('../shared/theme-fx')
+// 3.7.4: the pointer of the right panel card towards its button (drawn only in these themes)
+require('./right-panel-pointer')
 
 const PHASE_CHECK_MS = 60 * 1000
 const LAYER_ID = 'themeFxLayer'
