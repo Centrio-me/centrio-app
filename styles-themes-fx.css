@@ -31,6 +31,8 @@ html[data-fx] .folder-panel { background: var(--fx-panel); }
    window does not end in a dark block (owner, 3.7.3) */
 html[data-fx] .right-panel,
 html[data-fx] .right-panel.open { background: var(--fx-side); }
+/* the open panel stands apart from the messenger like a card: a gap, and rounded corners on the left like the page */
+html[data-fx] .right-panel.open { margin: 8px 0 8px 8px; border-radius: 20px 0 0 20px; }
 html[data-fx] .main-container:has(.right-panel.open) .right-activity-bar { border-left-color: var(--fx-side-line); }
 
 /* ── Аврора ── */
@@ -65,9 +67,10 @@ html[data-fx="aurora"] body { color: var(--text-primary); }
 @keyframes fx-drift-2 { to { transform: translate(-26%, 18%) scale(.9); } }
 @keyframes fx-drift-3 { to { transform: translate(12%, -20%) scale(1.2); } }
 /* the open messenger and the unread counters glow */
-html[data-fx="aurora"] .messenger-item.active .messenger-icon { box-shadow: 0 0 0 2px var(--accent), 0 0 16px var(--accent-glow); animation: fx-breathe 4s ease-in-out infinite; }
+/* no ring around the open messenger: the side mark and the glow say it already (owner) */
+html[data-fx="aurora"] .messenger-item.active .messenger-icon { box-shadow: 0 0 16px var(--accent-glow); animation: fx-breathe 4s ease-in-out infinite; }
 html[data-fx="aurora"] .messenger-badge { box-shadow: 0 0 10px var(--accent-glow); }
-@keyframes fx-breathe { 50% { box-shadow: 0 0 0 2px var(--accent), 0 0 26px var(--accent); } }
+@keyframes fx-breathe { 50% { box-shadow: 0 0 26px var(--accent-glow); } }
 
 /* ── Время суток ── */
 .theme-fx .fx-sky { inset: 0; opacity: 0; }
