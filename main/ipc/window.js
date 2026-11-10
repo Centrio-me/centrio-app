@@ -387,7 +387,7 @@ function wireOAuthPopup(popup, { url, mainWin, partition }) {
     // "Авторизация происходит в отдельном окне" на всё время его жизни.
     // Канал должен быть заранее занесён в validReceiveChannels в preload.js,
     // иначе contextBridge молча проглотит событие.
-    if (mainWin && !mainWin.isDestroyed()) {
+    if (mainWin && !mainWin.isDestroyed() && !mainWin.webContents.isDestroyed()) {
         mainWin.webContents.send('oauth-popup-started', { partition })
     }
     // Some sites (Todoist) keep the PKCE code verifier in the sessionStorage of the tab that started the
@@ -410,7 +410,7 @@ function wireOAuthPopup(popup, { url, mainWin, partition }) {
         await restoreGuestSessionStorage(guest, await sessionSnapshotPromise)
         guardCallbackReplay(guest, parsed.href)
         trackSigninSettled(guest, mainWin, partition)
-        if (mainWin && !mainWin.isDestroyed()) {
+        if (mainWin && !mainWin.isDestroyed() && !mainWin.webContents.isDestroyed()) {
             mainWin.webContents.send('oauth-popup-done', { partition, finalUrl: parsed.href })
         }
         if (!popup.isDestroyed()) popup.close()
@@ -419,7 +419,9 @@ function wireOAuthPopup(popup, { url, mainWin, partition }) {
     popup.webContents.on('will-navigate', handOffCallback)
 
     popup.once('closed', () => {
-        if (mainWin && !mainWin.isDestroyed()) {
+        // the window can be on its way out (Windows shutting down) while its page is already gone: sending then threw
+        // «Object has been destroyed» (crash.log of a customer, 2026-11-07 04:28)
+        if (mainWin && !mainWin.isDestroyed() && !mainWin.webContents.isDestroyed()) {
             mainWin.webContents.send('oauth-popup-closed', { partition })
         }
     })
@@ -559,7 +561,7 @@ function wireOAuthPopup(popup, { url, mainWin, partition }) {
             if (finishFired || popup.isDestroyed()) return
             finishFired = true
             log.info(`[oauth-broker][DEBUG] maybeFinishOAuth firing after settle, navUrl=${navUrl}`)
-            if (mainWin && !mainWin.isDestroyed()) {
+            if (mainWin && !mainWin.isDestroyed() && !mainWin.webContents.isDestroyed()) {
                 // BUGFIX (2026-08-26, live user report: "Гугл - проходит
                 // авторизацию в окне, закрывает окно и показывает Centrio с
                 // чёрным окном Gmail"): this used to send only `{ partition }`,
@@ -642,7 +644,7 @@ function wireOAuthPopup(popup, { url, mainWin, partition }) {
                     finishSettleTimer = null
                 }
                 log.info('[oauth-broker][DEBUG] maybeFinishOAuth firing via postMessage relay signal')
-                if (mainWin && !mainWin.isDestroyed()) {
+                if (mainWin && !mainWin.isDestroyed() && !mainWin.webContents.isDestroyed()) {
                     mainWin.webContents.send('oauth-popup-done', { partition })
                 }
                 popup.close()
@@ -853,7 +855,7 @@ async function createPopupWindow(url, opts = {}, getMainWindow) {
 
         const mainWin = getMainWindow ? getMainWindow() : null
         let x, y
-        if (mainWin && !mainWin.isDestroyed()) {
+        if (mainWin && !mainWin.isDestroyed() && !mainWin.webContents.isDestroyed()) {
             const [mx, my] = mainWin.getPosition()
             const [mw, mh] = mainWin.getSize()
             x = mx + mw - w - 20
@@ -990,7 +992,7 @@ async function createPopupWindow(url, opts = {}, getMainWindow) {
         if (isOAuthBroker) {
             popupWidth = OAUTH_POPUP_WIDTH
             popupHeight = OAUTH_POPUP_HEIGHT
-            if (mainWin && !mainWin.isDestroyed()) {
+            if (mainWin && !mainWin.isDestroyed() && !mainWin.webContents.isDestroyed()) {
                 const [mx, my] = mainWin.getPosition()
                 const [mw, mh] = mainWin.getSize()
                 popupX = mx + Math.round((mw - popupWidth) / 2)
@@ -1349,7 +1351,7 @@ function registerWindowIpc({ getMainWindow, isQuittingRef }) {
             const url = `https://translate.google.com/?sl=auto&tl=ru&text=${encodeURIComponent(text || '')}&op=translate`
             const mainWin = _getMainWindow()
             let x, y
-            if (mainWin && !mainWin.isDestroyed()) {
+            if (mainWin && !mainWin.isDestroyed() && !mainWin.webContents.isDestroyed()) {
                 const [mx, my] = mainWin.getPosition()
                 const [mw, mh] = mainWin.getSize()
                 x = mx + Math.floor((mw - 800) / 2)
