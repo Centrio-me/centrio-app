@@ -218,7 +218,9 @@ function createSettingsUiApi({
         if (position === 'right' || position === 'bottom') {
             mainContainer.appendChild(activityBar)
         } else {
-            mainContainer.insertBefore(activityBar, contentArea)
+            // 3.8: the «Все мессенджеры» list sits between the sidebar and the page
+            const allInbox = document.getElementById('allInboxPanel')
+            mainContainer.insertBefore(activityBar, allInbox && allInbox.parentElement === mainContainer ? allInbox : contentArea)
         }
     }
 

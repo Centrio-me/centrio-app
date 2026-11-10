@@ -44,6 +44,7 @@
     <link rel="stylesheet" href="./styles-372.css">
     <link rel="stylesheet" href="./styles-player.css">
     <link rel="stylesheet" href="./styles-themes-fx.css">
+    <link rel="stylesheet" href="./styles-all-inbox.css">
     <link rel="stylesheet" href="./styles-settings-v2.css">
     <link rel="stylesheet" href="assets/fonts/site/fonts.css">
 </head>
@@ -445,6 +446,15 @@
                 </svg>
                 <span class="activity-btn-label" data-i18n="addMessenger"></span>
             </button>
+            <!-- 3.8: «Все мессенджеры» — one list of the chats of every tab (renderer/all-inbox) -->
+            <button id="allInboxBtn" class="activity-btn all-inbox-btn" data-i18n-title="v380.allInbox.title" title="Все мессенджеры">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M4 5h11a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H9l-4 3v-3H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z"/>
+                    <path d="M20 9a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-1v3l-4-3h-3"/>
+                </svg>
+                <span class="activity-btn-label" data-i18n="v380.allInbox.title">Все мессенджеры</span>
+                <span class="ai-badge sidebar-notif-badge" hidden></span>
+            </button>
             <div class="activity-divider"></div>
             <div id="messengerList" class="messenger-list"></div>
         </div>
@@ -501,6 +511,22 @@
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
         </button>
     </div>
+    <aside id="allInboxPanel" class="all-inbox-panel" hidden aria-label="Все мессенджеры">
+        <header class="ai-head">
+            <div class="ai-head-title"><span data-i18n="v380.allInbox.title">Все мессенджеры</span> <span class="ai-count"></span></div>
+            <button type="button" class="ai-close" aria-label="Закрыть" title="Закрыть">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            </button>
+        </header>
+        <div class="ai-tools">
+            <input type="search" class="ai-search" placeholder="Поиск по чатам" data-i18n-placeholder="v380.allInbox.search" autocomplete="off">
+            <div class="ai-filters">
+                <button type="button" data-ai-filter="all" data-i18n="v380.allInbox.all">Все</button>
+                <button type="button" data-ai-filter="unread" data-i18n="v380.allInbox.unread">Непрочитанные</button>
+            </div>
+        </div>
+        <div class="ai-list" role="list"></div>
+    </aside>
     <div class="content-area" id="contentArea">
         <div id="tabsContent" class="tabs-content"></div>
         <!-- Split-screen divider handle (только для раскладки 2col) -->

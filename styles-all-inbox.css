@@ -1,0 +1,80 @@
+/* «Все мессенджеры» (3.8): one list of the chats of every tab, next to the open messenger. renderer/all-inbox */
+
+.all-inbox-btn { position: relative; }
+.all-inbox-btn .ai-badge { position: absolute; top: 2px; right: 2px; }
+.all-inbox-btn.active { color: var(--accent); background: var(--accent-dim); }
+
+.all-inbox-panel {
+    --ai-row-h: 68px;
+    display: flex;
+    flex-direction: column;
+    width: 340px;
+    flex-shrink: 0;
+    margin: 8px 0 8px 0;
+    border-radius: 20px;
+    background: var(--bg-secondary);
+    box-shadow: 0 0 0 1px var(--border);
+    overflow: hidden;
+    animation: ai-in .22s cubic-bezier(.2, .8, .2, 1);
+}
+.all-inbox-panel[hidden] { display: none; }
+@keyframes ai-in { from { opacity: 0; transform: translateX(-10px); } }
+html[data-fx] .all-inbox-panel { background: var(--fx-side, rgba(8, 11, 20, .34)); box-shadow: 0 0 0 1px rgba(255, 255, 255, .06); }
+body.all-inbox-open .content-area { margin-left: 8px; }
+
+.ai-head { display: flex; align-items: center; justify-content: space-between; padding: 16px 16px 8px; }
+.ai-head-title { font-size: 16px; font-weight: 700; letter-spacing: -.01em; color: var(--text-primary); }
+.ai-count { margin-left: 4px; font-size: 12px; font-weight: 500; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.ai-close { display: grid; place-items: center; width: 28px; height: 28px; border: 0; border-radius: 8px; background: transparent; color: var(--text-secondary); cursor: pointer; }
+.ai-close:hover { background: var(--bg-hover); color: var(--text-primary); }
+
+.ai-tools { display: flex; flex-direction: column; gap: 8px; padding: 0 12px 10px; }
+.ai-search {
+    height: 34px; padding: 0 12px; border: 1px solid var(--border); border-radius: 10px;
+    background: var(--bg-tertiary); color: var(--text-primary); font: inherit; font-size: 13px; outline: none;
+}
+.ai-search:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-dim); }
+.ai-filters { display: flex; gap: 6px; }
+.ai-filters button {
+    height: 28px; padding: 0 12px; border: 1px solid var(--border); border-radius: 999px; background: transparent;
+    color: var(--text-secondary); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer;
+}
+.ai-filters button:hover { color: var(--text-primary); background: var(--bg-hover); }
+.ai-filters button.is-on { color: var(--accent); border-color: var(--accent); background: var(--accent-dim); }
+
+.ai-list { flex: 1; min-height: 0; overflow-y: auto; padding: 2px 8px 10px; }
+.ai-row {
+    display: flex; align-items: center; gap: 12px; width: 100%; min-height: var(--ai-row-h); padding: 8px 10px;
+    border: 0; border-radius: 14px; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer;
+}
+.ai-row:hover { background: var(--bg-hover); }
+.ai-row.is-active { background: var(--accent-dim); }
+.ai-row:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+.ai-ava {
+    position: relative; flex: 0 0 46px; width: 46px; height: 46px; border-radius: 50%;
+    display: grid; place-items: center; background: var(--bg-tertiary); color: var(--text-secondary); font-weight: 700; font-size: 15px;
+}
+.ai-ava > img:not(.ai-service) { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+.ai-service {
+    position: absolute; right: -3px; bottom: -3px; width: 18px; height: 18px; border-radius: 6px;
+    box-shadow: 0 0 0 2px var(--bg-secondary); background: var(--bg-secondary); object-fit: cover;
+}
+
+.ai-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.ai-top, .ai-bottom { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.ai-title { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 14px; font-weight: 600; color: var(--text-primary); }
+.ai-time { flex: none; font-size: 11px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.ai-preview { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 13px; color: var(--text-secondary); }
+.ai-unread {
+    flex: none; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 10px; background: var(--accent); color: #fff;
+    font-size: 11px; font-weight: 700; line-height: 20px; text-align: center; font-variant-numeric: tabular-nums;
+}
+.ai-unread.is-muted { background: var(--text-muted); }
+.ai-row.is-unread .ai-time { color: var(--accent); }
+.ai-row.is-unread .ai-preview { color: var(--text-primary); }
+.ai-from { font-size: 10.5px; color: var(--text-muted); letter-spacing: .01em; }
+
+.ai-empty { padding: 40px 20px; text-align: center; color: var(--text-muted); font-size: 13px; line-height: 1.5; }
+
+@media (prefers-reduced-motion: reduce) { .all-inbox-panel { animation: none; } }
