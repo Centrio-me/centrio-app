@@ -7,7 +7,7 @@
 - Приложение: `main/services/uninstallMark.js` (файл `%APPDATA%\Centrio\uninstall-id.json` с анонимным visitorId и версией; привязка установки к аккаунту раз за запуск после `api-me`), `build/installer.nsh` (деинсталлятор при настоящем удалении, не при обновлении, шлёт файл на `POST /api/visitors/uninstalled`, PowerShell, 6 с, ошибки игнорируются). Установщик с этим шагом собирается (проверено локально), сама команда проверена на подставном сервере.
 - Сервер (`server-src`, зеркала живых файлов закоммичены отдельным коммитом перед правкой):
   1. `prisma/schema.prisma`: у `Visitor` новые поля `userId`, `uninstalledAt`, `uninstallVersion` + индексы → на сервере `npx prisma db push` (только добавление полей).
-  2. `src/lib/uninstall-mark.js` (новый), `src/routes/visitors.js` (`POST /link` с авторизацией, `POST /uninstalled`), `src/routes/admin.js` (`uninstall` в `GET /users/:id`, новый `GET /uninstalls?days=`, аватарка пользователя в обращениях).
+  2. `src/lib/uninstall-mark.js` (новый), `src/routes/visitors.js` (`POST /link` с авторизацией, `POST /uninstalled`), `src/routes/admin.js` (`uninstall` в `GET /users/:id`, новый `GET /uninstalls?days=`, аватарка пользователя в обращениях — эта часть уже выложена 2026-11-10, бэкап admin.js.bak-avatar-<ts>).
   3. Бэкапы, chown webapps, `sudo -u webapps -H pm2 restart centrio-api`.
 - Сайт: `docs/release-3.7.4/site-privacy-uninstall.js` — строка в политику (ru 1.3.1 и пункт в en), запускать в копии сайта перед сборкой, как site-373.js.
 
