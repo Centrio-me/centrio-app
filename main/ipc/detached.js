@@ -35,6 +35,8 @@ function registerDetachedIpc({ getMainWindow }) {
     })
     ipcMain.handle('detached:input', (event, id, input) => (fromMainWindow(event) ? detached.inputToPage(id, input) : false))
 
+    // 3.7.4: the main window changed its theme or accent: separate windows follow at once
+    ipcMain.handle('detached:retheme', (event, theme, accent) => (fromMainWindow(event) ? (detached.retheme(theme, accent), true) : false))
     ipcMain.handle('detached:init', (event) => detached.handleInit(event.sender))
     ipcMain.on('detached:control', (event, action, value) => detached.handleControl(event.sender, action, value))
 }

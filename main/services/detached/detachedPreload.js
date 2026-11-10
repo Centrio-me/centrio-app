@@ -5,6 +5,7 @@ const { contextBridge, ipcRenderer } = require('electron')
 contextBridge.exposeInMainWorld('centrioDetached', {
     init: () => ipcRenderer.invoke('detached:init'),
     control: (action, value) => ipcRenderer.send('detached:control', String(action), value),
+    onTheme: (cb) => { if (typeof cb === 'function') ipcRenderer.on('detached:theme', (_e, look) => cb(look)) },
     onState: (cb) => { if (typeof cb === 'function') ipcRenderer.on('detached:state', (_e, state) => cb(state)) },
     onCommand: (cb) => { if (typeof cb === 'function') ipcRenderer.on('detached:command', (_e, command) => cb(command)) }
 })

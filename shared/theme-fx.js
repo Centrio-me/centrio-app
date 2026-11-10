@@ -29,4 +29,19 @@ function resolveTheme(theme, hour) {
     return { base: theme || 'embedded', fx: null, phase: null }
 }
 
-module.exports = { FX_THEMES, dayPhase, resolveTheme }
+// Base themes a separate window knows how to paint (main/services/detached/detachedWindow.html)
+const WINDOW_PALETTES = Object.freeze(['embedded', 'dock', 'light', 'adaptive', 'dark', 'midnight'])
+
+/**
+ * The whole look of a separate window (3.7.4): which palette, light or dark, and the effect with its time of day.
+ * @param {string} theme the saved theme of the main window
+ * @param {number} hour 0..23 local time
+ * @returns {{ mode: 'light'|'dark', palette: string, fx: string|null, phase: string|null }}
+ */
+function windowLook(theme, hour) {
+    const { base, fx, phase } = resolveTheme(theme, hour)
+    const palette = WINDOW_PALETTES.includes(base) ? base : 'embedded'
+    return { mode: palette === 'light' ? 'light' : 'dark', palette, fx, phase }
+}
+
+module.exports = { FX_THEMES, dayPhase, resolveTheme, windowLook }
