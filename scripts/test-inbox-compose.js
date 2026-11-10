@@ -51,3 +51,24 @@ test('a saved background is kept only while it is still on the list', () => {
     assert.equal(pickBackground(null), DEFAULT_BG)
     assert.ok(BACKGROUNDS.some((b) => b.id === DEFAULT_BG))
 })
+
+const { createDrafts } = require('../renderer/all-inbox/drafts')
+
+test('an unsent text stays with its chat while you look at another one', () => {
+    const drafts = createDrafts()
+    drafts.keep('tg::1', 'привет, как')
+    drafts.keep('max::2', '')
+    assert.equal(drafts.take('tg::1'), 'привет, как')
+    assert.equal(drafts.take('max::2'), '')
+    drafts.keep('tg::1', '   ')
+    assert.equal(drafts.take('tg::1'), '')
+})
+
+test('a sent message leaves no draft behind, and there are not too many kept', () => {
+    const drafts = createDrafts(3)
+    drafts.keep('a', 'x'); drafts.keep('b', 'y'); drafts.keep('c', 'z'); drafts.keep('d', 'w')
+    assert.equal(drafts.take('a'), '')
+    drafts.forget('d')
+    assert.equal(drafts.take('d'), '')
+    assert.equal(drafts.take('c'), 'z')
+})

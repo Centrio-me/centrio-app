@@ -124,10 +124,11 @@ const telegram = {
             if (/ voice-message /.test(cls) || b.querySelector('.audio.is-voice, .voice')) kind = 'voice';
             else if (/ sticker /.test(cls) || /emoji-big/.test(cls)) kind = 'sticker';
             else if (/ video /.test(cls) || b.querySelector('video')) kind = 'video';
-            else if (own(b, 'img.media-photo')) kind = 'photo';
+            // a picture sent as a file is a file (with its small preview), like Telegram shows it
             else if (b.querySelector('.document-name')) kind = 'file';
+            else if (own(b, 'img.media-photo')) kind = 'photo';
             var nameEl = /hide-name/.test(cls) ? null : b.querySelector('.name .peer-title, .colored-name .peer-title');
-            var img = own(b, 'img.media-photo') || (kind === 'sticker' ? own(b, 'img.media-sticker') : null) || (kind === 'video' ? own(b, 'img.thumbnail, video') : null);
+            var img = (kind === 'file' ? own(b, '.document img, .document-thumb img, img.media-photo') : own(b, 'img.media-photo')) || (kind === 'sticker' ? own(b, 'img.media-sticker') : null) || (kind === 'video' ? own(b, 'img.thumbnail, video') : null);
             var group = groupOf(b);
             var replyEl = b.querySelector('.reply');
             var album = albumOf(b, mid);
@@ -201,6 +202,13 @@ const telegram = {
         function centre(el) { var r = el.getBoundingClientRect(); return { x: r.left + Math.min(40, r.width / 2), y: r.top + r.height / 2 }; }
         var s = send.getBoundingClientRect();
         return { caption: cap ? centre(cap) : null, send: { x: s.left + s.width / 2, y: s.top + s.height / 2 } };
+    })()`,
+    // answer a message: Telegram's own reply, set on the message by its id (the field then shows the quote)
+    REPLY: (id) => `(function () {
+        var mid = Number(${JSON.stringify(String(id))});
+        var input = window.appImManager && appImManager.chat && appImManager.chat.input;
+        if (!mid || !input || typeof input.initMessageReply !== 'function') return false;
+        try { input.initMessageReply({ replyToMsgId: mid }); return true; } catch (e) { return false; }
     })()`,
     OLDER: `(function () {
         var chat = document.querySelector('.chats-container > .chat.active, #column-center .chat.active');

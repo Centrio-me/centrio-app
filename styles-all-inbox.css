@@ -456,3 +456,54 @@ html[data-mode="light"] .aic-note > span, html[data-theme="light"] .aic-note > s
 .aic-line, .aic-tray { max-width: 980px; }
 .aic-bubble { max-width: min(68%, 560px); }
 .aic-row.is-in + .aic-row.is-out, .aic-row.is-out + .aic-row.is-in { margin-top: 8px; }
+
+/* answering a message: the quote above the field, like in Telegram */
+.aic-replying {
+    --quote: var(--out-bg);
+    display: flex; align-items: center; gap: 10px; max-width: 980px; width: 100%; margin: 0 auto 6px; padding: 6px 8px 6px 12px;
+    border-radius: 14px; background: var(--in-bg); box-shadow: 0 1px 2px rgba(0, 0, 0, .18); animation: aic-rise .16s ease-out;
+}
+.aic-replying[hidden] { display: none; }
+.aic-replying-icon { flex: none; color: var(--quote); }
+.aic-replying-body { flex: 1; min-width: 0; padding-left: 9px; border-left: 3px solid var(--quote); }
+.aic-replying-title { color: var(--quote); font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.aic-replying-text { color: var(--in-fg); font-size: 13.5px; opacity: .85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.aic-replying-x { flex: none; width: 30px; height: 30px; border: 0; border-radius: 50%; background: transparent; color: var(--in-meta); font-size: 20px; line-height: 1; cursor: pointer; }
+.aic-replying-x:hover { background: color-mix(in srgb, var(--in-fg) 8%, transparent); color: var(--in-fg); }
+
+/* the round arrow next to a message on hover: answer it */
+.aic-answer {
+    align-self: center; flex: none; width: 32px; height: 32px; border: 0; border-radius: 50%; display: grid; place-items: center;
+    background: rgba(0, 0, 0, .32); color: #fff; cursor: pointer; opacity: 0; transform: scale(.8); backdrop-filter: blur(6px);
+    transition: opacity .12s ease, transform .12s ease;
+}
+.aic-row.is-out .aic-answer { order: -1; }
+.aic-row:hover .aic-answer, .aic-answer:focus-visible { opacity: 1; transform: scale(1); }
+.aic-answer:hover { background: rgba(0, 0, 0, .5); }
+
+/* the menu of a message on a right click */
+.aic-menu {
+    position: absolute; z-index: 9; min-width: 210px; padding: 6px; border-radius: 14px;
+    background: color-mix(in srgb, var(--bg-secondary) 97%, transparent); backdrop-filter: blur(24px) saturate(1.4);
+    box-shadow: 0 0 0 1px var(--border), 0 14px 40px rgba(0, 0, 0, .35); animation: aic-menu-in .14s cubic-bezier(.2, .9, .3, 1.2);
+    transform-origin: top left;
+}
+.aic-menu[hidden] { display: none; }
+.aic-menu-item {
+    display: flex; align-items: center; gap: 12px; width: 100%; padding: 8px 12px; border: 0; border-radius: 9px; background: transparent;
+    color: var(--text-primary); font: inherit; font-size: 13.5px; font-weight: 500; text-align: left; cursor: pointer;
+}
+.aic-menu-item svg { flex: none; color: var(--text-secondary); }
+.aic-menu-item:hover, .aic-menu-item:focus-visible { background: color-mix(in srgb, var(--text-primary) 8%, transparent); outline: none; }
+@keyframes aic-menu-in { from { opacity: 0; transform: scale(.92); } }
+
+/* «печатает…» in the header, in the accent colour with its three dots */
+.aic-sub.is-typing { color: var(--accent); }
+.aic-sub.is-typing::after { content: ''; display: inline-block; width: 18px; height: 4px; margin-left: 4px; vertical-align: middle;
+    background: radial-gradient(circle, currentColor 1.6px, transparent 2px) 0 0 / 6px 4px repeat-x; animation: aic-dots 1s steps(4) infinite; }
+@keyframes aic-dots { from { width: 0; } to { width: 18px; } }
+@media (prefers-reduced-motion: reduce) { .aic-sub.is-typing::after, .aic-menu, .aic-replying { animation: none; } }
+
+/* a picture sent as a file: its square preview instead of the file icon */
+.aic-card-icon.has-thumb { flex-basis: 54px; width: 54px; height: 54px; border-radius: 10px; overflow: hidden; background: rgba(127, 127, 127, .2); }
+.aic-card-icon.has-thumb img { width: 100%; height: 100%; object-fit: cover; }

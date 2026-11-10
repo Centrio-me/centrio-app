@@ -3,6 +3,7 @@
 // and hands typed text back; the tab behind it does the real work.
 
 const { renderMessage } = require('./message-view')
+const { createDrafts } = require('./drafts')
 const { createComposer } = require('./composer')
 const { readBackground, saveBackground, createBackgroundMenu } = require('./chat-backgrounds')
 
@@ -35,7 +36,7 @@ function isGroupChat(rows) {
     return new Set(incoming.map((r) => r.author).filter(Boolean)).size >= 2
 }
 
-function createChatView({ host, onSend, onOpenInTab, onClose, onOlder, onLink, onPicture, onPickFiles, onDescribeFiles, onPasteImage }) {
+function createChatView({ host, onSend, onOpenInTab, onClose, onOlder, onLink, onPicture, onPickFiles, onDescribeFiles, onPasteImage, canReply = () => false }) {
     const root = el('section', 'aic')
     root.hidden = true
     root.dataset.bg = readBackground()
@@ -68,7 +69,9 @@ function createChatView({ host, onSend, onOpenInTab, onClose, onOlder, onLink, o
     const list = q('.aic-list')
     let lastSig = ''
 
-    const composer = createComposer({ root, onSend, onPickFiles, onDescribeFiles, onPasteImage })
+    const drafts = createDrafts()
+    let chatId = ''
+    const composer = createComposer({ root, onSend, onPickFiles, onDescribeFiles, onPasteImage, onDraft: (text) => drafts.keep(chatId, text) })
     composer.setVisible(false)
     root.insertBefore(composer.el, lightbox)
 
@@ -111,6 +114,46 @@ function createChatView({ host, onSend, onOpenInTab, onClose, onOlder, onLink, o
         refreshDown()
     }, { passive: true })
     let seenIds = new Set()
+    let byId = new Map()
+
+    // the menu of a message on a right click: answer, copy the text, open it in the messenger
+    const menu = el('div', 'aic-menu')
+    menu.hidden = true
+    menu.setAttribute('role', 'menu')
+    root.append(menu)
+    function closeMenu() { menu.hidden = true }
+    function item(label, icon, run) {
+        const b = el('button', 'aic-menu-item')
+        b.type = 'button'
+        b.setAttribute('role', 'menuitem')
+        b.innerHTML = icon
+        b.append(el('span', '', label))
+        b.addEventListener('click', () => { closeMenu(); run() })
+        menu.append(b)
+    }
+    const ICON_REPLY = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>'
+    const ICON_COPY = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/></svg>'
+    const ICON_OPEN = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6"/><path d="M20 4l-9 9"/><path d="M18 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4"/></svg>'
+    list.addEventListener('contextmenu', (e) => {
+        const rowEl = e.target.closest('.aic-row')
+        const m = rowEl && byId.get(rowEl.dataset.id)
+        if (!m) return
+        e.preventDefault()
+        menu.replaceChildren()
+        if (canReply()) item('Ответить', ICON_REPLY, () => composer.replyTo(m))
+        const selected = String(window.getSelection() || '').trim()
+        if (selected || m.text) item(selected ? 'Копировать выделенное' : 'Копировать текст', ICON_COPY, () => navigator.clipboard.writeText(selected || m.text).catch(() => {}))
+        item('Открыть в мессенджере', ICON_OPEN, onOpenInTab)
+        menu.hidden = false
+        const box = root.getBoundingClientRect()
+        const x = Math.min(e.clientX - box.left, box.width - menu.offsetWidth - 8)
+        const y = Math.min(e.clientY - box.top, box.height - menu.offsetHeight - 8)
+        menu.style.left = `${Math.max(8, x)}px`
+        menu.style.top = `${Math.max(8, y)}px`
+    })
+    document.addEventListener('mousedown', (e) => { if (!menu.hidden && !menu.contains(e.target)) closeMenu() })
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeMenu() })
+    scroll.addEventListener('scroll', closeMenu, { passive: true })
     const keepBottom = new ResizeObserver(() => { if (stick) scroll.scrollTop = scroll.scrollHeight })
     keepBottom.observe(list)
     keepBottom.observe(scroll)
@@ -145,11 +188,18 @@ function createChatView({ host, onSend, onOpenInTab, onClose, onOlder, onLink, o
             if (chat.icon === 'saved') ava.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4.2L5 21V4a1 1 0 0 1 1-1z"/></svg>'
             else if (chat.avatar) { const img = el('img'); img.src = chat.avatar; img.alt = ''; ava.append(img) } else ava.textContent = initials(chat.title)
             if (chat.messengerIcon) { const mark = el('img', 'ai-service'); mark.src = chat.messengerIcon; mark.alt = ''; ava.append(mark) }
-            composer.reset()
+            chatId = chat.id
+            composer.reset(drafts.take(chat.id))
             composer.setVisible(false)
             setTimeout(() => composer.focus(), 50)
         },
-        setSubtitle(text) { if (text) q('.aic-sub').textContent = text },
+        // «печатает…» in the header in the accent colour, with its dots, like in Telegram
+        setSubtitle(text) {
+            if (!text) return
+            const sub = q('.aic-sub')
+            sub.textContent = text
+            sub.classList.toggle('is-typing', /печата|набира|записыва|typing|recording/i.test(text))
+        },
         update(rows, sig) {
             if (sig === lastSig) return
             const nearBottom = stick || atBottom() || !lastSig
@@ -159,7 +209,8 @@ function createChatView({ host, onSend, onOpenInTab, onClose, onOlder, onLink, o
             if (!rows.length) frag.append(el('div', 'aic-loading', 'Сообщений пока нет'))
             // a group chat (names of authors) gets avatars next to the groups, like Telegram; private chats do not
             const isGroup = isGroupChat(rows)
-            const ctx = { isGroup, onLink, onZoom: zoom, onOpenInTab }
+            const ctx = { isGroup, onLink, onZoom: zoom, onOpenInTab, onReply: canReply() ? (m) => composer.replyTo(m) : null }
+            byId = new Map()
             const firstDraw = !seenIds.size
             let arrived = 0
             const ids = new Set()
@@ -169,6 +220,7 @@ function createChatView({ host, onSend, onOpenInTab, onClose, onOlder, onLink, o
                 if (r.type === 'note') { const note = el('div', 'aic-note'); note.append(el('span', '', r.text)); frag.append(note); continue }
                 const node = renderMessage(r, ctx)
                 ids.add(r.id)
+                byId.set(r.id, r)
                 // what came in since the last look slides in softly, like in Telegram
                 if (!firstDraw && !seenIds.has(r.id)) { node.classList.add('is-new'); arrived++ }
                 frag.append(node)
@@ -190,7 +242,7 @@ function createChatView({ host, onSend, onOpenInTab, onClose, onOlder, onLink, o
             if (on) { lastSig = ''; list.replaceChildren() }
         },
         setCanWrite(on) { composer.setVisible(on) },
-        hide() { closeZoom(); bgMenu.toggle(false); root.hidden = true },
+        hide() { closeZoom(); closeMenu(); bgMenu.toggle(false); root.hidden = true },
         isShown: () => !root.hidden
     }
 }

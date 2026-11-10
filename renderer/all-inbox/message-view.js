@@ -10,7 +10,8 @@ const KIND_LABEL = { voice: 'Голосовое сообщение', video: 'В�
 const ICON_CHECK = '<svg viewBox="0 0 16 11" width="16" height="11" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 6l3.2 3.2L11 2.5"/></svg>'
 const ICON_CHECKS = '<svg viewBox="0 0 18 11" width="18" height="11" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 6l3.2 3.2L10.5 2.5"/><path d="M7.4 8.6l.6.6L14.5 2.5"/></svg>'
 const ICON_PLAY = '<svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.4-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z"/></svg>'
-const ICON_FILE = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>'
+const ICON_REPLY = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>'
+const ICON_FILE ='<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>'
 
 function el(tag, cls, text) {
     const node = document.createElement(tag)
@@ -103,6 +104,11 @@ function card(m, onOpenInTab) {
     box.title = 'Открыть в мессенджере'
     const icon = el('span', 'aic-card-icon')
     icon.innerHTML = m.kind === 'voice' || m.kind === 'video' ? ICON_PLAY : ICON_FILE
+    // a picture sent as a file shows its small preview in place of the icon
+    if (m.kind === 'file' && m.media) {
+        icon.replaceChildren(Object.assign(el('img'), { src: m.media, alt: '' }))
+        icon.classList.add('has-thumb')
+    }
     const info = el('span', 'aic-card-info')
     info.append(el('span', 'aic-card-name', m.name || KIND_LABEL[m.kind] || ''))
     const sub = [m.duration, m.size].filter(Boolean).join(' · ')
@@ -181,6 +187,18 @@ function renderMessage(m, ctx) {
 
     if (m.reactions && m.reactions.length) b.append(reactions(m))
     row.append(b)
+
+    // answer this message: the round arrow next to it on hover, or a double click on it
+    if (ctx.onReply) {
+        const answer = el('button', 'aic-answer')
+        answer.type = 'button'
+        answer.title = 'Ответить'
+        answer.setAttribute('aria-label', 'Ответить')
+        answer.innerHTML = ICON_REPLY
+        answer.addEventListener('click', () => ctx.onReply(m))
+        row.append(answer)
+        b.addEventListener('dblclick', (e) => { if (!String(window.getSelection() || '').trim()) { e.preventDefault(); ctx.onReply(m) } })
+    }
     return row
 }
 

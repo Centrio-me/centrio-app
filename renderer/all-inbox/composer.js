@@ -37,11 +37,16 @@ function pathsOf(fileList) {
  *   onPickFiles: () => Promise<object[]>, onDescribeFiles: (paths: string[]) => Promise<object[]>,
  *   onPasteImage: () => Promise<object|null> }} deps
  */
-function createComposer({ root, onSend, onPickFiles, onDescribeFiles, onPasteImage }) {
+function createComposer({ root, onSend, onPickFiles, onDescribeFiles, onPasteImage, onDraft = () => {} }) {
     const form = el('form', 'aic-compose')
     form.autocomplete = 'off'
     form.innerHTML = `
         <div class="aic-tray" hidden></div>
+        <div class="aic-replying" hidden>
+            <svg class="aic-replying-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>
+            <div class="aic-replying-body"><div class="aic-replying-title"></div><div class="aic-replying-text"></div></div>
+            <button type="button" class="aic-replying-x" aria-label="Не отвечать" title="Не отвечать (Esc)">×</button>
+        </div>
         <div class="aic-line">
         <div class="aic-bar">
             <button type="button" class="aic-tool aic-attach" title="Прикрепить файлы" aria-label="Прикрепить файлы">${ICON_CLIP}</button>
@@ -61,6 +66,18 @@ function createComposer({ root, onSend, onPickFiles, onDescribeFiles, onPasteIma
     let files = []
     let sending = false
     let blocked = false
+    // the message being answered: shown above the field, sent as a reply
+    let reply = null
+    const replying = q('.aic-replying')
+    function showReply(m) {
+        reply = m
+        replying.hidden = !m
+        if (!m) return
+        replying.style.setProperty('--quote', m.authorColor || '')
+        q('.aic-replying-title').textContent = m.out ? 'Ответ себе' : `Ответ ${m.author || ''}`.trim()
+        q('.aic-replying-text').textContent = m.text || ({ photo: 'Фото', video: 'Видео', voice: 'Голосовое сообщение', file: m.name || 'Файл', sticker: 'Стикер' }[m.kind] || '')
+    }
+    q('.aic-replying-x').addEventListener('click', () => { showReply(null); input.focus() })
 
     const picker = createEmojiPicker({ onPick: insertAtCursor })
     form.append(picker.el)
@@ -116,10 +133,10 @@ function createComposer({ root, onSend, onPickFiles, onDescribeFiles, onPasteIma
         sending = true
         form.classList.add('is-sending')
         picker.toggle(false)
-        const ok = await onSend(text, files).catch(() => false)
+        const ok = await onSend(text, files, reply).catch(() => false)
         sending = false
         form.classList.remove('is-sending')
-        if (ok) { input.value = ''; files = []; renderTray(); autosize(); refreshSend() } else form.classList.add('is-failed')
+        if (ok) { input.value = ''; files = []; renderTray(); autosize(); refreshSend(); showReply(null); onDraft('') } else form.classList.add('is-failed')
         setTimeout(() => form.classList.remove('is-failed'), 1600)
         input.focus()
     }
@@ -127,9 +144,9 @@ function createComposer({ root, onSend, onPickFiles, onDescribeFiles, onPasteIma
     form.addEventListener('submit', (e) => { e.preventDefault(); submit() })
     input.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); submit() }
-        if (e.key === 'Escape' && picker.isOpen()) { e.preventDefault(); picker.toggle(false) }
+        if (e.key === 'Escape' && picker.isOpen()) { e.preventDefault(); picker.toggle(false) } else if (e.key === 'Escape' && reply) { e.preventDefault(); showReply(null) }
     })
-    input.addEventListener('input', () => { autosize(); refreshSend() })
+    input.addEventListener('input', () => { autosize(); refreshSend(); onDraft(input.value) })
     q('.aic-attach').addEventListener('click', async () => stage(await onPickFiles()))
     emojiBtn.addEventListener('click', () => { emojiBtn.classList.toggle('is-on', picker.toggle()); input.focus() })
     document.addEventListener('mousedown', (e) => {
@@ -166,8 +183,10 @@ function createComposer({ root, onSend, onPickFiles, onDescribeFiles, onPasteIma
 
     return {
         el: form,
-        reset() {
-            input.value = ''
+        // a chat opened again comes back with what was typed and not sent there
+        reset(draft = '') {
+            input.value = draft
+            showReply(null)
             files = []
             renderTray()
             autosize()
@@ -175,7 +194,8 @@ function createComposer({ root, onSend, onPickFiles, onDescribeFiles, onPasteIma
             picker.toggle(false)
             emojiBtn.classList.remove('is-on')
         },
-        focus() { input.focus() },
+        focus() { input.focus(); input.setSelectionRange(input.value.length, input.value.length) },
+        replyTo(m) { showReply(m); input.focus() },
         // the tab shows another chat: nothing can be sent until the right one is open
         setBlocked(on) {
             blocked = on

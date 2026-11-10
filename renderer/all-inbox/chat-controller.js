@@ -46,6 +46,7 @@ function createChatController({ state, webviewOf, host, ipcRenderer }) {
         onOpenInTab: () => close(),
         onClose: () => close(),
         onOlder: older,
+        canReply: () => !!(current && typeof current.adapter.REPLY === 'function'),
         // links open in the browser through the main process's usual scheme check
         onLink: (url) => ipcRenderer.send('open-url', url),
         onPickFiles: () => ipcRenderer.invoke('all-inbox:pick-files').catch(() => []),
@@ -165,12 +166,18 @@ function createChatController({ state, webviewOf, host, ipcRenderer }) {
         return true
     }
 
-    async function send(text, files = []) {
+    async function send(text, files = [], reply = null) {
         const w = tab()
         if (!w || !current) return false
         // check again right before typing: the tab may have moved to another chat since the last read
         const data = await run(w, current.adapter.CHAT)
         if (!data || !sameChat(current.chat.title, data.title)) { view.setMismatch(true, data && data.title); return false }
+        // an answer to a message: the messenger itself is told which one, before anything is typed
+        if (reply && typeof current.adapter.REPLY === 'function') {
+            const id = String(reply.id).split('+')[0]
+            if (!(await run(w, current.adapter.REPLY(id)))) return false
+            await wait(FOCUS_SETTLE_MS)
+        }
         const ok = files.length ? await sendFiles(w, files, text) : await sendText(w, text)
         await wait(AFTER_SEND_MS)
         poll()
