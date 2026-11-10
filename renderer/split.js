@@ -126,8 +126,12 @@ function createSplitApi ({
     isCloudLoggedIn,
     // Zoom of one pane (webview, level) and "the focused pane changed, refresh the zoom shown/used by Ctrl+/-".
     applyPaneZoom,
-    syncZoomState
+    syncZoomState,
+    // a tab put to sleep has no page at all; one shown in a split pane or zone is woken first (live report,
+    // 2026-11-11: left on overnight, the tabs fell asleep, in the morning a preset showed black halves)
+    wakeTab = () => {}
 }) {
+    const awake = (id) => { if (id && state.sleepingTabs && state.sleepingTabs.has(id)) wakeTab(id) }
     const splitHandle     = document.getElementById('splitHandle')
     const splitPicker     = document.getElementById('splitPicker')
     const splitPickerList = document.getElementById('splitPickerList')
@@ -567,6 +571,7 @@ function createSplitApi ({
     }
 
     function _applyGridZoneWebview (zoneIndex, messengerId) {
+        awake(messengerId)
         const zones = getGridLayout(state.splitLayout)
         const rect  = zones && zones[zoneIndex]
         const wv    = messengerId ? document.getElementById(`webview-${messengerId}`) : null
@@ -1608,6 +1613,7 @@ function createSplitApi ({
         }
 
         state.splitTabId = id
+        awake(id)
         const wv = document.getElementById(`webview-${id}`)
         if (wv) {
             wv.classList.add('split-secondary')

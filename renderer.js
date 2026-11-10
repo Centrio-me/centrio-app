@@ -2037,7 +2037,8 @@ function applyTabZoom(level) {
         cloudSyncPush,
         isCloudLoggedIn: () => cloudStore.isLoggedIn(),
         applyPaneZoom: applyZoomWhenReady,
-        syncZoomState
+        syncZoomState,
+        wakeTab: (id) => wakeTabRef?.(id)
     })
 
     detachedApi = createDetachedApi({
