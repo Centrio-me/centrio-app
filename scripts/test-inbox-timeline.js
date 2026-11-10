@@ -72,3 +72,36 @@ test('a message without a name under one from the same side continues that group
     ], NOW).filter((r) => r.type === 'msg')
     assert.deepEqual(rows.map((r) => r.groupStart), [true, false, true])
 })
+
+test('the look of a message comes through, checked: colours, avatar, reply, album, reactions', () => {
+    const [row] = buildTimeline([{
+        id: '1', at: at(10, 9), text: 'hi', author: 'Anna', authorColor: 'rgb(54, 138, 209)',
+        avatar: 'data:image/jpeg;base64,AA', avatarText: 'AN',
+        reply: 'Херню придумали', replyTitle: 'Андрей', replyColor: 'rgb(199, 80, 139)',
+        album: [{ src: 'data:image/jpeg;base64,P', x: 0, y: 0, w: 1, h: 0.66, ratio: 1.5 }, { src: 'javascript:alert(1)', x: 0, y: 0.66, w: 0.5, h: 0.34 }],
+        mediaW: 417, mediaH: 233, reactions: [{ e: '👍', n: '2', mine: true }, { e: '', n: '1' }], size: '24 KB'
+    }], NOW).filter((r) => r.type === 'msg')
+    assert.equal(row.authorColor, 'rgb(54, 138, 209)')
+    assert.equal(row.avatar, 'data:image/jpeg;base64,AA')
+    assert.equal(row.replyTitle, 'Андрей')
+    assert.equal(row.replyColor, 'rgb(199, 80, 139)')
+    assert.equal(row.album.length, 2)
+    assert.equal(row.album[1].src, '')
+    assert.deepEqual([row.mediaW, row.mediaH], [417, 233])
+    assert.deepEqual(row.reactions, [{ e: '👍', n: '2', mine: true }])
+})
+
+test('a colour or a picture that is not what we expect is dropped', () => {
+    const [row] = buildTimeline([{ id: '1', at: at(10, 9), text: 'x', authorColor: 'red; background:url(x)', avatar: 'http://evil', replyColor: 'expression()' }], NOW).filter((r) => r.type === 'msg')
+    assert.deepEqual([row.authorColor, row.avatar, row.replyColor], ['', '', ''])
+})
+
+test('the messenger own grouping wins: a nameless album of Anna does not join the group of Андрей above it', () => {
+    const rows = buildTimeline([
+        { id: '1', at: at(10, 9), text: 'a', author: 'Андрей', group: 'grp1' },
+        { id: '2', at: at(10, 9), text: 'b', group: 'grp1' },
+        { id: '3', at: at(10, 9), kind: 'photo', media: 'data:image/jpeg;base64,A', group: 'grp2' },
+        { id: '4', at: at(10, 9), text: 'c', author: 'Anna', group: 'grp2' }
+    ], NOW).filter((r) => r.type === 'msg')
+    assert.deepEqual(rows.map((r) => [r.groupStart, r.groupEnd]), [[true, false], [false, true], [true, false], [false, true]])
+})

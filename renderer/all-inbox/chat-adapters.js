@@ -48,6 +48,65 @@ const telegram = {
         if (!chat) return { title: '', subtitle: '', messages: [], none: true };
         var titles = chat.querySelectorAll('.chat-info .peer-title');
         var bubbles = chat.querySelectorAll('.bubbles-inner .bubble[data-mid]');
+        // the message's own picture, not the small one of the message it replies to
+        function own(b, sel) { var all = b.querySelectorAll(sel); for (var o = 0; o < all.length; o++) if (!all[o].closest('.reply')) return all[o]; return null; }
+        function __ciRgb(s) { var m = /rgba?\\((\\d+),\\s*(\\d+),\\s*(\\d+)/.exec(s || ''); return m ? 'rgb(' + m[1] + ', ' + m[2] + ', ' + m[3] + ')' : ''; }
+        // a group of messages from one person: its avatar and its name colour, read once per group
+        var groups = [];
+        function groupOf(b) {
+            var g = b.closest('.bubbles-group');
+            if (!g) return {};
+            for (var x = 0; x < groups.length; x++) if (groups[x].el === g) return groups[x].info;
+            var box = g.querySelector('.bubbles-group-avatar-container');
+            var pic = box && box.querySelector('img');
+            var peer = box && (box.querySelector('[data-peer-id]') || box).getAttribute('data-peer-id');
+            var named = g.querySelector('.colored-name');
+            var key = 'g' + (peer || (pic && pic.src ? pic.src.slice(-24) : ''));
+            var info = {
+                id: 'grp' + groups.length,
+                color: named ? __ciRgb(getComputedStyle(named).color) : '',
+                avatar: pic ? __ciPicture(key, pic) : '',
+                avatarKey: pic ? key : '',
+                avatarText: box && !pic ? __ciText(box).slice(0, 2) : ''
+            };
+            groups.push({ el: g, info: info });
+            return info;
+        }
+        // an album: its photos where Telegram puts them, as parts of the whole (0..1)
+        function albumOf(b, mid) {
+            var items = b.querySelectorAll('.album-item');
+            if (items.length < 2) return null;
+            var rects = [], minX = Infinity, minY = Infinity, maxX = 0, maxY = 0;
+            for (var k = 0; k < items.length; k++) {
+                var r = items[k].getBoundingClientRect();
+                rects.push(r);
+                minX = Math.min(minX, r.left); minY = Math.min(minY, r.top); maxX = Math.max(maxX, r.right); maxY = Math.max(maxY, r.bottom);
+            }
+            var w = maxX - minX, h = maxY - minY;
+            if (!w || !h) return null;
+            var list = [];
+            for (var n = 0; n < items.length; n++) {
+                var p = items[n].querySelector('img.media-photo, img.thumbnail');
+                list.push({
+                    key: 'm' + mid + '_' + n,
+                    src: p ? __ciPicture('tg' + mid + '_' + n, p) : '',
+                    x: (rects[n].left - minX) / w, y: (rects[n].top - minY) / h, w: rects[n].width / w, h: rects[n].height / h,
+                    ratio: w / h
+                });
+            }
+            return list;
+        }
+        function reactionsOf(b) {
+            var list = [], rs = b.querySelectorAll('.reactions .reaction');
+            for (var q = 0; q < rs.length && list.length < 8; q++) {
+                var pic = rs[q].querySelector('img[alt]');
+                var emoji = pic ? pic.getAttribute('alt') : __ciText(rs[q].querySelector('.reaction-sticker'));
+                var count = __ciText(rs[q].querySelector('.reaction-counter'));
+                if (!count) count = String(rs[q].querySelectorAll('.stacked-avatars-avatar-container, .avatar-like').length || 1);
+                if (emoji) list.push({ e: emoji.slice(0, 8), n: count.slice(0, 6), mine: / is-chosen /.test(' ' + rs[q].className + ' ') });
+            }
+            return list;
+        }
         var start = Math.max(0, bubbles.length - ${MAX_MESSAGES});
         var out = [];
         for (var i = start; i < bubbles.length; i++) {
@@ -59,24 +118,42 @@ const telegram = {
             if (/ voice-message /.test(cls) || b.querySelector('.audio.is-voice, .voice')) kind = 'voice';
             else if (/ sticker /.test(cls) || /emoji-big/.test(cls)) kind = 'sticker';
             else if (/ video /.test(cls) || b.querySelector('video')) kind = 'video';
-            else if (b.querySelector('img.media-photo')) kind = 'photo';
+            else if (own(b, 'img.media-photo')) kind = 'photo';
             else if (b.querySelector('.document-name')) kind = 'file';
             var nameEl = /hide-name/.test(cls) ? null : b.querySelector('.name .peer-title, .colored-name .peer-title');
-            var img = b.querySelector('img.media-photo') || (kind === 'sticker' ? b.querySelector('img.media-sticker') : null) || (kind === 'video' ? b.querySelector('img.thumbnail, video') : null);
+            var img = own(b, 'img.media-photo') || (kind === 'sticker' ? own(b, 'img.media-sticker') : null) || (kind === 'video' ? own(b, 'img.thumbnail, video') : null);
+            var group = groupOf(b);
+            var replyEl = b.querySelector('.reply');
+            var album = albumOf(b, mid);
+            var size = img ? img.getBoundingClientRect() : null;
             out.push({
                 id: mid,
                 at: at,
                 out: / is-out /.test(cls),
                 read: / is-read /.test(cls),
-                kind: kind,
-                author: nameEl ? __ciText(nameEl) : '',
+                kind: album ? 'photo' : kind,
+                author: nameEl ? __ciText(nameEl).split('\\n')[0].trim() : '',
+                // Telegram's own colour of this person's name, and the group's avatar, exactly as Telegram draws them
+                authorColor: group.color || '',
+                avatar: / is-out /.test(cls) ? '' : group.avatar || '',
+                avatarKey: group.avatarKey || '',
+                // Telegram's own group of messages from one person
+                group: group.id || '',
+                avatarText: group.avatarText || '',
                 forwarded: / forwarded /.test(cls) ? __ciText(b.querySelector('.name')).replace(/^Переслано от\\s*/, '') : '',
                 reply: __ciText(b.querySelector('.reply .reply-subtitle')).slice(0, 140),
+                replyTitle: replyEl ? __ciText(replyEl.querySelector('.reply-title')).slice(0, 80) : '',
+                replyColor: replyEl ? __ciRgb(getComputedStyle(replyEl).backgroundColor) : '',
                 text: __ciCleanText(b.querySelector('.message'), '.time, .reply, .reactions, .name, .bubble-name-forwarded, .document, .audio, .webpage, .webpage-preview'),
                 name: __ciText(b.querySelector('.document-name')),
+                size: __ciText(b.querySelector('.document-size')),
                 duration: __ciText(b.querySelector('.audio-time, .video-time')),
-                media: img && img.tagName === 'IMG' ? __ciPicture('tg' + mid, img) : '',
-                picture: img && img.tagName === 'IMG' && kind === 'photo' ? 'tg' + mid : '',
+                media: album ? '' : (img && img.tagName === 'IMG' ? __ciPicture('tg' + mid, img) : ''),
+                mediaW: size ? Math.round(size.width) : 0,
+                mediaH: size ? Math.round(size.height) : 0,
+                album: album,
+                picture: !album && img && img.tagName === 'IMG' && kind === 'photo' ? 'tg' + mid : '',
+                reactions: reactionsOf(b),
                 time: __ciText(b.querySelector('.time .time-inner, .time')).replace(/[^0-9:]/g, '').slice(-5)
             });
         }
@@ -163,6 +240,9 @@ const max = {
                     text: text,
                     name: kind === 'file' ? __ciText(w.querySelector('[class*=file] [class*=name], [class*=document] [class*=name]')) : '',
                     media: photo ? __ciPicture('max' + id, photo) : '',
+                    // the picture's own size: MAX may draw a file's picture as a thin strip
+                    mediaW: photo ? photo.naturalWidth : 0,
+                    mediaH: photo ? photo.naturalHeight : 0,
                     picture: photo ? 'max' + id : '',
                     time: time
                 });
@@ -245,26 +325,41 @@ function withImageMemo(chatScript, session) {
     return `(function () {
         var s = ${JSON.stringify(String(session))};
         var memo = window.__ciSentImages && window.__ciSentImages.s === s ? window.__ciSentImages : (window.__ciSentImages = { s: s, k: {} });
+        function once(value, key) {
+            if (!value || !key || value.indexOf('data:') !== 0) return value;
+            if (memo.k[key] === value.length) return '@' + key;
+            memo.k[key] = value.length;
+            return value;
+        }
         var r = ${chatScript};
         if (!r || !r.messages) return r;
         for (var i = 0; i < r.messages.length; i++) {
             var m = r.messages[i];
-            if (!m.media || m.media.indexOf('data:') !== 0) continue;
-            var key = 'm' + m.id;
-            if (memo.k[key] === m.media.length) m.media = '@' + key;
-            else memo.k[key] = m.media.length;
+            m.media = once(m.media, 'm' + m.id);
+            m.avatar = once(m.avatar, m.avatarKey);
+            if (m.album) for (var j = 0; j < m.album.length; j++) m.album[j].src = once(m.album[j].src, m.album[j].key);
         }
         return r;
     })()`
 }
 
-/** Messages with «@m<id>» pictures filled in from the cache (new copies; new pictures are added to the cache). */
+/** A picture value: «@key» becomes what we already have, a new data URL is kept under its key. */
+function resolveOne(value, key, cache) {
+    if (typeof value !== 'string' || !value) return value
+    if (value.startsWith('@')) return cache.get(value.slice(1)) || ''
+    if (value.startsWith('data:') && key) cache.set(key, value)
+    return value
+}
+
+/** Messages with their «@key» pictures (photo, group avatar, album photos) filled in from the cache — new copies. */
 function resolveImages(messages, cache) {
     return (messages || []).map((m) => {
-        if (!m || typeof m.media !== 'string' || !m.media) return m
-        if (m.media.startsWith('@')) return { ...m, media: cache.get(m.media.slice(1)) || '' }
-        if (m.media.startsWith('data:')) cache.set('m' + m.id, m.media)
-        return m
+        if (!m) return m
+        const out = { ...m }
+        if (m.media) out.media = resolveOne(m.media, 'm' + m.id, cache)
+        if (m.avatar) out.avatar = resolveOne(m.avatar, m.avatarKey, cache)
+        if (Array.isArray(m.album)) out.album = m.album.map((a) => ({ ...a, src: resolveOne(a && a.src, a && a.key, cache) }))
+        return out
     })
 }
 

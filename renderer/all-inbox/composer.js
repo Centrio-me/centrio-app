@@ -9,7 +9,8 @@ const MAX_INPUT_PX = 160
 
 const ICON_CLIP = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5l-8.6 8.6a5.5 5.5 0 0 1-7.8-7.8l8.6-8.6a3.7 3.7 0 0 1 5.2 5.2l-8.6 8.6a1.8 1.8 0 0 1-2.6-2.6l7.9-7.9"/></svg>'
 const ICON_SMILE = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8.5 14.5a4.5 4.5 0 0 0 7 0"/><path d="M9 9.5h.01M15 9.5h.01" stroke-width="2.6"/></svg>'
-const ICON_SEND = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>'
+// the paper plane of Telegram's send button
+const ICON_SEND = '<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M3.4 20.4l17.45-7.48a1 1 0 0 0 0-1.84L3.4 3.6a.99.99 0 0 0-1.38 1.18L4.2 11 13 12l-8.8 1-2.18 6.22a.99.99 0 0 0 1.38 1.18z"/></svg>'
 const ICON_FILE = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>'
 
 function el(tag, cls, text) {
@@ -41,10 +42,12 @@ function createComposer({ root, onSend, onPickFiles, onDescribeFiles, onPasteIma
     form.autocomplete = 'off'
     form.innerHTML = `
         <div class="aic-tray" hidden></div>
+        <div class="aic-line">
         <div class="aic-bar">
             <button type="button" class="aic-tool aic-attach" title="Прикрепить файлы" aria-label="Прикрепить файлы">${ICON_CLIP}</button>
             <textarea class="aic-input" rows="1" placeholder="Сообщение"></textarea>
             <button type="button" class="aic-tool aic-emoji" title="Смайлики" aria-label="Смайлики">${ICON_SMILE}</button>
+        </div>
             <button type="submit" class="aic-send" aria-label="Отправить" title="Отправить (Enter)">${ICON_SEND}</button>
         </div>`
     const q = (s) => form.querySelector(s)

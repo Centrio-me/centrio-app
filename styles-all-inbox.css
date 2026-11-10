@@ -107,30 +107,6 @@ html[data-fx] .aic-head { border-bottom-color: rgba(255, 255, 255, .06); }
 .aic-x { width: 30px; padding: 0; display: grid; place-items: center; }
 
 .aic-scroll { flex: 1; min-height: 0; overflow-y: auto; overflow-anchor: none; padding: 16px 18px 8px; }
-.aic-list { display: flex; flex-direction: column; gap: 4px; max-width: 860px; margin: 0 auto; }
-.aic-day { align-self: center; margin: 10px 0 6px; padding: 3px 10px; border-radius: 999px; background: var(--bg-tertiary); color: var(--text-secondary); font-size: 11.5px; font-weight: 600; }
-.aic-loading { padding: 40px; text-align: center; color: var(--text-muted); font-size: 13px; }
-
-.aic-row { display: flex; }
-.aic-row.is-out { justify-content: flex-end; }
-.aic-bubble {
-    max-width: min(72%, 560px); padding: 7px 11px 6px; border-radius: 16px 16px 16px 6px;
-    background: var(--bg-secondary); color: var(--text-primary); box-shadow: 0 0 0 1px var(--border);
-    font-size: 14px; line-height: 1.42;
-}
-.aic-row.is-out .aic-bubble { border-radius: 16px 16px 6px 16px; background: var(--accent); color: #fff; box-shadow: none; }
-.aic-author { font-size: 12px; font-weight: 700; color: var(--accent); margin-bottom: 2px; }
-.aic-fwd { font-size: 11.5px; opacity: .75; margin-bottom: 2px; }
-.aic-reply { margin: 2px 0 4px; padding: 3px 8px; border-left: 2px solid currentColor; border-radius: 4px; font-size: 12.5px; opacity: .8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.aic-text { white-space: pre-wrap; word-break: break-word; user-select: text; }
-.aic-media { display: block; max-width: 100%; max-height: 320px; border-radius: 12px; margin: 2px 0 4px; object-fit: cover; }
-.aic-bubble.kind-sticker { background: transparent; box-shadow: none; }
-.aic-bubble.kind-sticker .aic-media { max-height: 160px; }
-.aic-card { display: flex; align-items: center; gap: 8px; margin: 2px 0 4px; padding: 7px 10px; border: 0; border-radius: 10px; background: rgba(127, 127, 127, .14); color: inherit; font: inherit; font-size: 13px; cursor: pointer; text-align: left; }
-.aic-card:hover { background: rgba(127, 127, 127, .22); }
-.aic-card-meta { opacity: .7; font-variant-numeric: tabular-nums; }
-.aic-meta { display: flex; justify-content: flex-end; align-items: center; gap: 4px; margin-top: 2px; font-size: 11px; opacity: .65; font-variant-numeric: tabular-nums; }
-.aic-check.is-read { opacity: 1; }
 
 .aic-compose { position: relative; display: flex; flex-direction: column; gap: 8px; padding: 10px 14px 14px; }
 .aic-compose[hidden] { display: none; }
@@ -191,10 +167,6 @@ html[data-fx] .aic-head { border-bottom-color: rgba(255, 255, 255, .06); }
 .aic-icon.is-on { color: var(--accent); border-color: var(--accent); }
 
 /* links in messages open in the browser; photos open large over the conversation */
-.aic-link { color: inherit; text-decoration: underline; text-decoration-color: color-mix(in srgb, currentColor 45%, transparent); text-underline-offset: 2px; cursor: pointer; }
-.aic-link:hover { text-decoration-color: currentColor; }
-.aic-bubble.is-in .aic-link, .aic-row.is-in .aic-link { color: var(--accent, #5aa9ff); }
-.aic-media.is-zoomable { cursor: zoom-in; }
 .aic-lightbox {
     position: absolute; inset: 0; z-index: 5;
     display: flex; align-items: center; justify-content: center;
@@ -215,9 +187,8 @@ html[data-fx] .aic-head { border-bottom-color: rgba(255, 255, 255, .06); }
 .aic[data-bg="graphite"] .aic-scroll, .aib-swatch[data-bg="graphite"] { background: radial-gradient(rgba(255,255,255,.06) 1px, transparent 1.2px), linear-gradient(180deg, #1b1d22, #121317); background-size: 18px 18px, auto; }
 .aic[data-bg="paper"] .aic-scroll, .aib-swatch[data-bg="paper"] { background: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20width%3D'180'%20height%3D'180'%20viewBox%3D'0%200%20180%20180'%20fill%3D'none'%20stroke%3D'rgba(20%2C30%2C40%2C0.07)'%20stroke-width%3D'1.6'%20stroke-linecap%3D'round'%20stroke-linejoin%3D'round'%3E%3Cpath%20d%3D'M18%2022h30a8%208%200%200%201%208%208v14a8%208%200%200%201-8%208H32l-9%208v-8h-5a8%208%200%200%201-8-8V30a8%208%200%200%201%208-8z'%2F%3E%3Cpath%20d%3D'M120%2030c-4-7-15-6-15%203%200%208%2015%2015%2015%2015s15-7%2015-15c0-9-11-10-15-3z'%2F%3E%3Cpath%20d%3D'M70%2092l4%209%2010%201-8%207%202%2010-8-5-9%205%202-10-7-7%2010-1z'%2F%3E%3Cpath%20d%3D'M140%20108l-36%2014%2013%205%205%2013z'%2F%3E%3Cpath%20d%3D'M117%20127l23-19'%2F%3E%3Cpath%20d%3D'M30%20132v-22l18-4v22'%2F%3E%3Ccircle%20cx%3D'25'%20cy%3D'132'%20r%3D'5'%2F%3E%3Ccircle%20cx%3D'43'%20cy%3D'128'%20r%3D'5'%2F%3E%3Ccircle%20cx%3D'88'%20cy%3D'40'%20r%3D'3'%2F%3E%3Ccircle%20cx%3D'160'%20cy%3D'70'%20r%3D'2.5'%2F%3E%3Ccircle%20cx%3D'60'%20cy%3D'160'%20r%3D'2.5'%2F%3E%3Cpath%20d%3D'M150%20160h12M156%20154v12'%2F%3E%3Cpath%20d%3D'M90%20150c6-6%2012%206%2018%200'%2F%3E%3C%2Fsvg%3E"), linear-gradient(170deg, #efe6d6 0%, #e6dcc8 100%); background-size: 180px 180px, auto; }
 .aib-swatch[data-bg="plain"] { background: var(--bg-primary); }
-.aic[data-bg]:not([data-bg="plain"]) .aic-day { background: rgba(0, 0, 0, .35); color: #fff; backdrop-filter: blur(6px); }
-.aic[data-bg="paper"] .aic-day { background: rgba(255, 255, 255, .6); color: #3a3326; }
-.aic[data-bg]:not([data-bg="plain"]) .aic-bubble { box-shadow: 0 1px 2px rgba(0, 0, 0, .25); }
+.aic[data-bg]:not([data-bg="plain"]) .aic-day > span { background: rgba(0, 0, 0, .35); color: #fff; backdrop-filter: blur(6px); }
+.aic[data-bg="paper"] .aic-day > span { background: rgba(255, 255, 255, .6); color: #3a3326; }
 .aic[data-bg]:not([data-bg="plain"]) .aic-loading { color: rgba(255, 255, 255, .7); }
 .aic[data-bg="paper"] .aic-loading { color: #6b6150; }
 
@@ -256,15 +227,177 @@ webview.inbox-warm:not(.active) { display: flex; opacity: 0; pointer-events: non
 /* «Избранное»: a bookmark, like in Telegram */
 .ai-ava.is-saved, .aic-ava.is-saved { background: linear-gradient(160deg, #6fb7f5, #3a8fe0); color: #fff; }
 
-/* messages in a row from the same person: one group, bubbles close together, the tail only on the last one */
-.aic-list { gap: 2px; }
+
+/* ═══ The conversation, the way Telegram draws it (message-view.js) ═══ */
+.aic {
+    --in-bg: #212121; --in-fg: #fff; --in-meta: rgba(255, 255, 255, .5);
+    --out-bg: #766ac8; --out-fg: #fff; --out-meta: rgba(255, 255, 255, .62);
+    --link-in: #6ab2f2; --link-out: #fff;
+}
+html[data-mode="light"] .aic, html[data-theme="light"] .aic {
+    --in-bg: #fff; --in-fg: #000; --in-meta: rgba(0, 0, 0, .42);
+    --out-bg: #eeffde; --out-fg: #000; --out-meta: #4fae4e;
+    --link-in: #3390ec; --link-out: #3390ec;
+}
+.aic-list { display: flex; flex-direction: column; gap: 2px; max-width: 760px; margin: 0 auto; padding-bottom: 6px; }
+.aic-loading { padding: 40px; text-align: center; color: var(--text-muted); font-size: 13px; }
+
+/* the date floats at the top while scrolling */
+.aic-day { position: sticky; top: 6px; z-index: 3; display: flex; justify-content: center; margin: 8px 0 6px; pointer-events: none; }
+.aic-day > span { padding: 4px 11px; border-radius: 999px; background: rgba(0, 0, 0, .32); color: #fff; font-size: 13px; font-weight: 600; backdrop-filter: blur(10px); }
+
+.aic-row { position: relative; display: flex; align-items: flex-end; gap: 6px; }
+.aic-row.is-out { justify-content: flex-end; }
 .aic-row.is-first { margin-top: 6px; }
-.aic-row.is-in .aic-bubble { border-radius: 6px 16px 16px 6px; }
-.aic-row.is-in.is-first .aic-bubble { border-top-left-radius: 16px; }
-.aic-row.is-in.is-last .aic-bubble { border-bottom-left-radius: 4px; }
-.aic-row.is-in.is-first.is-last .aic-bubble { border-radius: 16px 16px 16px 4px; }
-.aic-row.is-out .aic-bubble { border-radius: 16px 6px 6px 16px; }
-.aic-row.is-out.is-first .aic-bubble { border-top-right-radius: 16px; }
-.aic-row.is-out.is-last .aic-bubble { border-bottom-right-radius: 4px; }
-.aic-row.is-out.is-first.is-last .aic-bubble { border-radius: 16px 16px 4px 16px; }
-.aic-bubble.kind-sticker { border-radius: 0 !important; }
+
+/* the avatar of a group of someone's messages, next to its last bubble */
+.aic-avatar { flex: 0 0 34px; width: 34px; height: 34px; border-radius: 50%; overflow: hidden; display: grid; place-items: center; color: #fff; font-size: 13px; font-weight: 700; }
+.aic-avatar:empty { visibility: hidden; }
+.aic-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.aic-avatar.is-text { background: #5b8def; }
+
+.aic-bubble {
+    --bubble: var(--in-bg); --meta: var(--in-meta); --meta-w: 40px;
+    position: relative; max-width: min(72%, 480px); min-width: 56px; padding: 6px 10px 7px;
+    border-radius: 15px; background: var(--bubble); color: var(--in-fg);
+    font-size: 14.5px; line-height: 1.38; box-shadow: 0 1px 2px rgba(0, 0, 0, .14);
+}
+.aic-row.is-out .aic-bubble { --bubble: var(--out-bg); --meta: var(--out-meta); --meta-w: 58px; color: var(--out-fg); }
+/* groups: the corners towards the next/previous bubble are tight, the last one gets the tail */
+.aic-row.is-in:not(.is-first) .aic-bubble { border-top-left-radius: 6px; }
+.aic-row.is-in:not(.is-last) .aic-bubble { border-bottom-left-radius: 6px; }
+.aic-row.is-out:not(.is-first) .aic-bubble { border-top-right-radius: 6px; }
+.aic-row.is-out:not(.is-last) .aic-bubble { border-bottom-right-radius: 6px; }
+.aic-row.is-last .aic-bubble:not(.is-jumbo):not(.is-sticker)::before {
+    content: ''; position: absolute; bottom: 0; width: 11px; height: 20px; background: var(--bubble);
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 11 20'%3E%3Cpath d='M11 0v20H3.6a1 1 0 0 1-.7-1.7C7.7 13.6 10.3 7.6 11 0z'/%3E%3C/svg%3E") center / contain no-repeat;
+            mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 11 20'%3E%3Cpath d='M11 0v20H3.6a1 1 0 0 1-.7-1.7C7.7 13.6 10.3 7.6 11 0z'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+.aic-row.is-in.is-last .aic-bubble { border-bottom-left-radius: 0; }
+.aic-row.is-in.is-last .aic-bubble::before { left: -9px; }
+.aic-row.is-out.is-last .aic-bubble { border-bottom-right-radius: 0; }
+.aic-row.is-out.is-last .aic-bubble::before { right: -9px; transform: scaleX(-1); }
+
+.aic-author { margin-bottom: 1px; color: var(--name, #6ab2f2); font-size: 13.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.aic-fwd { margin-bottom: 2px; color: var(--name, #6ab2f2); font-size: 13px; }
+
+/* the quote of the message answered: its author's colour bar and a tint of it */
+.aic-quote {
+    --quote: #6ab2f2;
+    margin: 2px 0 5px; padding: 3px 8px 4px 9px; border-left: 3px solid var(--quote); border-radius: 5px;
+    background: color-mix(in srgb, var(--quote) 14%, transparent); cursor: default; min-width: 0;
+}
+.aic-row.is-out .aic-quote { --quote: #fff; }
+html[data-mode="light"] .aic-row.is-out .aic-quote, html[data-theme="light"] .aic-row.is-out .aic-quote { --quote: #4fae4e; }
+.aic-quote-title { color: var(--quote); font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.aic-quote-text { font-size: 13.5px; opacity: .88; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* the text, with time and ticks at the end of its last line (a spacer keeps room for them) */
+.aic-text { white-space: pre-wrap; word-break: break-word; user-select: text; }
+.aic-text::after { content: ''; display: inline-block; width: var(--meta-w); height: 1px; }
+.aic-meta { position: absolute; right: 9px; bottom: 5px; display: inline-flex; align-items: center; gap: 3px; color: var(--meta); font-size: 11.5px; line-height: 1; font-variant-numeric: tabular-nums; white-space: nowrap; user-select: none; }
+.aic-check { display: inline-flex; }
+.aic-row.is-out .aic-check.is-read { color: var(--out-fg); }
+html[data-mode="light"] .aic-row.is-out .aic-check, html[data-theme="light"] .aic-row.is-out .aic-check { color: #4fae4e; }
+.aic-meta.is-floating { right: 7px; bottom: 7px; padding: 3px 7px; border-radius: 999px; background: rgba(0, 0, 0, .42); color: #fff; backdrop-filter: blur(6px); }
+.aic-meta.is-floating .aic-check { color: #fff; }
+
+.aic-link { color: var(--link-in); text-decoration: none; cursor: pointer; }
+.aic-link:hover { text-decoration: underline; }
+.aic-row.is-out .aic-link { color: var(--link-out); text-decoration: underline; text-decoration-color: rgba(255, 255, 255, .45); }
+
+/* photos and videos edge to edge; with a caption the text sits under them */
+.aic-bubble.is-media-only, .aic-bubble.has-media { padding: 0; overflow: hidden; max-width: none; }
+.aic-bubble.has-media { padding-bottom: 7px; }
+.aic-bubble.has-media > .aic-author, .aic-bubble.has-media > .aic-fwd, .aic-bubble.has-media > .aic-quote { margin-left: 10px; margin-right: 10px; }
+.aic-bubble.has-media > .aic-author:first-child, .aic-bubble.has-media > .aic-fwd:first-child { margin-top: 6px; }
+.aic-bubble.has-media > .aic-text { padding: 6px 10px 0; }
+.aic-row .aic-bubble.is-media-only::before, .aic-row .aic-bubble.has-media::before { display: none; }
+.aic-photo { position: relative; max-width: 100%; background: rgba(127, 127, 127, .14); }
+.aic-photo img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.aic-play { position: absolute; left: 50%; top: 50%; width: 48px; height: 48px; margin: -24px 0 0 -24px; border-radius: 50%; display: grid; place-items: center; background: rgba(0, 0, 0, .45); color: #fff; backdrop-filter: blur(4px); }
+.aic-album { position: relative; max-width: 100%; }
+.aic-album-item { position: absolute; padding: 1px; box-sizing: border-box; }
+.aic-album-item img { display: block; width: 100%; height: 100%; object-fit: cover; background: rgba(127, 127, 127, .14); }
+.aic-photo.is-zoomable, .aic-album-item.is-zoomable { cursor: zoom-in; }
+
+/* stickers and 1–3 lonely emoji: no bubble at all */
+.aic-bubble.is-sticker, .aic-bubble.is-jumbo { padding: 0 0 22px; background: none; box-shadow: none; }
+.aic-sticker { display: block; width: 160px; height: auto; max-height: 160px; object-fit: contain; }
+.aic-jumbo { font-family: 'Centrio Emoji', 'Segoe UI Emoji', sans-serif; font-size: 40px; line-height: 1.15; }
+.aic-bubble.is-jumbo[data-count="1"] .aic-jumbo { font-size: 64px; }
+.aic-bubble.is-jumbo[data-count="2"] .aic-jumbo { font-size: 50px; }
+.aic-bubble.is-sticker .aic-meta, .aic-bubble.is-jumbo .aic-meta { bottom: 0; right: 0; }
+
+/* files and voice messages */
+.aic-card { display: flex; align-items: center; gap: 10px; margin: 2px 0 4px; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; min-width: 220px; }
+.aic-card-icon { flex: 0 0 44px; width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; background: #3390ec; color: #fff; }
+.aic-row.is-out .aic-card-icon { background: #fff; color: var(--out-bg); }
+.aic-card.kind-file .aic-card-icon { border-radius: 10px; }
+.aic-card-info { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.aic-card-name { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.aic-card-sub { font-size: 12.5px; color: var(--meta); font-variant-numeric: tabular-nums; }
+.aic-card:hover .aic-card-icon { filter: brightness(1.1); }
+.aic-wave { display: flex; align-items: center; gap: 2px; height: 22px; }
+.aic-wave i { width: 3px; border-radius: 2px; background: currentColor; opacity: .55; height: 30%; }
+.aic-wave i:nth-child(3n) { height: 70%; }
+.aic-wave i:nth-child(4n) { height: 45%; }
+.aic-wave i:nth-child(5n) { height: 90%; }
+.aic-wave i:nth-child(7n) { height: 55%; }
+.aic-card.kind-voice .aic-card-name { display: none; }
+
+/* reactions under the message */
+.aic-reactions { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
+.aic-bubble.has-media .aic-reactions, .aic-bubble.is-media-only .aic-reactions { margin: 6px 8px 2px; }
+.aic-reaction { display: inline-flex; align-items: center; gap: 4px; height: 26px; padding: 0 8px; border-radius: 999px; background: rgba(255, 255, 255, .1); font-size: 13px; font-weight: 600; }
+.aic-row.is-in .aic-reaction { background: color-mix(in srgb, #3390ec 18%, transparent); color: var(--link-in); }
+.aic-reaction.is-mine { background: #3390ec; color: #fff !important; }
+.aic-row.is-out .aic-reaction.is-mine { background: #fff; color: var(--out-bg) !important; }
+.aic-reaction-e { font-family: 'Centrio Emoji', 'Segoe UI Emoji', sans-serif; font-size: 15px; }
+
+/* new messages slide in */
+.aic-row.is-new .aic-bubble { animation: aic-pop .24s cubic-bezier(.2, .9, .3, 1.2); transform-origin: bottom left; }
+.aic-row.is-out.is-new .aic-bubble { transform-origin: bottom right; }
+@keyframes aic-pop { from { opacity: 0; transform: translateY(10px) scale(.96); } }
+
+/* the round «down» button with what arrived while reading above */
+.aic-down {
+    position: absolute; right: 20px; bottom: 86px; z-index: 5; width: 46px; height: 46px; border: 0; border-radius: 50%;
+    display: grid; place-items: center; background: var(--in-bg); color: var(--text-secondary); cursor: pointer;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, .3); animation: aic-fade .15s ease-out;
+}
+.aic-down[hidden] { display: none; }
+.aic-down:hover { color: var(--text-primary); }
+.aic-down-n { position: absolute; top: -6px; left: 50%; transform: translateX(-50%); min-width: 22px; height: 22px; padding: 0 6px; border-radius: 11px; background: var(--out-bg); color: #fff; font-size: 12px; font-weight: 700; line-height: 22px; text-align: center; }
+.aic-down-n[hidden] { display: none; }
+
+@media (prefers-reduced-motion: reduce) { .aic-row.is-new .aic-bubble { animation: none; } }
+
+/* the message field, the way Telegram has it: a rounded line with the paper clip and the smile, the round send button beside */
+.aic-compose { padding: 8px 16px 14px; }
+.aic-line { display: flex; align-items: flex-end; gap: 8px; max-width: 760px; width: 100%; margin: 0 auto; }
+.aic-tray { max-width: 760px; width: 100%; margin: 0 auto; }
+.aic-line .aic-bar {
+    flex: 1; min-width: 0; padding: 4px 6px; border: 0; border-radius: 22px; background: var(--in-bg);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, .18);
+}
+.aic-line .aic-bar:focus-within { box-shadow: 0 1px 2px rgba(0, 0, 0, .18), 0 0 0 2px color-mix(in srgb, var(--out-bg) 55%, transparent); border-color: transparent; }
+.aic-line .aic-input { color: var(--in-fg); font-size: 15px; padding: 10px 4px; }
+.aic-line .aic-input::placeholder { color: var(--in-meta); }
+.aic-line .aic-tool { color: var(--in-meta); border-radius: 50%; }
+.aic-line .aic-tool:hover, .aic-line .aic-tool.is-on { color: var(--out-bg); background: transparent; }
+.aic-line .aic-send {
+    flex: 0 0 48px; width: 48px; height: 48px; border-radius: 50%; background: var(--out-bg); color: #fff; opacity: 1;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .25); transform: scale(.82); filter: saturate(.6) brightness(.85);
+    transition: transform .18s cubic-bezier(.2, .9, .3, 1.3), filter .15s ease;
+}
+html[data-mode="light"] .aic-line .aic-send, html[data-theme="light"] .aic-line .aic-send { background: #3390ec; }
+.aic-compose.has-content .aic-line .aic-send { transform: scale(1); filter: none; }
+.aic-line .aic-send:active { transform: scale(.92); }
+.aic-line .aic-send svg { margin-left: 2px; }
+.aic-compose.is-failed .aic-line .aic-bar { box-shadow: 0 0 0 2px rgba(239, 68, 68, .7); }
+.aic-compose .aie { right: 72px; }
+
+/* the message field grows with the text without a scroll bar of its own until its limit */
+.aic-line .aic-input { scrollbar-width: none; }
+.aic-line .aic-input::-webkit-scrollbar { display: none; }

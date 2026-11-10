@@ -2,7 +2,7 @@
 // «Все мессенджеры» (3.8): our own conversation window over the messenger's tab. It only draws what timeline.js gives
 // and hands typed text back; the tab behind it does the real work.
 
-const { linkParts } = require('./linkify')
+const { renderMessage } = require('./message-view')
 const { createComposer } = require('./composer')
 const { readBackground, saveBackground, createBackgroundMenu } = require('./chat-backgrounds')
 
@@ -22,14 +22,19 @@ function initials(title) {
     return ((words[0] || '?')[0] + (words[1] ? words[1][0] : '')).toUpperCase()
 }
 
-const KIND_LABEL = { voice: 'Голосовое сообщение', video: 'Видео', sticker: 'Стикер', file: 'Файл', photo: 'Фото' }
-
 /**
  * @param {{ host: HTMLElement, onSend: (text: string, files: object[]) => Promise<boolean>, onOpenInTab: () => void,
  *   onClose: () => void, onOlder: () => void, onLink: (url: string) => void, onPicture: (key: string) => Promise<string>,
  *   onPickFiles: () => Promise<object[]>, onDescribeFiles: (paths: string[]) => Promise<object[]>,
  *   onPasteImage: () => Promise<object|null> }} deps
  */
+// a group chat: the messenger draws avatars of the people, or at least two different people write in it
+function isGroupChat(rows) {
+    const incoming = rows.filter((r) => r.type === 'msg' && !r.out)
+    if (incoming.some((r) => r.avatar)) return true
+    return new Set(incoming.map((r) => r.author).filter(Boolean)).size >= 2
+}
+
 function createChatView({ host, onSend, onOpenInTab, onClose, onOlder, onLink, onPicture, onPickFiles, onDescribeFiles, onPasteImage }) {
     const root = el('section', 'aic')
     root.hidden = true
@@ -48,6 +53,10 @@ function createChatView({ host, onSend, onOpenInTab, onClose, onOlder, onLink, o
         </header>
         <div class="aic-warn" hidden></div>
         <div class="aic-scroll"><div class="aic-list"></div></div>
+        <button type="button" class="aic-down" hidden aria-label="К новым сообщениям" title="К новым сообщениям">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+            <span class="aic-down-n" hidden></span>
+        </button>
         <div class="aic-lightbox" tabindex="-1" hidden title="Закрыть"><img alt=""></div>`
     host.appendChild(root)
     const lightbox = root.querySelector('.aic-lightbox')
@@ -81,82 +90,50 @@ function createChatView({ host, onSend, onOpenInTab, onClose, onOlder, onLink, o
     let touchedAt = 0
     const touched = () => { touchedAt = Date.now() }
     for (const type of ['wheel', 'pointerdown', 'keydown', 'touchstart']) scroll.addEventListener(type, touched, { passive: true })
+    // the round «down» button of Telegram: shows while reading above, counts what arrived meanwhile
+    const down = q('.aic-down')
+    const downN = q('.aic-down-n')
+    let unseen = 0
+    function refreshDown() {
+        const away = !stick && !atBottom()
+        down.hidden = !away
+        if (!away) unseen = 0
+        downN.hidden = !unseen
+        downN.textContent = unseen > 99 ? '99+' : String(unseen)
+    }
+    down.addEventListener('click', () => { stick = true; unseen = 0; scroll.scrollTo({ top: scroll.scrollHeight, behavior: 'smooth' }); refreshDown() })
     scroll.addEventListener('scroll', () => {
         if (Date.now() - touchedAt < USER_SCROLL_MS) stick = atBottom()
         else if (stick) scroll.scrollTop = scroll.scrollHeight
         if (scroll.scrollTop < TOP_LOAD_PX) onOlder()
+        refreshDown()
     }, { passive: true })
+    let seenIds = new Set()
     const keepBottom = new ResizeObserver(() => { if (stick) scroll.scrollTop = scroll.scrollHeight })
     keepBottom.observe(list)
     keepBottom.observe(scroll)
 
-    function textWithLinks(text) {
-        const node = el('div', 'aic-text')
-        for (const part of linkParts(text)) {
-            if (!part.url) { node.append(document.createTextNode(part.text)); continue }
-            const a = el('a', 'aic-link', part.text)
-            a.href = part.url
-            a.title = part.url
-            a.addEventListener('click', (e) => { e.preventDefault(); onLink(part.url) })
-            node.append(a)
-        }
-        return node
-    }
-
     // a photo opens over the conversation: the small copy at once, the full one as soon as the page gives it
-    async function zoom(m) {
+    async function zoom(m, src, pictureKey) {
         const img = lightbox.querySelector('img')
-        img.src = m.media
+        img.src = src
         lightbox.hidden = false
         lightbox.focus()
-        const shown = m.media
-        const full = m.picture ? await onPicture(m.picture).catch(() => '') : ''
+        const shown = src
+        const full = pictureKey ? await onPicture(pictureKey).catch(() => '') : ''
         if (full && !lightbox.hidden && img.src === shown) img.src = full
     }
     function closeZoom() { lightbox.hidden = true; lightbox.querySelector('img').removeAttribute('src') }
     lightbox.addEventListener('click', closeZoom)
     lightbox.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeZoom() })
 
-    function bubble(m) {
-        const row = el('div', `aic-row ${m.out ? 'is-out' : 'is-in'}${m.groupStart ? ' is-first' : ''}${m.groupEnd ? ' is-last' : ''}`)
-        const b = el('div', `aic-bubble kind-${m.kind}`)
-        if (m.author && !m.out && m.groupStart !== false) b.append(el('div', 'aic-author', m.author))
-        if (m.forwarded) b.append(el('div', 'aic-fwd', `Переслано от ${m.forwarded}`))
-        if (m.reply) b.append(el('div', 'aic-reply', m.reply))
-        if (m.media && (m.kind === 'photo' || m.kind === 'sticker' || m.kind === 'video')) {
-            const img = el('img', 'aic-media')
-            img.src = m.media
-            img.alt = ''
-            img.loading = 'lazy'
-            if (m.kind === 'photo') {
-                img.classList.add('is-zoomable')
-                img.title = 'Открыть крупно'
-                img.addEventListener('click', () => zoom(m))
-            }
-            b.append(img)
-        } else if (m.kind !== 'text') {
-            const card = el('button', 'aic-card')
-            card.type = 'button'
-            card.title = 'Открыть в мессенджере'
-            card.append(el('span', 'aic-card-icon', m.kind === 'voice' ? '🎤' : m.kind === 'file' ? '📄' : m.kind === 'video' ? '🎬' : '🖼'))
-            card.append(el('span', 'aic-card-text', m.name || KIND_LABEL[m.kind] || ''))
-            if (m.duration) card.append(el('span', 'aic-card-meta', m.duration))
-            card.addEventListener('click', onOpenInTab)
-            b.append(card)
-        }
-        if (m.text) b.append(textWithLinks(m.text))
-        const meta = el('div', 'aic-meta', m.time)
-        if (m.out) meta.append(el('span', `aic-check${m.read ? ' is-read' : ''}`, m.read ? '✓✓' : '✓'))
-        b.append(meta)
-        row.append(b)
-        return row
-    }
-
     return {
         show(chat) {
             root.hidden = false
             lastSig = ''
             stick = true
+            seenIds = new Set()
+            unseen = 0
             list.replaceChildren(el('div', 'aic-loading', 'Загружаю переписку…'))
             q('.aic-title').textContent = chat.title
             q('.aic-sub').textContent = chat.messengerName
@@ -178,10 +155,27 @@ function createChatView({ host, onSend, onOpenInTab, onClose, onOlder, onLink, o
             lastSig = sig
             const frag = document.createDocumentFragment()
             if (!rows.length) frag.append(el('div', 'aic-loading', 'Сообщений пока нет'))
-            for (const r of rows) frag.append(r.type === 'day' ? el('div', 'aic-day', r.label) : bubble(r))
+            // a group chat (names of authors) gets avatars next to the groups, like Telegram; private chats do not
+            const isGroup = isGroupChat(rows)
+            const ctx = { isGroup, onLink, onZoom: zoom, onOpenInTab }
+            const firstDraw = !seenIds.size
+            let arrived = 0
+            const ids = new Set()
+            for (const r of rows) {
+                if (r.type === 'day') { const day = el('div', 'aic-day'); day.append(el('span', '', r.label)); frag.append(day); continue }
+                const node = renderMessage(r, ctx)
+                ids.add(r.id)
+                // what came in since the last look slides in softly, like in Telegram
+                if (!firstDraw && !seenIds.has(r.id)) { node.classList.add('is-new'); arrived++ }
+                frag.append(node)
+            }
+            seenIds = ids
+            list.classList.toggle('is-group', isGroup)
             list.replaceChildren(frag)
+            if (!nearBottom && arrived) unseen += arrived
             // stay at the bottom for new messages; keep the place when earlier ones load above
             scroll.scrollTop = nearBottom ? scroll.scrollHeight : scroll.scrollHeight - fromBottom
+            refreshDown()
         },
         // the tab shows another chat: nothing of it is drawn and nothing can be sent until the right one is open
         setMismatch(on, openTitle) {
