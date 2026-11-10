@@ -342,6 +342,10 @@ model OrgMessengerStat {
   alertCount       Int       @default(0)
   notLoggedInSince DateTime?
   loginState       String?
+  loginStateAt     DateTime?
+  lastLoggedInAt   DateTime?
+  loginAlertSentAt DateTime?
+  loginAlertCount  Int       @default(0)
 }
 
 model UsageStat {
