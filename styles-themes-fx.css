@@ -34,13 +34,6 @@ html[data-fx] .right-panel.open { background: var(--fx-side); }
 /* the open panel is a card of its own like the page: a gap on both sides and all corners rounded (owner) */
 html[data-fx] .right-panel.open { margin: 8px 6px 8px 8px; border-radius: 20px; }
 html[data-fx] .main-container:has(.right-panel.open) .right-activity-bar { border-left-color: transparent; }
-/* a little pointer from the card towards the button it came out of (renderer/right-panel-pointer.js sets the height) */
-html[data-fx] .right-activity-bar { position: relative; }
-html[data-fx] .main-container:has(.right-panel.open) .right-activity-bar.rp-pointer::before {
-    content: ""; position: absolute; left: -7px; top: var(--rp-pointer-y); z-index: 2; width: 0; height: 0; pointer-events: none;
-    border-top: 9px solid transparent; border-bottom: 9px solid transparent; border-left: 7px solid color-mix(in srgb, var(--accent) 70%, transparent);
-    transform: translateY(-50%); transition: top .22s cubic-bezier(.4, 0, .2, 1);
-}
 
 /* ── Аврора ── */
 html[data-fx="aurora"] {
