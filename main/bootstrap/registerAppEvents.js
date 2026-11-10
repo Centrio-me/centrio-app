@@ -2209,7 +2209,10 @@ function registerAppEvents({
                             'clipboard-read', 'clipboard-sanitized-write',
                             'media', 'notifications', 'geolocation',
                             'fullscreen', 'pointerLock', 'display-capture',
-                            'hid', 'usb', 'serial'
+                            'hid', 'usb', 'serial',
+                            // WhatsApp Web (2026-11) asks for persistent storage and, when refused, stops at
+                            // «В браузере произошла ошибка базы данных. Повторите привязку устройства» — no QR, no login
+                            'persistent-storage'
                         ])
                         guestSession.setPermissionRequestHandler((_webContents, permission, callback) => {
                             callback(ALLOWED_PERMISSIONS.has(permission))
