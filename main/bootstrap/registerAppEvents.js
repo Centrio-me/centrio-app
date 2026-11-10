@@ -1376,6 +1376,13 @@ function registerAppEvents({
                 {
                     const yandexNotif = require('../../shared/yandex-notif-settings')
                     if (yandexNotif.appliesTo(contents.getURL())) contents.executeJavaScript(yandexNotif.PAGE_SCRIPT).catch(() => {})
+                    // minimised or in the tray Telemost stays silent (it waits for web push): its page keeps «visible»
+                    if (!contents.__centrioKeepVisible) {
+                        contents.__centrioKeepVisible = require('../services/keepVisible').keepVisible(contents, yandexNotif.staysVisible)
+                        if (contents.__centrioKeepVisible && yandexNotif.staysVisible(contents.getURL())) {
+                            try { contents._sendInternal(require('../services/keepVisible').CHANNEL, 'visible') } catch {}
+                        }
+                    }
                 }
 
                 if (!notifPollingStarted) {

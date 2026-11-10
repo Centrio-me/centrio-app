@@ -32,3 +32,12 @@ test('only the Yandex messenger settings keys are touched', () => {
     assert.ok(!SETTINGS_KEY_RE.test('other'))
     assert.ok(DONE_PREFIX.startsWith('centrio:'))
 })
+
+test('only Telemost and the Yandex messenger stay visible while Centrio is hidden', () => {
+    const { staysVisible } = require('../shared/yandex-notif-settings')
+    assert.equal(staysVisible('https://telemost.yandex.ru/'), true)
+    assert.equal(staysVisible('https://messenger.yandex.ru/'), true)
+    assert.equal(staysVisible('https://mail.yandex.ru/'), false)
+    assert.equal(staysVisible('https://web.telegram.org/k/'), false)
+    assert.equal(staysVisible('not a url'), false)
+})

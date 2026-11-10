@@ -52,4 +52,12 @@ function appliesTo(url) {
     } catch { return false }
 }
 
-module.exports = { SETTINGS_KEY_RE, DONE_PREFIX, enableOnce, PAGE_SCRIPT, appliesTo }
+/** Pages that rely on web push while hidden and therefore stay «visible» (main/services/keepVisible.js). @param {string} url */
+function staysVisible(url) {
+    try {
+        const host = new URL(url).hostname.toLowerCase()
+        return host === 'telemost.yandex.ru' || host === 'telemost.360.yandex.ru' || /(^|.)messenger.yandex.(ru|com)$/.test(host)
+    } catch { return false }
+}
+
+module.exports = { SETTINGS_KEY_RE, DONE_PREFIX, enableOnce, PAGE_SCRIPT, appliesTo, staysVisible }
