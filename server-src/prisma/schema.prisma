@@ -31,8 +31,12 @@ model User {
   autoRenewPayMethodId      String?
   emailVerifyTokenExpiresAt DateTime?
   emailVerifyTokenHash      String?
+  passwordResetTokenHash       String?
+  passwordResetTokenExpiresAt DateTime?
   referralBonusGranted      Boolean                  @default(false)
   referredById              String?
+  // Which ad brought this sign-up, JSON, an estimate: see src/lib/ad-touch.js
+  signupSource              String?
   planStartedAt             DateTime?
   aiUsage                   AiUsage[]
   chatSite                  ChatSite?
@@ -50,6 +54,11 @@ model User {
   syncSettings              SyncSettings?
   tickets                   Ticket[]
   unreadSummary             UnreadSummary?
+  // Лента уведомлений на телефоне: включается самим пользователем в мобильном приложении.
+  mobileFeedEnabled         Boolean         @default(false)
+  mobileFeedItems           MobileFeedItem[]
+  phoneKeys                 PhoneKey[]
+  phoneReplies              PhoneReply[]
   usageStats                UsageStat[]
   referredBy                User?                    @relation("Referrals", fields: [referredById], references: [id])
   referrals                 User[]                   @relation("Referrals")
@@ -67,6 +76,11 @@ model Session {
   // plan-based desktop/web MAX_DEVICES limit — logging into the mobile app
   // must never evict a FREE-plan user's only desktop session, or vice versa.
   isMobile     Boolean  @default(false)
+  // Shown on the Admin "Mobile app" screen; filled from the X-Centrio-* headers the app sends.
+  deviceName   String?
+  appVersion   String?
+  loginAt      DateTime @default(now())
+  lastActiveAt DateTime @default(now())
   expiresAt    DateTime
   createdAt    DateTime @default(now())
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -226,6 +240,23 @@ model Organization {
   messengerStats       OrgMessengerStat[]
   owner                User                     @relation("OrgOwner", fields: [ownerId], references: [id])
   payments             Payment[]
+  alertSettingsJson   Json?
+  alertTelegramChatId String?
+  alertTelegramName   String?
+  customLinks         OrgCustomLink[]
+  quickReplies        OrgQuickReply[]
+  orgAlerts           OrgAlert[]
+  alertLinkCodes      OrgAlertLinkCode[]
+  orgWorkspaces       OrgWorkspace[]
+  orgFolders          OrgFolder[]
+  tasks               OrgTask[]
+  deviceKeys          OrgDeviceKey[]
+  timeZone            String   @default("Europe/Moscow")
+  workSchedule        Json?
+  presence            OrgPresence[]
+  presenceDaily       OrgPresenceDaily[]
+  commands            OrgCommand[]
+  notes               OrgNote[]
 }
 
 model OrgMember {
@@ -236,6 +267,7 @@ model OrgMember {
   status              OrgMemberStatus @default(ACTIVE)
   joinedAt            DateTime        @default(now())
   canAddOwnMessengers Boolean         @default(true)
+  strictMode          Boolean         @default(false)
   organization        Organization    @relation(fields: [orgId], references: [id], onDelete: Cascade)
   user                User            @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -284,6 +316,10 @@ model OrgMessengerAssignment {
   user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([orgId, userId])
+  folderId String?
+  useVpn   Boolean @default(false)
+  paused   Boolean @default(false)
+  credentials OrgCredential[]
 }
 
 model OrgMessengerStat {
@@ -301,6 +337,11 @@ model OrgMessengerStat {
 
   @@unique([orgId, userId, messengerKey])
   @@index([orgId])
+  waitingSince     DateTime?
+  alertSentAt      DateTime?
+  alertCount       Int       @default(0)
+  notLoggedInSince DateTime?
+  loginState       String?
 }
 
 model UsageStat {
@@ -421,6 +462,10 @@ model Ticket {
 
   @@index([userId])
   @@index([status])
+  category    String?
+  botStage    String?
+  typingUntil DateTime?
+  typingBy    String?
 }
 
 model TicketMessage {
@@ -432,6 +477,8 @@ model TicketMessage {
   ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
 
   @@index([ticketId])
+  isBot       Boolean  @default(false)
+  attachments String[] @default([])
 }
 
 model NewsPost {
@@ -576,4 +623,307 @@ enum TicketStatus {
   OPEN
   ANSWERED
   CLOSED
+}
+
+
+model OrgCustomLink {
+  id           String       @id @default(uuid())
+  orgId        String
+  name         String
+  url          String
+  createdAt    DateTime     @default(now())
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@index([orgId])
+}
+
+model OrgQuickReply {
+  id           String       @id @default(uuid())
+  orgId        String
+  title        String
+  text         String
+  sortOrder    Int          @default(0)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@index([orgId, sortOrder])
+}
+
+model OrgAlert {
+  id            String       @id @default(uuid())
+  orgId         String
+  userId        String
+  messengerKey  String
+  messengerName String
+  waitingSince  DateTime
+  waitedMinutes Int
+  createdAt     DateTime     @default(now())
+  organization  Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@index([orgId, createdAt])
+}
+
+model OrgAlertLinkCode {
+  id           String       @id @default(uuid())
+  orgId        String
+  codeHash     String       @unique
+  expiresAt    DateTime
+  createdAt    DateTime     @default(now())
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+}
+
+model OrgTask {
+  id           String           @id @default(uuid())
+  orgId        String
+  assigneeId   String
+  createdById  String
+  title        String
+  notes        String?
+  priority     String           @default("NORMAL")
+  status       String           @default("OPEN")
+  dueAt        DateTime?
+  doneAt       DateTime?
+  seenAt       DateTime?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  organization Organization     @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  comments     OrgTaskComment[]
+
+  @@index([orgId, assigneeId, status])
+}
+
+model OrgTaskComment {
+  id        String   @id @default(uuid())
+  taskId    String
+  authorId  String
+  body      String
+  createdAt DateTime @default(now())
+  task      OrgTask  @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId, createdAt])
+}
+
+model OrgWorkspace {
+  id           String       @id @default(uuid())
+  orgId        String
+  userId       String
+  name         String
+  color        String?
+  position     Int          @default(0)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  folders      OrgFolder[]
+
+  @@index([orgId, userId])
+}
+
+model OrgFolder {
+  id           String        @id @default(uuid())
+  orgId        String
+  userId       String
+  workspaceId  String?
+  name         String
+  position     Int           @default(0)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  organization Organization  @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  workspace    OrgWorkspace? @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
+
+  @@index([orgId, userId])
+}
+
+model OrgDeviceKey {
+  id           String          @id @default(uuid())
+  orgId        String
+  userId       String
+  deviceId     String
+  publicKey    String
+  name         String?
+  createdAt    DateTime        @default(now())
+  lastSeenAt   DateTime        @default(now())
+  organization Organization    @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  credentials  OrgCredential[]
+
+  @@unique([userId, deviceId])
+  @@index([orgId, userId])
+}
+
+model OrgCredential {
+  id           String                 @id @default(uuid())
+  orgId        String
+  assignmentId String
+  deviceKeyId  String
+  blob         String
+  setById      String
+  createdAt    DateTime               @default(now())
+  updatedAt    DateTime               @updatedAt
+  assignment   OrgMessengerAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  deviceKey    OrgDeviceKey           @relation(fields: [deviceKeyId], references: [id], onDelete: Cascade)
+
+  @@unique([assignmentId, deviceKeyId])
+  @@index([orgId])
+}
+
+// Тексты уведомлений для ленты в мобильном приложении (только чтение). Хранятся до 48 часов, не больше 300 на человека,
+// удаляются сразу при выключении ленты. См. src/routes/mobile-feed.js.
+model MobileFeedItem {
+  id            String   @id @default(uuid())
+  userId        String
+  messengerId   String
+  messengerName String
+  title         String
+  body          String
+  // End-to-end encrypted feed: `enc` is the sealed {title, body} for ONE phone (phoneDeviceId); title/body stay empty then.
+  ref           String?
+  phoneDeviceId String?
+  enc           String?
+  canReply      Boolean  @default(false)
+  createdAt     DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([userId, phoneDeviceId, ref])
+}
+
+// A phone's public key for the end-to-end encrypted feed. `proof` is an HMAC with the secret from the desktop's QR code,
+// which only the desktop and the phone that scanned it know: the desktop trusts the key only if the proof checks out.
+model PhoneKey {
+  id          String    @id @default(uuid())
+  userId      String
+  deviceId    String
+  name        String
+  pub         String
+  proof       String
+  createdAt   DateTime  @default(now())
+  confirmedAt DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, deviceId])
+}
+
+// A reply typed on the phone, sealed for the desktop; the desktop sends it into the chat and reports the result.
+model PhoneReply {
+  id            String   @id @default(uuid())
+  userId        String
+  phoneDeviceId String
+  ref           String
+  desktopKeyId  String
+  enc           String
+  status        String   @default("PENDING")
+  createdAt     DateTime @default(now())
+  resultAt      DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+}
+
+// Yandex Metrica connection of the platform owner (single row, id "main").
+model MetrikaConnection {
+  id              String    @id
+  accessTokenEnc  String
+  refreshTokenEnc String?
+  expiresAt       DateTime?
+  login           String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+model MetrikaInsight {
+  id           String   @id @default(uuid())
+  counterId    String
+  summaryJson  Json
+  analysisJson Json
+  createdAt    DateTime @default(now())
+
+  @@index([counterId, createdAt])
+}
+
+model AdTouch {
+  ipHash    String   @id
+  source    String?
+  campaign  String?
+  content   String?
+  term      String?
+  landing   String?
+  ymClientId String?
+  yclid     String?
+  createdAt DateTime @default(now())
+}
+
+// TEAM control (2026-11-08): presence, daily rollups, per-device commands, notes.
+model OrgPresence {
+  id                String       @id @default(uuid())
+  orgId             String
+  userId            String
+  deviceKeyId       String?
+  at                DateTime     @default(now())
+  open              Boolean
+  idleSec           Int
+  frontAssignmentId String?
+  unreadTotal       Int          @default(0)
+  organization      Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@index([orgId, userId, at])
+  @@index([at])
+}
+
+model OrgPresenceDaily {
+  id             String       @id @default(uuid())
+  orgId          String
+  userId         String
+  day            String
+  activeMin      Float        @default(0)
+  firstAt        DateTime?
+  lastAt         DateTime?
+  reactionSecSum Int          @default(0)
+  reactionCount  Int          @default(0)
+  overThreshold  Int          @default(0)
+  organization   Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@unique([orgId, userId, day])
+  @@index([day])
+}
+
+model OrgCommand {
+  id          String       @id @default(uuid())
+  orgId       String
+  userId      String
+  deviceKeyId String
+  kind        String
+  payload     Json?
+  createdById String
+  createdAt   DateTime     @default(now())
+  doneAt      DateTime?
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@index([deviceKeyId, doneAt])
+  @@index([orgId, userId, createdAt])
+}
+
+model OrgNote {
+  id          String        @id @default(uuid())
+  orgId       String
+  toUserId    String?
+  text        String
+  createdById String
+  createdAt   DateTime      @default(now())
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  reads       OrgNoteRead[]
+
+  @@index([orgId, createdAt])
+}
+
+model OrgNoteRead {
+  id     String   @id @default(uuid())
+  noteId String
+  userId String
+  readAt DateTime @default(now())
+  note   OrgNote  @relation(fields: [noteId], references: [id], onDelete: Cascade)
+
+  @@unique([noteId, userId])
 }
