@@ -2932,7 +2932,7 @@ function applyTabZoom(level) {
         // existing saveData()-before-addWebview() race below: register
         // this id with main FIRST and await it, so the security check
         // already knows about it before the <webview> ever asks to attach.
-        await invokeIpc('org-assigned-partition-register', newMessenger.id).catch(() => {})
+        await invokeIpc('org-assigned-partition-register', newMessenger.id, newMessenger.url).catch(() => {})
 
         addWebview(newMessenger)
 

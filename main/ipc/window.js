@@ -887,7 +887,9 @@ async function createPopupWindow(url, opts = {}, getMainWindow) {
         let isSharedMessengerSession = false
         if (typeof opts.partition === 'string') {
             const messengers = store.get('messengers', []) || []
-            const isKnownPartition = messengers.some((m) => m && m.id && `persist:${m.id}` === opts.partition)
+            // 3.7.3: team tabs too, or a team tab's sign-in lands in a throwaway session and never reaches the tab
+            const isKnownPartition = messengers.some((m) => m && m.id && `persist:${m.id}` === opts.partition) ||
+                orgAssignedPartitions.isRegisteredPartition(opts.partition)
             if (isKnownPartition) {
                 webPreferences.session = session.fromPartition(opts.partition)
                 isSharedMessengerSession = true
@@ -1196,8 +1198,8 @@ function registerWindowIpc({ getMainWindow, isQuittingRef }) {
     // for the full explanation). Renderer awaits this BEFORE creating an
     // org-assigned messenger's <webview> — same ordering fix as the
     // existing saveData()-before-addWebview() race for personal messengers.
-    ipcMain.handle('org-assigned-partition-register', (event, id) => {
-        orgAssignedPartitions.register(id)
+    ipcMain.handle('org-assigned-partition-register', (event, id, url) => {
+        orgAssignedPartitions.register(id, url)
         return { success: true }
     })
     safeOn('minimize-window', (event) => {

@@ -226,7 +226,8 @@ function createOrgTeamApi({
             const vpnData = unwrap(result)
             if (!vpnData?.link) return
             const link = vpnData.link
-            let connectResult = await invokeIpc('vpn-connect-saved', link)
+            // 3.7.3: 'vpn-connect' takes a subscription url too; the saved-link handler threw on one, so the team VPN never came up
+            let connectResult = await invokeIpc('vpn-connect', link)
             if (connectResult?.needsDownload) {
                 connectResult = await invokeIpc('vpn-download-and-connect', link)
             }

@@ -759,14 +759,17 @@ function baseDomain(hostname) {
     return parts.length <= 2 ? parts.join('.') : parts.slice(-2).join('.')
 }
 
+// 3.7.3: the person's own messengers plus the team ones (never written into the store, see
+// main/services/orgAssignedPartitions.js). Without the team ones a team tab had no owner here, so its login popup
+// (Yandex Telemost -> passport.yandex.ru) fell through to the external browser and never came back.
+function allMessengerRecords() {
+    const own = (store.get('messengers', []) || []).filter((m) => m && m.id)
+    const ownIds = new Set(own.map((m) => m.id))
+    return own.concat(orgAssignedPartitions.records().filter((m) => !ownIds.has(m.id)))
+}
+
 function findMessengerIdForSession(targetSession) {
-    try {
-        const messengers = store.get('messengers', []) || []
-        for (const m of messengers) {
-            if (m && m.id && session.fromPartition(`persist:${m.id}`) === targetSession) return m.id
-        }
-    } catch {}
-    return null
+    return findMessengerRecordForSession(targetSession)?.id || null
 }
 
 // Full messenger record (id + url), used by the media-diag hostname gate
@@ -774,8 +777,7 @@ function findMessengerIdForSession(targetSession) {
 // check which service a webview belongs to.
 function findMessengerRecordForSession(targetSession) {
     try {
-        const messengers = store.get('messengers', []) || []
-        for (const m of messengers) {
+        for (const m of allMessengerRecords()) {
             if (m && m.id && session.fromPartition(`persist:${m.id}`) === targetSession) return m
         }
     } catch {}
@@ -1564,8 +1566,7 @@ function registerAppEvents({
                 // duplicate.
                 if (isOAuthBrokerActive(messengerId) || brokerDeferredIds.has(messengerId)) return true
 
-                const messengers = store.get('messengers', []) || []
-                const messenger = messengers.find((m) => m && m.id === messengerId)
+                const messenger = allMessengerRecords().find((m) => m.id === messengerId)
 
                 // BUGFIX (2026-08-26, live-reproduced: Gmail tab never opens
                 // the broker at all — [oauth-broker][DEBUG] logs showed
@@ -1663,8 +1664,7 @@ function registerAppEvents({
                 try { returnHost = new URL(contents.getURL()).hostname } catch {}
                 if (!returnHost) return { action: 'allow' }
 
-                const messengers = store.get('messengers', []) || []
-                const messenger = messengers.find((m) => m && m.id === messengerId)
+                const messenger = allMessengerRecords().find((m) => m.id === messengerId)
                 const partition = `persist:${messengerId}`
 
                 // BUGFIX (2026-08-26): this used to force a session-level

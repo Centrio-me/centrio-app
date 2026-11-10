@@ -20,27 +20,40 @@
 // creating its <webview> — same ordering fix already used for personal
 // messengers' saveData()-before-addWebview() race, see renderer.js) instead
 // of writing it into the real messengers store. Intentionally in-memory
-// only (a plain Set, not persisted to disk) — it exists only to bridge the
+// only (a plain Map, not persisted to disk) — it exists only to bridge the
 // gap between "renderer decided to show this org-assigned tab" and
 // "main process's security check needs to already know about it", and is
 // naturally rebuilt every session as the sync tick re-adds each assignment.
 
-const registeredIds = new Set()
+// 3.7.3: also keeps each team messenger's url — main has no other way to know it (the login popup of a team
+// tab needs its owner and url, see findMessengerRecordForSession in main/bootstrap/registerAppEvents.js).
+const registered = new Map()
 
-function register(id) {
-    if (typeof id === 'string' && id) registeredIds.add(id)
+function safeUrl(url) {
+    return typeof url === 'string' && /^https?:\/\//i.test(url) ? url : ''
+}
+
+function register(id, url) {
+    if (typeof id !== 'string' || !id) return
+    const next = safeUrl(url)
+    if (next || !registered.has(id)) registered.set(id, next || registered.get(id) || '')
 }
 
 function isRegisteredPartition(partition) {
     if (typeof partition !== 'string') return false
-    for (const id of registeredIds) {
+    for (const id of registered.keys()) {
         if (`persist:${id}` === partition) return true
     }
     return false
 }
 
 function list() {
-    return [...registeredIds]
+    return [...registered.keys()]
 }
 
-module.exports = { register, isRegisteredPartition, list }
+/** @returns {{ id: string, url: string }[]} */
+function records() {
+    return [...registered].map(([id, url]) => ({ id, url }))
+}
+
+module.exports = { register, isRegisteredPartition, list, records }
