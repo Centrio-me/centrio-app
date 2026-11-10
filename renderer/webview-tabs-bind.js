@@ -1,5 +1,16 @@
 const { isChatWidgetMessenger } = require('./constants')
 const { createPageMenu } = require('./page-menu')
+const { watchTab, isTabGone } = require('./tab-recovery')
+
+// Coming back to the window (in the morning, after sleep) brings back every tab whose page died meanwhile
+let focusWatched = false
+function watchFocusOnce() {
+    if (focusWatched) return
+    focusWatched = true
+    window.addEventListener('focus', () => {
+        document.querySelectorAll('webview').forEach((wv) => { if (isTabGone(wv)) { try { wv.reload() } catch {} } })
+    })
+}
 
 // ── Диплинки других мессенджеров (MAX / Telegram) ──────────────────────────
 // Классификация (какой href — деплинк какого сервиса) происходит ТОЛЬКО в
@@ -1379,6 +1390,10 @@ function createWebviewTabsApi({
         // user still has the manual reload button/Ctrl+R). Gate the whole
         // mechanism on webview._hasLoadedOnce instead of resetting on every
         // success.
+        // the page process of the tab died (sleep, a graphics reset, low memory): the tab comes back by itself
+        watchTab(webview, () => webview.reload(), (info) => console.warn('[tab] page process gone:', messenger.id, info.reason, info.recovering ? '- reloading' : '- left to the person'))
+        watchFocusOnce()
+
         webview.addEventListener('did-fail-load', (e) => {
             if (e.errorCode === -3) return // ERR_ABORTED — normal cancelled navigation
             if (e.isMainFrame === false) return // sub-frame/sub-resource failure — not the tab itself

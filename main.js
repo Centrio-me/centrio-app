@@ -139,6 +139,13 @@ function _writeCrashLog(label, err) {
     } catch {}
 }
 
+// The graphics process or another helper of Chromium going away (sleep, a driver reset) is written down, so a report like
+// «утром чёрный экран» can be matched to what really happened that night
+app.on('child-process-gone', (_event, details) => {
+    if (details && details.reason === 'clean-exit') return
+    _writeCrashLog('child-process-gone', JSON.stringify(details))
+})
+
 process.on('uncaughtException', (err) => {
     _writeCrashLog('uncaughtException', err)
 })
