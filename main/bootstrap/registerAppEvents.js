@@ -1371,6 +1371,13 @@ function registerAppEvents({
                 // внутри одной страницы (флаг window.__centrioNotifPatched).
                 contents.executeJavaScript(NOTIF_PATCH_SCRIPT).catch(() => {})
 
+                // 3.7.4: Яндекс Телемост keeps its own «Получать уведомления» off until it asks the browser — which never
+                // happens here (the permission is granted up front), so it sent nothing. Switched on once per account.
+                {
+                    const yandexNotif = require('../../shared/yandex-notif-settings')
+                    if (yandexNotif.appliesTo(contents.getURL())) contents.executeJavaScript(yandexNotif.PAGE_SCRIPT).catch(() => {})
+                }
+
                 if (!notifPollingStarted) {
                     notifPollingStarted = true
                     startNotifPolling(contents, getMainWindow)
