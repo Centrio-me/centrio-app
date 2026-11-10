@@ -4,6 +4,8 @@ const { sendTicketReplyEmail } = require('./email')
 const { postTicketMessage, closeTicketTopic, escapeHtml } = require('./telegram-bot')
 const { KNOWLEDGE } = require('./support-knowledge')
 const ticketFiles = require('./ticket-files')
+const { wantsHuman } = require('./support-handoff')
+const { sendAdminPush } = require('./admin-push')
 
 // Support auto-responder (2026-09-29, live request: "давай к поддержке
 // прикрутим уже полноценного бота. Вопросики некоторые (простые) чтобы он
@@ -172,14 +174,14 @@ function collectImageParts(messages) {
   return parts
 }
 
-async function callModel(ticket, messages, allowClarify, withImages, customer) {
+async function callModel(ticket, messages, allowClarify, withImages, customer, humanAsked) {
   const transcript = buildTranscript(ticket, messages, customer)
   const images = withImages ? collectImageParts(messages) : []
   const userContent = images.length ? [{ type: 'text', text: transcript }, ...images] : transcript
   return axios.post(`${AGENT_PLATFORM_BASE_URL}/chat/completions`, {
     model: SUPPORT_BOT_MODEL,
     messages: [
-      { role: 'system', content: buildSystemPrompt(allowClarify, ticket.category) },
+      { role: 'system', content: buildSystemPrompt(allowClarify, ticket.category) + (humanAsked ? HUMAN_ASKED_RULE : '') },
       { role: 'user', content: userContent }
     ],
     ...tuning(0.3),
@@ -190,17 +192,22 @@ async function callModel(ticket, messages, allowClarify, withImages, customer) {
   })
 }
 
-async function classifyAndMaybeAnswer(ticket, messages, { allowClarify, customer = null }) {
+// The customer asked for a person: the bot only says one is called, in the customer's language.
+const HUMAN_ASKED_RULE = `
+
+THE CUSTOMER HAS ASKED FOR A PERSON FROM THE TEAM. Choose "escalate". In 1-2 short sentences, in their language, say that you have called a person from the Centrio team and they will reply here in this conversation. Do not troubleshoot and do not ask questions.`
+
+async function classifyAndMaybeAnswer(ticket, messages, { allowClarify, customer = null, humanAsked = false }) {
   if (!AGENT_PLATFORM_API_KEY) return null
 
   let upstream
   try {
     try {
-      upstream = await callModel(ticket, messages, allowClarify, true, customer)
+      upstream = await callModel(ticket, messages, allowClarify, true, customer, humanAsked)
     } catch (e) {
       // The model may refuse images; retry once as text only so the customer still gets an answer.
       console.error('[support-bot] upstream call with images failed, retrying text-only:', e.message)
-      upstream = await callModel(ticket, messages, allowClarify, false, customer)
+      upstream = await callModel(ticket, messages, allowClarify, false, customer, humanAsked)
     }
   } catch (e) {
     console.error('[support-bot] upstream call failed:', e.message, JSON.stringify(e.response?.data || '').slice(0, 400))
@@ -255,13 +262,17 @@ async function runBotTurn(ticket, messages) {
 
   try {
     const customer = await prisma.user.findUnique({ where: { id: ticket.userId }, select: { plan: true, planExpiresAt: true, createdAt: true } }).catch(() => null)
-    const result = (await classifyAndMaybeAnswer(ticket, messages, { allowClarify, customer })) || FALLBACK_RESULT
+    const lastCustomer = [...messages].reverse().find((m) => !m.isAdmin)
+    const humanAsked = !!lastCustomer && wantsHuman(lastCustomer.body)
+    const result = (await classifyAndMaybeAnswer(ticket, messages, { allowClarify, customer, humanAsked })) || FALLBACK_RESULT
 
-    const { action, reply } = result
+    const reply = result.reply
+    // a person was asked for: the ticket is the team's now, whatever the model chose
+    const action = humanAsked ? 'escalate' : result.action
     // The ticket closes only when the customer says it is solved; after an answer it waits for them, and the bot
     // keeps talking on their next message (botStage CLARIFYING = the bot is in the conversation).
     const statusByAction = { answer: 'ANSWERED', clarify: 'ANSWERED', escalate: 'OPEN', resolved: 'CLOSED' }
-    const botStageByAction = { answer: 'CLARIFYING', clarify: 'CLARIFYING', escalate: 'ESCALATED', resolved: null }
+    const botStageByAction = { answer: 'CLARIFYING', clarify: 'CLARIFYING', escalate: humanAsked ? HUMAN_REQUESTED : 'ESCALATED', resolved: null }
 
     const [message] = await prisma.$transaction([
       prisma.ticketMessage.create({ data: { ticketId: ticket.id, isAdmin: true, isBot: true, body: reply } }),
@@ -285,11 +296,13 @@ async function runBotTurn(ticket, messages) {
     console.log(`[support-bot] action=${action} ticket=${ticket.id}`)
 
     if (ticket.telegramTopicId) {
-      const labels = { answer: '🤖 Бот ответил', clarify: '🤖 Бот уточняет детали', escalate: '🤖 Бот передал обращение специалисту', resolved: '🤖 Клиент подтвердил, что решено — бот закрыл обращение' }
+      const labels = { answer: '🤖 Бот ответил', clarify: '🤖 Бот уточняет детали', escalate: humanAsked ? '🙋 Клиент зовёт оператора — бот передал обращение вам' : '🤖 Бот передал обращение специалисту', resolved: '🤖 Клиент подтвердил, что решено — бот закрыл обращение' }
       postTicketMessage(ticket.telegramTopicId, `<b>${labels[action]}</b>\n\n${escapeHtml(reply)}`)
         .then(() => { if (action === 'resolved') return closeTicketTopic(ticket.telegramTopicId) })
         .catch((e) => console.error('[support-bot] telegram sync failed:', e.message))
     }
+
+    if (action === 'escalate') notifyHandoff(ticket, humanAsked ? 'human' : 'escalate', message.id)
 
     return message
   } catch (e) {
@@ -323,8 +336,28 @@ async function maybeContinueBotConversation(ticket) {
     where: { ticketId: ticket.id },
     orderBy: { createdAt: 'asc' }
   })
-  if (!botMayContinue(messages)) return null
+  if (ticket.botStage === HUMAN_REQUESTED) return null
+  if (!botMayContinue(messages)) {
+    // the bot has used up its turns and nobody from the team has written yet: the owner is called
+    if (!messages.some((m) => m.isAdmin && !m.isBot)) notifyHandoff(ticket, 'limit', messages[messages.length - 1]?.id)
+    return null
+  }
   return runBotTurn(ticket, messages)
+}
+
+// The customer asked for a person: the bot steps out of this ticket for good.
+const HUMAN_REQUESTED = 'HUMAN_REQUESTED'
+
+const HANDOFF_TITLES = {
+  human: '🙋 Клиент зовёт оператора',
+  escalate: '🤖 Бот передал обращение — нужен ваш ответ',
+  limit: '🤖 Бот больше не отвечает — нужен ваш ответ'
+}
+
+// A push of its own, apart from the usual «Новое сообщение в тикете»: this one needs the owner.
+function notifyHandoff(ticket, reason, eventId) {
+  sendAdminPush({ title: HANDOFF_TITLES[reason], body: String(ticket.subject || 'Обращение в поддержку').slice(0, 120), channel: 'tickets', key: `handoff_${ticket.id}_${eventId || Date.now()}`, ticketId: ticket.id })
+    .catch((e) => console.error('[support-bot] handoff push failed:', e.message))
 }
 
 // The bot keeps the conversation going until a person from the team writes in the ticket (from then on it is
