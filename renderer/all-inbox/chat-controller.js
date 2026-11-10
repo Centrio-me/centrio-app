@@ -60,6 +60,7 @@ function createChatController({ state, webviewOf, host }) {
             current.match = sameChat(current.chat.title, data.title)
             view.setMismatch(!current.match, data.title)
             if (!current.match) return
+            if (!current.confirmed) { current.confirmed = true; if (typeof current.onConfirmed === 'function') current.onConfirmed() }
             const rows = buildTimeline(data.messages, Date.now())
             view.update(rows, signature(rows))
             const sub = [data.subtitle, current.chat.messengerName].filter(Boolean).join(' · ')
@@ -97,10 +98,10 @@ function createChatController({ state, webviewOf, host }) {
     }
 
     /** @returns {boolean} whether our window took over (the messenger has a chat adapter) */
-    function open(chat, adapterId) {
+    function open(chat, adapterId, onConfirmed) {
         const adapter = chatAdapterFor(adapterId)
         if (!adapter) { close(); return false }
-        current = { chat, adapter, match: false }
+        current = { chat, adapter, match: false, onConfirmed, confirmed: false }
         view.show(chat)
         view.setMismatch(true, '')
         clearInterval(timer)

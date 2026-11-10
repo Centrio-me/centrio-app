@@ -11,6 +11,8 @@ const READ_TIMEOUT_MS = 2500
 const OPEN_KEY = 'centrio-all-inbox-open'
 const FILTER_KEY = 'centrio-all-inbox-filter'
 const TAB_SETTLE_MS = 450
+const LOCATE_TIMEOUT_MS = 8000
+const PATHS_KEY = 'centrio-all-inbox-paths'
 
 function withTimeout(promise, ms) {
     return Promise.race([promise, new Promise((resolve) => setTimeout(() => resolve(null), ms))])
@@ -56,6 +58,8 @@ function createAllInbox({ state, switchTab, tGet }) {
     let sources = []
     let filter = readStorage(FILTER_KEY, 'all')
     let activeId = ''
+    let paths = {}
+    try { paths = JSON.parse(readStorage(PATHS_KEY, '{}')) || {} } catch { paths = {} }
     const contentArea = document.getElementById('contentArea')
     const chats = contentArea ? createChatController({ state, webviewOf: (id) => document.getElementById(`webview-${id}`), host: contentArea }) : null
 
@@ -154,12 +158,29 @@ function createAllInbox({ state, switchTab, tGet }) {
         let adapter = null
         try { adapter = adapterFor(view.getURL()) } catch {}
         if (!adapter) return
-        const point = await withTimeout(view.executeJavaScript(adapter.locate(chat.key)).catch(() => null), READ_TIMEOUT_MS)
-        if (!point || typeof point.x !== 'number') { chats?.close(); return }
-        // the pages only react to real clicks
-        clickAt(view, point)
-        // our conversation window goes over the tab, which keeps working behind it
-        chats?.open(chat, adapter.id)
+        const run = (code, ms = READ_TIMEOUT_MS) => withTimeout(view.executeJavaScript(code).catch(() => null), ms)
+        const knownPath = paths[chat.id]
+        let opened = false
+        if (typeof adapter.open === 'function') {
+            // Telegram opens a chat by its id itself: nothing is clicked
+            opened = (await run(adapter.open(chat.key))) === true
+        } else if (knownPath && typeof adapter.navigate === 'function') {
+            // MAX: a chat opened before is opened again by its address
+            opened = (await run(adapter.navigate(knownPath))) === true
+        }
+        if (!opened) {
+            // the first time: a real click on the chat in the messenger's own list (the pages ignore synthetic ones)
+            const point = await run(adapter.locate(chat.key), LOCATE_TIMEOUT_MS)
+            if (!point || typeof point.x !== 'number') { chats?.close(); return }
+            clickAt(view, point)
+        }
+        // our conversation window goes over the tab, which keeps working behind it; once the right chat is confirmed
+        // open, its address is remembered for next time
+        chats?.open(chat, adapter.id, async () => {
+            if (!adapter.PATH) return
+            const path = await run(adapter.PATH)
+            if (path) { paths[chat.id] = path; writeStorage(PATHS_KEY, JSON.stringify(paths)) }
+        })
         setTimeout(readAll, 900)
     }
 

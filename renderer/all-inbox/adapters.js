@@ -80,6 +80,12 @@ const telegram = {
     locate: (key) => `(function () {${AVATAR_HELPER}
         var key = ${JSON.stringify(String(key))};
         return __ciCentre(function () { return document.querySelector('.chatlist a.chatlist-chat[data-peer-id="' + key + '"]'); });
+    })()`,
+    // Telegram opens a chat by its id itself — no click on the list, so it cannot land on another chat
+    open: (key) => `(function () {
+        var id = Number(${JSON.stringify(String(key))});
+        if (!id || !window.appImManager || typeof appImManager.setInnerPeer !== 'function') return false;
+        try { appImManager.setInnerPeer({ peerId: id }); return true; } catch (e) { return false; }
     })()`
 }
 
@@ -109,11 +115,31 @@ const max = {
     })()`,
     locate: (key) => `(function () {${AVATAR_HELPER}
         var key = ${JSON.stringify(String(key))};
-        return __ciCentre(function () {
+        function find() {
             var cells = document.querySelectorAll('.scrollListContent > div.item button.cell');
             for (var i = 0; i < cells.length; i++) { var t = cells[i].querySelector('.text'); if (t && __ciText(t) === key) return cells[i]; }
             return null;
+        }
+        // MAX keeps only the visible part of its list on the page: scroll down to the chat when it is further away
+        return new Promise(function (resolve) {
+            var box = document.querySelector('.scrollListScrollable');
+            var steps = 0;
+            (function look() {
+                if (find() || !box || steps > 40) return resolve(__ciCentre(find));
+                if (steps === 0) box.scrollTop = 0; else box.scrollTop += Math.max(200, box.clientHeight * 0.8);
+                steps++;
+                setTimeout(look, 140);
+            })();
         });
+    })()`,
+    // a chat MAX has opened once is opened again by its address, like MAX's own links do
+    PATH: `(function () { var p = location.pathname; return p.charAt(0) === '/' && /^-?[0-9]+$/.test(p.slice(1)) ? p : ''; })()`,
+    navigate: (path) => `(function () {
+        var path = ${JSON.stringify(String(path))};
+        if (path.charAt(0) !== '/' || !/^-?[0-9]+$/.test(path.slice(1))) return false;
+        var a = document.createElement('a'); a.href = path; a.style.display = 'none';
+        document.body.appendChild(a); a.click(); a.remove();
+        return true;
     })()`
 }
 
