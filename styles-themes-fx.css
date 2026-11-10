@@ -71,8 +71,8 @@ html[data-tod="morning"] .fx-sky.morning,
 html[data-tod="day"] .fx-sky.day,
 html[data-tod="evening"] .fx-sky.evening,
 html[data-tod="night"] .fx-sky.night { opacity: 1; }
-.fx-sky.morning { background: linear-gradient(180deg, #ffe7d1 0%, #ffd2c2 55%, #f9bccb 100%); }
-.fx-sky.day { background: linear-gradient(180deg, #f1f6ff 0%, #e1ebff 60%, #d2e2ff 100%); }
+.fx-sky.morning { background: linear-gradient(180deg, #ffcfb0 0%, #ffc4b4 50%, #f7b3c6 100%); } /* the title bar sits on the top: it carries the colour too */
+.fx-sky.day { background: linear-gradient(180deg, #cfe0ff 0%, #d9e6ff 50%, #c7dbff 100%); }
 .fx-sky.evening { background: linear-gradient(180deg, #2a1638 0%, #4d2444 45%, #8f3f3a 100%); }
 .fx-sky.night { background: linear-gradient(180deg, #050a1c 0%, #0a1330 55%, #131f44 100%); }
 .theme-fx .fx-stars {
@@ -97,8 +97,8 @@ html[data-tod="night"] .fx-sun { left: 90%; top: 4%; width: 220px; height: 220px
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 /* each part of the day tints the window's own colours */
-html[data-tod="morning"] { --fx-ground: #ffe1cc; --fx-panel: rgba(255, 250, 246, .9); --text-primary: #3a2230; --text-secondary: #8a5a62; --text-muted: #a07a80; --bg-hover: rgba(120, 60, 70, .08); --bg-active: rgba(120, 60, 70, .12); }
-html[data-tod="day"] { --fx-ground: #e6eeff; --fx-panel: rgba(255, 255, 255, .92); --text-primary: #18233a; --text-secondary: #5a6a8a; --text-muted: #7a88a6; --bg-hover: rgba(30, 60, 120, .07); --bg-active: rgba(30, 60, 120, .11); }
+html[data-tod="morning"] { --fx-ground: #ffcfb0; --fx-panel: rgba(255, 250, 246, .9); --text-primary: #3a2230; --text-secondary: #8a5a62; --text-muted: #a07a80; --bg-hover: rgba(120, 60, 70, .08); --bg-active: rgba(120, 60, 70, .12); }
+html[data-tod="day"] { --fx-ground: #cfe0ff; --fx-panel: rgba(255, 255, 255, .92); --text-primary: #18233a; --text-secondary: #5a6a8a; --text-muted: #7a88a6; --bg-hover: rgba(30, 60, 120, .07); --bg-active: rgba(30, 60, 120, .11); }
 html[data-tod="evening"] { --fx-ground: #3a1c3e; --fx-panel: rgba(32, 16, 30, .86); --text-primary: #fff3ea; --text-secondary: #e6b9a4; --text-muted: #c99a88; --bg-hover: rgba(255, 220, 190, .08); --bg-active: rgba(255, 220, 190, .14); }
 html[data-tod="night"] { --fx-ground: #070d22; --fx-panel: rgba(8, 13, 32, .88); --text-primary: #dfe6ff; --text-secondary: #8794c0; --text-muted: #6c79a6; --bg-hover: rgba(160, 180, 255, .07); --bg-active: rgba(160, 180, 255, .12); }
 html[data-fx="daytime"] body { color: var(--text-primary); }
