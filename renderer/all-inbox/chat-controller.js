@@ -13,6 +13,7 @@ const FOCUS_SETTLE_MS = 120
 const TYPE_SETTLE_MS = 80
 const AFTER_SEND_MS = 600
 const PICTURE_TIMEOUT_MS = 6000
+const HOVER_SETTLE_MS = 250
 const POPUP_WAIT_MS = 5000
 const POPUP_POLL_MS = 150
 const AFTER_DROP_MS = 900
@@ -175,6 +176,15 @@ function createChatController({ state, webviewOf, host, ipcRenderer }) {
         // an answer to a message: the messenger itself is told which one, before anything is typed
         if (reply && typeof current.adapter.REPLY === 'function') {
             const id = String(reply.id).split('+')[0]
+            // MAX: its reply button comes only under the mouse — the mouse is moved over the message first
+            if (typeof current.adapter.REPLY_POINT === 'function') {
+                const point = await run(w, current.adapter.REPLY_POINT(id))
+                if (!point || typeof point.x !== 'number') return false
+                let zoom = 1
+                try { zoom = Number(w.getZoomFactor()) || 1 } catch {}
+                w.sendInputEvent({ type: 'mouseMove', x: Math.round(point.x * zoom), y: Math.round(point.y * zoom) })
+                await wait(HOVER_SETTLE_MS)
+            }
             if (!(await run(w, current.adapter.REPLY(id)))) return false
             await wait(FOCUS_SETTLE_MS)
         }

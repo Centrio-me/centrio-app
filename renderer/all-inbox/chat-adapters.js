@@ -306,6 +306,26 @@ const max = {
     })()`,
     sendsOnDrop: true,
     MEDIA_POPUP: '',
+    // answer a message: MAX shows its «Ответить» button only under the mouse, so the tab first gets the mouse over
+    // the message (REPLY_POINT gives where), then the button is pressed
+    REPLY_POINT: (id) => `(function () {
+        var parts = ${JSON.stringify(String(id))}.split(':');
+        var it = document.querySelector('.openedChat div.item[data-index="' + parts[0] + '"]');
+        var bubbles = it ? it.querySelectorAll('[data-bubbles-variant] .bubble') : [];
+        var b = bubbles[Number(parts[1]) || 0] || bubbles[0];
+        if (!b) return null;
+        b.scrollIntoView({ block: 'nearest' });
+        var r = b.getBoundingClientRect();
+        return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+    })()`,
+    REPLY: (id) => `(function () {
+        var parts = ${JSON.stringify(String(id))}.split(':');
+        var it = document.querySelector('.openedChat div.item[data-index="' + parts[0] + '"]');
+        var button = it && it.querySelector('button[aria-label="Ответить"]');
+        if (!button) return false;
+        button.click();
+        return true;
+    })()`,
     OLDER: `(function () {
         var chat = document.querySelector('.openedChat');
         var items = chat ? chat.querySelectorAll('div.item[data-index]') : [];
