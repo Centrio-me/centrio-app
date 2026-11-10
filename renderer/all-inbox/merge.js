@@ -4,6 +4,7 @@ const { parseListTime, formatListTime } = require('../../shared/inbox-time')
 
 const MAX_TITLE = 120
 const MAX_PREVIEW = 200
+const KNOWN_ICONS = new Set(['saved'])
 
 /**
  * @param {{ messenger: { id: string, name: string, icon?: string }, chats: object[] }[]} sources
@@ -36,7 +37,9 @@ function mergeInbox(sources, now, filter = {}) {
                 at: Number(chat.at) > 0 ? Number(chat.at) : parseListTime(chat.time, now),
                 unread,
                 muted: chat.muted === true,
-                avatar: typeof chat.avatar === 'string' ? chat.avatar : ''
+                avatar: typeof chat.avatar === 'string' ? chat.avatar : '',
+                // a chat drawn with an icon of its own instead of an avatar («Избранное»)
+                icon: KNOWN_ICONS.has(chat.icon) ? chat.icon : ''
             })
         }
     }

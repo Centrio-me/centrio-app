@@ -53,3 +53,12 @@ test('an exact time from the messenger wins over the label, and gets a label', (
     assert.equal(list[0].at, new Date(2026, 10, 10, 9, 5).getTime())
     assert.equal(list[0].timeLabel, '09:05')
 })
+
+test('a special chat keeps its icon, anything else is dropped', () => {
+    const list = mergeInbox([{ messenger: { id: 'tg', name: 'TG' }, chats: [
+        { key: '1', title: 'Избранное', icon: 'saved', time: '10:00' },
+        { key: '2', title: 'A', icon: '<img onerror=x>', time: '09:00' }
+    ] }], NOW)
+    assert.equal(list[0].icon, 'saved')
+    assert.equal(list[1].icon, '')
+})

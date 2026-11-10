@@ -1,7 +1,8 @@
 'use strict'
 // «Все мессенджеры» (3.8): how each messenger's web page shows its chat list. Every adapter has
 //   match(url)      — whether a tab is this messenger
-//   LIST            — a page script that returns [{ key, title, preview, time, unread, muted, avatar }]
+//   LIST            — a page script that returns [{ key, title, preview, time | at, unread, muted, avatar, icon }]
+//                     (or listScript({ sweep }) — the same, built per read; MAX uses it to walk its list through)
 //   locate(key)     — a page script that scrolls that chat into view and returns its centre { x, y } (or null);
 //                     the tab then gets a real click there (the pages ignore synthetic clicks)
 // Everything runs inside the page through webview.executeJavaScript; nothing leaves the computer.
@@ -10,6 +11,15 @@
 const MAX_CHATS = 60
 // Telegram gives its whole dialog list; the freshest ones are enough for one screen of history
 const TELEGRAM_CHATS = 150
+// MAX: how many chats are remembered, and how its list is walked through while the tab is not on screen
+const MAX_ALL_CHATS = 200
+const MAX_WALK_STEPS = 25
+const MAX_WALK_STEP_MS = 220
+const MAX_WALK_EVERY_MS = 90 * 1000
+const MAX_WALK_WAIT_TRIES = 3
+const MAX_WALK_WAIT_MS = 700
+// avatars asked from Telegram at the same time (the rest come on the next reads)
+const TELEGRAM_AVATARS_AT_ONCE = 8
 
 // A blob:/data: avatar (Telegram keeps them as blob: URLs only that page can read) becomes a small data URL,
 // cached per chat in the page so it is drawn once.
@@ -98,13 +108,39 @@ const telegram = {
         var rs = window.rootScope, m = rs && rs.managers;
         if (!m || !m.dialogsStorage || !m.appChatsManager || !m.appUsersManager) return fromDom();
         var titles = window.__ciTgTitles || (window.__ciTgTitles = {});
+        var peers = window.__ciTgPeers || (window.__ciTgPeers = {});
         function titleOf(peerId) {
             if (titles[peerId]) return Promise.resolve(titles[peerId]);
             if (peerId === rs.myId) return Promise.resolve(titles[peerId] = 'Избранное');
             var p = peerId < 0
-                ? m.appChatsManager.getChat(-peerId).then(function (c) { return c && c.title || ''; })
-                : m.appUsersManager.getUser(peerId).then(function (u) { return u ? [u.first_name, u.last_name].filter(Boolean).join(' ') : ''; });
+                ? m.appChatsManager.getChat(-peerId).then(function (c) { peers[peerId] = c; return c && c.title || ''; })
+                : m.appUsersManager.getUser(peerId).then(function (u) { peers[peerId] = u; return u ? [u.first_name, u.last_name].filter(Boolean).join(' ') : ''; });
             return p.then(function (t) { if (t) titles[peerId] = t; return t; }, function () { return ''; });
+        }
+        // Avatars of chats the page has not drawn: asked from Telegram a few at a time in the background, kept as
+        // small pictures per photo, so the list fills in over a couple of reads and never waits for them
+        var avatars = window.__ciTgAvatars || (window.__ciTgAvatars = {});
+        var loadingAv = window.__ciTgAvLoading || (window.__ciTgAvLoading = {});
+        function avatarOf(peerId) {
+            var peer = peers[peerId], photo = peer && peer.photo;
+            if (!photo || !photo.photo_id || !m.appAvatarsManager) return '';
+            var id = String(photo.photo_id), have = avatars[peerId];
+            if (have && have.id === id) return have.data;
+            if (!loadingAv[peerId] && Object.keys(loadingAv).length < ${TELEGRAM_AVATARS_AT_ONCE}) {
+                loadingAv[peerId] = 1;
+                Promise.resolve(m.appAvatarsManager.loadAvatar(peerId, photo, 'photo_small'))
+                    .then(function (url) { return typeof url === 'string' ? fetch(url).then(function (r) { return r.blob(); }) : null; })
+                    .then(function (blob) { return blob ? createImageBitmap(blob) : null; })
+                    .then(function (bmp) {
+                        if (!bmp) return;
+                        var c = document.createElement('canvas'); c.width = 64; c.height = 64;
+                        c.getContext('2d').drawImage(bmp, 0, 0, 64, 64);
+                        avatars[peerId] = { id: id, data: c.toDataURL('image/jpeg', 0.85) };
+                    })
+                    .catch(function () {})
+                    .then(function () { delete loadingAv[peerId]; });
+            }
+            return have ? have.data : '';
         }
         function mediaLabel(media) {
             var k = media && media._ || '';
@@ -161,7 +197,8 @@ const telegram = {
                         time: seen ? seen.time : '',
                         unread: x.unread_count || 0,
                         muted: !!(ns.mute_until && ns.mute_until * 1000 > now) || (seen ? seen.muted : false),
-                        avatar: seen ? seen.avatar : ''
+                        avatar: (seen && seen.avatar) || (x.peerId === rs.myId ? '' : avatarOf(x.peerId)),
+                        icon: x.peerId === rs.myId ? 'saved' : ''
                     });
                 });
                 return out.length ? out : domList;
@@ -183,26 +220,58 @@ const telegram = {
 const max = {
     id: 'max',
     match: (url) => /^https:\/\/web\.max\.ru\//.test(url),
-    LIST: `(function () {${AVATAR_HELPER}
-        var cells = document.querySelectorAll('.scrollListContent > div.item button.cell');
-        var out = [], seen = {};
-        for (var i = 0; i < cells.length && out.length < ${MAX_CHATS}; i++) {
-            var c = cells[i];
-            var leaves = [], all = c.querySelectorAll('.text, .time');
-            for (var j = 0; j < all.length; j++) if (all[j].children.length === 0 || /textMultiline/.test(all[j].className)) leaves.push(all[j]);
-            var title = '', time = '', unread = 0, preview = [];
-            for (var k = 0; k < leaves.length; k++) {
-                var el = leaves[k], text = __ciText(el), cls = String(el.className);
-                if (!text) continue;
-                if (/(^|\\s)time(\\s|$)/.test(cls)) { time = text; continue; }
-                if (!title) { title = text; continue; }
-                if (/text--20/.test(cls) && /^\\d+$/.test(text)) { unread = text; continue; }
-                preview.push(text);
+    // MAX draws only the chats on screen and keeps no list anywhere else: the rows are remembered as they are seen,
+    // and while the tab is not on screen its list is walked through now and then (scrolled down a screen at a time, then
+    // back to where it was), so every chat gets on the list. New messages lift a chat to the top, where it is seen at once.
+    listScript: ({ sweep }) => `(function () {${AVATAR_HELPER}
+        function readCells() {
+            var cells = document.querySelectorAll('.scrollListContent > div.item button.cell');
+            var out = [], seen = {};
+            for (var i = 0; i < cells.length; i++) {
+                var c = cells[i];
+                var leaves = [], all = c.querySelectorAll('.text, .time');
+                for (var j = 0; j < all.length; j++) if (all[j].children.length === 0 || /textMultiline/.test(all[j].className)) leaves.push(all[j]);
+                var title = '', time = '', unread = 0, preview = [];
+                for (var k = 0; k < leaves.length; k++) {
+                    var el = leaves[k], text = __ciText(el), cls = String(el.className);
+                    if (!text) continue;
+                    if (/(^|\\s)time(\\s|$)/.test(cls)) { time = text; continue; }
+                    if (!title) { title = text; continue; }
+                    if (/text--20/.test(cls) && /^\\d+$/.test(text)) { unread = text; continue; }
+                    preview.push(text);
+                }
+                if (!title || seen[title]) continue; seen[title] = 1;
+                out.push({ key: title, title: title, preview: preview.join(': '), time: time, unread: unread, avatar: __ciAvatar('max' + title, c.querySelector('img.avatarImage')) });
             }
-            if (!title || seen[title]) continue; seen[title] = 1;
-            out.push({ key: title, title: title, preview: preview.join(': '), time: time, unread: unread, avatar: __ciAvatar('max' + title, c.querySelector('img.avatarImage')) });
+            return out;
         }
-        return out;
+        var cache = window.__ciMaxChats || (window.__ciMaxChats = {});
+        function remember(rows) { var t = Date.now(); for (var i = 0; i < rows.length; i++) cache[rows[i].key] = { row: rows[i], at: t }; }
+        function listBox() { var cell = document.querySelector('.scrollListContent > div.item button.cell'); return cell && cell.closest('.scrollListScrollable'); }
+        function walk() {
+            var box = listBox();
+            if (!box) return;
+            window.__ciMaxWalking = true;
+            var start = box.scrollTop, steps = 0, waited = 0, height = box.scrollHeight;
+            (function step() {
+                remember(readCells());
+                var end = box.scrollTop + box.clientHeight >= box.scrollHeight - 4;
+                // at the bottom MAX fetches the next older chats: wait for them a moment before calling it the end
+                if (end && box.scrollHeight === height && waited < ${MAX_WALK_WAIT_TRIES}) { waited++; setTimeout(step, ${MAX_WALK_WAIT_MS}); return; }
+                if (box.scrollHeight !== height) { height = box.scrollHeight; waited = 0; end = false; }
+                if (end || ++steps > ${MAX_WALK_STEPS} || Object.keys(cache).length >= ${MAX_ALL_CHATS}) {
+                    box.scrollTop = start;
+                    window.__ciMaxWalking = false;
+                    window.__ciMaxWalkedAt = Date.now();
+                    return;
+                }
+                box.scrollTop += Math.max(200, box.clientHeight * 0.9);
+                setTimeout(step, ${MAX_WALK_STEP_MS});
+            })();
+        }
+        remember(readCells());
+        if (${sweep ? 1 : 0} && !window.__ciMaxWalking && Date.now() - (window.__ciMaxWalkedAt || 0) > ${MAX_WALK_EVERY_MS}) walk();
+        return Object.keys(cache).map(function (k) { return cache[k].row; });
     })()`,
     locate: (key) => `(function () {${AVATAR_HELPER}
         var key = ${JSON.stringify(String(key))};

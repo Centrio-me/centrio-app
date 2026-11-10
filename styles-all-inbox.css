@@ -232,3 +232,26 @@ html[data-fx] .aic-head { border-bottom-color: rgba(255, 255, 255, .06); }
 
 /* a tab that must start to show its chats gets a layout nobody sees (all-inbox.js, like reply-render) */
 webview.inbox-warm:not(.active) { display: flex; opacity: 0; pointer-events: none; z-index: -1; }
+
+/* one pill per messenger tab: narrows the list to it */
+.ai-sources { display: flex; gap: 6px; overflow-x: auto; padding: 2px 0 2px; scrollbar-width: none; mask-image: linear-gradient(90deg, #000 88%, transparent); }
+.ai-sources::-webkit-scrollbar { display: none; }
+.ai-sources[hidden] { display: none; }
+.ai-src {
+    flex: none; display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px 0 6px; border: 1px solid var(--border);
+    border-radius: 999px; background: transparent; color: var(--text-secondary); font: inherit; font-size: 12px; font-weight: 600;
+    cursor: pointer; transition: background .12s ease, color .12s ease, border-color .12s ease, opacity .15s ease;
+}
+.ai-src img { width: 18px; height: 18px; border-radius: 5px; object-fit: cover; }
+.ai-src-name { max-width: 110px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.ai-src:hover { color: var(--text-primary); background: var(--bg-hover); }
+.ai-src.is-on { color: var(--accent); border-color: var(--accent); background: var(--accent-dim); }
+.ai-src.is-dim { opacity: .55; }
+.ai-src:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.ai-src-dot {
+    min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--accent); color: #fff;
+    font-size: 10px; font-weight: 700; line-height: 18px; text-align: center; font-variant-numeric: tabular-nums;
+}
+
+/* «Избранное»: a bookmark, like in Telegram */
+.ai-ava.is-saved, .aic-ava.is-saved { background: linear-gradient(160deg, #6fb7f5, #3a8fe0); color: #fff; }

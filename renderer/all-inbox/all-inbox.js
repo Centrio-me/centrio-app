@@ -10,6 +10,11 @@ const POLL_MS = 4000
 const READ_TIMEOUT_MS = 2500
 const OPEN_KEY = 'centrio-all-inbox-open'
 const FILTER_KEY = 'centrio-all-inbox-filter'
+const SOURCE_KEY = 'centrio-all-inbox-source'
+// «Избранное» and other chats drawn with an icon of their own
+const CHAT_ICONS = {
+    saved: '<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4.2L5 21V4a1 1 0 0 1 1-1z"/></svg>'
+}
 const TAB_SETTLE_MS = 450
 const LOCATE_TIMEOUT_MS = 8000
 const PATHS_KEY = 'centrio-all-inbox-paths'
@@ -59,6 +64,13 @@ function createAllInbox({ state, switchTab, tGet, ipcRenderer }) {
     let reading = false
     let sources = []
     let filter = readStorage(FILTER_KEY, 'all')
+    let source = readStorage(SOURCE_KEY, '')
+    let lastListSig = ''
+    const sourcesEl = document.createElement('div')
+    sourcesEl.className = 'ai-sources'
+    sourcesEl.setAttribute('role', 'toolbar')
+    sourcesEl.setAttribute('aria-label', t('sources', 'Мессенджеры'))
+    panel.querySelector('.ai-tools')?.append(sourcesEl)
     let activeId = ''
     let paths = {}
     try { paths = JSON.parse(readStorage(PATHS_KEY, '{}')) || {} } catch { paths = {} }
@@ -80,7 +92,9 @@ function createAllInbox({ state, switchTab, tGet, ipcRenderer }) {
                 try { url = view.getURL() } catch { return null }
                 const adapter = adapterFor(url)
                 if (!adapter) return null
-                const chats = await withTimeout(view.executeJavaScript(adapter.LIST).catch(() => null), READ_TIMEOUT_MS)
+                // MAX walks its list through only while the person is not looking at that tab
+                const script = typeof adapter.listScript === 'function' ? adapter.listScript({ sweep: state.activeTabId !== m.id }) : adapter.LIST
+                const chats = await withTimeout(view.executeJavaScript(script).catch(() => null), READ_TIMEOUT_MS)
                 // a messenger that was never opened since start-up does not start in a page without layout
                 // (Telegram waits for a frame to draw): it gets an invisible layout until its chats show up
                 view.classList.toggle(WARM_CLASS, !(Array.isArray(chats) && chats.length))
@@ -98,8 +112,10 @@ function createAllInbox({ state, switchTab, tGet, ipcRenderer }) {
         row.type = 'button'
         row.dataset.id = chat.id
 
-        const ava = el('div', 'ai-ava')
-        if (chat.avatar) {
+        const ava = el('div', `ai-ava${chat.icon ? ` is-icon is-${chat.icon}` : ''}`)
+        if (chat.icon && CHAT_ICONS[chat.icon]) {
+            ava.innerHTML = CHAT_ICONS[chat.icon]
+        } else if (chat.avatar) {
             const img = el('img')
             img.src = chat.avatar
             img.alt = ''
@@ -131,15 +147,51 @@ function createAllInbox({ state, switchTab, tGet, ipcRenderer }) {
         return row
     }
 
+    // one round button per messenger tab: the list can be narrowed to it
+    function renderSources(all) {
+        const present = sources.map((src) => src.messenger)
+        if (source && !present.some((m) => m.id === source)) source = ''
+        const sig = present.map((m) => m.id + ':' + all.filter((c) => c.messengerId === m.id && c.unread > 0 && !c.muted).length).join('|') + '#' + source
+        if (sourcesEl.dataset.sig === sig) return
+        sourcesEl.dataset.sig = sig
+        sourcesEl.replaceChildren()
+        sourcesEl.hidden = present.length < 2
+        for (const m of present) {
+            const b = el('button', `ai-src${source === m.id ? ' is-on' : ''}${source && source !== m.id ? ' is-dim' : ''}`)
+            b.type = 'button'
+            b.title = m.name
+            b.setAttribute('aria-pressed', String(source === m.id))
+            if (m.icon) { const img = el('img'); img.src = m.icon; img.alt = ''; b.append(img) }
+            b.append(el('span', 'ai-src-name', m.name))
+            const unread = all.filter((c) => c.messengerId === m.id && c.unread > 0 && !c.muted).length
+            if (unread) b.append(el('span', 'ai-src-dot', unread > 99 ? '99+' : String(unread)))
+            b.addEventListener('click', () => {
+                source = source === m.id ? '' : m.id
+                writeStorage(SOURCE_KEY, source)
+                lastListSig = ''
+                render()
+                listEl.scrollTop = 0
+            })
+            sourcesEl.append(b)
+        }
+        sourcesEl.querySelector('.ai-src.is-on')?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+    }
+
     function render() {
         const query = searchEl ? searchEl.value : ''
         const all = mergeInbox(sources, Date.now())
-        const list = mergeInbox(sources, Date.now(), { unreadOnly: filter === 'unread', query })
+        const list = mergeInbox(sources, Date.now(), { unreadOnly: filter === 'unread', query, messengerId: source })
+        renderSources(all)
         const unreadChats = all.filter((c) => c.unread > 0 && !c.muted).length
         if (badgeEl) { badgeEl.hidden = unreadChats === 0; badgeEl.textContent = unreadChats > 99 ? '99+' : String(unreadChats) }
         if (countEl) countEl.textContent = String(all.length)
         filterButtons.forEach((b) => b.classList.toggle('is-on', b.dataset.aiFilter === filter))
 
+        // the list is drawn again only when something in it changed: no blinking pictures, hover and scroll stay
+        const sig = list.map((c) => `${c.id}|${c.unread}|${c.muted ? 1 : 0}|${c.timeLabel}|${c.preview}|${c.avatar.length}|${c.title}|${c.icon}`).join(';') + '#' + activeId
+        if (sig === lastListSig) return
+        lastListSig = sig
+        const keepScroll = listEl.scrollTop
         listEl.replaceChildren()
         if (!list.length) {
             listEl.append(el('div', 'ai-empty', sources.length
@@ -150,6 +202,7 @@ function createAllInbox({ state, switchTab, tGet, ipcRenderer }) {
         const frag = document.createDocumentFragment()
         list.forEach((chat) => frag.append(rowFor(chat)))
         listEl.append(frag)
+        listEl.scrollTop = keepScroll
     }
 
     async function openChat(chat) {

@@ -162,7 +162,9 @@ function createChatView({ host, onSend, onOpenInTab, onClose, onOlder, onLink, o
             q('.aic-sub').textContent = chat.messengerName
             const ava = q('.aic-ava')
             ava.replaceChildren()
-            if (chat.avatar) { const img = el('img'); img.src = chat.avatar; img.alt = ''; ava.append(img) } else ava.textContent = initials(chat.title)
+            ava.className = `aic-ava${chat.icon ? ` is-icon is-${chat.icon}` : ''}`
+            if (chat.icon === 'saved') ava.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4.2L5 21V4a1 1 0 0 1 1-1z"/></svg>'
+            else if (chat.avatar) { const img = el('img'); img.src = chat.avatar; img.alt = ''; ava.append(img) } else ava.textContent = initials(chat.title)
             if (chat.messengerIcon) { const mark = el('img', 'ai-service'); mark.src = chat.messengerIcon; mark.alt = ''; ava.append(mark) }
             composer.reset()
             composer.setVisible(false)
