@@ -149,7 +149,8 @@
 			"createDesktopShortcut": true,
 			"createStartMenuShortcut": true,
 			"shortcutName": "Centrio",
-			"perMachine": false
+			"perMachine": false,
+			"include": "build/installer.nsh"
 		},
 		"asarUnpack": [
 			"assets/sounds/**/*"

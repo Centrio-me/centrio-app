@@ -188,4 +188,52 @@ router.post('/event', eventLimiter, (req, res) => {
     }
 })
 
+// ── «Удалил программу» (3.7.4, Windows) ─────────────────────────────────────
+// POST /api/visitors/link — the signed-in desktop says which install (visitorId) it is, so a later uninstall lands
+// in that account's profile. POST /api/visitors/uninstalled — the Windows uninstaller (build/installer.nsh) reports
+// the removal. The visitorId is a random uuid only that computer knows, so it doubles as the proof; an unknown id is
+// ignored (no rows are created by the uninstaller). See lib/uninstall-mark.js.
+const { isVisitorId, cleanVersion } = require('../lib/uninstall-mark')
+const linkLimiter = rateLimit({ name: 'visitors-link', windowMs: 60 * 1000, max: 10 })
+const uninstallLimiter = rateLimit({ name: 'visitors-uninstalled', windowMs: 60 * 1000, max: 10 })
+
+router.post('/link', linkLimiter, require('../middleware/auth'), async (req, res) => {
+    try {
+        const { visitorId, appVersion, platform } = req.body || {}
+        if (!isVisitorId(visitorId)) return res.status(400).json({ error: 'Неверный visitorId' })
+        const version = cleanVersion(appVersion)
+        const plat = typeof platform === 'string' ? platform.slice(0, 20) : null
+        await prisma.visitor.upsert({
+            where:  { visitorId },
+            update: { userId: req.user.id, lastSeenAt: new Date(), ...(version ? { appVersion: version } : {}), ...(plat ? { platform: plat } : {}) },
+            create: { visitorId, userId: req.user.id, platform: plat, appVersion: version, sessions: 1 }
+        })
+        res.json({ ok: true })
+    } catch (err) {
+        console.error('/visitors/link error:', err.message)
+        res.status(500).json({ error: 'Ошибка' })
+    }
+})
+
+router.post('/uninstalled', uninstallLimiter, async (req, res) => {
+    try {
+        const { visitorId, appVersion } = req.body || {}
+        if (!isVisitorId(visitorId)) return res.status(400).json({ error: 'Неверный visitorId' })
+        const version = cleanVersion(appVersion)
+        const now = new Date()
+        const updated = await prisma.visitor.updateMany({
+            where: { visitorId },
+            data:  { uninstalledAt: now, uninstallVersion: version }
+        })
+        if (updated.count > 0) {
+            require('../lib/event-log').appendEvent('uninstalls', { at: now.toISOString(), visitorId, appVersion: version })
+        }
+        // Always ok: the uninstaller never waits for or retries this
+        res.json({ ok: true })
+    } catch (err) {
+        console.error('/visitors/uninstalled error:', err.message)
+        res.status(500).json({ error: 'Ошибка' })
+    }
+})
+
 module.exports = router

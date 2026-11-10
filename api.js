@@ -199,6 +199,11 @@ async function request(method, path, body, token) {
 }
 
 module.exports = {
+    // 3.7.4: links this install (anonymous visitorId) to the signed-in account — «Удалил программу» in the admin
+    linkVisitor(token, body) {
+        return request('POST', '/api/visitors/link', body, token)
+    },
+
     register(email, password, name, consent) {
         return request('POST', '/api/auth/register', { email, password, name, consent: consent === true })
     },

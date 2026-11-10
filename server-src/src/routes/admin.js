@@ -1,6 +1,7 @@
 const router = require('express').Router()
 const axios   = require('axios')
 const prisma  = require('../utils/prisma')
+const { uninstallSummary, daysBetween } = require('../lib/uninstall-mark')
 const { getQrDataUrl, verifyTotp, checkSession } = require('../utils/admin-otp')
 const { sendEmail, sendRefundConfirmationEmail } = require('../lib/email')
 
@@ -233,8 +234,14 @@ router.get('/users/:id', async (req, res) => {
         // Security fix: never send the raw bcrypt hash to the client —
         // strip it from the object and expose only a boolean flag.
         const { passwordHash, _count, ...safeUser } = user
+        // 3.7.4: «Удалил программу» from the Windows uninstaller (lib/uninstall-mark.js)
+        const installs = await prisma.visitor.findMany({
+            where: { userId: user.id },
+            select: { uninstalledAt: true, uninstallVersion: true, lastSeenAt: true, firstSeenAt: true }
+        }).catch(() => [])
         res.json({
             ...safeUser,
+            uninstall: uninstallSummary(installs),
             hasPassword: !!passwordHash,
             online:     isOnline(user.lastSeenAt),
             provider:   detectProvider(user),
@@ -575,6 +582,43 @@ router.get('/users/:id/payments', async (req, res) => {
 // already defines '/users/:id' DELETE above (line ~211) with audit logging
 // and FK-constraint handling — so it's intentionally not carried over here.
 
+// ── GET /api/admin/uninstalls?days=30 ─────────────────────────────────────────
+// 3.7.4: who removed Centrio on Windows, after how many days, signed in or not and with which plan.
+router.get('/uninstalls', async (req, res) => {
+    try {
+        const days = Math.min(Math.max(parseInt(req.query.days, 10) || 30, 1), 365)
+        const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000)
+        const rows = await prisma.visitor.findMany({
+            where: { uninstalledAt: { gte: since } },
+            orderBy: { uninstalledAt: 'desc' },
+            take: 500,
+            select: { userId: true, firstSeenAt: true, lastSeenAt: true, uninstalledAt: true, uninstallVersion: true, messengersCount: true }
+        })
+        const ids = [...new Set(rows.map((r) => r.userId).filter(Boolean))]
+        const users = ids.length ? await prisma.user.findMany({ where: { id: { in: ids } }, select: { id: true, email: true, name: true, avatar: true, plan: true } }) : []
+        const byId = Object.fromEntries(users.map((u) => [u.id, u]))
+        const items = rows.map((r) => ({
+            at: r.uninstalledAt,
+            version: r.uninstallVersion,
+            daysUsed: daysBetween(r.firstSeenAt, r.uninstalledAt),
+            cameBack: !!(r.lastSeenAt && r.lastSeenAt > r.uninstalledAt),
+            messengers: r.messengersCount,
+            user: r.userId && byId[r.userId] ? byId[r.userId] : null
+        }))
+        res.json({
+            days,
+            total: items.length,
+            signedIn: items.filter((i) => i.user).length,
+            paying: items.filter((i) => i.user && i.user.plan !== 'FREE').length,
+            sameDay: items.filter((i) => i.daysUsed === 0).length,
+            items
+        })
+    } catch (err) {
+        console.error('Admin GET /uninstalls error:', err.message)
+        res.status(500).json({ error: 'Ошибка' })
+    }
+})
+
 // ── Support tickets ───────────────────────────────────────────────────
 // User-facing create/list/reply endpoints live in routes/tickets.js. This
 // block is the admin queue: list all tickets (optionally filtered by
@@ -605,7 +649,7 @@ router.post('/tickets', async (req, res) => {
                 messages: { create: { isAdmin: true, body: String(body).trim() } }
             },
             include: {
-                user: { select: { id: true, email: true, name: true } },
+                user: { select: { id: true, email: true, name: true, avatar: true } },
                 messages: { orderBy: { createdAt: 'asc' } }
             }
         })
@@ -644,7 +688,7 @@ router.get('/tickets', async (req, res) => {
         const tickets = await prisma.ticket.findMany({
             where,
             include: {
-                user: { select: { id: true, email: true, name: true } },
+                user: { select: { id: true, email: true, name: true, avatar: true } },
                 _count: { select: { messages: true } }
             },
             orderBy: { updatedAt: 'desc' }
@@ -661,7 +705,7 @@ router.get('/tickets/:id', async (req, res) => {
         const ticket = await prisma.ticket.findUnique({
             where: { id: req.params.id },
             include: {
-                user: { select: { id: true, email: true, name: true } },
+                user: { select: { id: true, email: true, name: true, avatar: true } },
                 messages: { orderBy: { createdAt: 'asc' } }
             }
         })
