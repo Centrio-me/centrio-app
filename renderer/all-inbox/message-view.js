@@ -90,7 +90,7 @@ function album(m, onZoom) {
             img.decoding = 'async'
             cell.append(img)
             cell.classList.add('is-zoomable')
-            cell.addEventListener('click', () => onZoom(m, item.src, ''))
+            cell.addEventListener('click', () => onZoom(m, item.src, item.picture || ''))
         }
         wrap.append(cell)
     }

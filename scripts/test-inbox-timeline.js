@@ -105,3 +105,30 @@ test('the messenger own grouping wins: a nameless album of Anna does not join th
     ], NOW).filter((r) => r.type === 'msg')
     assert.deepEqual(rows.map((r) => [r.groupStart, r.groupEnd]), [[true, false], [false, true], [true, false], [false, true]])
 })
+
+const pic = (id, mins, extra = {}) => ({ id, at: at(10, 9) + mins * 60000, kind: 'photo', media: `data:image/jpeg;base64,${id}`, mediaW: 400, mediaH: 300, time: '09:0' + mins, ...extra })
+
+test('photos sent one after another by one person become one album, laid out like Telegram', () => {
+    const rows = buildTimeline([pic('1', 0, { out: true }), pic('2', 0, { out: true }), pic('3', 1, { out: true, read: true })], NOW).filter((r) => r.type === 'msg')
+    assert.equal(rows.length, 1)
+    const album = rows[0].album
+    assert.equal(album.length, 3)
+    assert.deepEqual(album.map((a) => a.src), ['data:image/jpeg;base64,1', 'data:image/jpeg;base64,2', 'data:image/jpeg;base64,3'])
+    // one big photo on top, two under it
+    assert.deepEqual([album[0].x, album[0].y, album[0].w], [0, 0, 1])
+    assert.equal(album[1].y, album[2].y)
+    assert.equal(rows[0].time, '09:01')
+    assert.equal(rows[0].read, true)
+})
+
+test('a photo with a caption, from someone else or much later is not glued to the others', () => {
+    const rows = buildTimeline([pic('1', 0), pic('2', 0, { text: 'подпись' }), pic('3', 0, { out: true }), pic('4', 9, { out: true })], NOW).filter((r) => r.type === 'msg')
+    assert.equal(rows.length, 4)
+})
+
+test('two photos stand side by side, four make a square', () => {
+    const two = buildTimeline([pic('1', 0), pic('2', 0)], NOW).filter((r) => r.type === 'msg')[0].album
+    assert.deepEqual(two.map((a) => [a.x, a.y]), [[0, 0], [0.5, 0]])
+    const four = buildTimeline([pic('1', 0), pic('2', 0), pic('3', 0), pic('4', 0)], NOW).filter((r) => r.type === 'msg')[0].album
+    assert.deepEqual(four.map((a) => [a.x, a.y]), [[0, 0], [0.5, 0], [0, 0.5], [0.5, 0.5]])
+})

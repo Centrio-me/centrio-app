@@ -65,6 +65,7 @@ function buildTimeline(raw, now) {
         rows.push({
             type: 'msg',
             id: String(m.id),
+            at: Number(m.at) || 0,
             out: m.out === true,
             read: m.read === true,
             kind,
@@ -92,7 +93,53 @@ function buildTimeline(raw, now) {
             time: String(m.time || '')
         })
     }
-    return markGroups(rows)
+    return markGroups(mergePhotoRuns(rows))
+}
+
+const ALBUM_GAP_MS = 3 * 60 * 1000
+
+// photos sent one after another by one person, without captions, become one album — the way messengers show them
+function canJoin(a, b) {
+    const lone = (r) => r && r.type === 'msg' && r.kind === 'photo' && r.media && !r.album && !r.text && !r.reply && !r.forwarded
+    if (!lone(a) || !lone(b) || a.out !== b.out || a.author !== b.author || a.group !== b.group) return false
+    if (a.at && b.at) return Math.abs(b.at - a.at) <= ALBUM_GAP_MS
+    return a.time === b.time
+}
+
+function mergePhotoRuns(rows) {
+    const out = []
+    for (let i = 0; i < rows.length; i++) {
+        let j = i
+        while (j + 1 < rows.length && j - i + 1 < MAX_ALBUM && canJoin(rows[j], rows[j + 1])) j++
+        if (j === i) { out.push(rows[i]); continue }
+        const run = rows.slice(i, j + 1)
+        const last = run[run.length - 1]
+        out.push({ ...last, id: `${run[0].id}+${run.length}`, media: '', picture: '', album: layoutAlbum(run) })
+        i = j
+    }
+    return out
+}
+
+// the grid of an album: 2 side by side, 3 as one big and two under it, 4 as a square, more in rows of 2 and 3
+function layoutAlbum(run) {
+    const n = run.length
+    const cell = (r, x, y, w, h) => ({ src: r.media, picture: r.picture || '', x, y, w, h, ratio: 1 })
+    let items
+    let ratio
+    if (n === 2) { items = run.map((r, k) => cell(r, k / 2, 0, 0.5, 1)); ratio = 1.6 }
+    else if (n === 3) { items = [cell(run[0], 0, 0, 1, 0.62), cell(run[1], 0, 0.62, 0.5, 0.38), cell(run[2], 0.5, 0.62, 0.5, 0.38)]; ratio = 1.1 }
+    else if (n === 4) { items = run.map((r, k) => cell(r, (k % 2) / 2, Math.floor(k / 2) / 2, 0.5, 0.5)); ratio = 1 }
+    else {
+        const sizes = []
+        for (let left = n; left > 0;) { const take = left === 4 ? 2 : Math.min(3, left); sizes.push(take); left -= take }
+        items = []
+        let k = 0
+        sizes.forEach((count, row) => {
+            for (let c = 0; c < count; c++, k++) items.push(cell(run[k], c / count, row / sizes.length, 1 / count, 1 / sizes.length))
+        })
+        ratio = 3 / (sizes.length * 1.15)
+    }
+    return items.map((a) => ({ ...a, ratio }))
 }
 
 // Messages in a row from the same person (same side, same author, no day between) make one group, like in messengers:
