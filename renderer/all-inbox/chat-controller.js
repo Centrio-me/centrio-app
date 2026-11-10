@@ -13,6 +13,10 @@ const FOCUS_SETTLE_MS = 120
 const TYPE_SETTLE_MS = 80
 const AFTER_SEND_MS = 600
 const PICTURE_TIMEOUT_MS = 6000
+const POPUP_WAIT_MS = 5000
+const POPUP_POLL_MS = 150
+const AFTER_DROP_MS = 900
+
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms))
 const withTimeout = (p, ms) => Promise.race([p, wait(ms).then(() => null)])
@@ -27,9 +31,10 @@ function clickAt(view, point) {
 }
 
 /**
- * @param {{ state: object, webviewOf: (id: string) => any, host: HTMLElement }} deps
+ * @param {{ state: object, webviewOf: (id: string) => any, host: HTMLElement,
+ *   ipcRenderer: { send: Function, invoke: Function } }} deps — the IPC shim of renderer.js (the page has no Node)
  */
-function createChatController({ state, webviewOf, host }) {
+function createChatController({ state, webviewOf, host, ipcRenderer }) {
     let current = null // { chat, adapter }
     let timer = null
     let lastOlder = 0
@@ -42,7 +47,10 @@ function createChatController({ state, webviewOf, host }) {
         onClose: () => close(),
         onOlder: older,
         // links open in the browser through the main process's usual scheme check
-        onLink: (url) => { try { require('electron').ipcRenderer.send('open-url', url) } catch {} },
+        onLink: (url) => ipcRenderer.send('open-url', url),
+        onPickFiles: () => ipcRenderer.invoke('all-inbox:pick-files').catch(() => []),
+        onDescribeFiles: (paths) => ipcRenderer.invoke('all-inbox:describe-files', paths).catch(() => []),
+        onPasteImage: () => ipcRenderer.invoke('all-inbox:paste-image').catch(() => null),
         onPicture: async (key) => {
             const w = tab()
             if (!w) return ''
@@ -72,6 +80,7 @@ function createChatController({ state, webviewOf, host }) {
             if (!current.confirmed) { current.confirmed = true; if (typeof current.onConfirmed === 'function') current.onConfirmed() }
             const rows = buildTimeline(data.messages, Date.now())
             view.update(rows, signature(rows))
+            view.setCanWrite(data.canWrite !== false)
             const sub = [data.subtitle, current.chat.messengerName].filter(Boolean).join(' · ')
             view.setSubtitle(sub)
         } finally {
@@ -79,24 +88,93 @@ function createChatController({ state, webviewOf, host }) {
         }
     }
 
-    async function send(text) {
-        const w = tab()
-        if (!w || !current) return false
-        // check again right before typing: the tab may have moved to another chat since the last read
-        const data = await withTimeout(w.executeJavaScript(current.adapter.CHAT).catch(() => null), READ_TIMEOUT_MS)
-        if (!data || !sameChat(current.chat.title, data.title)) { view.setMismatch(true, data && data.title); return false }
-        const point = await withTimeout(w.executeJavaScript(current.adapter.COMPOSER).catch(() => null), READ_TIMEOUT_MS)
-        if (!point || typeof point.x !== 'number') return false
-        clickAt(w, point)
-        await wait(FOCUS_SETTLE_MS)
-        try { w.insertText(text) } catch { return false }
-        await wait(TYPE_SETTLE_MS)
+    const run = (w, code, ms = READ_TIMEOUT_MS) => withTimeout(w.executeJavaScript(code).catch(() => null), ms)
+
+    function pressEnter(w) {
         w.sendInputEvent({ type: 'keyDown', keyCode: 'Return' })
         w.sendInputEvent({ type: 'char', keyCode: '\r' })
         w.sendInputEvent({ type: 'keyUp', keyCode: 'Return' })
+    }
+
+    // what is typed in our window is exactly what goes: a draft left in the tab's field (Telegram also moves it into
+    // the caption of files) is replaced, not glued to the front
+    function selectAll(w) {
+        w.sendInputEvent({ type: 'keyDown', keyCode: 'A', modifiers: ['control'] })
+        w.sendInputEvent({ type: 'keyUp', keyCode: 'A', modifiers: ['control'] })
+    }
+
+    async function typeAt(w, point, text) {
+        clickAt(w, point)
+        await wait(FOCUS_SETTLE_MS)
+        selectAll(w)
+        await wait(TYPE_SETTLE_MS)
+        try {
+            if (text) w.insertText(text)
+            else { w.sendInputEvent({ type: 'keyDown', keyCode: 'Backspace' }); w.sendInputEvent({ type: 'keyUp', keyCode: 'Backspace' }) }
+        } catch { return false }
+        await wait(TYPE_SETTLE_MS)
+        return true
+    }
+
+    async function sendText(w, text) {
+        const point = await run(w, current.adapter.COMPOSER)
+        if (!point || typeof point.x !== 'number') return false
+        if (!(await typeAt(w, point, text))) return false
+        pressEnter(w)
+        return true
+    }
+
+    // the window has stopped moving: the same place twice in a row
+    async function waitSettled(w, code, ms) {
+        const until = Date.now() + ms
+        let last = ''
+        while (Date.now() < until) {
+            const found = await run(w, code)
+            const here = found ? JSON.stringify(found) : ''
+            if (found && here === last) return found
+            last = here
+            await wait(POPUP_POLL_MS)
+        }
+        return null
+    }
+
+    // Files go to the page as a real drag-and-drop; the messenger uploads and sends them itself
+    async function sendFiles(w, files, text) {
+        const point = await run(w, current.adapter.DROP)
+        if (!point || typeof point.x !== 'number') return false
+        let guestId = 0
+        try { guestId = w.getWebContentsId() } catch { return false }
+        const paths = files.map((f) => f.path)
+        const dropped = await ipcRenderer.invoke('all-inbox:drop-files', { guestId, point, paths }).catch(() => false)
+        if (!dropped) return false
+        if (current.adapter.sendsOnDrop) {
+            // MAX has sent the files already; the text follows as its own message
+            await wait(AFTER_DROP_MS)
+            return text ? sendText(w, text) : true
+        }
+        // Telegram: its «send» window, the text as the caption, its own send button
+        const popup = await waitSettled(w, current.adapter.MEDIA_POPUP, POPUP_WAIT_MS)
+        if (!popup || !popup.send) return false
+        // Enter in the caption sends; a click while the window still slides in would land on its backdrop and close it
+        if (popup.caption) {
+            if (!(await typeAt(w, popup.caption, text))) return false
+            pressEnter(w)
+        } else {
+            clickAt(w, popup.send)
+        }
+        return true
+    }
+
+    async function send(text, files = []) {
+        const w = tab()
+        if (!w || !current) return false
+        // check again right before typing: the tab may have moved to another chat since the last read
+        const data = await run(w, current.adapter.CHAT)
+        if (!data || !sameChat(current.chat.title, data.title)) { view.setMismatch(true, data && data.title); return false }
+        const ok = files.length ? await sendFiles(w, files, text) : await sendText(w, text)
         await wait(AFTER_SEND_MS)
         poll()
-        return true
+        return ok
     }
 
     function older() {

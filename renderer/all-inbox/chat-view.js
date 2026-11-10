@@ -3,9 +3,12 @@
 // and hands typed text back; the tab behind it does the real work.
 
 const { linkParts } = require('./linkify')
+const { createComposer } = require('./composer')
+const { readBackground, saveBackground, createBackgroundMenu } = require('./chat-backgrounds')
 
 const NEAR_BOTTOM_PX = 120
 const TOP_LOAD_PX = 40
+const USER_SCROLL_MS = 1200
 
 function el(tag, cls, text) {
     const node = document.createElement(tag)
@@ -22,29 +25,29 @@ function initials(title) {
 const KIND_LABEL = { voice: 'Голосовое сообщение', video: 'Видео', sticker: 'Стикер', file: 'Файл', photo: 'Фото' }
 
 /**
- * @param {{ host: HTMLElement, onSend: (text: string) => Promise<boolean>, onOpenInTab: () => void, onClose: () => void,
- *   onOlder: () => void, onLink: (url: string) => void, onPicture: (key: string) => Promise<string> }} deps
+ * @param {{ host: HTMLElement, onSend: (text: string, files: object[]) => Promise<boolean>, onOpenInTab: () => void,
+ *   onClose: () => void, onOlder: () => void, onLink: (url: string) => void, onPicture: (key: string) => Promise<string>,
+ *   onPickFiles: () => Promise<object[]>, onDescribeFiles: (paths: string[]) => Promise<object[]>,
+ *   onPasteImage: () => Promise<object|null> }} deps
  */
-function createChatView({ host, onSend, onOpenInTab, onClose, onOlder, onLink, onPicture }) {
+function createChatView({ host, onSend, onOpenInTab, onClose, onOlder, onLink, onPicture, onPickFiles, onDescribeFiles, onPasteImage }) {
     const root = el('section', 'aic')
     root.hidden = true
+    root.dataset.bg = readBackground()
     root.innerHTML = `
         <header class="aic-head">
             <div class="aic-ava"></div>
             <div class="aic-who"><div class="aic-title"></div><div class="aic-sub"></div></div>
+            <button type="button" class="aic-btn aic-icon aic-bg" title="Фон чата" aria-label="Фон чата">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="9" cy="9" r="1.6"/><path d="M21 15l-5-5L5 21"/></svg>
+            </button>
             <button type="button" class="aic-btn aic-open" title="Открыть в мессенджере">Открыть в мессенджере</button>
-            <button type="button" class="aic-btn aic-x" aria-label="Закрыть" title="Закрыть">
+            <button type="button" class="aic-btn aic-icon aic-x" aria-label="Закрыть" title="Закрыть">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
             </button>
         </header>
         <div class="aic-warn" hidden></div>
         <div class="aic-scroll"><div class="aic-list"></div></div>
-        <form class="aic-compose" autocomplete="off">
-            <textarea class="aic-input" rows="1" placeholder="Сообщение"></textarea>
-            <button type="submit" class="aic-send" aria-label="Отправить" title="Отправить (Enter)">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-            </button>
-        </form>
         <div class="aic-lightbox" tabindex="-1" hidden title="Закрыть"><img alt=""></div>`
     host.appendChild(root)
     const lightbox = root.querySelector('.aic-lightbox')
@@ -52,36 +55,40 @@ function createChatView({ host, onSend, onOpenInTab, onClose, onOlder, onLink, o
     const q = (s) => root.querySelector(s)
     const scroll = q('.aic-scroll')
     const list = q('.aic-list')
-    const input = q('.aic-input')
-    const form = q('.aic-compose')
     let lastSig = ''
-    let sending = false
 
-    function autosize() {
-        input.style.height = 'auto'
-        input.style.height = Math.min(160, input.scrollHeight) + 'px'
-    }
+    const composer = createComposer({ root, onSend, onPickFiles, onDescribeFiles, onPasteImage })
+    composer.setVisible(false)
+    root.insertBefore(composer.el, lightbox)
 
-    async function submit() {
-        const text = input.value.trim()
-        if (!text || sending) return
-        sending = true
-        form.classList.add('is-sending')
-        const ok = await onSend(text).catch(() => false)
-        sending = false
-        form.classList.remove('is-sending')
-        if (ok) { input.value = ''; autosize() }
-        input.focus()
-    }
-
-    form.addEventListener('submit', (e) => { e.preventDefault(); submit() })
-    input.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); submit() }
+    const bgButton = q('.aic-bg')
+    const bgMenu = createBackgroundMenu({
+        current: root.dataset.bg,
+        onChoose: (id) => { root.dataset.bg = id; saveBackground(id) }
     })
-    input.addEventListener('input', autosize)
+    q('.aic-head').append(bgMenu.el)
+    bgButton.addEventListener('click', () => bgButton.classList.toggle('is-on', bgMenu.toggle()))
+    document.addEventListener('mousedown', (e) => {
+        if (bgMenu.isOpen() && !bgMenu.el.contains(e.target) && !bgButton.contains(e.target)) { bgMenu.toggle(false); bgButton.classList.remove('is-on') }
+    })
+
     q('.aic-open').addEventListener('click', onOpenInTab)
     q('.aic-x').addEventListener('click', onClose)
-    scroll.addEventListener('scroll', () => { if (scroll.scrollTop < TOP_LOAD_PX) onOlder() }, { passive: true })
+    // the conversation sticks to its newest message until the person scrolls up; pictures that load late keep it there
+    let stick = true
+    const atBottom = () => scroll.scrollHeight - scroll.scrollTop - scroll.clientHeight < NEAR_BOTTOM_PX
+    // only the person's own scrolling unsticks it: pictures growing above move the view too, and must not
+    let touchedAt = 0
+    const touched = () => { touchedAt = Date.now() }
+    for (const type of ['wheel', 'pointerdown', 'keydown', 'touchstart']) scroll.addEventListener(type, touched, { passive: true })
+    scroll.addEventListener('scroll', () => {
+        if (Date.now() - touchedAt < USER_SCROLL_MS) stick = atBottom()
+        else if (stick) scroll.scrollTop = scroll.scrollHeight
+        if (scroll.scrollTop < TOP_LOAD_PX) onOlder()
+    }, { passive: true })
+    const keepBottom = new ResizeObserver(() => { if (stick) scroll.scrollTop = scroll.scrollHeight })
+    keepBottom.observe(list)
+    keepBottom.observe(scroll)
 
     function textWithLinks(text) {
         const node = el('div', 'aic-text')
@@ -149,6 +156,7 @@ function createChatView({ host, onSend, onOpenInTab, onClose, onOlder, onLink, o
         show(chat) {
             root.hidden = false
             lastSig = ''
+            stick = true
             list.replaceChildren(el('div', 'aic-loading', 'Загружаю переписку…'))
             q('.aic-title').textContent = chat.title
             q('.aic-sub').textContent = chat.messengerName
@@ -156,14 +164,14 @@ function createChatView({ host, onSend, onOpenInTab, onClose, onOlder, onLink, o
             ava.replaceChildren()
             if (chat.avatar) { const img = el('img'); img.src = chat.avatar; img.alt = ''; ava.append(img) } else ava.textContent = initials(chat.title)
             if (chat.messengerIcon) { const mark = el('img', 'ai-service'); mark.src = chat.messengerIcon; mark.alt = ''; ava.append(mark) }
-            input.value = ''
-            autosize()
-            setTimeout(() => input.focus(), 50)
+            composer.reset()
+            composer.setVisible(false)
+            setTimeout(() => composer.focus(), 50)
         },
         setSubtitle(text) { if (text) q('.aic-sub').textContent = text },
         update(rows, sig) {
             if (sig === lastSig) return
-            const nearBottom = scroll.scrollHeight - scroll.scrollTop - scroll.clientHeight < NEAR_BOTTOM_PX || !lastSig
+            const nearBottom = stick || atBottom() || !lastSig
             const fromBottom = scroll.scrollHeight - scroll.scrollTop
             lastSig = sig
             const frag = document.createDocumentFragment()
@@ -178,11 +186,11 @@ function createChatView({ host, onSend, onOpenInTab, onClose, onOlder, onLink, o
             const warn = q('.aic-warn')
             warn.hidden = !on
             warn.textContent = on ? (openTitle ? `Во вкладке сейчас открыт другой чат: «${openTitle}». Отправка выключена.` : 'Чат ещё открывается…') : ''
-            form.classList.toggle('is-blocked', on)
-            input.disabled = on
+            composer.setBlocked(on)
             if (on) { lastSig = ''; list.replaceChildren() }
         },
-        hide() { closeZoom(); root.hidden = true },
+        setCanWrite(on) { composer.setVisible(on) },
+        hide() { closeZoom(); bgMenu.toggle(false); root.hidden = true },
         isShown: () => !root.hidden
     }
 }

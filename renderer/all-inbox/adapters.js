@@ -30,13 +30,16 @@ function __ciAvatar(key, img) {
 }
 // Emoji drawn as pictures (MAX, Telegram) become their characters, so names and texts keep them
 function __ciEmojiText(root) {
+    // MAX keeps the character on a wrapper around its emoji picture
+    var marked = root.querySelectorAll('[data-lexical-emoji]');
+    for (var m = 0; m < marked.length; m++) marked[m].replaceWith(document.createTextNode(marked[m].getAttribute('data-lexical-emoji') || ''));
     var pics = root.querySelectorAll('img[alt]');
     for (var i = 0; i < pics.length; i++) { var alt = pics[i].getAttribute('alt') || ''; if (alt && alt.length <= 16) pics[i].replaceWith(document.createTextNode(alt)); }
     return root;
 }
 function __ciText(el) {
     if (!el) return '';
-    if (el.querySelector && el.querySelector('img[alt]')) el = __ciEmojiText(el.cloneNode(true));
+    if (el.querySelector && el.querySelector('img[alt], [data-lexical-emoji]')) el = __ciEmojiText(el.cloneNode(true));
     return String(el.innerText || el.textContent || '').trim();
 }
 // Scrolls the chat into view, lets the list settle (virtual lists re-lay out after a scroll), measures again and
@@ -134,6 +137,8 @@ const telegram = {
             var top = dialogs.filter(function (x) { return x && x.peerId; })
                 .sort(function (a, b) { return ((b.topMessage && b.topMessage.date) || 0) - ((a.topMessage && a.topMessage.date) || 0); })
                 .slice(0, ${TELEGRAM_CHATS});
+            // «Избранное» is always there, however old: it is where people send things to themselves
+            if (!top.some(function (x) { return x.peerId === rs.myId; })) { var saved = dialogs.filter(function (x) { return x && x.peerId === rs.myId; })[0]; if (saved) top.push(saved); }
             // titles come from the page's worker; the first read waits a moment for them, later reads are cached
             var named = Promise.all(top.map(function (x) { return titleOf(x.peerId); }));
             var wait = new Promise(function (r) { setTimeout(r, 1500); });

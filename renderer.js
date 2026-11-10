@@ -4139,7 +4139,7 @@ function applyTabZoom(level) {
     window.__centrioHibernation = createHibernation({ state, store, sleepTab, isMessengerMuted })
     window.__centrioSleepTab = sleepTab
     // 3.8: «Все мессенджеры» — one list of the chats of every tab, a click opens the chat in its tab
-    window.__centrioAllInbox = createAllInbox({ state, switchTab, tGet })
+    window.__centrioAllInbox = createAllInbox({ state, switchTab, tGet, ipcRenderer })
     // Work hours (3.7.1): outside them team messengers / the person's work services stay quiet (renderer/webview-notify.js).
     window.__centrioWorkHours = createWorkHours({ state, store })
     bindSettings371({ state, store, tGet, invokeIpc, getMorningSummary: () => window.__centrioMorningSummary })

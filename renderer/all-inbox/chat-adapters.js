@@ -25,6 +25,12 @@ function __ciPicture(key, img) {
         return data;
     } catch (e) { return /^https?:/i.test(img.src) ? img.src : ''; }
 }
+// The first of these elements that is really on screen (a channel keeps a hidden message field)
+function __ciVisible(root, sel) {
+    var all = root ? root.querySelectorAll(sel) : [];
+    for (var i = 0; i < all.length; i++) { var r = all[i].getBoundingClientRect(); if (r.width && r.height) return all[i]; }
+    return null;
+}
 function __ciCleanText(el, drop) {
     if (!el) return '';
     var clone = el.cloneNode(true);
@@ -74,7 +80,13 @@ const telegram = {
                 time: __ciText(b.querySelector('.time .time-inner, .time')).replace(/[^0-9:]/g, '').slice(-5)
             });
         }
-        return { title: titles[0] ? __ciText(titles[0]) : '', subtitle: __ciText(chat.querySelector('.chat-info .info')), messages: out };
+        return {
+            title: titles[0] ? __ciText(titles[0]) : '',
+            subtitle: __ciText(chat.querySelector('.chat-info .info')),
+            // channels and chats where writing is closed have no message field on screen
+            canWrite: !!__ciVisible(chat, '.input-message-input[contenteditable="true"]'),
+            messages: out
+        };
     })()`,
     COMPOSER: `(function () {
         var chat = document.querySelector('.chats-container > .chat.active, #column-center .chat.active');
@@ -86,6 +98,26 @@ const telegram = {
             return { x: r.left + Math.min(40, r.width / 2), y: r.top + r.height / 2 };
         }
         return null;
+    })()`,
+    // where files are dropped: the conversation itself; Telegram then opens its own «send» window and waits
+    DROP: `(function () {
+        var chat = document.querySelector('.chats-container > .chat.active, #column-center .chat.active');
+        var area = chat && chat.querySelector('.bubbles');
+        if (!area) return null;
+        var r = area.getBoundingClientRect();
+        return r.width && r.height ? { x: r.left + r.width / 2, y: r.top + r.height / 2 } : null;
+    })()`,
+    sendsOnDrop: false,
+    // Telegram's «send files» window: its caption field and its send button
+    MEDIA_POPUP: `(function () {${IMAGE_HELPER}
+        var p = document.querySelector('.popup-new-media.active');
+        if (!p) return null;
+        var cap = __ciVisible(p, '.input-message-input[contenteditable="true"]');
+        var send = __ciVisible(p, 'button.btn-primary');
+        if (!send) return null;
+        function centre(el) { var r = el.getBoundingClientRect(); return { x: r.left + Math.min(40, r.width / 2), y: r.top + r.height / 2 }; }
+        var s = send.getBoundingClientRect();
+        return { caption: cap ? centre(cap) : null, send: { x: s.left + s.width / 2, y: s.top + s.height / 2 } };
     })()`,
     OLDER: `(function () {
         var chat = document.querySelector('.chats-container > .chat.active, #column-center .chat.active');
@@ -136,7 +168,12 @@ const max = {
                 });
             }
         }
-        return { title: __ciText(chat.querySelector('.topbar span.title')), subtitle: '', messages: out };
+        return {
+            title: __ciText(chat.querySelector('.topbar span.title')),
+            subtitle: '',
+            canWrite: !!__ciVisible(chat, 'div.contenteditable[contenteditable], [role=textbox][contenteditable]'),
+            messages: out
+        };
     })()`,
     COMPOSER: `(function () {
         var chat = document.querySelector('.openedChat');
@@ -149,6 +186,18 @@ const max = {
         }
         return null;
     })()`,
+    // MAX sends a dropped file at once, with no window of its own: our window is the preview, the drop is «send»
+    DROP: `(function () {
+        var chat = document.querySelector('.openedChat');
+        var area = chat && (chat.querySelector('.scrollListScrollable, [class*=history], [class*=messages]') || chat);
+        if (!area) return null;
+        var r = area.getBoundingClientRect();
+        // not the centre: MAX writes «Перетащите сюда фото» there, and a drop on that label is ignored
+        var h = Math.min(r.height, window.innerHeight - r.top);
+        return r.width && h > 0 ? { x: r.left + r.width / 2, y: r.top + h * 0.25 } : null;
+    })()`,
+    sendsOnDrop: true,
+    MEDIA_POPUP: '',
     OLDER: `(function () {
         var chat = document.querySelector('.openedChat');
         var items = chat ? chat.querySelectorAll('div.item[data-index]') : [];

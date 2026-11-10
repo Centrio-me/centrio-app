@@ -13,6 +13,7 @@ const FILTER_KEY = 'centrio-all-inbox-filter'
 const TAB_SETTLE_MS = 450
 const LOCATE_TIMEOUT_MS = 8000
 const PATHS_KEY = 'centrio-all-inbox-paths'
+const WARM_CLASS = 'inbox-warm'
 
 function withTimeout(promise, ms) {
     return Promise.race([promise, new Promise((resolve) => setTimeout(() => resolve(null), ms))])
@@ -38,9 +39,10 @@ function el(tag, cls, text) {
 }
 
 /**
- * @param {{ state: object, switchTab: (id: string) => void, tGet?: (key: string, fallback: string) => string }} deps
+ * @param {{ state: object, switchTab: (id: string) => void, tGet?: (key: string, fallback: string) => string,
+ *   ipcRenderer: { send: Function, invoke: Function } }} deps
  */
-function createAllInbox({ state, switchTab, tGet }) {
+function createAllInbox({ state, switchTab, tGet, ipcRenderer }) {
     const t = (key, fallback) => (typeof tGet === 'function' ? tGet(`v380.allInbox.${key}`, fallback) : fallback)
     const button = document.getElementById('allInboxBtn')
     const panel = document.getElementById('allInboxPanel')
@@ -61,7 +63,7 @@ function createAllInbox({ state, switchTab, tGet }) {
     let paths = {}
     try { paths = JSON.parse(readStorage(PATHS_KEY, '{}')) || {} } catch { paths = {} }
     const contentArea = document.getElementById('contentArea')
-    const chats = contentArea ? createChatController({ state, webviewOf: (id) => document.getElementById(`webview-${id}`), host: contentArea }) : null
+    const chats = contentArea ? createChatController({ state, webviewOf: (id) => document.getElementById(`webview-${id}`), host: contentArea, ipcRenderer }) : null
 
     function webviewOf(messengerId) {
         return document.getElementById(`webview-${messengerId}`)
@@ -79,6 +81,9 @@ function createAllInbox({ state, switchTab, tGet }) {
                 const adapter = adapterFor(url)
                 if (!adapter) return null
                 const chats = await withTimeout(view.executeJavaScript(adapter.LIST).catch(() => null), READ_TIMEOUT_MS)
+                // a messenger that was never opened since start-up does not start in a page without layout
+                // (Telegram waits for a frame to draw): it gets an invisible layout until its chats show up
+                view.classList.toggle(WARM_CLASS, !(Array.isArray(chats) && chats.length))
                 return Array.isArray(chats) ? { messenger: m, chats } : null
             })
             sources = (await Promise.all(jobs)).filter(Boolean)
@@ -196,7 +201,7 @@ function createAllInbox({ state, switchTab, tGet }) {
     function setOpen(next) {
         open = next
         if (open) place()
-        else chats?.close()
+        else { chats?.close(); document.querySelectorAll(`webview.${WARM_CLASS}`).forEach((v) => v.classList.remove(WARM_CLASS)) }
         document.body.classList.toggle('all-inbox-open', open)
         button.classList.toggle('active', open)
         panel.hidden = !open

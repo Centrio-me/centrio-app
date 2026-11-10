@@ -27,6 +27,7 @@ const registerPageMenuIpc = require('../ipc/pageMenu')
 const registerE2eIpc = require('../ipc/e2e')
 const { registerProfileIpc } = require('../ipc/profile')
 const { registerRestorePointsIpc } = require('../ipc/restorePoints')
+const { registerAllInboxIpc } = require('../ipc/allInbox')
 
 function registerIpc({ getMainWindow, showMainWindow, updateTrayMenu, isQuittingRef }) {
     registerWindowIpc({ getMainWindow, isQuittingRef })
@@ -58,6 +59,7 @@ function registerIpc({ getMainWindow, showMainWindow, updateTrayMenu, isQuitting
     registerBatteryIpc()
     registerDetachedIpc({ getMainWindow })
     registerPageMenuIpc({ getMainWindow })
+    registerAllInboxIpc({ getMainWindow })
 }
 
 module.exports = registerIpc
