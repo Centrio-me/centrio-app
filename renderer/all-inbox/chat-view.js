@@ -46,7 +46,9 @@ function createChatView({ host, onSend, onOpenInTab, onClose, onOlder, onLink, o
             <button type="button" class="aic-btn aic-icon aic-bg" title="Фон чата" aria-label="Фон чата">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="9" cy="9" r="1.6"/><path d="M21 15l-5-5L5 21"/></svg>
             </button>
-            <button type="button" class="aic-btn aic-open" title="Открыть в мессенджере">Открыть в мессенджере</button>
+            <button type="button" class="aic-btn aic-icon aic-open" title="Открыть в мессенджере" aria-label="Открыть в мессенджере">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6"/><path d="M20 4l-9 9"/><path d="M18 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4"/></svg>
+            </button>
             <button type="button" class="aic-btn aic-icon aic-x" aria-label="Закрыть" title="Закрыть">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
             </button>
