@@ -2609,27 +2609,40 @@ webview.reply-render:not(.active) { display: flex; opacity: 0; pointer-events: n
     display: flex !important;
 }
 
-/* ── Focus accent bar (2 px at top of active pane) ─────────────── */
+/* ── Focused pane: a soft accent ring that follows the pane's corners (3.7.5) ──
+   It used to be a flat 2px bar across the top, which cut over the rounded corners of the card
+   themes. --pane-r is the webview's corner, --split-gap half the space between the two panes. */
+.content-area { --pane-r: 0px; --split-gap: 0px; }
+[data-theme="embedded"] .content-area { --pane-r: 20px; --split-gap: 4px; }
+[data-theme="embedded"] .content-area.split-active .tabs-content webview.active { right: calc(100% - var(--split-left, 50%) + var(--split-gap)); }
+[data-theme="embedded"] .content-area.split-active .tabs-content webview.split-secondary { left: calc(var(--split-left, 50%) + var(--split-gap)); }
 .content-area.split-active .tabs-content::before,
 .content-area.split-active .tabs-content::after {
     content: '';
     position: absolute;
     top: 0;
-    height: 2px;
-    background: var(--accent);
+    bottom: 0;
+    border-radius: var(--pane-r);
+    box-shadow:
+        inset 0 0 0 1.5px color-mix(in srgb, var(--accent) 78%, transparent),
+        0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent),
+        0 0 22px color-mix(in srgb, var(--accent) 26%, transparent);
     opacity: 0;
-    transition: opacity 0.2s;
+    transition: opacity 0.22s ease;
     z-index: 300;
     pointer-events: none;
 }
 .content-area.split-active .tabs-content::before {
     left:  0;
-    right: calc(100% - var(--split-left, 50%));
+    right: calc(100% - var(--split-left, 50%) + var(--split-gap));
 }
 .content-area.split-active .tabs-content::after {
-    left:  var(--split-left, 50%);
+    left:  calc(var(--split-left, 50%) + var(--split-gap));
     right: 0;
 }
+/* the grid layouts place their tiles by hand: no ring there */
+.content-area.split-active.split-grid .tabs-content::before,
+.content-area.split-active.split-grid .tabs-content::after { display: none; }
 .content-area.split-active[data-split-focus="left"]  .tabs-content::before { opacity: 1; }
 .content-area.split-active[data-split-focus="right"] .tabs-content::after  { opacity: 1; }
 
@@ -2666,6 +2679,13 @@ webview.reply-render:not(.active) { display: flex; opacity: 0; pointer-events: n
     transition: opacity 0.15s;
 }
 .split-handle:hover::after { opacity: 0.5; }
+/* card themes: the panes are two cards with the window's own backdrop between them, the bar is just a grip */
+[data-theme="embedded"] .split-handle { background: transparent; }
+[data-theme="embedded"] .split-handle:hover,
+[data-theme="embedded"] .split-handle.dragging { background: transparent; }
+[data-theme="embedded"] .split-handle::after { width: 4px; height: 40px; border-radius: 4px; background: var(--text-primary); opacity: .18; transition: opacity .15s, background .15s; }
+[data-theme="embedded"] .split-handle:hover::after,
+[data-theme="embedded"] .split-handle.dragging::after { opacity: .9; background: var(--accent); }
 
 /* Скрываем handle когда открыты настройки или любой модал */
 body.settings-open .split-handle { display: none !important; }
