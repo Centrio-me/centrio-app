@@ -22,6 +22,7 @@ const PATHS_KEY = 'centrio-all-inbox-paths'
 const WARM_CLASS = 'inbox-warm'
 const FILTERS = ['all', 'unread', 'personal', 'groups', 'channels']
 const SKELETON_ROWS = 9
+const SLIDE_MS = 260
 const ICONS = {
     sent: '<svg width="15" height="11" viewBox="0 0 15 11" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 6l3 3 6.5-7.5"/></svg>',
     read: '<svg width="17" height="11" viewBox="0 0 17 11" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 6l3 3 6.5-7.5M8 8.6l.9.9 6.5-7.5"/></svg>',
@@ -100,9 +101,12 @@ function createAllInbox({ state, switchTab, tGet, ipcRenderer }) {
     const savedFilter = readStorage(FILTER_KEY, 'all')
     let filter = FILTERS.includes(savedFilter) ? savedFilter : 'all'
     let loadedOnce = false
+    // a list the person changed (filter, search, messenger) is drawn at once, without sliding
+    let quietOnce = false
     const clearEl = panel.querySelector('.ai-search-clear')
     let source = readStorage(SOURCE_KEY, '')
     let lastListSig = ''
+    let rowCache = new Map()
     const sourcesEl = document.createElement('div')
     sourcesEl.className = 'ai-sources'
     sourcesEl.setAttribute('role', 'toolbar')
@@ -216,6 +220,13 @@ function createAllInbox({ state, switchTab, tGet, ipcRenderer }) {
         return row
     }
 
+    // everything a row shows: the same string means the same row
+    function rowSig(c) {
+        return [c.id, c.unread, c.muted ? 1 : 0, c.timeLabel, c.preview, c.avatar.length, c.title, c.icon, c.online ? 1 : 0, c.outState,
+            c.pinned ? 1 : 0, c.accountLabel, c.accountTone, c.draft, c.mentions, sharedDrafts.take(c.id), c.match ? c.match.start : '',
+            c.id === activeId ? 1 : 0].join('|')
+    }
+
     function skeleton() {
         const frag = document.createDocumentFragment()
         for (let i = 0; i < SKELETON_ROWS; i++) {
@@ -255,6 +266,7 @@ function createAllInbox({ state, switchTab, tGet, ipcRenderer }) {
                 source = source === m.id ? '' : m.id
                 writeStorage(SOURCE_KEY, source)
                 lastListSig = ''
+                quietOnce = true
                 render()
                 listEl.scrollTop = 0
             })
@@ -275,10 +287,15 @@ function createAllInbox({ state, switchTab, tGet, ipcRenderer }) {
         filterButtons.forEach((b) => b.classList.toggle('is-on', b.dataset.aiFilter === filter))
 
         // the list is drawn again only when something in it changed: no blinking pictures, hover and scroll stay
-        const sig = list.map((c) => `${c.id}|${c.unread}|${c.muted ? 1 : 0}|${c.timeLabel}|${c.preview}|${c.avatar.length}|${c.title}|${c.icon}|${c.online ? 1 : 0}|${c.outState}|${c.pinned ? 1 : 0}|${c.accountLabel}|${c.accountTone}|${c.draft}|${c.mentions}|${sharedDrafts.take(c.id)}|${c.match ? c.match.start : ''}`).join(';') + '#' + activeId + '#' + loadedOnce
+        const sigs = list.map(rowSig)
+        const sig = sigs.join(';') + '#' + loadedOnce
         if (sig === lastListSig) return
         lastListSig = sig
         const keepScroll = listEl.scrollTop
+        // where each chat stood before: a chat lifted by a new message slides to its place instead of jumping
+        const before = new Map()
+        if (!quietOnce) for (const r of listEl.querySelectorAll('.ai-row[data-id]')) before.set(r.dataset.id, r.getBoundingClientRect().top)
+        quietOnce = false
         listEl.replaceChildren()
         if (!list.length && !loadedOnce) { listEl.append(skeleton()); return }
         if (!list.length) {
@@ -287,10 +304,34 @@ function createAllInbox({ state, switchTab, tGet, ipcRenderer }) {
                 : t('noSources', 'Откройте Telegram или MAX: их чаты появятся здесь')))
             return
         }
+        // a chat that did not change keeps its row (and its decoded picture); only changed ones are built again
+        const next = new Map()
         const frag = document.createDocumentFragment()
-        list.forEach((chat) => frag.append(rowFor(chat)))
+        list.forEach((chat, i) => {
+            const kept = rowCache.get(chat.id)
+            const row = kept && kept.sig === sigs[i] ? kept.row : rowFor(chat)
+            next.set(chat.id, { sig: sigs[i], row })
+            frag.append(row)
+        })
+        rowCache = next
         listEl.append(frag)
         listEl.scrollTop = keepScroll
+        slide(before)
+    }
+
+    const calm = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+    function slide(before) {
+        if (!before.size || calm()) return
+        const view = listEl.getBoundingClientRect()
+        for (const row of listEl.querySelectorAll('.ai-row[data-id]')) {
+            const top = row.getBoundingClientRect().top
+            if (top > view.bottom || top + row.offsetHeight < view.top) continue
+            const was = before.get(row.dataset.id)
+            if (was === undefined) { row.animate([{ opacity: 0, transform: 'translateY(-6px)' }, { opacity: 1, transform: 'none' }], { duration: SLIDE_MS, easing: 'ease-out' }); continue }
+            const dy = was - top
+            if (Math.abs(dy) < 1) continue
+            row.animate([{ transform: `translateY(${dy}px)` }, { transform: 'none' }], { duration: SLIDE_MS, easing: 'cubic-bezier(.2, .8, .2, 1)' })
+        }
     }
 
     async function openChat(chat) {
@@ -357,7 +398,7 @@ function createAllInbox({ state, switchTab, tGet, ipcRenderer }) {
 
     button.addEventListener('click', () => setOpen(!open))
     panel.querySelector('.ai-close')?.addEventListener('click', () => setOpen(false))
-    searchEl?.addEventListener('input', render)
+    searchEl?.addEventListener('input', () => { quietOnce = true; render() })
     clearEl?.addEventListener('click', (e) => { e.preventDefault(); searchEl.value = ''; render(); searchEl.focus() })
     // ↑/↓ walk the list (from the search field too), Enter opens, Esc clears the search
     function moveFocus(step) {
@@ -389,6 +430,7 @@ function createAllInbox({ state, switchTab, tGet, ipcRenderer }) {
         filter = b.dataset.aiFilter
         writeStorage(FILTER_KEY, filter)
         lastListSig = ''
+        quietOnce = true
         render()
         listEl.scrollTop = 0
     }))
