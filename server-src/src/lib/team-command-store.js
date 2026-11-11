@@ -5,6 +5,11 @@ const { planCommands } = require('./team-commands')
 const { emitOrgEvent } = require('./team-events')
 
 async function queueCommands({ orgId, userId, kind, payload, createdById }) {
+    // a «refresh» still waiting on the person's devices is enough: pressing again does not pile up more
+    if (kind === 'refresh') {
+        const waiting = await prisma.orgCommand.findFirst({ where: { orgId, userId, kind: 'refresh', doneAt: null }, select: { id: true } })
+        if (waiting) { emitOrgEvent(orgId, 'command', { userId, kind }); return 0 }
+    }
     const devices = await prisma.orgDeviceKey.findMany({ where: { userId, orgId }, select: { id: true } })
     const rows = planCommands(kind, { orgId, userId, deviceKeyIds: devices.map((d) => d.id), payload, createdById })
     await prisma.orgCommand.createMany({ data: rows })

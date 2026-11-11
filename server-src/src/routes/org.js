@@ -420,10 +420,7 @@ router.post('/invites/:token/accept', acceptInviteLimiter, authMiddleware, async
     // told to confirm the email first and could not get back in). The account's email must still be the
     // invited one (checked above), so someone who registered another person's address without the inbox has
     // no token and gains nothing.
-    if (!requester.emailVerified) {
-      await prisma.user.update({ where: { id: req.user.id }, data: { emailVerified: true } })
-      await logOrgAudit(invite.orgId, req.user.id, 'member.email_confirmed_by_invite', { email: requester.email })
-    }
+    // (confirmed below, once every check has passed and the person really joins)
 
     const existingMembership = await prisma.orgMember.findFirst({
       where: { userId: req.user.id, status: 'ACTIVE' }
@@ -442,6 +439,12 @@ router.post('/invites/:token/accept', acceptInviteLimiter, authMiddleware, async
     const seatsUsed = await prisma.orgMember.count({ where: { orgId: org.id, status: 'ACTIVE' } })
     if (seatsUsed >= org.seatLimit) {
       return res.status(409).json({ success: false, error: 'В организации больше нет свободных мест' })
+    }
+
+    // every check has passed: the invitation link confirms the email (see above)
+    if (!requester.emailVerified) {
+      await prisma.user.update({ where: { id: req.user.id }, data: { emailVerified: true } })
+      await logOrgAudit(invite.orgId, req.user.id, 'member.email_confirmed_by_invite', { email: requester.email })
     }
 
     // A person removed earlier keeps a SUSPENDED row; inviting him back reactivates it instead of

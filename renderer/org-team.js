@@ -655,7 +655,8 @@ function createOrgTeamApi({
         onTeamEvent(handleTeamEvent)
         checkAccountChange().finally(() => runPendingCommands())
         // commands from the owner are fetched every minute too, not only at start and on the team's live signal
-        // (a person the app does not yet know as a member hears no live signal)
+        // (the live signal can be lost; a person the app does not know as a member yet is caught by the
+        // account refresh every 3 minutes in renderer.js, which then brings the team and its commands)
         accountTimer = setInterval(() => { checkAccountChange().finally(() => runPendingCommands()) }, ACCOUNT_CHECK_MS)
         presenceTimer = setInterval(() => {
             const orgId = getOrgId()

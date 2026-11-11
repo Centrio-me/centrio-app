@@ -1632,6 +1632,9 @@ module.exports = {
 
     notes: {
         panelTitle: 'Заметки',
+        imageTooBig: "Картинка больше 10 МБ — не добавлена",
+        imageTooMany: "В заметке уже 40 картинок",
+        imageFailed: "Картинку не удалось добавить",
         folders: "Папки",
         newFolder: "Новая папка",
         addFolder: "Создать папку",

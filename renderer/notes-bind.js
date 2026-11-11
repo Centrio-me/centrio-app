@@ -286,6 +286,9 @@ function bindNotesUi({ store, tGet, authorizedInvoke, invokeIpc, openRightPanel,
     viewer.addEventListener('click', () => { viewer.hidden = true; viewerImg.removeAttribute('src') })
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !viewer.hidden) { e.stopPropagation(); viewer.hidden = true } }, true)
     let imagesFor = ''
+    const MAX_PICTURE_BYTES = 10 * 1024 * 1024
+    // a deleted note's pictures go from this computer too
+    const dropPictures = (id) => { invokeIpc?.('notes-images:delete-note', id).catch(() => {}) }
     async function loadImages(noteId) {
         imagesFor = noteId
         imagesEl.replaceChildren()
@@ -296,13 +299,20 @@ function bindNotesUi({ store, tGet, authorizedInvoke, invokeIpc, openRightPanel,
         ;(Array.isArray(list) ? list : []).forEach(addThumb)
     }
     function addThumb(img) {
-        if (!img || typeof img.dataUrl !== 'string' || !img.dataUrl.startsWith('data:image/')) return
+        if (!img || typeof img.thumb !== 'string' || !img.thumb.startsWith('data:image/')) return
         const box = document.createElement('div')
         box.className = 'notes-image'
         const pic = document.createElement('img')
-        pic.src = img.dataUrl
+        pic.src = img.thumb
         pic.alt = ''
-        pic.addEventListener('click', () => { viewerImg.src = img.dataUrl; viewer.hidden = false })
+        // the full picture is read only now, from this computer
+        pic.addEventListener('click', async () => {
+            const noteId = imagesFor
+            viewerImg.src = img.thumb
+            viewer.hidden = false
+            const full = await invokeIpc('notes-images:full', noteId, img.id).catch(() => '')
+            if (full && !viewer.hidden && imagesFor === noteId) viewerImg.src = full
+        })
         const del = document.createElement('button')
         del.type = 'button'
         del.className = 'notes-image-del'
@@ -324,6 +334,8 @@ function bindNotesUi({ store, tGet, authorizedInvoke, invokeIpc, openRightPanel,
         const noteId = activeNote.id
         for (const file of files) {
             if (!/^image\/(png|jpeg|webp|gif)$/.test(file.type)) continue
+            // a picture over the limit is said so, not read and silently dropped
+            if (file.size > MAX_PICTURE_BYTES) { saveIndicator.textContent = tGet('notes.imageTooBig') || 'Картинка больше 10 МБ — не добавлена'; continue }
             const dataUrl = await new Promise((resolve) => {
                 const fr = new FileReader()
                 fr.onload = () => resolve(String(fr.result))
@@ -333,6 +345,8 @@ function bindNotesUi({ store, tGet, authorizedInvoke, invokeIpc, openRightPanel,
             if (!dataUrl) continue
             const saved = await invokeIpc('notes-images:save', noteId, dataUrl).catch(() => null)
             if (saved && saved.success && imagesFor === noteId) addThumb(saved)
+            else if (saved && saved.error === 'too_many') saveIndicator.textContent = tGet('notes.imageTooMany') || 'В заметке уже 40 картинок'
+            else if (!saved || !saved.success) saveIndicator.textContent = tGet('notes.imageFailed') || 'Картинку не удалось добавить'
         }
     }
     editView.addEventListener('paste', (e) => {
@@ -481,6 +495,7 @@ function bindNotesUi({ store, tGet, authorizedInvoke, invokeIpc, openRightPanel,
         const result = await authorizedInvoke('api-notes-delete', id)
         if (!result?.success) { await handleAuthError(result); return }
         notes = notes.filter(n => n.id !== id)
+        dropPictures(id)
         showList()
     }
 
@@ -507,6 +522,7 @@ function bindNotesUi({ store, tGet, authorizedInvoke, invokeIpc, openRightPanel,
         const result = await authorizedInvoke('api-notes-delete', id)
         if (!result?.success) { await handleAuthError(result); return }
         notes = notes.filter(n => n.id !== id)
+        dropPictures(id)
         if (activeNote?.id === id) showList()
         else renderList()
     }

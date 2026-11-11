@@ -1573,6 +1573,9 @@ module.exports = {
 
     notes: {
         panelTitle: 'Notes',
+        imageTooBig: "The picture is over 10 MB — not added",
+        imageTooMany: "This note already has 40 pictures",
+        imageFailed: "The picture could not be added",
         folders: "Folders",
         newFolder: "New folder",
         addFolder: "Create folder",

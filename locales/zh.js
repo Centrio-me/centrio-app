@@ -1569,6 +1569,9 @@ module.exports = {
 
     notes: {
         panelTitle: '笔记',
+        imageTooBig: "图片超过 10 MB，未添加",
+        imageTooMany: "这条笔记已有 40 张图片",
+        imageFailed: "无法添加图片",
         folders: "文件夹",
         newFolder: "新文件夹",
         addFolder: "创建文件夹",

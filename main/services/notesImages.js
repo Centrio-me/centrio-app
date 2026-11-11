@@ -1,8 +1,9 @@
 'use strict'
 // Pictures in notes (2026-11-11): kept only on this computer, next to the app's data, one folder per note. The notes
 // themselves sync through the server; their pictures do not (the owner's choice — they would fill the cloud).
+// A note's list gives small copies; the full picture is read only when it is opened.
 
-const fs = require('fs')
+const fsp = require('fs/promises')
 const path = require('path')
 const crypto = require('crypto')
 
@@ -10,6 +11,7 @@ const MAX_IMAGE_BYTES = 10 * 1024 * 1024
 const MAX_IMAGES_PER_NOTE = 40
 const KINDS = { png: 'png', jpeg: 'jpg', jpg: 'jpg', webp: 'webp', gif: 'gif' }
 const MIME = { png: 'image/png', jpg: 'image/jpeg', webp: 'image/webp', gif: 'image/gif' }
+const FILE = /^([A-Za-z0-9_-]{1,64})\.(png|jpg|webp|gif)$/
 
 /** A picture given as a data: address → its file kind and bytes; anything else, or too big, → null. */
 function parseImageDataUrl(value) {
@@ -27,50 +29,77 @@ function safeId(value) {
     return typeof value === 'string' && /^[A-Za-z0-9_-]{1,64}$/.test(value) ? value : ''
 }
 
-function createNotesImages(rootDir) {
+const asDataUrl = (buffer, ext) => `data:${MIME[ext]};base64,${buffer.toString('base64')}`
+
+/**
+ * @param {string} rootDir
+ * @param {{ thumb?: (buffer: Buffer, ext: string) => string }} [opts] thumb: a small copy as a data: address
+ */
+function createNotesImages(rootDir, { thumb = asDataUrl } = {}) {
     const dirOf = (noteId) => path.join(rootDir, noteId)
 
-    function list(noteId) {
+    async function files(id) {
+        let names = []
+        try { names = await fsp.readdir(dirOf(id)) } catch { return [] }
+        const out = []
+        for (const name of names) {
+            const m = FILE.exec(name)
+            if (!m) continue
+            try { out.push({ id: m[1], ext: m[2], file: path.join(dirOf(id), name), at: (await fsp.stat(path.join(dirOf(id), name))).mtimeMs }) } catch {}
+        }
+        return out.sort((a, b) => a.at - b.at)
+    }
+
+    async function list(noteId) {
         const id = safeId(noteId)
         if (!id) return []
-        let names = []
-        try { names = fs.readdirSync(dirOf(id)) } catch { return [] }
-        return names
-            .map((name) => {
-                const m = /^([A-Za-z0-9_-]{1,64})\.(png|jpg|webp|gif)$/.exec(name)
-                if (!m) return null
-                const file = path.join(dirOf(id), name)
-                let stat = null
-                try { stat = fs.statSync(file) } catch { return null }
-                return { id: m[1], ext: m[2], file, at: stat.mtimeMs }
-            })
-            .filter(Boolean)
-            .sort((a, b) => a.at - b.at)
-            .map((x) => ({ id: x.id, dataUrl: `data:${MIME[x.ext]};base64,${fs.readFileSync(x.file).toString('base64')}` }))
+        const out = []
+        for (const f of await files(id)) {
+            try { out.push({ id: f.id, thumb: thumb(await fsp.readFile(f.file), f.ext) }) } catch {}
+        }
+        return out
     }
 
-    function save(noteId, dataUrl) {
+    async function full(noteId, imageId) {
+        const id = safeId(noteId)
+        const img = safeId(imageId)
+        if (!id || !img) return ''
+        const f = (await files(id)).find((x) => x.id === img)
+        if (!f) return ''
+        try { return asDataUrl(await fsp.readFile(f.file), f.ext) } catch { return '' }
+    }
+
+    async function save(noteId, dataUrl) {
         const id = safeId(noteId)
         const picture = parseImageDataUrl(dataUrl)
-        if (!id || !picture) return { success: false, error: 'bad_image' }
-        fs.mkdirSync(dirOf(id), { recursive: true })
-        if (fs.readdirSync(dirOf(id)).length >= MAX_IMAGES_PER_NOTE) return { success: false, error: 'too_many' }
+        if (!id) return { success: false, error: 'bad_note' }
+        if (!picture) return { success: false, error: 'bad_image' }
+        await fsp.mkdir(dirOf(id), { recursive: true })
+        if ((await files(id)).length >= MAX_IMAGES_PER_NOTE) return { success: false, error: 'too_many' }
         const imageId = crypto.randomUUID().replace(/-/g, '').slice(0, 20)
-        fs.writeFileSync(path.join(dirOf(id), `${imageId}.${picture.ext}`), picture.buffer)
-        return { success: true, id: imageId, dataUrl: `data:${MIME[picture.ext]};base64,${picture.buffer.toString('base64')}` }
+        await fsp.writeFile(path.join(dirOf(id), `${imageId}.${picture.ext}`), picture.buffer)
+        return { success: true, id: imageId, thumb: thumb(picture.buffer, picture.ext) }
     }
 
-    function remove(noteId, imageId) {
+    async function remove(noteId, imageId) {
         const id = safeId(noteId)
         const img = safeId(imageId)
         if (!id || !img) return { success: false }
         for (const ext of ['png', 'jpg', 'webp', 'gif']) {
-            try { fs.unlinkSync(path.join(dirOf(id), `${img}.${ext}`)) } catch {}
+            try { await fsp.unlink(path.join(dirOf(id), `${img}.${ext}`)) } catch {}
         }
         return { success: true }
     }
 
-    return { list, save, remove }
+    // a deleted note: its folder of pictures goes too
+    async function removeNote(noteId) {
+        const id = safeId(noteId)
+        if (!id) return { success: false }
+        try { await fsp.rm(dirOf(id), { recursive: true, force: true }) } catch {}
+        return { success: true }
+    }
+
+    return { list, full, save, remove, removeNote }
 }
 
 module.exports = { parseImageDataUrl, safeId, createNotesImages, MAX_IMAGE_BYTES }

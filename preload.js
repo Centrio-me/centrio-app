@@ -167,6 +167,8 @@ const validInvokeChannels = new Set([
     'notes-images:list',
     'notes-images:save',
     'notes-images:delete',
+    'notes-images:full',
+    'notes-images:delete-note',
     'api-notes-update',
     'api-org-add-task-comment',
     'api-org-create-task',
