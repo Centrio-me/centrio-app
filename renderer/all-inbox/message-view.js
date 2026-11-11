@@ -192,7 +192,8 @@ function renderMessage(m, ctx) {
     if (m.forwarded) b.append(el('div', 'aic-fwd', `Переслано от ${m.forwarded}`))
     if (m.reply) {
         const quote = el('div', 'aic-quote')
-        if (m.replyColor) quote.style.setProperty('--quote', m.replyColor)
+        // Telegram's own colour of the quote fits its theme; in your own bubbles Centrio's theme decides it
+        if (m.replyColor && !m.out) quote.style.setProperty('--quote', m.replyColor)
         if (m.replyTitle) quote.append(el('div', 'aic-quote-title', m.replyTitle))
         quote.append(el('div', 'aic-quote-text', m.reply))
         b.append(quote)
