@@ -676,3 +676,17 @@ html[data-fx] .aic-find { background: rgba(14, 18, 30, .88); -webkit-backdrop-fi
 .ai-dots::after { content: '…'; animation: ai-dots 1.2s steps(4, end) infinite; display: inline-block; overflow: hidden; vertical-align: bottom; width: 0; }
 @keyframes ai-dots { to { width: 1.1em; } }
 @media (prefers-reduced-motion: reduce) { .ai-dots::after { animation: none; width: auto; } }
+
+/* opening a chat: grey bubbles while it is read (chat-view.js), the window comes in softly */
+.aic-skeleton { display: flex; flex-direction: column; justify-content: flex-end; gap: 8px; min-height: 100%; padding: 16px 0 8px; }
+.aic-skel {
+    height: 38px; max-width: 420px; border-radius: 18px; background: rgba(255, 255, 255, .08);
+    background-image: linear-gradient(90deg, transparent, rgba(255, 255, 255, .07), transparent); background-size: 200% 100%;
+    animation: ai-shimmer 1.4s linear infinite;
+}
+.aic-skel.is-out { align-self: flex-end; background-color: color-mix(in srgb, var(--out-bg, var(--accent)) 35%, transparent); }
+.aic-skel:nth-child(3n) { height: 56px; }
+html[data-theme="light"] .aic-skel:not(.is-out) { background-color: rgba(0, 0, 0, .06); }
+.aic.is-opening .aic-scroll { animation: aic-open .22s cubic-bezier(.2, .8, .2, 1); }
+@keyframes aic-open { from { opacity: 0; transform: translateY(8px); } }
+@media (prefers-reduced-motion: reduce) { .aic-skel { animation: none; } .aic.is-opening .aic-scroll { animation: none; } }

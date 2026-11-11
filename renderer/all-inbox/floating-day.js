@@ -4,6 +4,7 @@
 
 const HIDE_AFTER_MS = 1300
 const TOP_GAP_PX = 10
+const USER_MS = 1500
 
 /** @param {{ root: HTMLElement, scroll: HTMLElement, list: HTMLElement }} deps */
 function createFloatingDay({ root, scroll, list }) {
@@ -14,6 +15,9 @@ function createFloatingDay({ root, scroll, list }) {
     pill.append(label)
     root.append(pill)
     let timer = null
+    // only the person's own scrolling shows it: not the jump to the newest message when a chat opens
+    let userAt = 0
+    for (const type of ['wheel', 'pointerdown', 'keydown', 'touchstart']) scroll.addEventListener(type, () => { userAt = Date.now() }, { passive: true })
 
     function current() {
         const top = scroll.scrollTop + TOP_GAP_PX
@@ -26,6 +30,7 @@ function createFloatingDay({ root, scroll, list }) {
     }
 
     function onScroll() {
+        if (Date.now() - userAt > USER_MS) return
         const text = current()
         // at the very top the real divider is on screen: no second copy over it
         if (!text || scroll.scrollTop < TOP_GAP_PX) { pill.classList.remove('is-on'); return }

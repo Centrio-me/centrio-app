@@ -39,6 +39,19 @@ function isGroupChat(rows) {
     return new Set(incoming.map((r) => r.author).filter(Boolean)).size >= 2
 }
 
+// while the conversation is read from the tab: grey bubbles on both sides where the messages will be
+const LOADING_SHAPES = [['in', 46], ['in', 30], ['out', 38], ['in', 58], ['out', 26], ['out', 44], ['in', 34]]
+function loadingBubbles() {
+    const box = el('div', 'aic-skeleton')
+    box.setAttribute('aria-label', 'Загружаю переписку…')
+    for (const [side, width] of LOADING_SHAPES) {
+        const b = el('div', `aic-skel is-${side}`)
+        b.style.width = `${width}%`
+        box.append(b)
+    }
+    return box
+}
+
 function createChatView({ host, onSend, onOpenInTab, onClose, onOlder, onLink, onPicture, onPickFiles, onDescribeFiles, onPasteImage, canReply = () => false }) {
     const root = el('section', 'aic')
     root.hidden = true
@@ -190,7 +203,11 @@ function createChatView({ host, onSend, onOpenInTab, onClose, onOlder, onLink, o
             lastRows = []
             seenIds = new Set()
             unseen = 0
-            list.replaceChildren(el('div', 'aic-loading', 'Загружаю переписку…'))
+            list.replaceChildren(loadingBubbles())
+            // the window comes in softly each time a chat is opened
+            root.classList.remove('is-opening')
+            void root.offsetWidth
+            root.classList.add('is-opening')
             q('.aic-title').textContent = chat.title
             q('.aic-sub').textContent = chat.messengerName
             const ava = q('.aic-ava')
