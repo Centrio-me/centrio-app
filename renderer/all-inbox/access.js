@@ -1,6 +1,6 @@
 'use strict'
 // «Все мессенджеры» (11.2026): a PRO mode in alpha testing. This file keeps its button in step with the plan and the
-// on/off setting, draws that setting (Settings → Основные) and the «α» note in the list's header, whose link opens
+// on/off setting, draws that setting (Settings → Все мессенджеры) and the «α» note in the list's header, whose link opens
 // a new support topic in the account window.
 const { accessOf, isEnabledIn } = require('./access-rules')
 
@@ -44,7 +44,7 @@ function createAllInboxAccess({ store, tGet, hasEffectivePro, showUpgradeModal }
         apply()
     }
 
-    // ── Settings → Основные ──────────────────────────────────────────────────
+    // ── Settings → Все мессенджеры ──────────────────────────────────────────────────
     function renderSettings() {
         const group = document.getElementById('allInboxSettingsGroup')
         if (!group) return
@@ -64,17 +64,31 @@ function createAllInboxAccess({ store, tGet, hasEffectivePro, showUpgradeModal }
         row.append(label, toggle)
         group.append(row)
         if (!pro()) group.append(el('div', 'settings-hint ai-settings-pro', t('settingsPro', '')))
+
+        // feedback: the same new support topic as the «α» note of the list
+        const fbRow = el('div', 'settings-row')
+        const fbLabel = el('div', 'settings-label')
+        fbLabel.append(el('span', '', t('feedbackLabel', 'Отзыв о режиме')), el('span', 'settings-hint', t('feedbackHint', '')))
+        const fbBtn = el('button', 'ai-alpha-feedback ai-settings-feedback', t('feedback', 'Оставить отзыв'))
+        fbBtn.type = 'button'
+        fbBtn.addEventListener('click', () => {
+            document.getElementById('settingsModal')?.classList.remove('show')
+            askFeedback()
+        })
+        fbRow.append(fbLabel, fbBtn)
+        group.append(fbRow)
     }
 
     // ── «α» in the list's header: what alpha means and a link to write to us ──────
     function bindAlphaNote() {
         const link = document.querySelector('#allInboxPanel .ai-alpha-feedback')
-        link?.addEventListener('click', (e) => {
-            e.preventDefault()
-            document.dispatchEvent(new CustomEvent('open-support-new', {
-                detail: { topic: 'idea', subject: t('feedbackSubject', 'Отзыв о «Все мессенджеры»') }
-            }))
-        })
+        link?.addEventListener('click', (e) => { e.preventDefault(); askFeedback() })
+    }
+
+    function askFeedback() {
+        document.dispatchEvent(new CustomEvent('open-support-new', {
+            detail: { topic: 'idea', subject: t('feedbackSubject', 'Отзыв о «Все мессенджеры»') }
+        }))
     }
 
     function el(tag, cls, text) {
@@ -87,8 +101,8 @@ function createAllInboxAccess({ store, tGet, hasEffectivePro, showUpgradeModal }
     bindAlphaNote()
     apply()
     setInterval(apply, RECHECK_MS)
-    // drawn like the 3.7.1 groups: when the settings window opens and when «Основные» is chosen
-    document.querySelector('.settings-nav-item[data-section="general"]')?.addEventListener('click', renderSettings)
+    // drawn like the 3.7.1 groups: when the settings window opens and when its own «Все мессенджеры» item is chosen
+    document.querySelector('.settings-nav-item[data-section="allInbox"]')?.addEventListener('click', renderSettings)
     const settingsModal = document.getElementById('settingsModal')
     if (settingsModal) {
         new MutationObserver(() => { if (settingsModal.classList.contains('show')) renderSettings() })

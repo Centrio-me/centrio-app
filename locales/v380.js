@@ -12,6 +12,8 @@ module.exports = {
             current: "Сейчас"
         },
         allInbox: {
+            feedbackLabel: 'Отзыв о режиме',
+            feedbackHint: 'Режим в альфа-тестировании. Расскажите, что удобно, что сломалось и чего не хватает — читаем каждое сообщение.',
             alpha: 'Альфа',
             alphaTitle: 'Режим в альфа-тестировании',
             alphaText: 'Все переписки в одном окне — новый режим, мы его активно дорабатываем. Будем рады вашему отзыву: что удобно, что сломалось, чего не хватает.',
@@ -52,6 +54,8 @@ module.exports = {
             current: "Now"
         },
         allInbox: {
+            feedbackLabel: 'Feedback on the mode',
+            feedbackHint: 'The mode is in alpha testing. Tell us what works, what broke and what is missing — we read every message.',
             alpha: 'Alpha',
             alphaTitle: 'This mode is in alpha testing',
             alphaText: 'All your conversations in one window is a new mode we are actively improving. We would love your feedback: what works, what broke, what is missing.',
@@ -92,6 +96,8 @@ module.exports = {
             current: "Jetzt"
         },
         allInbox: {
+            feedbackLabel: 'Feedback zum Modus',
+            feedbackHint: 'Der Modus ist in der Alpha-Phase. Sag uns, was gut ist, was kaputt ist und was fehlt.',
             alpha: 'Alpha',
             alphaTitle: 'Dieser Modus ist in der Alpha-Phase',
             alphaText: 'Alle Unterhaltungen in einem Fenster ist ein neuer Modus, den wir aktiv verbessern. Wir freuen uns über dein Feedback.',
@@ -132,6 +138,8 @@ module.exports = {
             current: "Ahora"
         },
         allInbox: {
+            feedbackLabel: 'Opinión sobre el modo',
+            feedbackHint: 'El modo está en fase alfa. Cuéntanos qué funciona, qué falla y qué falta.',
             alpha: 'Alfa',
             alphaTitle: 'Este modo está en fase alfa',
             alphaText: 'Todas las conversaciones en una ventana es un modo nuevo que mejoramos activamente. Nos encantará tu opinión.',
@@ -172,6 +180,8 @@ module.exports = {
             current: "Actuelle"
         },
         allInbox: {
+            feedbackLabel: 'Avis sur le mode',
+            feedbackHint: 'Le mode est en phase alpha. Dites-nous ce qui marche, ce qui casse et ce qui manque.',
             alpha: 'Alpha',
             alphaTitle: 'Ce mode est en phase alpha',
             alphaText: 'Toutes vos conversations dans une seule fenêtre : un nouveau mode que nous améliorons activement. Votre avis nous aidera beaucoup.',
@@ -212,6 +222,8 @@ module.exports = {
             current: "Ora"
         },
         allInbox: {
+            feedbackLabel: 'Parere sulla modalità',
+            feedbackHint: 'La modalità è in fase alpha. Dicci cosa funziona, cosa non va e cosa manca.',
             alpha: 'Alpha',
             alphaTitle: 'Questa modalità è in fase alpha',
             alphaText: 'Tutte le conversazioni in una finestra è una nuova modalità che stiamo migliorando. Ci farebbe piacere il tuo parere.',
@@ -252,6 +264,8 @@ module.exports = {
             current: "当前"
         },
         allInbox: {
+            feedbackLabel: '关于此模式的反馈',
+            feedbackHint: '此模式正在 Alpha 测试中。告诉我们哪些好用、哪些有问题、还缺什么。',
             alpha: 'Alpha 测试',
             alphaTitle: '此模式正在 Alpha 测试中',
             alphaText: '所有对话集中在一个窗口是我们正在积极完善的新模式。欢迎留下您的反馈。',

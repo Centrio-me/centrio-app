@@ -1233,7 +1233,7 @@
                 <li>Новое: в окне переписки голосовые играют прямо в чате с настоящей волной, фото открываются в просмотрщике со стрелками, Ctrl+F ищет по переписке, а набранный и не отправленный текст ждёт черновиком у своего чата.</li>
                 <li>Новое: прочитанное в окне Centrio становится прочитанным и в самом мессенджере. Опросы Telegram и ВКонтакте можно проголосовать прямо в окне Centrio.</li>
                 <li>Новое: фоны переписки — узоры, как в Telegram и WhatsApp. В списке видно «печатает…», упоминания «@» и черновики.</li>
-                <li>Режим «Все мессенджеры» включён по умолчанию, выключить его можно в Настройки → Основные. Значок «α» рядом с названием — режим в альфа-тестировании: наведите на него и нажмите «Оставить отзыв», откроется новое обращение в поддержку.</li>
+                <li>Режим «Все мессенджеры» включён по умолчанию, у него свой раздел в настройках, там же его можно выключить. Значок «α» рядом с названием — режим в альфа-тестировании: наведите на него и нажмите «Оставить отзыв», откроется новое обращение в поддержку.</li>
                 <li>Новое: тихие часы для личных мессенджеров. В Настройки → Уведомления → «Мой график» у каждого сервиса три варианта: «Всегда», «Рабочий» или «Личный». Рабочие молчат вечером и в выходные, личные — в рабочее время. Сообщения не теряются: они ждут в центре уведомлений.</li>
                 <li>Новое: заметки открываются по центру экрана, папки слева. Картинку в заметку можно вставить через Ctrl+V или перетащить.</li>
                 <li>Новое: город для погоды на экране блокировки можно выбрать вручную. С включённым VPN город определялся неверно.</li>
@@ -2552,6 +2552,19 @@
                     </svg>
                     <span data-i18n="settings.sections.general"></span>
                 </div>
+                <div class="settings-nav-item settings-nav-allinbox" data-section="allInbox">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="url(#aiAuroraNav)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                        <defs>
+                            <linearGradient id="aiAuroraNav" x1="2" y1="4" x2="22" y2="22" gradientUnits="userSpaceOnUse">
+                                <stop offset="0" stop-color="#7cc4ff"/><stop offset=".5" stop-color="#a78bfa"/><stop offset="1" stop-color="#5eead4"/>
+                            </linearGradient>
+                        </defs>
+                        <path d="M4 5h11a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H9l-4 3v-3H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z"/>
+                        <path d="M20 9a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-1v3l-4-3h-3"/>
+                    </svg>
+                    <span data-i18n="v380.allInbox.title">Все мессенджеры</span>
+                    <span class="settings-nav-pro-badge">PRO</span>
+                </div>
                 <div class="settings-nav-item" data-section="appearance">
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
                         <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.8"/>
@@ -2625,7 +2638,6 @@
 
                 <!-- Основные -->
                 <div class="settings-section active" id="section-general">
-                    <div class="settings-group" id="allInboxSettingsGroup"></div>
                     <div class="settings-group">
                         <div class="settings-group-title" data-i18n="settings.groupLanguage"></div>
                         <div class="settings-row">
@@ -2710,6 +2722,11 @@
                 </div>
 
                 <!-- Внешний вид -->
+                <!-- «Все мессенджеры» (3.8, ПРО, альфа): drawn by renderer/all-inbox/access.js; the mode's new settings go here -->
+                <div class="settings-section" id="section-allInbox">
+                    <div class="settings-group" id="allInboxSettingsGroup"></div>
+                </div>
+
                 <div class="settings-section" id="section-appearance">
                     <div class="settings-group">
                         <div class="settings-group-title" data-i18n="settings.theme"></div>

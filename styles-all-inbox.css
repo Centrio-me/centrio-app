@@ -921,3 +921,9 @@ html[data-fx] .ai-alpha { background: linear-gradient(rgba(14, 18, 32, .92), rgb
 .ai-alpha { position: static; flex-shrink: 0; white-space: nowrap; }
 .ai-alpha-pop { left: 12px; right: 12px; width: auto; top: calc(100% - 2px); }
 .ai-alpha-pop::before { top: -14px; height: 14px; }
+
+/* its own item in the settings menu */
+.settings-nav-allinbox svg { filter: drop-shadow(0 0 4px rgba(167, 139, 250, .45)); }
+.ai-settings-feedback { border: 0; cursor: pointer; flex-shrink: 0; }
+.settings-nav-allinbox { white-space: nowrap; }
+.settings-nav-allinbox > span:first-of-type { overflow: hidden; text-overflow: ellipsis; min-width: 0; }

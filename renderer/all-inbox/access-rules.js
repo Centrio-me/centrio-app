@@ -1,6 +1,6 @@
 'use strict'
 // «Все мессенджеры»: who gets the mode. It is a PRO mode (alpha testing, 11.2026), on by default, and the person can
-// switch it off in Settings → Основные. Saved as store `allInbox: { enabled }`.
+// switch it off in Settings → Все мессенджеры. Saved as store `allInbox: { enabled }`.
 
 /** @param {unknown} saved the store value `allInbox` */
 function isEnabledIn(saved) {
