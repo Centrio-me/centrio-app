@@ -18,3 +18,9 @@ test('messages get a day divider and keep their order', () => {
     assert.equal(rows[0].type, 'day')
     assert.deepEqual(rows.filter((r) => r.type === 'msg').map((r) => r.text), ['а', 'б'])
 })
+
+test('a Telegram album keeps the key of each picture, so it opens in full size', () => {
+    const album = [{ src: 'data:image/png;base64,AA', picture: 'k1', x: 0, y: 0, w: 0.5, h: 1, ratio: 1 }, { src: 'data:image/png;base64,BB', picture: 'k2', x: 0.5, y: 0, w: 0.5, h: 1, ratio: 1 }]
+    const [row] = msgs([{ id: '1', kind: 'photo', album, at: NOW }])
+    assert.deepEqual(row.album.map((a) => a.picture), ['k1', 'k2'])
+})

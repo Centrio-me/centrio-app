@@ -103,6 +103,7 @@ const telegram = {
                 list.push({
                     key: 'm' + mid + '_' + n,
                     src: p ? __ciPicture('tg' + mid + '_' + n, p) : '',
+                    picture: p ? 'tg' + mid + '_' + n : '',
                     x: (rects[n].left - minX) / w, y: (rects[n].top - minY) / h, w: rects[n].width / w, h: rects[n].height / h,
                     ratio: w / h
                 });

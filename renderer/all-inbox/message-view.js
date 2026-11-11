@@ -188,8 +188,9 @@ function renderMessage(m, ctx) {
         b.append(quote)
     }
 
-    if (m.album) b.append(album(m, ctx.onZoom))
-    else if (hasMedia) b.append(photo(m, ctx.onZoom))
+    // a bubble with a photo is as wide as the photo, its caption wraps under it, like in Telegram
+    if (m.album) { b.append(album(m, ctx.onZoom)); b.style.width = `${MEDIA_MAX_W}px` }
+    else if (hasMedia) { const media = photo(m, ctx.onZoom); b.append(media); b.style.width = media.style.width }
     else if (sticker) {
         const img = el('img', 'aic-sticker')
         img.src = m.media

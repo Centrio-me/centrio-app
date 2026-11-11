@@ -6,6 +6,8 @@ const { renderMessage } = require('./message-view')
 const { createDrafts } = require('./drafts')
 const { createComposer } = require('./composer')
 const { readBackground, saveBackground, createBackgroundMenu } = require('./chat-backgrounds')
+const { createLightbox, galleryOf } = require('./lightbox')
+const { createFloatingDay } = require('./floating-day')
 
 const NEAR_BOTTOM_PX = 120
 const TOP_LOAD_PX = 40
@@ -59,10 +61,8 @@ function createChatView({ host, onSend, onOpenInTab, onClose, onOlder, onLink, o
         <button type="button" class="aic-down" hidden aria-label="К новым сообщениям" title="К новым сообщениям">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
             <span class="aic-down-n" hidden></span>
-        </button>
-        <div class="aic-lightbox" tabindex="-1" hidden title="Закрыть"><img alt=""></div>`
+        </button>`
     host.appendChild(root)
-    const lightbox = root.querySelector('.aic-lightbox')
 
     const q = (s) => root.querySelector(s)
     const scroll = q('.aic-scroll')
@@ -73,7 +73,10 @@ function createChatView({ host, onSend, onOpenInTab, onClose, onOlder, onLink, o
     let chatId = ''
     const composer = createComposer({ root, onSend, onPickFiles, onDescribeFiles, onPasteImage, onDraft: (text) => drafts.keep(chatId, text) })
     composer.setVisible(false)
-    root.insertBefore(composer.el, lightbox)
+    root.append(composer.el)
+    const lightbox = createLightbox({ root, onPicture })
+    const floatingDay = createFloatingDay({ root, scroll, list })
+    let lastRows = []
 
     const bgButton = q('.aic-bg')
     const bgMenu = createBackgroundMenu({
@@ -88,6 +91,12 @@ function createChatView({ host, onSend, onOpenInTab, onClose, onOlder, onLink, o
 
     q('.aic-open').addEventListener('click', onOpenInTab)
     q('.aic-x').addEventListener('click', onClose)
+    // Esc closes the conversation, as in Telegram — after the emoji panel, the answer strip, the menu and the photo
+    root.addEventListener('keydown', (e) => {
+        if (e.key !== 'Escape' || e.defaultPrevented || lightbox.isOpen() || !menu.hidden || bgMenu.isOpen()) return
+        e.preventDefault()
+        onClose()
+    })
     // the conversation sticks to its newest message until the person scrolls up; pictures that load late keep it there
     let stick = true
     const atBottom = () => scroll.scrollHeight - scroll.scrollTop - scroll.clientHeight < NEAR_BOTTOM_PX
@@ -158,25 +167,17 @@ function createChatView({ host, onSend, onOpenInTab, onClose, onOlder, onLink, o
     keepBottom.observe(list)
     keepBottom.observe(scroll)
 
-    // a photo opens over the conversation: the small copy at once, the full one as soon as the page gives it
-    async function zoom(m, src, pictureKey) {
-        const img = lightbox.querySelector('img')
-        img.src = src
-        lightbox.hidden = false
-        lightbox.focus()
-        const shown = src
-        const full = pictureKey ? await onPicture(pictureKey).catch(() => '') : ''
-        if (full && !lightbox.hidden && img.src === shown) img.src = full
-    }
-    function closeZoom() { lightbox.hidden = true; lightbox.querySelector('img').removeAttribute('src') }
-    lightbox.addEventListener('click', closeZoom)
-    lightbox.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeZoom() })
+    // a photo opens on the whole window, with every photo of the chat to go through
+    function zoom(m, src) { lightbox.open(galleryOf(lastRows), src, q('.aic-title').textContent) }
+    function closeZoom() { lightbox.hide() }
 
     return {
         show(chat) {
             root.hidden = false
             lastSig = ''
             stick = true
+            floatingDay.reset()
+            lastRows = []
             seenIds = new Set()
             unseen = 0
             list.replaceChildren(el('div', 'aic-loading', 'Загружаю переписку…'))
@@ -205,6 +206,7 @@ function createChatView({ host, onSend, onOpenInTab, onClose, onOlder, onLink, o
             const nearBottom = stick || atBottom() || !lastSig
             const fromBottom = scroll.scrollHeight - scroll.scrollTop
             lastSig = sig
+            lastRows = rows
             const frag = document.createDocumentFragment()
             if (!rows.length) frag.append(el('div', 'aic-loading', 'Сообщений пока нет'))
             // a group chat (names of authors) gets avatars next to the groups, like Telegram; private chats do not

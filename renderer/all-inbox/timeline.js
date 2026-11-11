@@ -19,6 +19,8 @@ function cleanAlbum(album) {
     if (!Array.isArray(album) || album.length < 2) return null
     return album.slice(0, MAX_ALBUM).map((a) => ({
         src: picture(a && a.src), x: share(a && a.x), y: share(a && a.y), w: share(a && a.w), h: share(a && a.h),
+        // the page's own key of the picture: a click asks for it in full size
+        picture: a && typeof a.picture === 'string' ? a.picture.slice(0, 80) : '',
         ratio: Number(a && a.ratio) > 0 ? Number(a.ratio) : 1
     }))
 }
