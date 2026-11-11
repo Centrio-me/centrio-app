@@ -50,7 +50,7 @@ function createAllInboxAccess({ store, tGet, hasEffectivePro, showUpgradeModal }
         if (!group) return
         group.textContent = ''
         const title = el('div', 'settings-group-title')
-        title.append(t('title', 'Все мессенджеры'), el('span', 'ai-pro-chip', 'ПРО'), el('span', 'ai-alpha-chip', 'α'))
+        title.append(t('title', 'Все мессенджеры'), el('span', 'ai-pro-chip', 'ПРО'), alphaChip())
         group.append(title)
         const row = el('div', 'settings-row')
         const label = el('div', 'settings-label')
@@ -89,6 +89,13 @@ function createAllInboxAccess({ store, tGet, hasEffectivePro, showUpgradeModal }
         document.dispatchEvent(new CustomEvent('open-support-new', {
             detail: { topic: 'idea', subject: t('feedbackSubject', 'Отзыв о «Все мессенджеры»') }
         }))
+    }
+
+    // the same drawn α as in index.html (a letter sits on the text baseline and is never centred)
+    function alphaChip() {
+        const chip = el('span', 'ai-alpha-chip')
+        chip.innerHTML = '<svg class="ai-alpha-glyph" viewBox="0 0 20 20" aria-hidden="true"><path d="M14.6 5.5C14 10 12.1 14.5 8.7 14.5 6.4 14.5 5 12.6 5 10s1.4-4.5 3.7-4.5c3.4 0 5.3 4.5 6.3 9" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+        return chip
     }
 
     function el(tag, cls, text) {

@@ -927,3 +927,11 @@ html[data-fx] .ai-alpha { background: linear-gradient(rgba(14, 18, 32, .92), rgb
 .ai-settings-feedback { border: 0; cursor: pointer; flex-shrink: 0; }
 .settings-nav-allinbox { white-space: nowrap; }
 .settings-nav-allinbox > span:first-of-type { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+
+/* the drawn α (a letter sat low in its circle) */
+.ai-alpha-glyph { display: block; width: 100%; height: 100%; }
+.ai-btn-alpha { padding: 1.5px; }
+.ai-btn-alpha .ai-alpha-glyph { width: 8px; height: 8px; }
+.all-inbox-btn.is-locked .ai-btn-alpha .ai-alpha-glyph { display: none; }
+.ai-alpha-mark { padding: 3px; }
+.ai-alpha-chip { width: 18px; height: 16px; padding: 3px 4px; }
