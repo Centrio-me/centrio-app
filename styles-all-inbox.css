@@ -164,7 +164,9 @@ html[data-fx] .all-inbox-panel { --ai-ring: rgba(20, 24, 36, .9); }
 }
 .aic[hidden] { display: none; }
 @keyframes aic-in { from { opacity: 0; } }
-html[data-fx] .aic { background: rgba(8, 11, 20, .55); box-shadow: 0 0 0 1px rgba(255, 255, 255, .06); }
+/* the chosen chat background stays in Аврора / Время суток; the window is never see-through (the tab is behind it) */
+html[data-fx] .aic { box-shadow: 0 0 0 1px rgba(255, 255, 255, .06); }
+html[data-fx] .aic[data-bg="plain"] { background: linear-gradient(var(--fx-panel, rgba(8, 11, 20, .78)), var(--fx-panel, rgba(8, 11, 20, .78))), var(--fx-ground, #04060c); }
 html[data-mode="light"] .aic, html[data-theme="light"] .aic { background: #f5f6f9; }
 
 .aic-head { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--border); }
