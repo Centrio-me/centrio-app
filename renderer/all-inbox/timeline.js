@@ -118,7 +118,16 @@ function canJoin(a, b) {
     const lone = (r) => r && r.type === 'msg' && r.kind === 'photo' && r.media && !r.album && !r.text && !r.reply && !r.forwarded
     if (!lone(a) || !lone(b) || a.out !== b.out || a.author !== b.author || a.group !== b.group) return false
     if (a.at && b.at) return Math.abs(b.at - a.at) <= ALBUM_GAP_MS
+    // only «18:41» from the page (MAX): the minutes of the day, within the same gap
+    const ma = clockMinutes(a.time)
+    const mb = clockMinutes(b.time)
+    if (ma >= 0 && mb >= 0) return Math.abs(mb - ma) * 60000 <= ALBUM_GAP_MS
     return a.time === b.time
+}
+
+function clockMinutes(time) {
+    const m = /^(\d{1,2}):(\d{2})$/.exec(String(time || '').trim())
+    return m ? Number(m[1]) * 60 + Number(m[2]) : -1
 }
 
 function mergePhotoRuns(rows) {

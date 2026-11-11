@@ -657,3 +657,5 @@ html[data-fx] .aic-find { background: rgba(14, 18, 30, .88); -webkit-backdrop-fi
 ::highlight(aic-find-now) { background-color: #ffb800; color: #1a1300; }
 .aic-search-btn.is-on, .aic.is-finding .aic-search-btn { color: var(--accent); }
 @keyframes aic-find-in { from { opacity: 0; transform: translateY(-4px); } }
+
+.aic-sub.is-online { color: var(--accent); }

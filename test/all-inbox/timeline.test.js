@@ -24,3 +24,10 @@ test('a Telegram album keeps the key of each picture, so it opens in full size',
     const [row] = msgs([{ id: '1', kind: 'photo', album, at: NOW }])
     assert.deepEqual(row.album.map((a) => a.picture), ['k1', 'k2'])
 })
+
+test('photos with only a clock time (MAX) a couple of minutes apart still become one album', () => {
+    const p = (id, time) => ({ id, kind: 'photo', media: 'data:image/png;base64,' + id, out: true, time })
+    const rows = msgs([p('1', '18:41'), p('2', '18:43'), p('3', '18:45'), p('4', '18:55')])
+    assert.equal(rows.length, 2)
+    assert.equal(rows[0].album.length, 3)
+})

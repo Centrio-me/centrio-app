@@ -279,7 +279,8 @@ const max = {
         }
         return {
             title: __ciText(chat.querySelector('.topbar span.title')),
-            subtitle: '',
+            // «Был(-а) вчера в 21:12», «в сети», «печатает…», «12 участников» — the line under the name in MAX's header
+            subtitle: __ciText(chat.querySelector('.topbar .subtitle')).slice(0, 80),
             canWrite: !!__ciVisible(chat, 'div.contenteditable[contenteditable], [role=textbox][contenteditable]'),
             messages: out
         };

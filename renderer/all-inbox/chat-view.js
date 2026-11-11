@@ -210,6 +210,8 @@ function createChatView({ host, onSend, onOpenInTab, onClose, onOlder, onLink, o
             const sub = q('.aic-sub')
             sub.textContent = text
             sub.classList.toggle('is-typing', /печата|набира|записыва|typing|recording/i.test(text))
+            // «в сети» in the accent, like Telegram
+            sub.classList.toggle('is-online', /^(в сети|online)/i.test(text))
         },
         update(rows, sig) {
             if (sig === lastSig) return
