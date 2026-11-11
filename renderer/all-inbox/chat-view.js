@@ -59,7 +59,7 @@ function openingMark() {
     return box
 }
 
-function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab, onClose, onOlder, onLink, onPicture, onPickFiles, onDescribeFiles, onPasteImage, canReply = () => false, onMedia = () => Promise.resolve(null), canPlay = () => false }) {
+function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab, onClose, onOlder, onLink, onPicture, onPickFiles, onDescribeFiles, onPasteImage, canReply = () => false, onMedia = () => Promise.resolve(null), canPlay = () => false, onVote = null, canVote = () => false }) {
     const root = el('section', 'aic')
     root.hidden = true
     root.dataset.bg = readBackground()
@@ -281,7 +281,8 @@ function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab
             const isGroup = isGroupChat(rows)
             const playable = canPlay()
             const ctx = { isGroup, onLink, onZoom: zoom, onOpenInTab, onReply: canReply() ? (m) => composer.replyTo(m) : null,
-                onVoice: playable ? onVoice : null, onSeek: (m, part) => player.seek(m.id, part), onVideo: playable ? onVideo : null, playerState: player.state }
+                onVoice: playable ? onVoice : null, onSeek: (m, part) => player.seek(m.id, part), onVideo: playable ? onVideo : null, playerState: player.state,
+                onVote: onVote && canVote() ? onVote : null }
             byId = new Map()
             const firstDraw = !seenIds.size
             let arrived = 0
@@ -321,7 +322,9 @@ function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab
         },
         setCanWrite(on) { composer.setVisible(on) },
         hide() { player.reset(); videoToken++; closeZoom(); closeMenu(); bgMenu.toggle(false); root.hidden = true },
-        isShown: () => !root.hidden
+        isShown: () => !root.hidden,
+        // the person really sees the newest messages: our window on screen, Centrio in focus, the conversation at its end
+        isReading: () => !root.hidden && !lightbox.isOpen() && document.visibilityState === 'visible' && document.hasFocus() && atBottom()
     }
 }
 

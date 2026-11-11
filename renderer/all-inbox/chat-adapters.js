@@ -8,10 +8,13 @@
 const { AVATAR_HELPER } = require('./adapters')
 const { whatsappChat } = require('./whatsapp')
 const { vkChat } = require('./vk')
+const { instagramChat } = require('./instagram')
 
 const MAX_MESSAGES = 120
 // voice messages, audio and videos up to this size play in our window; bigger ones open in the messenger
 const MEDIA_MAX_BYTES = 40 * 1024 * 1024
+// a poll's votes are asked again this often while the chat is open
+const POLL_REFRESH_MS = 5000
 // MAX photos not on the page yet: at most this many messages are warmed up per read, each waited for this long
 const MAX_WARM_ITEMS = 12
 const MAX_WARM_TRIES = 12
@@ -183,6 +186,37 @@ const telegram = {
             } catch (e) { waves[k] = []; }
             return null;
         }
+        // a poll from Telegram's own message: question, options, votes, yours (asked again every few seconds)
+        var polls = window.__ciTgPolls || (window.__ciTgPolls = {});
+        function pollOf(mid) {
+            var k = peerNow + '_' + mid, c = polls[k];
+            if (!c) c = polls[k] = { at: 0, data: null, busy: false };
+            if (!c.busy && Date.now() - c.at > ${POLL_REFRESH_MS}) {
+                c.busy = true; c.at = Date.now();
+                try {
+                    rootScope.managers.appMessagesManager.getMessageByPeer(peerNow, Number(mid)).then(function (m) {
+                        c.busy = false;
+                        var md = m && m.media;
+                        if (!md || md._ !== 'messageMediaPoll') return;
+                        var p = md.poll, r = md.results || {}, res = r.results || [], pf = p.pFlags || {};
+                        function txt(t) { return typeof t === 'string' ? t : (t && t.text) || ''; }
+                        function same(a, b) { return Array.prototype.join.call(a || [], ',') === Array.prototype.join.call(b || [], ','); }
+                        c.data = {
+                            question: txt(p.question),
+                            type: pf.quiz ? 'quiz' : (pf.public_voters ? 'public' : 'anon'),
+                            multiple: !!pf.multiple_choice, closed: !!pf.closed,
+                            voted: res.some(function (x) { return x.pFlags && x.pFlags.chosen; }),
+                            total: r.total_voters || 0,
+                            options: (p.answers || []).map(function (a) {
+                                var v = res.filter(function (x) { return same(x.option, a.option); })[0];
+                                return { text: txt(a.text), votes: v ? v.voters || 0 : 0, chosen: !!(v && v.pFlags && v.pFlags.chosen), correct: !!(v && v.pFlags && v.pFlags.correct) };
+                            })
+                        };
+                    }, function () { c.busy = false; });
+                } catch (e) { c.busy = false; }
+            }
+            return c.data;
+        }
         var start = Math.max(0, bubbles.length - ${MAX_MESSAGES});
         var out = [];
         for (var i = start; i < bubbles.length; i++) {
@@ -199,6 +233,7 @@ const telegram = {
             var kind = 'text';
             // a round video message carries a sound element too: it is a video
             if (/ round /.test(cls)) kind = 'video';
+            else if (b.querySelector('poll-element, .poll')) kind = 'poll';
             else if (/ voice-message /.test(cls) || b.querySelector('.audio.is-voice, .voice')) kind = 'voice';
             else if (/ sticker /.test(cls) || /emoji-big/.test(cls)) kind = 'sticker';
             else if (/ video /.test(cls) || b.querySelector('video')) kind = 'video';
@@ -237,6 +272,7 @@ const telegram = {
                 size: __ciText(b.querySelector('.document-size')),
                 duration: __ciText(b.querySelector('.audio-time, .video-time')),
                 waveBytes: kind === 'voice' ? waveOf(mid) : null,
+                poll: kind === 'poll' ? pollOf(mid) : null,
                 round: / round /.test(cls),
                 media: album ? '' : (img && (img.tagName === 'IMG' || (kind === 'video' && img.tagName === 'VIDEO')) ? __ciPicture('tg' + mid, img) : ''),
                 mediaW: size ? Math.round(size.width) : 0,
@@ -293,6 +329,31 @@ const telegram = {
         var input = window.appImManager && appImManager.chat && appImManager.chat.input;
         if (!mid || !input || typeof input.initMessageReply !== 'function') return false;
         try { input.initMessageReply({ replyToMsgId: mid }); return true; } catch (e) { return false; }
+    })()`,
+    // a vote in a poll of the open chat, through Telegram's own vote (indexes of the chosen options)
+    VOTE: (id, indexes) => `(function () {
+        var mid = Number(${JSON.stringify(String(id))}), pick = ${JSON.stringify((indexes || []).map(Number).filter((n) => Number.isInteger(n) && n >= 0))};
+        var c = window.appImManager && appImManager.chat;
+        if (!mid || !c || !pick.length) return false;
+        var M = rootScope.managers;
+        return M.appMessagesManager.getMessageByPeer(c.peerId, mid).then(function (m) {
+            if (!m || !m.media || m.media._ !== 'messageMediaPoll') return false;
+            return Promise.resolve(M.appPollsManager.sendVote(m, pick)).then(function () {
+                var k = c.peerId + '_' + mid;
+                if (window.__ciTgPolls && window.__ciTgPolls[k]) window.__ciTgPolls[k].at = 0;
+                return true;
+            });
+        }).catch(function () { return false; });
+    })()`,
+    // the open chat read up to its newest message, through Telegram's own «read» (only when something is unread)
+    READ: `(function () {
+        var c = window.appImManager && appImManager.chat;
+        if (!c || !c.peerId || !window.rootScope) return false;
+        var M = rootScope.managers;
+        return M.dialogsStorage.getDialogOnly(c.peerId).then(function (d) {
+            if (!d || !(d.unread_count > 0) || !d.top_message) return false;
+            return Promise.resolve(M.appMessagesManager.readHistory(c.peerId, d.top_message)).then(function () { return true; });
+        }).catch(function () { return false; });
     })()`,
     // a voice message, an audio file or a video of the open chat, taken through Telegram's own downloader
     MEDIA: (id) => `(function () {
@@ -614,7 +675,7 @@ const max = {
     })()`
 }
 
-const CHAT_ADAPTERS = { telegram, max, whatsapp: whatsappChat({ AVATAR_HELPER, IMAGE_HELPER }), vk: vkChat() }
+const CHAT_ADAPTERS = { telegram, max, whatsapp: whatsappChat({ AVATAR_HELPER, IMAGE_HELPER }), vk: vkChat(), instagram: instagramChat() }
 
 const FULL_PICTURE_MAX = 1600
 

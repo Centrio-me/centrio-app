@@ -121,6 +121,62 @@ function paintVoice(box, state) {
     if (time) time.textContent = mine && state.failed ? 'Не загрузилось — откроется в мессенджере' : (mine && (playing || state.current > 0) ? clock(state.current) : box.dataset.duration)
 }
 
+function votesWord(n) {
+    const a = n % 10, b = n % 100
+    if (a === 1 && b !== 11) return `${n} голос`
+    if (a >= 2 && a <= 4 && (b < 12 || b > 14)) return `${n} голоса`
+    return `${n} голосов`
+}
+
+const POLL_TYPE_LABEL = { anon: 'Анонимный опрос', public: 'Опрос', quiz: 'Викторина' }
+
+// a poll as the messenger shows it: the question, the options to vote in (one tap, or several and «Голосовать»),
+// and once you voted or it is closed, each option's share with a bar and your choice ticked
+function pollCard(m, ctx) {
+    const p = m.poll
+    const box = el('div', `aic-poll${p.showResults ? ' is-results' : ''}`)
+    box.append(el('div', 'aic-poll-q', p.question))
+    const sub = [p.closed ? 'Опрос завершён' : POLL_TYPE_LABEL[p.type], p.multiple && !p.showResults ? 'можно несколько' : ''].filter(Boolean).join(' · ')
+    box.append(el('div', 'aic-poll-type', sub))
+    const list = el('div', 'aic-poll-options')
+    const picked = new Set()
+    const canVote = !p.showResults && typeof ctx.onVote === 'function'
+    let send = null
+    p.options.forEach((o, i) => {
+        if (p.showResults) {
+            const row = el('div', `aic-poll-opt is-result${o.chosen ? ' is-chosen' : ''}${o.correct ? ' is-correct' : ''}`)
+            row.style.setProperty('--pct-n', String(o.pct / 100))
+            const head = el('div', 'aic-poll-line')
+            head.append(el('span', 'aic-poll-pct', `${o.pct}%`), el('span', 'aic-poll-text', o.text))
+            if (o.chosen) head.append(Object.assign(el('span', 'aic-poll-mine'), { innerHTML: ICON_CHECK }))
+            row.append(head, el('div', 'aic-poll-bar'))
+            list.append(row)
+            return
+        }
+        const btn = el('button', 'aic-poll-opt')
+        btn.type = 'button'
+        btn.disabled = !canVote
+        btn.append(el('span', 'aic-poll-dot'), el('span', 'aic-poll-text', o.text))
+        btn.addEventListener('click', () => {
+            if (!p.multiple) { box.classList.add('is-sending'); ctx.onVote(m, [i]); return }
+            if (picked.has(i)) picked.delete(i); else picked.add(i)
+            btn.classList.toggle('is-picked', picked.has(i))
+            if (send) send.disabled = !picked.size
+        })
+        list.append(btn)
+    })
+    box.append(list)
+    if (canVote && p.multiple) {
+        send = el('button', 'aic-poll-send', 'Голосовать')
+        send.type = 'button'
+        send.disabled = true
+        send.addEventListener('click', () => { box.classList.add('is-sending'); ctx.onVote(m, [...picked]) })
+        box.append(send)
+    }
+    box.append(el('div', 'aic-poll-total', p.total ? votesWord(p.total) : 'Пока нет голосов'))
+    return box
+}
+
 function photo(m, onZoom, ctx = {}) {
     const box = mediaBox(m.mediaW, m.mediaH)
     const wrap = el('div', 'aic-photo')
@@ -296,11 +352,13 @@ function renderMessage(m, ctx) {
         img.alt = ''
         b.append(img)
     } else if (m.kind === 'contact') { b.classList.add('has-contact'); b.append(contactCard(m, ctx.onOpenInTab)) }
+    else if (m.kind === 'poll' && m.poll) { b.classList.add('has-poll'); b.append(pollCard(m, ctx)) }
     else if (m.kind === 'voice' && ctx.onVoice) { b.classList.add('has-voice'); b.append(voice(m, ctx)) }
     else if (m.kind !== 'text' && m.kind !== 'photo') b.append(card(m, ctx.onOpenInTab))
 
     if (jumbo) b.append(el('div', 'aic-jumbo', m.text), meta(m, true))
-    else if (m.text && m.webpage) { b.classList.add('has-webpage'); b.append(textBlock(m, ctx.onLink, false), webpageCard(m, ctx.onLink), meta(m, false)) }
+    // a link preview; a shared post may come with no words of its own — then just its card
+    else if (m.webpage) { b.classList.add('has-webpage'); if (m.text) b.append(textBlock(m, ctx.onLink, false)); b.append(webpageCard(m, ctx.onLink), meta(m, false)) }
     else if (m.text) b.append(textBlock(m, ctx.onLink))
     else b.append(meta(m, hasMedia || sticker))
 

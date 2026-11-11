@@ -71,3 +71,38 @@ test('signature changes on a one-letter edit anywhere in a long text', () => {
         assert.notStrictEqual(signature([row(edited)]), signature([row(long)]), `edit at ${at}`)
     }
 })
+
+test('a poll keeps its question, options, votes and shares; results show once voted or closed', () => {
+    const rows = buildTimeline([
+        { id: '1', kind: 'poll', text: 'склеенный текст опроса', poll: { question: 'Берём?', type: 'anon', multiple: false, closed: false, voted: true, total: 4,
+            options: [{ text: 'Да', votes: 3, chosen: true }, { text: 'Нет', votes: 1 }, { text: '', votes: 9 }] } },
+        { id: '2', kind: 'poll', poll: { question: 'Когда?', options: [{ text: 'Сегодня', votes: 0 }, { text: 'Завтра', votes: 0 }] } },
+        { id: '3', kind: 'poll', poll: { question: '', options: [] } }
+    ], Date.now()).filter((r) => r.type === 'msg')
+    const p = rows[0].poll
+    assert.equal(rows[0].text, '')
+    assert.equal(p.question, 'Берём?')
+    assert.equal(p.type, 'anon')
+    assert.equal(p.showResults, true)
+    assert.deepEqual(p.options.map((o) => [o.text, o.votes, o.pct, o.chosen]), [['Да', 3, 75, true], ['Нет', 1, 25, false]])
+    assert.equal(rows[1].poll.showResults, false)
+    assert.equal(rows[1].poll.type, 'public')
+    assert.equal(rows.length, 2, 'a poll with no question and no options is not drawn')
+})
+
+test('poll texts keep every letter and only squeeze spaces', () => {
+    const rows = buildTimeline([{ id: '1', kind: 'poll', poll: { question: 'Yes  or   so?', options: [{ text: 'Sure, sis' }] } }], Date.now()).filter((r) => r.type === 'msg')
+    assert.equal(rows[0].poll.question, 'Yes or so?')
+    assert.equal(rows[0].poll.options[0].text, 'Sure, sis')
+})
+
+test('a duration keeps only its time, not the icons around it', () => {
+    const rows = buildTimeline([{ id: '1', kind: 'video', duration: ' 0:09 \ue900\n' }], Date.now()).filter((r) => r.type === 'msg')
+    assert.equal(rows[0].duration, '0:09')
+})
+
+test('a shared post with no words of its own is kept as its card', () => {
+    const rows = buildTimeline([{ id: '1', kind: 'text', text: '', webpage: { url: 'https://www.instagram.com/reel/x/', site: 'Instagram', title: 'tipadiler', image: 'https://cdn/x.jpg' } }], Date.now()).filter((r) => r.type === 'msg')
+    assert.equal(rows.length, 1)
+    assert.equal(rows[0].webpage.title, 'tipadiler')
+})

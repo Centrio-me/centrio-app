@@ -3,10 +3,15 @@
 // all chats, kept on this computer. The pictures themselves live in styles-all-inbox.css ([data-bg="…"]).
 
 const BG_KEY = 'centrio-all-inbox-bg'
-const DEFAULT_BG = 'night'
+const DEFAULT_BG = 'telegram'
 
+// the small-doodle wallpapers of Telegram and WhatsApp in spirit, then Centrio's own
 const BACKGROUNDS = [
     { id: 'plain', name: 'Без фона' },
+    { id: 'telegram', name: 'Изумруд' },
+    { id: 'telegram-light', name: 'Весна' },
+    { id: 'whatsapp', name: 'Полночь' },
+    { id: 'whatsapp-light', name: 'Песок' },
     { id: 'night', name: 'Ночь' },
     { id: 'aurora', name: 'Аврора' },
     { id: 'ocean', name: 'Океан' },

@@ -4,6 +4,7 @@
 // The lists are read from the tabs' pages (adapters.js) only while the panel is open; nothing leaves the computer.
 const { adapterFor } = require('./adapters')
 const { mergeInbox } = require('./merge')
+const { attachPanelResize } = require('./panel-resize')
 const { createChatController, clickAt } = require('./chat-controller')
 const { sharedDrafts } = require('./drafts')
 
@@ -401,9 +402,12 @@ function createAllInbox({ state, switchTab, tGet, ipcRenderer }) {
         else if (!bar || !(bar.compareDocumentPosition(content) & Node.DOCUMENT_POSITION_FOLLOWING)) content.before(panel)
     }
 
+    // the list is as wide as the person made it (its edge next to the page is dragged)
+    const resize = attachPanelResize({ panel, contentOf: () => document.getElementById('contentArea') })
+
     function setOpen(next) {
         open = next
-        if (open) place()
+        if (open) { place(); resize.placeEdge() }
         else { chats?.close(); document.querySelectorAll(`webview.${WARM_CLASS}`).forEach((v) => v.classList.remove(WARM_CLASS)) }
         document.body.classList.toggle('all-inbox-open', open)
         button.classList.toggle('active', open)

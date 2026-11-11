@@ -10,6 +10,7 @@
 
 const { whatsappList } = require('./whatsapp')
 const { vkList } = require('./vk')
+const { instagramList } = require('./instagram')
 
 const MAX_CHATS = 60
 // Telegram gives its whole dialog list; the freshest ones are enough for one screen of history
@@ -380,7 +381,7 @@ const max = {
     })()`
 }
 
-const ADAPTERS = [telegram, max, whatsappList({ AVATAR_HELPER }), vkList()]
+const ADAPTERS = [telegram, max, whatsappList({ AVATAR_HELPER }), vkList(), instagramList()]
 
 /** @param {string} url @returns {object|null} */
 function adapterFor(url) {

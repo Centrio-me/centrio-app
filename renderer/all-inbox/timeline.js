@@ -4,7 +4,7 @@
 
 const DAY_NAMES_RU = ['Сегодня', 'Вчера']
 const MONTHS_RU = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря']
-const KINDS = new Set(['text', 'photo', 'video', 'voice', 'sticker', 'file', 'contact', 'service'])
+const KINDS = new Set(['text', 'photo', 'video', 'voice', 'sticker', 'file', 'contact', 'poll', 'service'])
 
 const { decodeWave } = require('./media-player')
 
@@ -21,6 +21,30 @@ function cleanWave(m, kind) {
     if (kind !== 'voice') return []
     const values = Array.isArray(m.wave) ? m.wave : decodeWave(Array.isArray(m.waveBytes) ? m.waveBytes.slice(0, 200) : null)
     return values.filter((v) => typeof v === 'number' && Number.isFinite(v)).slice(0, MAX_WAVE).map((v) => Math.max(0, Math.min(31, Math.round(v))))
+}
+const MAX_POLL_OPTIONS = 12
+const POLL_TYPES = new Set(['anon', 'public', 'quiz'])
+// a poll: the question, its options with votes and shares; the results are shown once you voted or it is closed
+function cleanPoll(p) {
+    if (!p || typeof p !== 'object') return null
+    const cut = (v, n) => String(v || '').replace(/\s+/g, ' ').trim().slice(0, n)
+    const options = (Array.isArray(p.options) ? p.options : []).filter((o) => o && cut(o.text, 300)).slice(0, MAX_POLL_OPTIONS)
+    const question = cut(p.question, 300)
+    if (!question && !options.length) return null
+    const total = Math.max(0, Math.round(Number(p.total) || 0))
+    return {
+        question,
+        type: POLL_TYPES.has(p.type) ? p.type : 'public',
+        multiple: p.multiple === true,
+        closed: p.closed === true,
+        voted: p.voted === true,
+        showResults: p.voted === true || p.closed === true,
+        total,
+        options: options.map((o) => {
+            const votes = Math.max(0, Math.round(Number(o.votes) || 0))
+            return { text: cut(o.text, 300), votes, pct: total ? Math.round((votes / total) * 100) : 0, chosen: o.chosen === true, correct: o.correct === true }
+        })
+    }
 }
 const share = (v) => Math.min(1, Math.max(0, Number(v) || 0))
 
@@ -82,8 +106,11 @@ function buildTimeline(raw, now) {
             const label = dayLabel(m.at, now)
             if (label !== lastDay) { rows.push({ type: 'day', label, id: `d${label}` }); lastDay = label }
         }
-        const text = String(m.text || '').trim()
-        if (!text && kind === 'text') continue
+        // a poll's own words are in its card, not in the text (the page glues them together)
+        const text = kind === 'poll' ? '' : String(m.text || '').trim()
+        if (!text && kind === 'text' && !cleanWebpage(m.webpage)) continue
+        const poll = kind === 'poll' ? cleanPoll(m.poll) : null
+        if (kind === 'poll' && !poll) continue
         rows.push({
             type: 'msg',
             id: String(m.id),
@@ -98,8 +125,10 @@ function buildTimeline(raw, now) {
             name: String(m.name || '').slice(0, 120),
             // a shared contact: its number, or the messenger's note under the name («Новый контакт»)
             phone: String(m.phone || '').slice(0, 40),
-            duration: String(m.duration || '').trim().slice(0, 12),
+            // only the time: Telegram puts its «muted» icon (a glyph of its icon font) into the same label
+            duration: String(m.duration || '').replace(/[^\d:]/g, '').slice(0, 12),
             wave: cleanWave(m, kind),
+            poll,
             // Telegram's round video message
             round: kind === 'video' && m.round === true,
             media: picture(m.media),
@@ -216,7 +245,7 @@ function signature(rows) {
         const reacts = (r.reactions || []).map((x) => x.e + x.n + (x.mine ? '*' : '')).join(',')
         return [r.id, r.read ? 1 : 0, r.kind, r.text || '', print(r.media), print(r.avatar), album, reacts, r.pending || '',
             r.name || '', r.size || '', r.duration || '', r.author || '', r.reply || '', r.forwarded || '', r.phone || '',
-            r.webpage ? print(r.webpage.image) + (r.webpage.title || '') : '', (r.wave || []).length].join('|')
+            r.webpage ? print(r.webpage.image) + (r.webpage.title || '') : '', (r.wave || []).length, r.poll ? JSON.stringify(r.poll) : ''].join('|')
     }).join(';')
 }
 

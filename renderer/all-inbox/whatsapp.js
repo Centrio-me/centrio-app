@@ -228,6 +228,18 @@ function whatsappChat({ AVATAR_HELPER, IMAGE_HELPER }) {
             var s = send.getBoundingClientRect();
             return { caption: cap ? centre(cap) : null, send: { x: s.left + s.width / 2, y: s.top + s.height / 2 } };
         })()`,
+        // the open chat read, through WhatsApp's own «seen» (only when something in it is unread)
+        READ: `(function () {${WA_STORE}
+            var C = __waStore();
+            var chat = C && C.Chat.getActive ? C.Chat.getActive() : null;
+            if (!chat || !(chat.unreadCount > 0)) return false;
+            try {
+                var U = window.require('WAWebUpdateUnreadChatAction');
+                return Promise.resolve(U.sendSeen({ chat: chat, threadId: undefined })).then(function () { return true; }, function () {
+                    return Promise.resolve(U.sendSeen(chat, false)).then(function () { return true; }, function () { return false; });
+                });
+            } catch (e) { return false; }
+        })()`,
         OLDER: `(function () {
             var first = document.querySelector('#main [role=row]');
             if (!first) return false;

@@ -121,7 +121,7 @@ function vkChat() {
             var pulse = __vkPulse();
             if (h.data && (h.busy || (Date.now() - h.at < ${VK_HISTORY_EVERY_MS} && pulse === h.pulse))) return h.data;
             h.busy = true; h.pulse = pulse;
-            var media = {};
+            var media = {}, pollRefs = {};
             function clock(t) { var d = new Date(t * 1000); return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2); }
             function size(n) { if (!(n > 0)) return ''; if (n < 1024) return n + ' Б'; if (n < 1048576) return Math.round(n / 1024) + ' КБ'; return (n / 1048576).toFixed(1).replace('.', ',') + ' МБ'; }
             function dur(s) { s = Math.round(s || 0); return s ? Math.floor(s / 60) + ':' + ('0' + (s % 60)).slice(-2) : ''; }
@@ -173,6 +173,16 @@ function vkChat() {
                     if (other) {
                         var t = other.type, o = other[t] || {};
                         if (t === 'audio_message') { row.kind = 'voice'; row.duration = dur(o.duration); row.wave = o.waveform || []; media[id] = o.link_ogg || o.link_mp3 || ''; }
+                        else if (t === 'poll') {
+                            var mine = o.answer_ids || [];
+                            row.kind = 'poll';
+                            row.poll = {
+                                question: o.question || '', type: o.anonymous ? 'anon' : 'public', multiple: !!o.multiple,
+                                closed: !!(o.closed || (o.end_date && o.end_date * 1000 < Date.now())), voted: mine.length > 0, total: o.votes || 0,
+                                options: (o.answers || []).map(function (a) { return { text: a.text || '', votes: a.votes || 0, chosen: mine.indexOf(a.id) >= 0 }; })
+                            };
+                            pollRefs[id] = { owner: o.owner_id, poll: o.id, answers: (o.answers || []).map(function (a) { return a.id; }) };
+                        }
                         else if (t === 'doc') { row.kind = 'file'; row.name = o.title || 'Файл'; row.size = size(o.size); }
                         else if (t === 'sticker') { var img = (o.images || []).filter(function (x) { return x.width >= 128; })[0] || (o.images || [])[0]; if (img) { row.kind = 'sticker'; row.media = img.url; } }
                         else if (t === 'video') { var th = best(o.image || []); row.kind = 'video'; row.media = th ? th.url : ''; row.mediaW = th ? th.width : 0; row.mediaH = th ? th.height : 0; row.duration = dur(o.duration); }
@@ -187,6 +197,7 @@ function vkChat() {
                 var can = conv.can_write ? conv.can_write.allowed !== false : true;
                 h.data = { title: title, subtitle: subtitle, canWrite: can, messages: out };
                 h.media = media;
+                h.polls = pollRefs;
                 h.at = Date.now(); h.busy = false;
                 return h.data;
             }, function () { h.busy = false; return h.data || { title: '', subtitle: '', messages: [], none: true }; });
@@ -214,6 +225,33 @@ function vkChat() {
             var a = el.getBoundingClientRect(), s = send.getBoundingClientRect();
             if (!s.width) return null;
             return { caption: { x: a.left + Math.min(40, a.width / 2), y: a.top + a.height / 2 }, send: { x: s.left + s.width / 2, y: s.top + s.height / 2 } };
+        })()`,
+        // a vote in a poll of the open conversation, through VK's own vote (indexes of the chosen options)
+        VOTE: (id, indexes) => `(function () {${VK_COMMON}
+            var api = __vkApi(), h = window.__ciVkHist, ref = h && h.polls && h.polls[${JSON.stringify(String(id))}];
+            var pick = ${JSON.stringify((indexes || []).map(Number).filter((n) => Number.isInteger(n) && n >= 0))};
+            if (!api || !ref || !pick.length) return false;
+            var ids = pick.map(function (i) { return ref.answers[i]; }).filter(function (x) { return x != null; });
+            if (!ids.length) return false;
+            return Promise.resolve(api.api('polls.addVote', { owner_id: ref.owner, poll_id: ref.poll, answer_ids: ids.join(',') })).then(function () {
+                h.at = 0;
+                return true;
+            }).catch(function () { return false; });
+        })()`,
+        // the open conversation read, through VK's own «read» (only when something in it is unread)
+        READ: `(function () {${VK_COMMON}
+            var api = __vkApi();
+            var m0 = /\\/im\\/convo\\/(-?\\d+)/.exec(location.pathname);
+            if (!api || !m0) return false;
+            var peer = Number(m0[1]);
+            return Promise.resolve(api.api('messages.getConversationsById', { peer_ids: peer })).then(function (r) {
+                var c = r && r.items && r.items[0];
+                if (!c || !(c.unread_count > 0)) return false;
+                return Promise.resolve(api.api('messages.markAsRead', { peer_id: peer, mark_conversation_as_read: 1 })).then(function () {
+                    if (window.__ciVkList) window.__ciVkList.at = 0;
+                    return true;
+                });
+            }).catch(function () { return false; });
         })()`,
         // a voice message of the open conversation, from VK's own address of it
         MEDIA: (id) => `(function () {

@@ -20,6 +20,10 @@ const POPUP_POLL_MS = 150
 const AFTER_DROP_MS = 900
 // a voice message is ready in a moment; a video of tens of megabytes may take a while to come from the messenger
 const MEDIA_TIMEOUT_MS = 45000
+// how often the messenger is told that the open chat is read, while it is in front of the person
+const MARK_READ_EVERY_MS = 2000
+const VOTE_TIMEOUT_MS = 8000
+const AFTER_VOTE_MS = 400
 const MEDIA_DATA = /^data:(audio|video)\/[\w.+-]+(;[\w=.+-]+)*;base64,/
 
 
@@ -66,6 +70,15 @@ function createChatController({ state, webviewOf, host, ipcRenderer }) {
         onDescribeFiles: (paths) => ipcRenderer.invoke('all-inbox:describe-files', paths).catch(() => []),
         onPasteImage: () => ipcRenderer.invoke('all-inbox:paste-image').catch(() => null),
         canPlay: () => !!(current && typeof current.adapter.MEDIA === 'function'),
+        canVote: () => !!(current && typeof current.adapter.VOTE === 'function'),
+        // a vote in a poll goes through the messenger's own vote; the poll is read again right after
+        onVote: async (m, indexes) => {
+            const w = tab()
+            if (!w || !current || typeof current.adapter.VOTE !== 'function') return
+            await run(w, current.adapter.VOTE(String(m.id).split('+')[0], indexes), VOTE_TIMEOUT_MS)
+            setTimeout(poll, AFTER_VOTE_MS)
+            setTimeout(poll, AFTER_VOTE_MS * 4)
+        },
         // the sound or video of a message, taken from the tab by the messenger's own downloader
         onMedia: async (id) => {
             const w = tab()
@@ -104,11 +117,23 @@ function createChatController({ state, webviewOf, host, ipcRenderer }) {
             lastRows = buildTimeline(resolveImages(data.messages, current.images), Date.now())
             redraw()
             view.setCanWrite(data.canWrite !== false)
+            markRead(w)
             const sub = [data.subtitle, current.chat.messengerName].filter(Boolean).join(' · ')
             view.setSubtitle(sub)
         } finally {
             reading = false
         }
+    }
+
+    // The messenger behind our window does not see the person (the keyboard is in Centrio, the page counts as «away»),
+    // so it would leave what was read unread: while the newest messages are really in front of the person, the
+    // messenger is told itself (Telegram's and VK's own «read» — the same the page sends when it is looked at)
+    let lastMarked = 0
+    function markRead(w) {
+        if (!current || typeof current.adapter.READ !== 'string' || !view.isReading()) return
+        if (Date.now() - lastMarked < MARK_READ_EVERY_MS) return
+        lastMarked = Date.now()
+        w.executeJavaScript(current.adapter.READ).catch(() => {})
     }
 
     const run = (w, code, ms = READ_TIMEOUT_MS) => withTimeout(w.executeJavaScript(code).catch(() => null), ms)
