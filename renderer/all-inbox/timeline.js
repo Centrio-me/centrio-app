@@ -98,7 +98,8 @@ function buildTimeline(raw, now) {
             replyTitle: String(m.replyTitle || '').slice(0, 80),
             replyColor: colour(m.replyColor),
             reactions: cleanReactions(m.reactions),
-            size: String(m.size || '').slice(0, 20),
+            // Telegram writes «0 Б / 25 КБ» while a file is not downloaded: only the file's own size is shown
+            size: String(m.size || '').split('/').pop().trim().slice(0, 20),
             webpage: cleanWebpage(m.webpage),
             // the page's own key for this picture: a click asks the page for it in full size
             picture: typeof m.picture === 'string' ? m.picture.slice(0, 80) : '',

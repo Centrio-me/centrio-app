@@ -20,6 +20,8 @@ const MAX_WALK_WAIT_TRIES = 3
 const MAX_WALK_WAIT_MS = 700
 // avatars asked from Telegram at the same time (the rest come on the next reads)
 const TELEGRAM_AVATARS_AT_ONCE = 8
+// people whose «в сети» is asked again on every read (the freshest chats)
+const TELEGRAM_STATUS_PEERS = 40
 
 // A blob:/data: avatar (Telegram keeps them as blob: URLs only that page can read) becomes a small data URL,
 // cached per chat in the page so it is drawn once.
@@ -177,6 +179,21 @@ const telegram = {
             if (!top.some(function (x) { return x.peerId === rs.myId; })) { var saved = dialogs.filter(function (x) { return x && x.peerId === rs.myId; })[0]; if (saved) top.push(saved); }
             // titles come from the page's worker; the first read waits a moment for them, later reads are cached
             var named = Promise.all(top.map(function (x) { return titleOf(x.peerId); }));
+            // «в сети» changes all the time: the freshest people are asked again in the background on every read
+            var statuses = window.__ciTgStatus || (window.__ciTgStatus = {});
+            top.filter(function (x) { return x.peerId > 0 && x.peerId !== rs.myId; }).slice(0, ${TELEGRAM_STATUS_PEERS}).forEach(function (x) {
+                m.appUsersManager.getUser(x.peerId).then(function (u) { if (u) statuses[x.peerId] = u.status || null; }, function () {});
+            });
+            function kindOf(peerId) {
+                if (peerId === rs.myId) return 'saved';
+                var p = peers[peerId];
+                if (peerId < 0) return p && p.pFlags && p.pFlags.broadcast ? 'channel' : 'group';
+                return p && p.pFlags && p.pFlags.bot ? 'bot' : 'user';
+            }
+            function onlineOf(peerId) {
+                var st = statuses[peerId] || (peers[peerId] && peers[peerId].status);
+                return !!(st && st._ === 'userStatusOnline' && (!st.expires || st.expires * 1000 > Date.now()));
+            }
             var wait = new Promise(function (r) { setTimeout(r, 1500); });
             return Promise.race([named, wait]).then(function () {
                 var out = [];
@@ -198,7 +215,13 @@ const telegram = {
                         unread: x.unread_count || 0,
                         muted: !!(ns.mute_until && ns.mute_until * 1000 > now) || (seen ? seen.muted : false),
                         avatar: (seen && seen.avatar) || (x.peerId === rs.myId ? '' : avatarOf(x.peerId)),
-                        icon: x.peerId === rs.myId ? 'saved' : ''
+                        icon: x.peerId === rs.myId ? 'saved' : '',
+                        kind: kindOf(x.peerId),
+                        pinned: !!(x.pFlags && x.pFlags.pinned),
+                        online: x.peerId > 0 && x.peerId !== rs.myId && onlineOf(x.peerId),
+                        // ✓ sent, ✓✓ read by the other side (not for «Избранное»)
+                        outState: msg.pFlags && msg.pFlags.out && x.peerId !== rs.myId ? (x.read_outbox_max_id >= msg.mid ? 'read' : 'sent') : '',
+                        members: x.peerId < 0 && peers[x.peerId] ? peers[x.peerId].participants_count || 0 : 0
                     });
                 });
                 return out.length ? out : domList;
@@ -241,7 +264,7 @@ const max = {
                     preview.push(text);
                 }
                 if (!title || seen[title]) continue; seen[title] = 1;
-                out.push({ key: title, title: title, preview: preview.join(': '), time: time, unread: unread, avatar: __ciAvatar('max' + title, c.querySelector('img.avatarImage')) });
+                out.push({ key: title, title: title, preview: preview.join(': '), time: time, unread: unread, kind: preview.length > 1 ? 'group' : 'user', avatar: __ciAvatar('max' + title, c.querySelector('img.avatarImage')) });
             }
             return out;
         }

@@ -21,7 +21,8 @@
 		"lint": "eslint .",
 		"lint:fix": "eslint . --fix",
 		"format": "prettier --write .",
-		"format:check": "prettier --check ."
+		"format:check": "prettier --check .",
+		"test:inbox": "node --test test/all-inbox/*.test.js"
 	},
 	"devDependencies": {
 		"@eslint/js": "^10.0.1",

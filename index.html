@@ -520,10 +520,19 @@
             </button>
         </header>
         <div class="ai-tools">
-            <input type="search" class="ai-search" placeholder="Поиск по чатам" data-i18n-placeholder="v380.allInbox.search" autocomplete="off">
-            <div class="ai-filters">
+            <label class="ai-search-box">
+                <svg class="ai-search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+                <input type="text" class="ai-search" placeholder="Поиск по чатам" data-i18n-placeholder="v380.allInbox.search" autocomplete="off" spellcheck="false">
+                <button type="button" class="ai-search-clear" hidden aria-label="Очистить" title="Очистить" data-i18n-title="v380.allInbox.clear">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                </button>
+            </label>
+            <div class="ai-filters" role="tablist">
                 <button type="button" data-ai-filter="all" data-i18n="v380.allInbox.all">Все</button>
                 <button type="button" data-ai-filter="unread" data-i18n="v380.allInbox.unread">Непрочитанные</button>
+                <button type="button" data-ai-filter="personal" data-i18n="v380.allInbox.personal">Личные</button>
+                <button type="button" data-ai-filter="groups" data-i18n="v380.allInbox.groups">Группы</button>
+                <button type="button" data-ai-filter="channels" data-i18n="v380.allInbox.channels">Каналы</button>
             </div>
         </div>
         <div class="ai-list" role="list"></div>

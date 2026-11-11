@@ -19,6 +19,14 @@ const TAB_SETTLE_MS = 450
 const LOCATE_TIMEOUT_MS = 8000
 const PATHS_KEY = 'centrio-all-inbox-paths'
 const WARM_CLASS = 'inbox-warm'
+const FILTERS = ['all', 'unread', 'personal', 'groups', 'channels']
+const SKELETON_ROWS = 9
+const ICONS = {
+    sent: '<svg width="15" height="11" viewBox="0 0 15 11" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 6l3 3 6.5-7.5"/></svg>',
+    read: '<svg width="17" height="11" viewBox="0 0 17 11" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 6l3 3 6.5-7.5M8 8.6l.9.9 6.5-7.5"/></svg>',
+    pin: '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M14.5 2.6a1 1 0 0 1 1.4 0l5.5 5.5a1 1 0 0 1 0 1.4l-1.2 1.2a2 2 0 0 1-2 .5l-3 3 .2 3.3a1 1 0 0 1-1.7.8l-3.2-3.2-4.6 4.6a.9.9 0 0 1-1.3-1.3l4.6-4.6-3.2-3.2a1 1 0 0 1 .8-1.7l3.3.2 3-3a2 2 0 0 1 .5-2z"/></svg>',
+    muted: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H3v6h3l5 4z" fill="currentColor"/><path d="M22 9l-6 6M16 9l6 6"/></svg>'
+}
 
 function withTimeout(promise, ms) {
     return Promise.race([promise, new Promise((resolve) => setTimeout(() => resolve(null), ms))])
@@ -34,6 +42,29 @@ function writeStorage(key, value) {
 function initials(title) {
     const words = String(title || '').replace(/[^\p{L}\p{N}\s]/gu, ' ').trim().split(/\s+/).filter(Boolean)
     return ((words[0] || '?')[0] + (words[1] ? words[1][0] : '')).toUpperCase()
+}
+
+function icon(name, cls) {
+    const span = document.createElement('span')
+    span.className = cls
+    span.innerHTML = ICONS[name]
+    return span
+}
+
+// the title with the searched part marked, built from text nodes (titles come from web pages)
+function titleNode(chat) {
+    const span = el('span', 'ai-title')
+    const m = chat.match
+    if (!m) { span.textContent = chat.title; return span }
+    span.append(chat.title.slice(0, m.start), el('mark', 'ai-hit', chat.title.slice(m.start, m.start + m.length)), chat.title.slice(m.start + m.length))
+    return span
+}
+
+// a steady colour per name for avatars without a picture
+function toneOf(title) {
+    let h = 7
+    for (const ch of String(title)) h = (h * 31 + ch.codePointAt(0)) | 0
+    return String(Math.abs(h) % 7)
 }
 
 function el(tag, cls, text) {
@@ -64,7 +95,11 @@ function createAllInbox({ state, switchTab, tGet, ipcRenderer }) {
     let reading = false
     let sources = []
     const lastChats = new Map()
-    let filter = readStorage(FILTER_KEY, 'all')
+    const services = new Map()
+    const savedFilter = readStorage(FILTER_KEY, 'all')
+    let filter = FILTERS.includes(savedFilter) ? savedFilter : 'all'
+    let loadedOnce = false
+    const clearEl = panel.querySelector('.ai-search-clear')
     let source = readStorage(SOURCE_KEY, '')
     let lastListSig = ''
     const sourcesEl = document.createElement('div')
@@ -72,6 +107,14 @@ function createAllInbox({ state, switchTab, tGet, ipcRenderer }) {
     sourcesEl.setAttribute('role', 'toolbar')
     sourcesEl.setAttribute('aria-label', t('sources', 'Мессенджеры'))
     panel.querySelector('.ai-tools')?.append(sourcesEl)
+    // the rows of filters and messengers scroll sideways with the ordinary mouse wheel
+    for (const strip of [sourcesEl, panel.querySelector('.ai-filters')]) {
+        strip?.addEventListener('wheel', (e) => {
+            if (Math.abs(e.deltaY) <= Math.abs(e.deltaX) || strip.scrollWidth <= strip.clientWidth) return
+            e.preventDefault()
+            strip.scrollLeft += e.deltaY
+        }, { passive: false })
+    }
     let activeId = ''
     let paths = {}
     try { paths = JSON.parse(readStorage(PATHS_KEY, '{}')) || {} } catch { paths = {} }
@@ -87,7 +130,7 @@ function createAllInbox({ state, switchTab, tGet, ipcRenderer }) {
         reading = true
         try {
             // a tab that is asleep or slow this time keeps the chats it gave last time: the list never blinks
-            const kept = (m) => (lastChats.has(m.id) ? { messenger: m, chats: lastChats.get(m.id) } : null)
+            const kept = (m) => (lastChats.has(m.id) ? { messenger: { ...m, service: services.get(m.id) || '' }, chats: lastChats.get(m.id) } : null)
             const jobs = (state.activeMessengers || []).map(async (m) => {
                 const view = webviewOf(m.id)
                 if (!view || typeof view.executeJavaScript !== 'function') return null
@@ -104,9 +147,11 @@ function createAllInbox({ state, switchTab, tGet, ipcRenderer }) {
                 view.classList.toggle(WARM_CLASS, !(Array.isArray(chats) && chats.length))
                 if (!Array.isArray(chats) || (!chats.length && lastChats.get(m.id)?.length)) return kept(m)
                 lastChats.set(m.id, chats)
-                return { messenger: m, chats }
+                services.set(m.id, adapter.id)
+                return { messenger: { ...m, service: adapter.id }, chats }
             })
             sources = (await Promise.all(jobs)).filter(Boolean)
+            loadedOnce = true
             render()
         } finally {
             reading = false
@@ -114,9 +159,10 @@ function createAllInbox({ state, switchTab, tGet, ipcRenderer }) {
     }
 
     function rowFor(chat) {
-        const row = el('button', `ai-row${chat.unread ? ' is-unread' : ''}${chat.id === activeId ? ' is-active' : ''}`)
+        const row = el('button', `ai-row${chat.unread ? ' is-unread' : ''}${chat.id === activeId ? ' is-active' : ''}${chat.muted ? ' is-muted' : ''}`)
         row.type = 'button'
         row.dataset.id = chat.id
+        row.setAttribute('role', 'listitem')
 
         const ava = el('div', `ai-ava${chat.icon ? ` is-icon is-${chat.icon}` : ''}`)
         if (chat.icon && CHAT_ICONS[chat.icon]) {
@@ -126,31 +172,53 @@ function createAllInbox({ state, switchTab, tGet, ipcRenderer }) {
             img.src = chat.avatar
             img.alt = ''
             img.loading = 'lazy'
-            img.onerror = () => { img.remove(); ava.textContent = initials(chat.title) }
+            img.onerror = () => { img.remove(); ava.prepend(initials(chat.title)); ava.dataset.tone = toneOf(chat.title) }
             ava.appendChild(img)
         } else {
             ava.textContent = initials(chat.title)
+            ava.dataset.tone = toneOf(chat.title)
         }
         if (chat.messengerIcon) {
             const mark = el('img', 'ai-service')
             mark.src = chat.messengerIcon
             mark.alt = chat.messengerName
             mark.title = chat.messengerName
+            if (chat.accountTone >= 0) mark.dataset.acc = String(chat.accountTone)
             ava.appendChild(mark)
         }
+        if (chat.online) ava.append(el('span', 'ai-online'))
 
         const body = el('div', 'ai-body')
         const top = el('div', 'ai-top')
-        top.append(el('span', 'ai-title', chat.title), el('span', 'ai-time', chat.timeLabel))
+        top.append(titleNode(chat))
+        if (chat.muted) { const m = icon('muted', 'ai-muted'); m.title = t('muted', 'Без звука'); top.append(m) }
+        const meta = el('span', 'ai-meta')
+        if (chat.outState) meta.append(icon(chat.outState, `ai-ticks is-${chat.outState}`))
+        meta.append(el('span', 'ai-time', chat.timeLabel))
+        top.append(meta)
+
         const bottom = el('div', 'ai-bottom')
         bottom.append(el('span', 'ai-preview', chat.preview))
         if (chat.unread) bottom.append(el('span', `ai-unread${chat.muted ? ' is-muted' : ''}`, chat.unread > 999 ? '999+' : String(chat.unread)))
-        const from = el('div', 'ai-from', chat.messengerName)
-        body.append(top, bottom, from)
+        else if (chat.pinned) { const p = icon('pin', 'ai-pin'); p.title = t('pinned', 'Закреплён'); bottom.append(p) }
+        body.append(top, bottom)
 
+        row.title = chat.accountLabel ? `${chat.title} — ${chat.messengerName}` : chat.title
         row.append(ava, body)
         row.addEventListener('click', () => openChat(chat))
         return row
+    }
+
+    function skeleton() {
+        const frag = document.createDocumentFragment()
+        for (let i = 0; i < SKELETON_ROWS; i++) {
+            const row = el('div', 'ai-row is-skeleton')
+            row.style.setProperty('--w1', `${45 + (i * 17) % 35}%`)
+            row.style.setProperty('--w2', `${60 + (i * 23) % 30}%`)
+            row.append(el('div', 'ai-ava'), el('div', 'ai-body'))
+            frag.append(row)
+        }
+        return frag
     }
 
     // one round button per messenger tab: the list can be narrowed to it
@@ -167,7 +235,12 @@ function createAllInbox({ state, switchTab, tGet, ipcRenderer }) {
             b.type = 'button'
             b.title = m.name
             b.setAttribute('aria-pressed', String(source === m.id))
-            if (m.icon) { const img = el('img'); img.src = m.icon; img.alt = ''; b.append(img) }
+            if (m.icon) {
+                const img = el('img'); img.src = m.icon; img.alt = ''
+                const tone = all.find((c) => c.messengerId === m.id)?.accountTone
+                if (tone >= 0) img.dataset.acc = String(tone)
+                b.append(img)
+            }
             b.append(el('span', 'ai-src-name', m.name))
             const unread = all.filter((c) => c.messengerId === m.id && c.unread > 0 && !c.muted).length
             if (unread) b.append(el('span', 'ai-src-dot', unread > 99 ? '99+' : String(unread)))
@@ -186,7 +259,8 @@ function createAllInbox({ state, switchTab, tGet, ipcRenderer }) {
     function render() {
         const query = searchEl ? searchEl.value : ''
         const all = mergeInbox(sources, Date.now())
-        const list = mergeInbox(sources, Date.now(), { unreadOnly: filter === 'unread', query, messengerId: source })
+        const list = mergeInbox(sources, Date.now(), { unreadOnly: filter === 'unread', kind: filter, query, messengerId: source })
+        if (clearEl) clearEl.hidden = !query
         renderSources(all)
         const unreadChats = all.filter((c) => c.unread > 0 && !c.muted).length
         if (badgeEl) { badgeEl.hidden = unreadChats === 0; badgeEl.textContent = unreadChats > 99 ? '99+' : String(unreadChats) }
@@ -194,11 +268,12 @@ function createAllInbox({ state, switchTab, tGet, ipcRenderer }) {
         filterButtons.forEach((b) => b.classList.toggle('is-on', b.dataset.aiFilter === filter))
 
         // the list is drawn again only when something in it changed: no blinking pictures, hover and scroll stay
-        const sig = list.map((c) => `${c.id}|${c.unread}|${c.muted ? 1 : 0}|${c.timeLabel}|${c.preview}|${c.avatar.length}|${c.title}|${c.icon}`).join(';') + '#' + activeId
+        const sig = list.map((c) => `${c.id}|${c.unread}|${c.muted ? 1 : 0}|${c.timeLabel}|${c.preview}|${c.avatar.length}|${c.title}|${c.icon}|${c.online ? 1 : 0}|${c.outState}|${c.pinned ? 1 : 0}|${c.accountLabel}|${c.accountTone}|${c.match ? c.match.start : ''}`).join(';') + '#' + activeId + '#' + loadedOnce
         if (sig === lastListSig) return
         lastListSig = sig
         const keepScroll = listEl.scrollTop
         listEl.replaceChildren()
+        if (!list.length && !loadedOnce) { listEl.append(skeleton()); return }
         if (!list.length) {
             listEl.append(el('div', 'ai-empty', sources.length
                 ? t('empty', 'Здесь пока пусто')
@@ -276,10 +351,39 @@ function createAllInbox({ state, switchTab, tGet, ipcRenderer }) {
     button.addEventListener('click', () => setOpen(!open))
     panel.querySelector('.ai-close')?.addEventListener('click', () => setOpen(false))
     searchEl?.addEventListener('input', render)
+    clearEl?.addEventListener('click', (e) => { e.preventDefault(); searchEl.value = ''; render(); searchEl.focus() })
+    // ↑/↓ walk the list (from the search field too), Enter opens, Esc clears the search
+    function moveFocus(step) {
+        const rows = [...listEl.querySelectorAll('.ai-row:not(.is-skeleton)')]
+        if (!rows.length) return
+        const at = rows.indexOf(document.activeElement)
+        const next = rows[Math.max(0, Math.min(rows.length - 1, at < 0 ? 0 : at + step))]
+        next.focus()
+        next.scrollIntoView({ block: 'nearest' })
+    }
+    panel.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); moveFocus(e.key === 'ArrowDown' ? 1 : -1); return }
+        if (e.key === 'Enter' && e.target === searchEl) { e.preventDefault(); listEl.querySelector('.ai-row:not(.is-skeleton)')?.click(); return }
+        if (e.key === 'Escape' && searchEl && searchEl.value) { e.preventDefault(); searchEl.value = ''; render(); searchEl.focus() }
+    })
+    // Ctrl+F (or «/») goes to the search; inside an open conversation Ctrl+F is left to it
+    document.addEventListener('keydown', (e) => {
+        if (!open || !searchEl) return
+        const active = document.activeElement
+        const typing = /^(INPUT|TEXTAREA)$/.test(active?.tagName || '') || active?.isContentEditable
+        const inChat = active?.closest?.('.aic')
+        if (((e.ctrlKey || e.metaKey) && e.code === 'KeyF' && !inChat) || (e.key === '/' && !typing)) {
+            e.preventDefault()
+            searchEl.focus()
+            searchEl.select()
+        }
+    })
     filterButtons.forEach((b) => b.addEventListener('click', () => {
         filter = b.dataset.aiFilter
         writeStorage(FILTER_KEY, filter)
+        lastListSig = ''
         render()
+        listEl.scrollTop = 0
     }))
 
     if (readStorage(OPEN_KEY, '') === '1') setOpen(true)

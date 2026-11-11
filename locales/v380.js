@@ -9,7 +9,14 @@ module.exports = {
             unread: 'Непрочитанные',
             close: 'Закрыть',
             empty: 'Здесь пока пусто',
-            noSources: 'Откройте Telegram или MAX: их чаты появятся здесь'
+            noSources: 'Откройте Telegram или MAX: их чаты появятся здесь',
+            personal: 'Личные',
+            groups: 'Группы',
+            channels: 'Каналы',
+            pinned: 'Закреплён',
+            muted: 'Без звука',
+            online: 'в сети',
+            clear: 'Очистить'
         }
     },
     en: {
@@ -20,7 +27,14 @@ module.exports = {
             unread: 'Unread',
             close: 'Close',
             empty: 'Nothing here yet',
-            noSources: 'Open Telegram or MAX: their chats appear here'
+            noSources: 'Open Telegram or MAX: their chats appear here',
+            personal: 'Personal',
+            groups: 'Groups',
+            channels: 'Channels',
+            pinned: 'Pinned',
+            muted: 'Muted',
+            online: 'online',
+            clear: 'Clear'
         }
     },
     de: {
@@ -31,7 +45,14 @@ module.exports = {
             unread: 'Ungelesen',
             close: 'Schließen',
             empty: 'Noch nichts hier',
-            noSources: 'Öffnen Sie Telegram oder MAX: ihre Chats erscheinen hier'
+            noSources: 'Öffnen Sie Telegram oder MAX: ihre Chats erscheinen hier',
+            personal: 'Persönlich',
+            groups: 'Gruppen',
+            channels: 'Kanäle',
+            pinned: 'Angeheftet',
+            muted: 'Stumm',
+            online: 'online',
+            clear: 'Leeren'
         }
     },
     es: {
@@ -42,7 +63,14 @@ module.exports = {
             unread: 'No leídos',
             close: 'Cerrar',
             empty: 'Aún no hay nada',
-            noSources: 'Abre Telegram o MAX: sus chats aparecerán aquí'
+            noSources: 'Abre Telegram o MAX: sus chats aparecerán aquí',
+            personal: 'Personales',
+            groups: 'Grupos',
+            channels: 'Canales',
+            pinned: 'Fijado',
+            muted: 'Silenciado',
+            online: 'en línea',
+            clear: 'Borrar'
         }
     },
     fr: {
@@ -53,7 +81,14 @@ module.exports = {
             unread: 'Non lues',
             close: 'Fermer',
             empty: 'Rien pour l’instant',
-            noSources: 'Ouvrez Telegram ou MAX : leurs discussions apparaissent ici'
+            noSources: 'Ouvrez Telegram ou MAX : leurs discussions apparaissent ici',
+            personal: 'Personnelles',
+            groups: 'Groupes',
+            channels: 'Chaînes',
+            pinned: 'Épinglée',
+            muted: 'En sourdine',
+            online: 'en ligne',
+            clear: 'Effacer'
         }
     },
     it: {
@@ -64,7 +99,14 @@ module.exports = {
             unread: 'Non lette',
             close: 'Chiudi',
             empty: 'Ancora niente',
-            noSources: 'Apri Telegram o MAX: le loro chat appaiono qui'
+            noSources: 'Apri Telegram o MAX: le loro chat appaiono qui',
+            personal: 'Personali',
+            groups: 'Gruppi',
+            channels: 'Canali',
+            pinned: 'Fissata',
+            muted: 'Silenziata',
+            online: 'online',
+            clear: 'Cancella'
         }
     },
     zh: {
@@ -75,7 +117,14 @@ module.exports = {
             unread: '未读',
             close: '关闭',
             empty: '这里还没有内容',
-            noSources: '打开 Telegram 或 MAX，它们的聊天会显示在这里'
+            noSources: '打开 Telegram 或 MAX，它们的聊天会显示在这里',
+            personal: '私聊',
+            groups: '群组',
+            channels: '频道',
+            pinned: '已置顶',
+            muted: '已静音',
+            online: '在线',
+            clear: '清除'
         }
     }
 }
