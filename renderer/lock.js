@@ -960,6 +960,65 @@ function createLockApi({
     }
     bindLockActivityToggle()
 
+    // Settings -> Security: the city the lock screen's weather is for. Found by name, or left to automatic detection
+    // (by the network address — wrong with a VPN on, which is why it can be set by hand).
+    function bindWeatherCity() {
+        const form = document.getElementById('weatherCityForm')
+        if (!form || form.dataset.bound) return
+        form.dataset.bound = '1'
+        const input = document.getElementById('weatherCityInput')
+        const results = document.getElementById('weatherCityResults')
+        const now = document.getElementById('weatherCityNow')
+        const auto = document.getElementById('weatherCityAuto')
+        const say = (key, fallback) => tGet(`v380.weather.${key}`) || fallback
+        function showCurrent(city) {
+            now.textContent = city ? `${say('current', 'Сейчас')}: ${city.name}` : say('auto', 'Определять автоматически')
+            auto.hidden = !city
+        }
+        const refreshWeather = () => { if (typeof renderWeatherWidget === 'function') renderWeatherWidget() }
+        ipcRenderer.invoke('weather:get-city').then(showCurrent).catch(() => showCurrent(null))
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault()
+            const query = input.value.trim()
+            if (query.length < 2) return
+            results.hidden = false
+            results.replaceChildren()
+            const cities = await ipcRenderer.invoke('weather:search-city', query).catch(() => [])
+            if (!cities.length) {
+                const empty = document.createElement('div')
+                empty.className = 'weather-city-empty'
+                empty.textContent = say('notFound', 'Город не найден')
+                results.append(empty)
+                return
+            }
+            for (const c of cities) {
+                const b = document.createElement('button')
+                b.type = 'button'
+                b.className = 'weather-city-option'
+                b.setAttribute('role', 'option')
+                const name = document.createElement('span')
+                name.textContent = c.name
+                const where = document.createElement('small')
+                where.textContent = [c.region, c.country].filter(Boolean).join(', ')
+                b.append(name, where)
+                b.addEventListener('click', async () => {
+                    const saved = await ipcRenderer.invoke('weather:set-city', c).catch(() => null)
+                    showCurrent(saved)
+                    results.hidden = true
+                    input.value = ''
+                    refreshWeather()
+                })
+                results.append(b)
+            }
+        })
+        auto.addEventListener('click', async () => {
+            await ipcRenderer.invoke('weather:set-city', null).catch(() => {})
+            showCurrent(null)
+            refreshWeather()
+        })
+    }
+    bindWeatherCity()
+
     return {
         isPasswordEnabled,
         updateLockBtn,

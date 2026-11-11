@@ -3236,6 +3236,21 @@
                                     <span class="toggle-slider"></span>
                                 </label>
                             </div>
+                            <!-- 2026-11-11: the weather's city, set by hand (with a VPN on, the city from the network is wrong) -->
+                            <div class="settings-row weather-city-row">
+                                <div class="settings-label">
+                                    <span data-i18n="v380.weather.city">Город для погоды</span>
+                                    <span class="settings-hint" data-i18n="v380.weather.cityHint"></span>
+                                </div>
+                                <div class="weather-city">
+                                    <div class="weather-city-now"><span id="weatherCityNow"></span> <button type="button" class="weather-city-auto" id="weatherCityAuto" data-i18n="v380.weather.auto">Определять автоматически</button></div>
+                                    <form class="weather-city-search" id="weatherCityForm" autocomplete="off">
+                                        <input type="search" id="weatherCityInput" maxlength="80" data-i18n-placeholder="v380.weather.placeholder" placeholder="Например, Москва">
+                                        <button type="submit" class="weather-city-find" data-i18n="v380.weather.search">Найти город</button>
+                                    </form>
+                                    <div class="weather-city-results" id="weatherCityResults" role="listbox" hidden></div>
+                                </div>
+                            </div>
                         </div>
                         <div class="settings-group">
                             <div class="settings-group-title" data-i18n="lock.pinSet"></div>

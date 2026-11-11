@@ -1,5 +1,5 @@
 // Running a command the owner sent to this device (TEAM control, 2026-11-08).
-// deps: wipe(ids|'all'), reload(messengerId), askRelogin(messengerId), confirm(commandId),
+// deps: wipe(ids|'all'), reload(messengerId), askRelogin(messengerId), refresh(), confirm(commandId),
 //       notice(key, name), nameOf(messengerId)
 // A command is confirmed only after it worked, so a failed wipe is tried again on the next fetch.
 async function runCommand(cmd, deps) {
@@ -10,6 +10,10 @@ async function runCommand(cmd, deps) {
     } else if (cmd.kind === 'reload' && messengerId) {
         deps.reload(messengerId)
         deps.notice('reloaded', deps.nameOf(messengerId))
+    } else if (cmd.kind === 'refresh') {
+        // the owner asks this app to read the account and the team again now (2026-11-11)
+        await deps.refresh()
+        deps.notice('refreshed', null)
     } else if (cmd.kind === 'relogin' && messengerId) {
         deps.askRelogin(messengerId)
         deps.notice('relogin', deps.nameOf(messengerId))

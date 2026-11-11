@@ -1417,6 +1417,7 @@ module.exports = {
         reloaded: "Il tuo responsabile ha ricaricato «{name}»",
         relogin: "Il tuo responsabile ti chiede di accedere di nuovo a «{name}»",
         sessionsEnded: "Gli accessi di lavoro su questo computer sono stati chiusi",
+        refreshed: "I dati dell’account e del team sono stati aggiornati",
         strictOn: "Il tuo responsabile ha attivato la modalità rigorosa",
     },
     teamTasks: {

@@ -545,6 +545,7 @@ function createOrgTeamApi({
                 await runCommand(cmd, {
                     wipe: (ids) => wipeTeamSessions(ids),
                     reload: (id) => { try { document.getElementById(`webview-${id}`)?.reload() } catch {} },
+                    refresh: async () => { await window.__centrioRefreshAccount?.(); await tick() },
                     askRelogin: (id) => { try { switchToMessenger(id); document.getElementById(`webview-${id}`)?.reload() } catch {} },
                     confirm: async (commandId) => { await call('api-org-device-command-done', commandId) },
                     notice,
@@ -653,7 +654,9 @@ function createOrgTeamApi({
         tick()
         onTeamEvent(handleTeamEvent)
         checkAccountChange().finally(() => runPendingCommands())
-        accountTimer = setInterval(checkAccountChange, ACCOUNT_CHECK_MS)
+        // commands from the owner are fetched every minute too, not only at start and on the team's live signal
+        // (a person the app does not yet know as a member hears no live signal)
+        accountTimer = setInterval(() => { checkAccountChange().finally(() => runPendingCommands()) }, ACCOUNT_CHECK_MS)
         presenceTimer = setInterval(() => {
             const orgId = getOrgId()
             if (!orgId) return

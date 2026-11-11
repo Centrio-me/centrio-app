@@ -42,6 +42,8 @@ const { bindSupportTicketsUi } = require('./renderer/support-tickets-ui')
 const { bindCabinetAccount } = require('./renderer/cloud-account')
 const { applyOrgLogo } = require('./renderer/org-branding')
 const { createOrgTeamApi } = require('./renderer/org-team')
+// how often the account (plan, team) is asked again while the app runs, even untouched
+const ACCOUNT_REFRESH_MS = 3 * 60 * 1000
 const { createVaultLoginBar } = require('./renderer/vault-login-bar')
 const { createTeamTasksUi } = require('./renderer/team-tasks')
 const { bindRightbarCustom } = require('./renderer/rightbar-custom')
@@ -4457,6 +4459,11 @@ function applyTabZoom(level) {
     splitApi.renderPinnedPresets()
 
     // Обновляем уведомления после полной загрузки (на случай если при init токена ещё не было)
+    // the account (plan, team) asked again from the server, and everything that depends on it put right
+    function refreshAccountNow() {
+        return cloudApi.refreshUser().then(() => { if (typeof updateCloudBtn === 'function') updateCloudBtn(); updateAddButtonState(); updateTrialStatusBar(); reapplyMessengerLocks(); reapplyExtensionLocks(); reapplySettingsLocks(); reapplyFolderLocks(); reapplySoundLocks(); notesUiApiRef?.invalidate(); notesUiApiRef?.updateButtonVisibility(); quickRepliesApiRef?.updateButtonState(); rightbarCustomApiRef?.apply() })
+    }
+    window.__centrioRefreshAccount = refreshAccountNow
     if (cloudStore.isLoggedIn()) {
         appNotifApi?.fetchNotifications?.()
 
@@ -4473,9 +4480,13 @@ function applyTabZoom(level) {
     // пользователь нажал "Купить Pro", оплатил в открывшемся браузере, вернулся
     // в уже запущенное приложение (без перезапуска и без повторного логина).
     // Тот же паттерн already используется для уведомлений в app-notif-bind.js.
+    // 2026-11-11: and every few minutes even when the window is not touched — a person put back into a team (or whose
+    // plan changed) in a window left in the background kept the old account: the app behaved as the free plan and,
+    // not knowing the team, never heard the team's own events either
+    setInterval(() => { if (cloudStore.isLoggedIn()) refreshAccountNow() }, ACCOUNT_REFRESH_MS)
     window.addEventListener('focus', () => {
         if (cloudStore.isLoggedIn()) {
-            cloudApi.refreshUser().then(() => { if (typeof updateCloudBtn === 'function') updateCloudBtn(); updateAddButtonState(); updateTrialStatusBar(); reapplyMessengerLocks(); reapplyExtensionLocks(); reapplySettingsLocks(); reapplyFolderLocks(); reapplySoundLocks(); notesUiApiRef?.invalidate(); notesUiApiRef?.updateButtonVisibility(); quickRepliesApiRef?.updateButtonState(); rightbarCustomApiRef?.apply() })
+            refreshAccountNow()
         } else {
             // No account — still catch a local (no-login) trial expiring
             // while the app was open. hasEffectivePro() checks

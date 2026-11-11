@@ -86,3 +86,7 @@ test('a saved password is dropped when the messenger moves to another site', () 
     assert.equal(passwordSurvivesUrlChange('https://web.whatsapp.com/', 'http://web.whatsapp.com/'), false)
     assert.equal(passwordSurvivesUrlChange('https://mail.yandex.ru/', 'https://passport.yandex.ru/'), false)
 })
+
+test('«refresh» asks the whole app to read the account and the team again: no messenger needed', () => {
+    assert.deepEqual(parseCommandBody({ kind: 'refresh' }, new Set()), { kind: 'refresh', payload: {} })
+})

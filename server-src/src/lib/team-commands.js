@@ -4,7 +4,8 @@
 const crypto = require('crypto')
 
 const KINDS_WITH_MESSENGER = new Set(['pause', 'resume', 'reload', 'relogin'])
-const KINDS = new Set([...KINDS_WITH_MESSENGER, 'wipe'])
+// refresh (2026-11-11): the app reads the account and the team again at once
+const KINDS = new Set([...KINDS_WITH_MESSENGER, 'wipe', 'refresh'])
 const PROOF_WINDOW_MIN = 2
 
 function planCommands(kind, { orgId, userId, deviceKeyIds, payload, createdById }) {
@@ -16,6 +17,7 @@ function parseCommandBody(body, ownAssignmentIds) {
     const kind = String(body?.kind || '')
     if (!KINDS.has(kind)) return { error: 'Неизвестная команда' }
     if (kind === 'wipe') return { kind, payload: { assignmentIds: 'all' } }
+    if (kind === 'refresh') return { kind, payload: {} }
     const assignmentId = String(body?.assignmentId || '')
     if (!assignmentId || !ownAssignmentIds.has(assignmentId)) return { error: 'Мессенджер не найден у этого сотрудника' }
     return { kind, payload: { assignmentId } }

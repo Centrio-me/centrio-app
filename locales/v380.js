@@ -2,6 +2,15 @@
 // a missing string falls back to English, then Russian (renderer/i18n.js).
 module.exports = {
     ru: {
+        weather: {
+            city: "Город для погоды",
+            cityHint: "Погода на экране блокировки. С включённым VPN город по сети может определяться неверно — укажите свой.",
+            auto: "Определять автоматически",
+            search: "Найти город",
+            placeholder: "Например, Москва",
+            notFound: "Город не найден",
+            current: "Сейчас"
+        },
         allInbox: {
             title: 'Все мессенджеры',
             search: 'Поиск по чатам',
@@ -22,6 +31,15 @@ module.exports = {
         }
     },
     en: {
+        weather: {
+            city: "Weather city",
+            cityHint: "Weather on the lock screen. With a VPN on, the city from your network may be wrong — set your own.",
+            auto: "Detect automatically",
+            search: "Find a city",
+            placeholder: "For example, London",
+            notFound: "City not found",
+            current: "Now"
+        },
         allInbox: {
             title: 'All messengers',
             search: 'Search chats',
@@ -42,6 +60,15 @@ module.exports = {
         }
     },
     de: {
+        weather: {
+            city: "Stadt für das Wetter",
+            cityHint: "Wetter auf dem Sperrbildschirm. Mit aktivem VPN kann die Stadt falsch erkannt werden — legen Sie Ihre fest.",
+            auto: "Automatisch erkennen",
+            search: "Stadt suchen",
+            placeholder: "Zum Beispiel Berlin",
+            notFound: "Stadt nicht gefunden",
+            current: "Jetzt"
+        },
         allInbox: {
             title: 'Alle Messenger',
             search: 'Chats durchsuchen',
@@ -62,6 +89,15 @@ module.exports = {
         }
     },
     es: {
+        weather: {
+            city: "Ciudad para el tiempo",
+            cityHint: "El tiempo en la pantalla de bloqueo. Con una VPN activa, la ciudad puede detectarse mal: indica la tuya.",
+            auto: "Detectar automáticamente",
+            search: "Buscar ciudad",
+            placeholder: "Por ejemplo, Madrid",
+            notFound: "Ciudad no encontrada",
+            current: "Ahora"
+        },
         allInbox: {
             title: 'Todos los mensajeros',
             search: 'Buscar chats',
@@ -82,6 +118,15 @@ module.exports = {
         }
     },
     fr: {
+        weather: {
+            city: "Ville pour la météo",
+            cityHint: "La météo de l’écran de verrouillage. Avec un VPN actif, la ville peut être mal détectée — indiquez la vôtre.",
+            auto: "Détecter automatiquement",
+            search: "Chercher une ville",
+            placeholder: "Par exemple, Paris",
+            notFound: "Ville introuvable",
+            current: "Actuelle"
+        },
         allInbox: {
             title: 'Toutes les messageries',
             search: 'Rechercher des discussions',
@@ -102,6 +147,15 @@ module.exports = {
         }
     },
     it: {
+        weather: {
+            city: "Città per il meteo",
+            cityHint: "Il meteo nella schermata di blocco. Con una VPN attiva la città può essere sbagliata: indica la tua.",
+            auto: "Rileva automaticamente",
+            search: "Cerca città",
+            placeholder: "Ad esempio, Roma",
+            notFound: "Città non trovata",
+            current: "Ora"
+        },
         allInbox: {
             title: 'Tutti i messenger',
             search: 'Cerca chat',
@@ -122,6 +176,15 @@ module.exports = {
         }
     },
     zh: {
+        weather: {
+            city: "天气城市",
+            cityHint: "锁屏上的天气。开启 VPN 时，按网络判断的城市可能不对——请设置您的城市。",
+            auto: "自动识别",
+            search: "查找城市",
+            placeholder: "例如：北京",
+            notFound: "未找到城市",
+            current: "当前"
+        },
         allInbox: {
             title: '所有消息应用',
             search: '搜索聊天',

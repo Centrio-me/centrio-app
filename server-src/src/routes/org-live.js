@@ -186,6 +186,25 @@ router.post('/:orgId/members/:userId/commands', authMiddleware, liveActionLimite
     }
 })
 
+// ── POST /api/org/:orgId/commands/refresh ───────────────────────────────
+// The owner's «refresh everyone» (2026-11-11): every active member's apps read their account and the team again at
+// once — a person put back into the team, or whose seat changed, stops behaving as the free plan.
+router.post('/:orgId/commands/refresh', authMiddleware, liveActionLimiter, requireOrgRole(['OWNER', 'ADMIN']), async (req, res) => {
+    try {
+        const orgId = req.params.orgId
+        const members = await prisma.orgMember.findMany({ where: { orgId, status: 'ACTIVE' }, select: { userId: true } })
+        let devices = 0
+        for (const m of members) {
+            devices += await queueCommands({ orgId, userId: m.userId, kind: 'refresh', payload: {}, createdById: req.user.id })
+        }
+        await auditLive(orgId, req.user.id, 'command.refresh_all', { members: members.length, devices })
+        res.json({ success: true, data: { kind: 'refresh', members: members.length, devices } })
+    } catch (err) {
+        console.error('Org refresh-all error:', err.message)
+        res.status(500).json({ success: false, error: 'Ошибка отправки команды' })
+    }
+})
+
 // ── GET /api/org/:orgId/members/:userId/commands ────────────────────────
 router.get('/:orgId/members/:userId/commands', authMiddleware, requireOrgRole(['OWNER', 'ADMIN']), async (req, res) => {
     try {

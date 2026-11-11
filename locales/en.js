@@ -1416,6 +1416,7 @@ module.exports = {
         reloaded: "Your manager reloaded “{name}”",
         relogin: "Your manager asks you to sign in to “{name}” again",
         sessionsEnded: "Work sign-ins on this computer have been ended",
+        refreshed: "Your account and team data were refreshed",
         strictOn: "Your manager turned on strict mode",
     },
     teamTasks: {

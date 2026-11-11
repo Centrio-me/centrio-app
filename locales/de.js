@@ -1417,6 +1417,7 @@ module.exports = {
         reloaded: "Ihre Führungskraft hat „{name}“ neu geladen",
         relogin: "Ihre Führungskraft bittet Sie, sich erneut bei „{name}“ anzumelden",
         sessionsEnded: "Die Arbeitsanmeldungen auf diesem Computer wurden beendet",
+        refreshed: "Konto- und Teamdaten wurden aktualisiert",
         strictOn: "Ihre Führungskraft hat den strengen Modus eingeschaltet",
     },
     teamTasks: {

@@ -1,5 +1,6 @@
 const { ipcMain, net } = require('electron')
 const store = require('../services/store')
+const { citiesFromGeocoding, savedCity } = require('../services/weatherCity')
 
 // ── Погода на экране блокировки ──────────────────────────────────────────
 // Сетевой вызов делаем ЗДЕСЬ (main), а не в renderer/lock.js: CSP лок-скрина
@@ -90,7 +91,8 @@ async function fetchGeo() {
 }
 
 async function fetchWeather() {
-    const geo = await fetchGeo()
+    // the city the person chose comes first: with a VPN on, the one found from the network address is the VPN's
+    const geo = savedCity(store.get('weatherCity', null)) || await fetchGeo()
 
     const wx = await fetchJson(
         `https://api.open-meteo.com/v1/forecast?latitude=${geo.latitude}&longitude=${geo.longitude}&current=temperature_2m,weather_code&timezone=auto`,
@@ -129,6 +131,27 @@ function registerWeatherIpc() {
             console.warn('[weather] fetch failed, falling back to cache:', e.message)
             return cached || null
         }
+    })
+
+    // the person's own city for the weather: found by name, chosen, or given back to automatic detection
+    safeHandle('weather:search-city', async (_e, query) => {
+        const name = typeof query === 'string' ? query.trim().slice(0, 80) : ''
+        if (name.length < 2) return []
+        try {
+            const answer = await fetchJson(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(name)}&count=6&language=ru&format=json`, FETCH_TIMEOUT_MS)
+            return citiesFromGeocoding(answer)
+        } catch (e) {
+            console.warn('[weather] city search failed:', e.message)
+            return []
+        }
+    })
+    safeHandle('weather:get-city', () => savedCity(store.get('weatherCity', null)))
+    safeHandle('weather:set-city', (_e, city) => {
+        const chosen = savedCity(city)
+        store.set('weatherCity', chosen)
+        // the weather is asked again for the new place at once
+        store.set('weatherCache', null)
+        return chosen
     })
 }
 

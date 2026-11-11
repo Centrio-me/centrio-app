@@ -415,12 +415,14 @@ router.post('/invites/:token/accept', acceptInviteLimiter, authMiddleware, async
     if (invite.email !== requester.email.toLowerCase()) {
       return res.status(403).json({ success: false, error: 'Это приглашение выписано на другой email' })
     }
-    // Without this, an attacker could register an unverified account under
-    // someone else's (unowned) email and accept an invite meant for them —
-    // and permanently squat that address, since /register 409s once any
-    // account (verified or not) exists for it.
+    // The invitation link itself came to this address: whoever opens it holds that inbox, so it confirms the
+    // email (2026-11-11: a person removed from a team and invited back, whose account was never confirmed, was
+    // told to confirm the email first and could not get back in). The account's email must still be the
+    // invited one (checked above), so someone who registered another person's address without the inbox has
+    // no token and gains nothing.
     if (!requester.emailVerified) {
-      return res.status(403).json({ success: false, error: 'Сначала подтвердите email, затем откройте ссылку из письма ещё раз' })
+      await prisma.user.update({ where: { id: req.user.id }, data: { emailVerified: true } })
+      await logOrgAudit(invite.orgId, req.user.id, 'member.email_confirmed_by_invite', { email: requester.email })
     }
 
     const existingMembership = await prisma.orgMember.findFirst({

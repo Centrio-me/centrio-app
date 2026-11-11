@@ -336,7 +336,10 @@ const validInvokeChannels = new Set([
     'vpn-refresh-subscription',
     'vpn-set-app-vpn',
     'vpn-status',
-    'weather:get'
+    'weather:get',
+    'weather:search-city',
+    'weather:get-city',
+    'weather:set-city'
 ])
 
 const sendChannelMap = {

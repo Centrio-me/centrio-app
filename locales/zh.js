@@ -1417,6 +1417,7 @@ module.exports = {
         reloaded: "主管已重新加载「{name}」",
         relogin: "主管请你重新登录「{name}」",
         sessionsEnded: "此电脑上的工作登录已结束",
+        refreshed: "账户和团队数据已刷新",
         strictOn: "主管已开启严格模式",
     },
     teamTasks: {

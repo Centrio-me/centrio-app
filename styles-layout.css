@@ -615,6 +615,19 @@
 [data-theme="dock"] .add-btn:active {
     transform: scale(0.9) !important;
 }
+/* only the «+» turns: in the wide sidebar the button also carries its label, and the whole button turning went askew */
+[data-theme="dock"] .add-btn:hover { transform: translateY(-3px) !important; }
+[data-theme="dock"] .add-btn svg { transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1); }
+[data-theme="dock"] .add-btn:hover svg { transform: rotate(90deg); }
+/* the wide sidebar: a full-width dashed pill with the «+» and its label, not a 36 px circle */
+[data-theme="dock"] #activityBar.sidebar-expanded .add-btn {
+    width: 100% !important;
+    height: 40px !important;
+    border-radius: 12px !important;
+    justify-content: flex-start;
+}
+[data-theme="dock"] #activityBar.sidebar-expanded .add-btn:hover { transform: none !important; }
+[data-theme="dock"] #activityBar.sidebar-expanded .add-btn:active { transform: scale(0.98) !important; }
 
 /* ── Иконки мессенджеров ──────────────────────────────────────────── */
 
@@ -3290,3 +3303,21 @@
     margin: 4px 2px;
     opacity: 0.5;
 }
+/* Settings → Security: the weather's city (2026-11-11) */
+.weather-city-row { align-items: flex-start; flex-wrap: wrap; gap: 10px; }
+.weather-city { display: flex; flex-direction: column; gap: 8px; min-width: 260px; flex: 1 1 260px; max-width: 360px; }
+.weather-city-now { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; font-size: 13px; color: var(--text-primary); }
+.weather-city-auto { border: 0; background: none; padding: 0; color: var(--accent); font: inherit; font-size: 12.5px; cursor: pointer; }
+.weather-city-auto:hover { text-decoration: underline; }
+.weather-city-search { display: flex; gap: 6px; }
+.weather-city-search input { flex: 1; min-width: 0; height: 34px; padding: 0 10px; border-radius: 9px; border: 1px solid var(--border); background: var(--bg-tertiary, var(--bg-secondary)); color: var(--text-primary); font: inherit; font-size: 13px; outline: none; }
+.weather-city-search input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-dim); }
+.weather-city-find { height: 34px; padding: 0 12px; border: 0; border-radius: 9px; background: var(--accent); color: #fff; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.weather-city-find:hover { filter: brightness(1.08); }
+.weather-city-results { display: flex; flex-direction: column; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+.weather-city-results[hidden] { display: none; }
+.weather-city-option { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; padding: 8px 12px; border: 0; background: none; color: var(--text-primary); font: inherit; font-size: 13px; text-align: left; cursor: pointer; }
+.weather-city-option + .weather-city-option { border-top: 1px solid var(--border); }
+.weather-city-option:hover, .weather-city-option:focus-visible { background: var(--accent-dim); outline: none; }
+.weather-city-option small { font-size: 11.5px; color: var(--text-muted); }
+.weather-city-empty { padding: 10px 12px; font-size: 13px; color: var(--text-muted); }
