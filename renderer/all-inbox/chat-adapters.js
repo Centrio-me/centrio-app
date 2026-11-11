@@ -270,15 +270,41 @@ const max = {
                     var inMedia = !!pic.closest('[class*=media], [class*=grid], [class*=photo]');
                     if (pic.naturalWidth > 40 || (inMedia && !pic.naturalWidth && /^https?:/i.test(pic.src))) { photo = pic; break; }
                 }
+                // MAX's photo grid: its tiles where MAX puts them; a photo not loaded yet is its blurred placeholder
+                var grid = contactBox ? null : w.querySelector('[class*=grid][aria-label], [class*=grid]');
+                var tiles = grid ? grid.querySelectorAll('[class*=tile]') : [];
+                var album = null, gridPic = '';
+                function tileSrc(tile, key) {
+                    var im = tile.querySelector('img');
+                    if (im && (im.naturalWidth > 40 || /^https?:/i.test(im.src))) return __ciPicture(key, im);
+                    var ph = tile.querySelector('[class*=placeholder]') || tile;
+                    var bg = /url\\(["']?(data:image[^"')]+)/.exec(ph.style.backgroundImage || '');
+                    return bg ? bg[1] : '';
+                }
+                if (tiles.length) {
+                    var gw = parseFloat(grid.style.width) || 0, gh = parseFloat(grid.style.height) || 0;
+                    if (tiles.length > 1) {
+                        album = [];
+                        for (var ti = 0; ti < tiles.length; ti++) {
+                            var st = tiles[ti].style;
+                            album.push({ key: 'mx' + it.getAttribute('data-index') + '_' + ti, src: tileSrc(tiles[ti], 'mx' + it.getAttribute('data-index') + '_' + ti),
+                                x: (parseFloat(st.left) || 0) / 100, y: (parseFloat(st.top) || 0) / 100, w: (parseFloat(st.width) || 100) / 100, h: (parseFloat(st.height) || 100) / 100,
+                                ratio: gw && gh ? gw / gh : 1 });
+                        }
+                    } else {
+                        gridPic = tileSrc(tiles[0], 'mxg' + it.getAttribute('data-index'));
+                        if (!photo) photo = tiles[0].querySelector('img') || null;
+                    }
+                }
                 var text = textEl ? __ciText(textEl) : '';
-                var kind = contactBox ? 'contact' : photo ? 'photo' : (w.querySelector('audio, [class*=voice], [class*=attachAudio]') ? 'voice' : (w.querySelector('[class*=fileIcon], [class*=document]') ? 'file' : 'text'));
+                var kind = contactBox ? 'contact' : (album || gridPic) ? 'photo' : photo ? 'photo' : (w.querySelector('audio, [class*=voice], [class*=attachAudio]') ? 'voice' : (w.querySelector('[class*=fileIcon], [class*=document]') ? 'file' : 'text'));
                 var contactName = '', contactNote = '';
                 if (contactBox) {
                     var bits = String(contactBox.innerText || '').split('\\n').map(function (x) { return x.trim(); }).filter(Boolean);
                     contactName = bits.filter(function (x) { return !/контакт|contact/i.test(x); })[0] || bits[0] || 'Контакт';
                     contactNote = bits.filter(function (x) { return x !== contactName; })[0] || '';
                 }
-                if (!text && !photo && kind === 'text') continue;
+                if (!text && !photo && !album && !gridPic && kind === 'text') continue;
                 var id = it.getAttribute('data-index') + ':' + k + ':' + time + ':' + text.slice(0, 24);
                 out.push({
                     id: id,
@@ -297,10 +323,11 @@ const max = {
                     phone: kind === 'contact' ? contactNote : '',
                     duration: kind === 'voice' ? __ciText(w.querySelector('[class*=attachAudio] .duration, .duration')) : '',
                     size: kind === 'file' ? __ciText(w.querySelector('.attaches .info')).replace(/^.*•\\s*/, '') : '',
-                    media: photo ? __ciPicture('max' + id, photo) : (contactBox ? __ciPicture('maxc' + id, contactBox.querySelector('img')) : ''),
+                    media: album ? '' : (photo ? __ciPicture('max' + id, photo) : '') || gridPic || (contactBox ? __ciPicture('maxc' + id, contactBox.querySelector('img')) : ''),
+                    album: album,
                     // the picture's own size: MAX may draw a file's picture as a thin strip
-                    mediaW: photo ? photo.naturalWidth : 0,
-                    mediaH: photo ? photo.naturalHeight : 0,
+                    mediaW: (photo && photo.naturalWidth) || (grid ? parseFloat(grid.style.width) || 0 : 0),
+                    mediaH: (photo && photo.naturalHeight) || (grid ? parseFloat(grid.style.height) || 0 : 0),
                     picture: photo ? 'max' + id : '',
                     time: time
                 });
