@@ -184,6 +184,21 @@ const telegram = {
             top.filter(function (x) { return x.peerId > 0 && x.peerId !== rs.myId; }).slice(0, ${TELEGRAM_STATUS_PEERS}).forEach(function (x) {
                 m.appUsersManager.getUser(x.peerId).then(function (u) { if (u) statuses[x.peerId] = u.status || null; }, function () {});
             });
+            // «печатает…» of the freshest chats, asked in the background like the statuses
+            var typing = window.__ciTgTyping || (window.__ciTgTyping = {});
+            var ACTIONS = { sendMessageTypingAction: 'печатает', sendMessageRecordAudioAction: 'записывает голосовое',
+                sendMessageUploadAudioAction: 'отправляет голосовое', sendMessageUploadPhotoAction: 'отправляет фото',
+                sendMessageRecordVideoAction: 'записывает видео', sendMessageUploadVideoAction: 'отправляет видео',
+                sendMessageRecordRoundAction: 'записывает видеосообщение', sendMessageUploadDocumentAction: 'отправляет файл',
+                sendMessageChooseStickerAction: 'выбирает стикер' };
+            if (m.appProfileManager && typeof m.appProfileManager.getPeerTypings === 'function') {
+                top.filter(function (x) { return x.peerId !== rs.myId; }).slice(0, ${TELEGRAM_STATUS_PEERS}).forEach(function (x) {
+                    Promise.resolve(m.appProfileManager.getPeerTypings(x.peerId)).then(function (list) {
+                        var a = list && list[0] && list[0].action;
+                        typing[x.peerId] = a ? (ACTIONS[a._] || 'печатает') : '';
+                    }, function () {});
+                });
+            }
             function kindOf(peerId) {
                 if (peerId === rs.myId) return 'saved';
                 var p = peers[peerId];
@@ -223,7 +238,8 @@ const telegram = {
                         outState: msg.pFlags && msg.pFlags.out && x.peerId !== rs.myId ? (x.read_outbox_max_id >= msg.mid ? 'read' : 'sent') : '',
                         members: x.peerId < 0 && peers[x.peerId] ? peers[x.peerId].participants_count || 0 : 0,
                         draft: x.draft && x.draft._ === 'draftMessage' ? String(x.draft.message || '') : '',
-                        mentions: x.unread_mentions_count || 0
+                        mentions: x.unread_mentions_count || 0,
+                        typing: typing[x.peerId] || ''
                     });
                 });
                 return out.length ? out : domList;

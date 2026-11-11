@@ -206,7 +206,8 @@ function createAllInbox({ state, switchTab, tGet, ipcRenderer }) {
         // what you typed and did not send (here or in the messenger) is shown in place of the last message
         const draft = chat.id === activeId ? '' : (sharedDrafts.take(chat.id).replace(/\s+/g, ' ').trim() || chat.draft)
         const preview = el('span', 'ai-preview')
-        if (draft && !chat.unread) preview.append(el('span', 'ai-draft', t('draft', 'Черновик') + ': '), draft)
+        if (chat.typing) { preview.classList.add('is-typing'); preview.append(chat.typing, el('span', 'ai-dots')) }
+        else if (draft && !chat.unread) preview.append(el('span', 'ai-draft', t('draft', 'Черновик') + ': '), draft)
         else preview.textContent = chat.preview
         bottom.append(preview)
         if (chat.mentions) { const at = el('span', 'ai-mention', '@'); at.title = t('mentions', 'Вас упомянули'); bottom.append(at) }
@@ -223,7 +224,7 @@ function createAllInbox({ state, switchTab, tGet, ipcRenderer }) {
     // everything a row shows: the same string means the same row
     function rowSig(c) {
         return [c.id, c.unread, c.muted ? 1 : 0, c.timeLabel, c.preview, c.avatar.length, c.title, c.icon, c.online ? 1 : 0, c.outState,
-            c.pinned ? 1 : 0, c.accountLabel, c.accountTone, c.draft, c.mentions, sharedDrafts.take(c.id), c.match ? c.match.start : '',
+            c.pinned ? 1 : 0, c.accountLabel, c.accountTone, c.draft, c.mentions, c.typing, sharedDrafts.take(c.id), c.match ? c.match.start : '',
             c.id === activeId ? 1 : 0].join('|')
     }
 

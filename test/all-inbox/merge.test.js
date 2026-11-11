@@ -69,3 +69,10 @@ test('a draft and unread mentions of a chat pass through, cleaned', () => {
     assert.equal(none.draft, '')
     assert.equal(none.mentions, 0)
 })
+
+test('«печатает» of a chat passes through, too long text is cut', () => {
+    const [row] = mergeInbox([{ messenger: tg, chats: [chat('1', { typing: 'записывает голосовое' })] }], NOW)
+    assert.equal(row.typing, 'записывает голосовое')
+    const [none] = mergeInbox([{ messenger: tg, chats: [chat('2', { typing: { evil: 1 } })] }], NOW)
+    assert.equal(none.typing, '')
+})

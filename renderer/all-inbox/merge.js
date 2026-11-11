@@ -66,6 +66,8 @@ function mergeInbox(sources, now, filter = {}) {
                 // a message typed and not sent, kept by the messenger (shown as «Черновик:» like in Telegram)
                 draft: typeof chat.draft === 'string' ? chat.draft.replace(/\s+/g, ' ').trim().slice(0, MAX_PREVIEW) : '',
                 mentions: Math.max(0, parseInt(chat.mentions, 10) || 0),
+                // «печатает», «записывает голосовое»… while it lasts
+                typing: typeof chat.typing === 'string' ? chat.typing.trim().slice(0, 40) : '',
                 accountLabel: m.service && perService[m.service] > 1 ? (m.name || '') : '',
                 // the same colour marks the account on its chats and on its button above the list
                 accountTone: m.service && perService[m.service] > 1 ? accountIndex[m.id] % ACCOUNT_TONES : -1

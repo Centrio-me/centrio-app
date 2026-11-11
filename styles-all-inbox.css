@@ -668,3 +668,11 @@ html[data-fx] .aic-find { background: rgba(14, 18, 30, .88); -webkit-backdrop-fi
     background: var(--accent); color: #fff; font-size: 12px; font-weight: 700; line-height: 1;
 }
 .ai-row.is-active .ai-mention { background: #fff; color: var(--accent); }
+
+/* «печатает…» in the list, in the accent, with its moving dots */
+.ai-preview.is-typing { color: var(--accent); }
+.ai-row.is-active .ai-preview.is-typing { color: #fff; }
+.ai-dots { display: inline-block; width: 14px; text-align: left; }
+.ai-dots::after { content: '…'; animation: ai-dots 1.2s steps(4, end) infinite; display: inline-block; overflow: hidden; vertical-align: bottom; width: 0; }
+@keyframes ai-dots { to { width: 1.1em; } }
+@media (prefers-reduced-motion: reduce) { .ai-dots::after { animation: none; width: auto; } }
