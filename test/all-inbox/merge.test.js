@@ -60,3 +60,12 @@ test('accounts of the same messenger are told apart only when there are several'
     assert.deepEqual(two.map((c) => c.accountTone).sort(), [0, 1])
     assert.ok(one.every((c) => c.accountTone === -1))
 })
+
+test('a draft and unread mentions of a chat pass through, cleaned', () => {
+    const [row] = mergeInbox([{ messenger: tg, chats: [chat('1', { draft: '  Привет,\n как дела ', mentions: '2' })] }], NOW)
+    assert.equal(row.draft, 'Привет, как дела')
+    assert.equal(row.mentions, 2)
+    const [none] = mergeInbox([{ messenger: tg, chats: [chat('2', { draft: 42, mentions: -1 })] }], NOW)
+    assert.equal(none.draft, '')
+    assert.equal(none.mentions, 0)
+})

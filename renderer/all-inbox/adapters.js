@@ -221,7 +221,9 @@ const telegram = {
                         online: x.peerId > 0 && x.peerId !== rs.myId && onlineOf(x.peerId),
                         // ✓ sent, ✓✓ read by the other side (not for «Избранное»)
                         outState: msg.pFlags && msg.pFlags.out && x.peerId !== rs.myId ? (x.read_outbox_max_id >= msg.mid ? 'read' : 'sent') : '',
-                        members: x.peerId < 0 && peers[x.peerId] ? peers[x.peerId].participants_count || 0 : 0
+                        members: x.peerId < 0 && peers[x.peerId] ? peers[x.peerId].participants_count || 0 : 0,
+                        draft: x.draft && x.draft._ === 'draftMessage' ? String(x.draft.message || '') : '',
+                        mentions: x.unread_mentions_count || 0
                     });
                 });
                 return out.length ? out : domList;

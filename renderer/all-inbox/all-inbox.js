@@ -5,6 +5,7 @@
 const { adapterFor } = require('./adapters')
 const { mergeInbox } = require('./merge')
 const { createChatController, clickAt } = require('./chat-controller')
+const { sharedDrafts } = require('./drafts')
 
 const POLL_MS = 4000
 const READ_TIMEOUT_MS = 2500
@@ -198,7 +199,13 @@ function createAllInbox({ state, switchTab, tGet, ipcRenderer }) {
         top.append(meta)
 
         const bottom = el('div', 'ai-bottom')
-        bottom.append(el('span', 'ai-preview', chat.preview))
+        // what you typed and did not send (here or in the messenger) is shown in place of the last message
+        const draft = chat.id === activeId ? '' : (sharedDrafts.take(chat.id).replace(/\s+/g, ' ').trim() || chat.draft)
+        const preview = el('span', 'ai-preview')
+        if (draft && !chat.unread) preview.append(el('span', 'ai-draft', t('draft', 'Черновик') + ': '), draft)
+        else preview.textContent = chat.preview
+        bottom.append(preview)
+        if (chat.mentions) { const at = el('span', 'ai-mention', '@'); at.title = t('mentions', 'Вас упомянули'); bottom.append(at) }
         if (chat.unread) bottom.append(el('span', `ai-unread${chat.muted ? ' is-muted' : ''}`, chat.unread > 999 ? '999+' : String(chat.unread)))
         else if (chat.pinned) { const p = icon('pin', 'ai-pin'); p.title = t('pinned', 'Закреплён'); bottom.append(p) }
         body.append(top, bottom)
@@ -268,7 +275,7 @@ function createAllInbox({ state, switchTab, tGet, ipcRenderer }) {
         filterButtons.forEach((b) => b.classList.toggle('is-on', b.dataset.aiFilter === filter))
 
         // the list is drawn again only when something in it changed: no blinking pictures, hover and scroll stay
-        const sig = list.map((c) => `${c.id}|${c.unread}|${c.muted ? 1 : 0}|${c.timeLabel}|${c.preview}|${c.avatar.length}|${c.title}|${c.icon}|${c.online ? 1 : 0}|${c.outState}|${c.pinned ? 1 : 0}|${c.accountLabel}|${c.accountTone}|${c.match ? c.match.start : ''}`).join(';') + '#' + activeId + '#' + loadedOnce
+        const sig = list.map((c) => `${c.id}|${c.unread}|${c.muted ? 1 : 0}|${c.timeLabel}|${c.preview}|${c.avatar.length}|${c.title}|${c.icon}|${c.online ? 1 : 0}|${c.outState}|${c.pinned ? 1 : 0}|${c.accountLabel}|${c.accountTone}|${c.draft}|${c.mentions}|${sharedDrafts.take(c.id)}|${c.match ? c.match.start : ''}`).join(';') + '#' + activeId + '#' + loadedOnce
         if (sig === lastListSig) return
         lastListSig = sig
         const keepScroll = listEl.scrollTop

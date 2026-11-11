@@ -17,4 +17,7 @@ function createDrafts(limit = MAX_DRAFTS) {
     }
 }
 
-module.exports = { createDrafts, MAX_DRAFTS }
+// the conversation window writes here and the list shows «Черновик:» from here
+const sharedDrafts = createDrafts()
+
+module.exports = { createDrafts, sharedDrafts, MAX_DRAFTS }

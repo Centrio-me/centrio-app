@@ -659,3 +659,12 @@ html[data-fx] .aic-find { background: rgba(14, 18, 30, .88); -webkit-backdrop-fi
 @keyframes aic-find-in { from { opacity: 0; transform: translateY(-4px); } }
 
 .aic-sub.is-online { color: var(--accent); }
+
+/* «Черновик:» in red and the «@» of mentions, like in Telegram */
+.ai-draft { color: #e5484d; font-weight: 500; }
+.ai-row.is-active .ai-draft { color: #fff; }
+.ai-mention {
+    flex: none; display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%;
+    background: var(--accent); color: #fff; font-size: 12px; font-weight: 700; line-height: 1;
+}
+.ai-row.is-active .ai-mention { background: #fff; color: var(--accent); }

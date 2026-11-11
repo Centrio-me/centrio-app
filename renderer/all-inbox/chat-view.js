@@ -3,7 +3,7 @@
 // and hands typed text back; the tab behind it does the real work.
 
 const { renderMessage } = require('./message-view')
-const { createDrafts } = require('./drafts')
+const { sharedDrafts } = require('./drafts')
 const { createComposer } = require('./composer')
 const { readBackground, saveBackground, createBackgroundMenu } = require('./chat-backgrounds')
 const { createLightbox, galleryOf } = require('./lightbox')
@@ -73,7 +73,7 @@ function createChatView({ host, onSend, onOpenInTab, onClose, onOlder, onLink, o
     const list = q('.aic-list')
     let lastSig = ''
 
-    const drafts = createDrafts()
+    const drafts = sharedDrafts
     let chatId = ''
     const composer = createComposer({ root, onSend, onPickFiles, onDescribeFiles, onPasteImage, onDraft: (text) => drafts.keep(chatId, text) })
     composer.setVisible(false)

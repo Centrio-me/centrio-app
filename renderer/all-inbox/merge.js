@@ -63,6 +63,9 @@ function mergeInbox(sources, now, filter = {}) {
                 online: chat.online === true,
                 outState: OUT_STATES.has(chat.outState) ? chat.outState : '',
                 members: Math.max(0, parseInt(chat.members, 10) || 0),
+                // a message typed and not sent, kept by the messenger (shown as «Черновик:» like in Telegram)
+                draft: typeof chat.draft === 'string' ? chat.draft.replace(/\s+/g, ' ').trim().slice(0, MAX_PREVIEW) : '',
+                mentions: Math.max(0, parseInt(chat.mentions, 10) || 0),
                 accountLabel: m.service && perService[m.service] > 1 ? (m.name || '') : '',
                 // the same colour marks the account on its chats and on its button above the list
                 accountTone: m.service && perService[m.service] > 1 ? accountIndex[m.id] % ACCOUNT_TONES : -1

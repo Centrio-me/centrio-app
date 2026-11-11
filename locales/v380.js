@@ -16,7 +16,9 @@ module.exports = {
             pinned: 'Закреплён',
             muted: 'Без звука',
             online: 'в сети',
-            clear: 'Очистить'
+            clear: 'Очистить',
+            draft: 'Черновик',
+            mentions: 'Вас упомянули'
         }
     },
     en: {
@@ -34,7 +36,9 @@ module.exports = {
             pinned: 'Pinned',
             muted: 'Muted',
             online: 'online',
-            clear: 'Clear'
+            clear: 'Clear',
+            draft: 'Draft',
+            mentions: 'You were mentioned'
         }
     },
     de: {
@@ -52,7 +56,9 @@ module.exports = {
             pinned: 'Angeheftet',
             muted: 'Stumm',
             online: 'online',
-            clear: 'Leeren'
+            clear: 'Leeren',
+            draft: 'Entwurf',
+            mentions: 'Sie wurden erwähnt'
         }
     },
     es: {
@@ -70,7 +76,9 @@ module.exports = {
             pinned: 'Fijado',
             muted: 'Silenciado',
             online: 'en línea',
-            clear: 'Borrar'
+            clear: 'Borrar',
+            draft: 'Borrador',
+            mentions: 'Te mencionaron'
         }
     },
     fr: {
@@ -88,7 +96,9 @@ module.exports = {
             pinned: 'Épinglée',
             muted: 'En sourdine',
             online: 'en ligne',
-            clear: 'Effacer'
+            clear: 'Effacer',
+            draft: 'Brouillon',
+            mentions: 'Vous avez été mentionné'
         }
     },
     it: {
@@ -106,7 +116,9 @@ module.exports = {
             pinned: 'Fissata',
             muted: 'Silenziata',
             online: 'online',
-            clear: 'Cancella'
+            clear: 'Cancella',
+            draft: 'Bozza',
+            mentions: 'Sei stato menzionato'
         }
     },
     zh: {
@@ -124,7 +136,9 @@ module.exports = {
             pinned: '已置顶',
             muted: '已静音',
             online: '在线',
-            clear: '清除'
+            clear: '清除',
+            draft: '草稿',
+            mentions: '有人提到了你'
         }
     }
 }
