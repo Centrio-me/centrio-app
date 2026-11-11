@@ -212,6 +212,11 @@ function registerApiIpc() {
         return wrapApi(() => api.notesReorder(token, order))
     })
 
+    ipcMain.handle('api-notes-folders', async (event, token) => wrapApi(() => api.notesFolders(token)))
+    ipcMain.handle('api-notes-folder-create', async (event, token, name) => wrapApi(() => api.notesFolderCreate(token, name)))
+    ipcMain.handle('api-notes-folder-update', async (event, token, id, patch) => wrapApi(() => api.notesFolderUpdate(token, id, patch)))
+    ipcMain.handle('api-notes-folder-delete', async (event, token, id) => wrapApi(() => api.notesFolderDelete(token, id)))
+
     ipcMain.handle('api-update-profile', async (event, token, data) => {
         return wrapApiAndPersistUser(() => api.updateProfile(token, data))
     })

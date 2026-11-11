@@ -1569,6 +1569,18 @@ module.exports = {
 
     notes: {
         panelTitle: '笔记',
+        folders: "文件夹",
+        newFolder: "新文件夹",
+        addFolder: "创建文件夹",
+        allNotes: "全部笔记",
+        deleteFolder: "删除文件夹（笔记保留）",
+        deleteFolderQ: "删除文件夹",
+        cancel: "取消",
+        close: "关闭",
+        folder: "文件夹",
+        noFolder: "无文件夹",
+        deleteImage: "删除图片",
+        imagesHint: "图片：Ctrl+V 或拖到这里。仅保存在这台电脑上",
         newNote: '笔记',
         newChecklist: '购物清单',
         emptyTitle: '暂无笔记',

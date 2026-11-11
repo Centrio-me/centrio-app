@@ -1632,6 +1632,18 @@ module.exports = {
 
     notes: {
         panelTitle: 'Заметки',
+        folders: "Папки",
+        newFolder: "Новая папка",
+        addFolder: "Создать папку",
+        allNotes: "Все заметки",
+        deleteFolder: "Удалить папку (заметки останутся)",
+        deleteFolderQ: "Удалить папку",
+        cancel: "Отмена",
+        close: "Закрыть",
+        folder: "Папка",
+        noFolder: "Без папки",
+        deleteImage: "Удалить картинку",
+        imagesHint: "Картинки: Ctrl+V или перетащите сюда. Хранятся только на этом компьютере",
         newNote: 'Заметка',
         newChecklist: 'Список покупок',
         emptyTitle: 'Заметок пока нет',

@@ -105,6 +105,7 @@ const { createSyncStatus } = require('./renderer/sync-status')
 const { dedupeFolders } = require('./renderer/folders-dedupe')
 const { startSplashFacts, stopSplashFacts } = require('./renderer/splash-facts')
 const { bindNotesUi } = require('./renderer/notes-bind')
+const { createNotesWindow } = require('./renderer/notes-window')
 const { bindDownloadsUi } = require('./renderer/downloads-bind')
 const { bindVpnUi, bindVpnSettings } = require('./renderer/vpn-bind')
 const { bindAssistantTools } = require('./renderer/assistant-tools')
@@ -4195,12 +4196,16 @@ function applyTabZoom(level) {
         cloudSyncPush: () => { if (cloudStore.isLoggedIn()) cloudSyncPush() }
     })
 
+    // 2026-11-11: notes open in the middle of the screen, like the tasks, with the person's folders beside them
+    const notesWindow = createNotesWindow({ tGet, authorizedInvoke, getNotesApi: () => notesUiApiRef })
     notesUiApiRef = bindNotesUi({
         store,
         tGet,
         authorizedInvoke,
-        openRightPanel: () => toggleRightPanel('notes'),
-        closeRightPanel,
+        invokeIpc,
+        openRightPanel: () => notesWindow.open(),
+        closeRightPanel: () => notesWindow.close(),
+        onNotesChange: (list) => notesWindow.notesChanged(list),
         getUserIsPro: hasEffectivePro,
         requirePro
     })

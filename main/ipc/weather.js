@@ -92,7 +92,8 @@ async function fetchGeo() {
 
 async function fetchWeather() {
     // the city the person chose comes first: with a VPN on, the one found from the network address is the VPN's
-    const geo = savedCity(store.get('weatherCity', null)) || await fetchGeo()
+    const chosen = savedCity(store.get('weatherCity', null))
+    const geo = chosen ? { latitude: chosen.latitude, longitude: chosen.longitude, city: chosen.name } : await fetchGeo()
 
     const wx = await fetchJson(
         `https://api.open-meteo.com/v1/forecast?latitude=${geo.latitude}&longitude=${geo.longitude}&current=temperature_2m,weather_code&timezone=auto`,

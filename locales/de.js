@@ -1569,6 +1569,18 @@ module.exports = {
 
     notes: {
         panelTitle: 'Notizen',
+        folders: "Ordner",
+        newFolder: "Neuer Ordner",
+        addFolder: "Ordner erstellen",
+        allNotes: "Alle Notizen",
+        deleteFolder: "Ordner löschen (Notizen bleiben)",
+        deleteFolderQ: "Ordner löschen",
+        cancel: "Abbrechen",
+        close: "Schließen",
+        folder: "Ordner",
+        noFolder: "Ohne Ordner",
+        deleteImage: "Bild löschen",
+        imagesHint: "Bilder: Strg+V oder hierher ziehen. Nur auf diesem Computer gespeichert",
         newNote: 'Notiz',
         newChecklist: 'Einkaufsliste',
         emptyTitle: 'Noch keine Notizen',

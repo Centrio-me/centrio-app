@@ -3,6 +3,7 @@ const crypto = require('crypto')
 const authMiddleware = require('../middleware/auth')
 const prisma = require('../utils/prisma')
 const { rateLimit } = require('../middleware/rateLimit')
+const { cleanFolderName, MAX_FOLDERS } = require('../lib/note-folders')
 
 // Заметки — плагин Pro/Team (см. renderer/extensions-ui.js NATIVE_EXTENSIONS
 // 'notes', main.js NATIVE_EXTENSION_IDS). Реальный гейт — тумблер в
@@ -62,6 +63,75 @@ function sanitizeNoteInput(body) {
     return { type, title, pinned, archived, position, color, body: noteBody, items: null }
 }
 
+// A note's folder (2026-11-11): only one of the person's own folders, or none. undefined = leave as it is.
+async function folderFor(userId, value) {
+    if (value === undefined) return undefined
+    if (value === null || value === '') return null
+    if (typeof value !== 'string') return null
+    const folder = await prisma.noteFolder.findFirst({ where: { id: value, userId }, select: { id: true } })
+    return folder ? folder.id : null
+}
+
+// ── Folders of notes ────────────────────────────────────────────────────
+router.get('/folders', authMiddleware, requireNotesAccess, async (req, res) => {
+    try {
+        const folders = await prisma.noteFolder.findMany({ where: { userId: req.user.id }, orderBy: [{ position: 'asc' }, { createdAt: 'asc' }] })
+        res.json({ folders })
+    } catch (err) {
+        console.error('Notes GET /folders error:', err)
+        res.status(500).json({ error: 'Не удалось загрузить папки' })
+    }
+})
+
+router.post('/folders', createLimiter, authMiddleware, requireNotesAccess, async (req, res) => {
+    try {
+        const name = cleanFolderName(req.body?.name)
+        if (!name) return res.status(400).json({ error: 'Введите название папки' })
+        const count = await prisma.noteFolder.count({ where: { userId: req.user.id } })
+        if (count >= MAX_FOLDERS) return res.status(400).json({ error: 'Слишком много папок' })
+        const folder = await prisma.noteFolder.create({ data: { userId: req.user.id, name, position: count } })
+        res.status(201).json({ ok: true, folder })
+    } catch (err) {
+        console.error('Notes POST /folders error:', err)
+        res.status(500).json({ error: 'Не удалось создать папку' })
+    }
+})
+
+router.patch('/folders/:id', writeLimiter, authMiddleware, requireNotesAccess, async (req, res) => {
+    try {
+        const existing = await prisma.noteFolder.findFirst({ where: { id: req.params.id, userId: req.user.id } })
+        if (!existing) return res.status(404).json({ error: 'Папка не найдена' })
+        const data = {}
+        if (req.body?.name !== undefined) {
+            const name = cleanFolderName(req.body.name)
+            if (!name) return res.status(400).json({ error: 'Введите название папки' })
+            data.name = name
+        }
+        if (Number.isFinite(req.body?.position)) data.position = Math.trunc(req.body.position)
+        const folder = await prisma.noteFolder.update({ where: { id: existing.id }, data })
+        res.json({ ok: true, folder })
+    } catch (err) {
+        console.error('Notes PATCH /folders/:id error:', err)
+        res.status(500).json({ error: 'Не удалось сохранить папку' })
+    }
+})
+
+// a folder goes; its notes stay, without a folder
+router.delete('/folders/:id', authMiddleware, requireNotesAccess, async (req, res) => {
+    try {
+        const existing = await prisma.noteFolder.findFirst({ where: { id: req.params.id, userId: req.user.id } })
+        if (!existing) return res.status(404).json({ error: 'Папка не найдена' })
+        await prisma.$transaction([
+            prisma.note.updateMany({ where: { userId: req.user.id, folderId: existing.id }, data: { folderId: null } }),
+            prisma.noteFolder.delete({ where: { id: existing.id } })
+        ])
+        res.json({ ok: true })
+    } catch (err) {
+        console.error('Notes DELETE /folders/:id error:', err)
+        res.status(500).json({ error: 'Не удалось удалить папку' })
+    }
+})
+
 // GET /api/notes — список заметок пользователя, закреплённые сверху.
 // По умолчанию отдаёт только неархивные; ?archived=true — только архив
 // (два разных "вида" в клиенте, как в списке и в архиве Google Keep, а не
@@ -84,7 +154,8 @@ router.get('/', authMiddleware, requireNotesAccess, async (req, res) => {
 router.post('/', createLimiter, authMiddleware, requireNotesAccess, async (req, res) => {
     try {
         const data = sanitizeNoteInput(req.body || {})
-        const note = await prisma.note.create({ data: { ...data, userId: req.user.id } })
+        const folderId = await folderFor(req.user.id, req.body?.folderId)
+        const note = await prisma.note.create({ data: { ...data, folderId: folderId || null, userId: req.user.id } })
         res.status(201).json({ ok: true, note })
     } catch (err) {
         console.error('Notes POST / error:', err)
@@ -111,6 +182,8 @@ router.patch('/:id', writeLimiter, authMiddleware, requireNotesAccess, async (re
             color: req.body?.color !== undefined ? req.body.color : existing.color
         })
 
+        const folderId = await folderFor(req.user.id, req.body?.folderId)
+        if (folderId !== undefined) merged.folderId = folderId
         const note = await prisma.note.update({ where: { id: existing.id }, data: merged })
         res.json({ ok: true, note })
     } catch (err) {

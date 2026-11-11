@@ -1569,6 +1569,18 @@ module.exports = {
 
     notes: {
         panelTitle: 'Notas',
+        folders: "Carpetas",
+        newFolder: "Nueva carpeta",
+        addFolder: "Crear carpeta",
+        allNotes: "Todas las notas",
+        deleteFolder: "Eliminar carpeta (las notas se quedan)",
+        deleteFolderQ: "Eliminar carpeta",
+        cancel: "Cancelar",
+        close: "Cerrar",
+        folder: "Carpeta",
+        noFolder: "Sin carpeta",
+        deleteImage: "Eliminar imagen",
+        imagesHint: "Imágenes: Ctrl+V o arrástralas aquí. Solo en este ordenador",
         newNote: 'Nota',
         newChecklist: 'Lista de compras',
         emptyTitle: 'Aun no hay notas',

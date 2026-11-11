@@ -44,6 +44,7 @@ model User {
   loginEvents               LoginEvent[]
   messengers                Messenger[]
   notes                     Note[]
+  noteFolders               NoteFolder[]
   orgMemberships            OrgMember[]
   orgMessengerAssignments   OrgMessengerAssignment[]
   orgMessengerStats         OrgMessengerStat[]
@@ -543,10 +544,25 @@ model Note {
   updatedAt DateTime @updatedAt
   color     String?
   archived  Boolean  @default(false)
+  // the person's own folder (2026-11-11); none when null
+  folderId  String?
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([userId, position])
+  @@index([userId, folderId])
+}
+
+// Folders of notes (2026-11-11)
+model NoteFolder {
+  id        String   @id @default(uuid())
+  userId    String
+  name      String
+  position  Int      @default(0)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model ChatSite {

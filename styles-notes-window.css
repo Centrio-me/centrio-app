@@ -1,0 +1,107 @@
+/* ═══ Notes in the middle of the screen (renderer/notes-window.js, 2026-11-11) ═══════════════════════════════
+   Folders on the left, the list and the open note beside them. The notes panel of the right sidebar is moved in
+   here; colours come from the theme tokens, like the calendar with tasks. */
+
+.notes-window {
+    position: fixed; inset: 0; z-index: 100001;
+    display: grid; place-items: center;
+    background: rgba(6, 8, 14, .45);
+    -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+    animation: nw-fade .14s ease-out;
+}
+.notes-window[hidden] { display: none; }
+@keyframes nw-fade { from { opacity: 0; } }
+@keyframes nw-in { from { opacity: 0; transform: translateY(8px) scale(.99); } }
+
+.notes-window-dialog {
+    position: relative;
+    width: min(1120px, calc(100vw - 48px));
+    height: min(760px, calc(100vh - 64px));
+    display: grid; grid-template-columns: 228px 1fr;
+    border-radius: 18px; overflow: hidden;
+    background: var(--bg-primary);
+    box-shadow: 0 28px 70px rgba(0, 0, 0, .5), 0 0 0 1px var(--border);
+    animation: nw-in .18s cubic-bezier(.2, .8, .2, 1);
+}
+html[data-fx] .notes-window-dialog { background: var(--fx-panel-solid, #0d1120); }
+@media (prefers-reduced-motion: reduce) { .notes-window, .notes-window-dialog { animation: none; } }
+
+.notes-window-close {
+    position: absolute; top: 12px; right: 12px; z-index: 3;
+    width: 32px; height: 32px; border: 0; border-radius: 9px; display: grid; place-items: center;
+    background: transparent; color: var(--text-secondary); cursor: pointer;
+}
+.notes-window-close:hover { background: var(--bg-tertiary, rgba(127, 127, 127, .12)); color: var(--text-primary); }
+
+/* folders */
+.notes-folders { display: flex; flex-direction: column; min-height: 0; padding: 18px 10px 12px; background: var(--bg-secondary); border-right: 1px solid var(--border); }
+.notes-folders-title { padding: 0 10px 10px; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); }
+.notes-folders-list { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; }
+.notes-folder {
+    position: relative; display: flex; align-items: center; gap: 10px; min-height: 36px; padding: 0 10px; border-radius: 10px;
+    color: var(--text-secondary); font-size: 13.5px; cursor: pointer; outline: none; transition: background .12s, color .12s;
+}
+.notes-folder:hover, .notes-folder:focus-visible { background: var(--bg-tertiary, rgba(127, 127, 127, .1)); color: var(--text-primary); }
+.notes-folder.is-on { background: var(--accent-dim); color: var(--accent); font-weight: 600; }
+.notes-folder.is-drop { background: var(--accent-dim); box-shadow: inset 0 0 0 1.5px var(--accent); }
+.notes-folder-icon { display: inline-flex; flex: 0 0 16px; }
+.notes-folder-name { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.notes-folder-count { font-size: 12px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.notes-folder-del { display: none; border: 0; background: none; color: var(--text-muted); padding: 4px; border-radius: 6px; cursor: pointer; }
+.notes-folder:hover .notes-folder-del { display: inline-flex; }
+.notes-folder:hover .notes-folder-count { display: none; }
+.notes-folder-del:hover { color: #e5484d; background: rgba(229, 72, 77, .12); }
+.notes-folder-rename { flex: 1; min-width: 0; height: 26px; padding: 0 6px; border-radius: 6px; border: 1px solid var(--accent); background: var(--bg-primary); color: var(--text-primary); font: inherit; outline: none; }
+.notes-folder-confirm { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 8px 10px; border-radius: 10px; background: rgba(229, 72, 77, .1); font-size: 12.5px; color: var(--text-primary); }
+.notes-folder-confirm span { flex: 1 1 100%; }
+.notes-folder-yes, .notes-folder-no { height: 26px; padding: 0 10px; border: 0; border-radius: 7px; font: inherit; font-size: 12px; cursor: pointer; }
+.notes-folder-yes { background: #e5484d; color: #fff; }
+.notes-folder-no { background: var(--bg-tertiary, rgba(127, 127, 127, .15)); color: var(--text-primary); }
+.notes-folder-add { display: flex; gap: 6px; padding: 10px 2px 0; border-top: 1px solid var(--border); margin-top: 8px; }
+.notes-folder-add input { flex: 1; min-width: 0; height: 32px; padding: 0 10px; border-radius: 9px; border: 1px solid var(--border); background: var(--bg-primary); color: var(--text-primary); font: inherit; font-size: 13px; outline: none; }
+.notes-folder-add input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-dim); }
+.notes-folder-add-btn { flex: 0 0 32px; height: 32px; border: 0; border-radius: 9px; display: grid; place-items: center; background: var(--accent); color: #fff; cursor: pointer; }
+.notes-folder-add-btn:disabled { opacity: .5; }
+
+/* the notes panel inside the window: the list and the open note side by side */
+.notes-window-main { position: relative; min-width: 0; min-height: 0; display: flex; }
+.notes-window .notes-panel.right-panel-section {
+    position: relative; inset: auto; width: 100%; height: 100%; opacity: 1; pointer-events: auto;
+    flex-direction: row;
+}
+.notes-window .notes-panel #notesListView { display: flex !important; flex: 1 1 auto; min-width: 0; padding-top: 6px; }
+.notes-window .notes-panel:has(> #notesEditView:not([style*="none"])) #notesListView { flex: 0 0 320px; border-right: 1px solid var(--border); }
+.notes-window .notes-panel #notesEditView { flex: 1 1 auto; min-width: 0; padding: 6px 52px 0 6px; }
+.notes-window #notesBackBtn { display: none; }
+.notes-window .notes-edit-body { font-size: 14.5px; line-height: 1.6; }
+
+/* the folder of a note, in the editor */
+.notes-folder-select {
+    height: 28px; max-width: 180px; padding: 0 8px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--bg-secondary); color: var(--text-primary); font: inherit; font-size: 12.5px; cursor: pointer; outline: none;
+}
+.notes-folder-select[hidden] { display: none; }
+.notes-folder-select:focus { border-color: var(--accent); }
+
+/* pictures of a note (kept on this computer) */
+.notes-images { display: flex; flex-wrap: wrap; gap: 8px; padding: 8px 14px; border-top: 1px solid var(--border); max-height: 180px; overflow-y: auto; }
+.notes-images[hidden] { display: none; }
+.notes-image { position: relative; width: 96px; height: 96px; border-radius: 10px; overflow: hidden; background: var(--bg-secondary); box-shadow: 0 0 0 1px var(--border); }
+.notes-image img { width: 100%; height: 100%; object-fit: cover; cursor: zoom-in; display: block; }
+.notes-image-del {
+    position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; border: 0; border-radius: 50%;
+    display: grid; place-items: center; background: rgba(0, 0, 0, .6); color: #fff; cursor: pointer; opacity: 0; transition: opacity .12s;
+}
+.notes-image:hover .notes-image-del, .notes-image-del:focus-visible { opacity: 1; }
+.notes-edit-view.is-dropping { box-shadow: inset 0 0 0 2px var(--accent); border-radius: 12px; }
+.notes-image-viewer { position: fixed; inset: 0; z-index: 100002; display: grid; place-items: center; background: rgba(6, 8, 14, .88); cursor: zoom-out; }
+.notes-image-viewer[hidden] { display: none; }
+.notes-image-viewer img { max-width: 92vw; max-height: 90vh; border-radius: 10px; box-shadow: 0 24px 70px rgba(0, 0, 0, .55); }
+
+@media (max-width: 760px) {
+    .notes-window-dialog { grid-template-columns: 1fr; width: calc(100vw - 16px); }
+    .notes-folders { display: none; }
+}
+
+/* the window's close button sits in the corner: the list header leaves it room */
+.notes-window .notes-panel .app-notif-header { padding-right: 56px; }

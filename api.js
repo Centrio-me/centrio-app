@@ -322,6 +322,23 @@ module.exports = {
         return request('POST', '/api/notes/reorder', { order }, token)
     },
 
+    // folders of notes (2026-11-11)
+    notesFolders(token) {
+        return request('GET', '/api/notes/folders', null, token)
+    },
+
+    notesFolderCreate(token, name) {
+        return request('POST', '/api/notes/folders', { name }, token)
+    },
+
+    notesFolderUpdate(token, id, patch) {
+        return request('PATCH', `/api/notes/folders/${encodeURIComponent(id)}`, patch, token)
+    },
+
+    notesFolderDelete(token, id) {
+        return request('DELETE', `/api/notes/folders/${encodeURIComponent(id)}`, null, token)
+    },
+
     updateProfile(token, data) {
         return request('PUT', '/api/user/profile', data, token)
     },

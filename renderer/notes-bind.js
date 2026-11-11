@@ -11,7 +11,7 @@
 // закрытие панели — общий контроллер openRightPanel/closeRightPanel (как у
 // Ассистента/Задач/Уведомлений), этот модуль отвечает за содержимое.
 
-function bindNotesUi({ store, tGet, authorizedInvoke, openRightPanel, closeRightPanel, getUserIsPro, requirePro }) {
+function bindNotesUi({ store, tGet, authorizedInvoke, invokeIpc, openRightPanel, closeRightPanel, getUserIsPro, requirePro, onNotesChange }) {
     const btn = document.getElementById('notesBtn')
     const panel = document.getElementById('notesPanel')
     const listView = document.getElementById('notesListView')
@@ -57,6 +57,10 @@ function bindNotesUi({ store, tGet, authorizedInvoke, openRightPanel, closeRight
     let viewingArchived = false
     let dragId = null // id перетаскиваемой карточки — drag&drop сортировка списка
     let contextNoteId = null // заметка, на которую было выполнено правое нажатие
+    // 2026-11-11: folders — the open one ('all' = every note) and the person's list of them
+    let folderFilter = 'all'
+    let folders = []
+    const changed = () => { try { onNotesChange?.(notes) } catch {} }
 
     function escapeHtml(str) {
         const div = document.createElement('div')
@@ -132,7 +136,8 @@ function bindNotesUi({ store, tGet, authorizedInvoke, openRightPanel, closeRight
     }
 
     function renderList() {
-        const visible = notes.filter(n => matchesSearch(n, searchQuery))
+        changed()
+        const visible = notes.filter(n => matchesSearch(n, searchQuery) && (folderFilter === 'all' || n.folderId === folderFilter))
         if (!visible.length) {
             const msg = searchQuery
                 ? (tGet('notes.searchEmpty') || 'Ничего не найдено')
@@ -234,7 +239,121 @@ function bindNotesUi({ store, tGet, authorizedInvoke, openRightPanel, closeRight
         }
         saveIndicator.textContent = ''
         updateCharCount()
+        renderFolderSelect()
+        loadImages(note.id)
     }
+
+    // ── The note's folder, chosen in the editor (2026-11-11) ─────────────
+    const metaEl = editView.querySelector('.notes-edit-meta')
+    const folderSelect = document.createElement('select')
+    folderSelect.className = 'notes-folder-select'
+    folderSelect.title = tGet('notes.folder') || 'Папка'
+    if (metaEl) metaEl.append(folderSelect)
+    function renderFolderSelect() {
+        if (!activeNote) return
+        folderSelect.replaceChildren()
+        const none = document.createElement('option')
+        none.value = ''
+        none.textContent = tGet('notes.noFolder') || 'Без папки'
+        folderSelect.append(none)
+        for (const fd of folders) {
+            const o = document.createElement('option')
+            o.value = fd.id
+            o.textContent = fd.name
+            folderSelect.append(o)
+        }
+        folderSelect.value = activeNote.folderId || ''
+        folderSelect.hidden = !folders.length
+    }
+    folderSelect.addEventListener('change', () => {
+        if (!activeNote) return
+        patchNoteById(activeNote.id, { folderId: folderSelect.value || null })
+    })
+
+    // ── Pictures of a note: pasted (Ctrl+V) or dropped, kept on this computer only (2026-11-11) ──
+    const imagesEl = document.createElement('div')
+    imagesEl.className = 'notes-images'
+    imagesEl.hidden = true
+    const footerEl = editView.querySelector('.notes-edit-footer')
+    if (footerEl) editView.insertBefore(imagesEl, footerEl); else editView.append(imagesEl)
+    const viewer = document.createElement('div')
+    viewer.className = 'notes-image-viewer'
+    viewer.hidden = true
+    const viewerImg = document.createElement('img')
+    viewerImg.alt = ''
+    viewer.append(viewerImg)
+    document.body.append(viewer)
+    viewer.addEventListener('click', () => { viewer.hidden = true; viewerImg.removeAttribute('src') })
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !viewer.hidden) { e.stopPropagation(); viewer.hidden = true } }, true)
+    let imagesFor = ''
+    async function loadImages(noteId) {
+        imagesFor = noteId
+        imagesEl.replaceChildren()
+        imagesEl.hidden = true
+        if (!invokeIpc) return
+        const list = await invokeIpc('notes-images:list', noteId).catch(() => [])
+        if (imagesFor !== noteId) return
+        ;(Array.isArray(list) ? list : []).forEach(addThumb)
+    }
+    function addThumb(img) {
+        if (!img || typeof img.dataUrl !== 'string' || !img.dataUrl.startsWith('data:image/')) return
+        const box = document.createElement('div')
+        box.className = 'notes-image'
+        const pic = document.createElement('img')
+        pic.src = img.dataUrl
+        pic.alt = ''
+        pic.addEventListener('click', () => { viewerImg.src = img.dataUrl; viewer.hidden = false })
+        const del = document.createElement('button')
+        del.type = 'button'
+        del.className = 'notes-image-del'
+        del.title = tGet('notes.deleteImage') || 'Удалить картинку'
+        del.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>'
+        del.addEventListener('click', async (e) => {
+            e.stopPropagation()
+            const noteId = imagesFor
+            await invokeIpc('notes-images:delete', noteId, img.id).catch(() => {})
+            box.remove()
+            imagesEl.hidden = !imagesEl.children.length
+        })
+        box.append(pic, del)
+        imagesEl.append(box)
+        imagesEl.hidden = false
+    }
+    async function addPictureFiles(files) {
+        if (!activeNote || !invokeIpc) return
+        const noteId = activeNote.id
+        for (const file of files) {
+            if (!/^image\/(png|jpeg|webp|gif)$/.test(file.type)) continue
+            const dataUrl = await new Promise((resolve) => {
+                const fr = new FileReader()
+                fr.onload = () => resolve(String(fr.result))
+                fr.onerror = () => resolve('')
+                fr.readAsDataURL(file)
+            })
+            if (!dataUrl) continue
+            const saved = await invokeIpc('notes-images:save', noteId, dataUrl).catch(() => null)
+            if (saved && saved.success && imagesFor === noteId) addThumb(saved)
+        }
+    }
+    editView.addEventListener('paste', (e) => {
+        const files = [...(e.clipboardData?.files || [])].filter(f => f.type.startsWith('image/'))
+        if (!files.length) return
+        e.preventDefault()
+        addPictureFiles(files)
+    })
+    editView.addEventListener('dragover', (e) => {
+        if (![...(e.dataTransfer?.types || [])].includes('Files')) return
+        e.preventDefault()
+        editView.classList.add('is-dropping')
+    })
+    editView.addEventListener('dragleave', (e) => { if (!editView.contains(e.relatedTarget)) editView.classList.remove('is-dropping') })
+    editView.addEventListener('drop', (e) => {
+        editView.classList.remove('is-dropping')
+        const files = [...(e.dataTransfer?.files || [])].filter(f => f.type.startsWith('image/'))
+        if (!files.length) return
+        e.preventDefault()
+        addPictureFiles(files)
+    })
 
     function setSaving() {
         saveIndicator.textContent = tGet('notes.savingIndicator') || 'Сохранение…'
@@ -292,7 +411,9 @@ function bindNotesUi({ store, tGet, authorizedInvoke, openRightPanel, closeRight
     }
 
     async function createNote(type, seed = {}) {
-        const result = await authorizedInvoke('api-notes-create', { type, title: '', position: notes.length, ...seed })
+        // a note made while a folder is open goes into that folder
+        const inFolder = folderFilter !== 'all' && !seed.folderId ? { folderId: folderFilter } : {}
+        const result = await authorizedInvoke('api-notes-create', { type, title: '', position: notes.length, ...inFolder, ...seed })
         if (!result?.success) { await handleAuthError(result); return }
         notes = [result.data.note, ...notes]
         showEdit(result.data.note)
@@ -531,6 +652,8 @@ function bindNotesUi({ store, tGet, authorizedInvoke, openRightPanel, closeRight
         dragId = card.dataset.id
         card.classList.add('dragging')
         e.dataTransfer.effectAllowed = 'move'
+        // a folder on the left can take the note (notes-window.js)
+        e.dataTransfer.setData('text/x-centrio-note', dragId)
     })
 
     listEl.addEventListener('dragover', (e) => {
@@ -685,6 +808,12 @@ function bindNotesUi({ store, tGet, authorizedInvoke, openRightPanel, closeRight
 
     return {
         updateButtonVisibility,
+        // folders (2026-11-11): which one is open, the person's list, moving a note into one
+        setFolderFilter(id) { folderFilter = id || 'all'; renderList() },
+        setFolders(list) { folders = Array.isArray(list) ? list : []; if (folderFilter !== 'all' && !folders.some(fd => fd.id === folderFilter)) folderFilter = 'all'; renderFolderSelect(); renderList() },
+        moveToFolder(id, folderId) { return patchNoteById(id, { folderId: folderId || null }) },
+        getNotes: () => notes,
+        reload: () => loadNotes(),
         // Вызывается после логина/логаута/синка — сбрасываем кэш, чтобы
         // при следующем открытии панели заново подтянуть актуальный список
         // (например, после входа в другой аккаунт на этом же устройстве).
