@@ -26,10 +26,19 @@ function initials(name) {
 }
 
 // time and ticks; inside the text it flows at the end of the last line, over a photo it floats on a dark pill
+const ICON_CLOCK = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>'
+const ICON_FAILED = '<svg width="15" height="15" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="#e5484d"/><path d="M12 7v6M12 16.5v.5" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/></svg>'
+
 function meta(m, floating) {
     const box = el('span', `aic-meta${floating ? ' is-floating' : ''}`)
     box.append(el('span', 'aic-time', m.time))
-    if (m.out) {
+    if (m.pending) {
+        // being sent: a clock; not taken by the messenger: a red mark
+        const state = el('span', `aic-pending is-${m.pending}`)
+        state.innerHTML = m.pending === 'failed' ? ICON_FAILED : ICON_CLOCK
+        state.title = m.pending === 'failed' ? 'Не отправлено' : 'Отправляется…'
+        box.append(state)
+    } else if (m.out) {
         const tick = el('span', `aic-check${m.read ? ' is-read' : ''}`)
         tick.innerHTML = m.read ? ICON_CHECKS : ICON_CHECK
         box.append(tick)
@@ -157,6 +166,7 @@ function renderMessage(m, ctx) {
     const classes = ['aic-row', m.out ? 'is-out' : 'is-in']
     if (m.groupStart) classes.push('is-first')
     if (m.groupEnd) classes.push('is-last')
+    if (m.pending) classes.push('is-pending')
     const row = el('div', classes.join(' '))
     row.dataset.id = m.id
 

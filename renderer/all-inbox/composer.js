@@ -133,10 +133,21 @@ function createComposer({ root, onSend, onPickFiles, onDescribeFiles, onPasteIma
         sending = true
         form.classList.add('is-sending')
         picker.toggle(false)
-        const ok = await onSend(text, files, reply).catch(() => false)
+        // the field empties at once (the message already shows in the conversation with its clock);
+        // if the messenger could not take it, everything comes back to the field
+        const sent = { text: input.value, files, reply }
+        input.value = ''; files = []; renderTray(); autosize(); refreshSend(); showReply(null)
+        const ok = await onSend(text, sent.files, sent.reply).catch(() => false)
         sending = false
         form.classList.remove('is-sending')
-        if (ok) { input.value = ''; files = []; renderTray(); autosize(); refreshSend(); showReply(null); onDraft('') } else form.classList.add('is-failed')
+        if (ok) onDraft('')
+        else {
+            if (!input.value.trim()) input.value = sent.text
+            if (!files.length) files = sent.files
+            if (sent.reply) showReply(sent.reply)
+            renderTray(); autosize(); refreshSend()
+            form.classList.add('is-failed')
+        }
         setTimeout(() => form.classList.remove('is-failed'), 1600)
         input.focus()
     }

@@ -5,6 +5,7 @@ const { chatAdapterFor, fullPicture, withImageMemo, resolveImages } = require('.
 const { buildTimeline, signature } = require('./timeline')
 const { createChatView } = require('./chat-view')
 const { sameChat } = require('./same-chat')
+const { createPending, withPending } = require('./pending')
 
 const CHAT_POLL_MS = 1500
 const READ_TIMEOUT_MS = 2500
@@ -40,6 +41,13 @@ function createChatController({ state, webviewOf, host, ipcRenderer }) {
     let timer = null
     let lastOlder = 0
     let reading = false
+    // what was just sent shows at once with a clock (pending.js); the rows of the last read are kept to redraw with it
+    const pending = createPending()
+    let lastRows = []
+    function redraw() {
+        const rows = withPending(lastRows, pending, Date.now())
+        view.update(rows, signature(rows))
+    }
 
     const view = createChatView({
         host,
@@ -80,8 +88,8 @@ function createChatController({ state, webviewOf, host, ipcRenderer }) {
             view.setMismatch(!current.match, data.title)
             if (!current.match) return
             if (!current.confirmed) { current.confirmed = true; if (typeof current.onConfirmed === 'function') current.onConfirmed() }
-            const rows = buildTimeline(resolveImages(data.messages, current.images), Date.now())
-            view.update(rows, signature(rows))
+            lastRows = buildTimeline(resolveImages(data.messages, current.images), Date.now())
+            redraw()
             view.setCanWrite(data.canWrite !== false)
             const sub = [data.subtitle, current.chat.messengerName].filter(Boolean).join(' · ')
             view.setSubtitle(sub)
@@ -173,6 +181,17 @@ function createChatController({ state, webviewOf, host, ipcRenderer }) {
         // check again right before typing: the tab may have moved to another chat since the last read
         const data = await run(w, current.adapter.CHAT)
         if (!data || !sameChat(current.chat.title, data.title)) { view.setMismatch(true, data && data.title); return false }
+        const knownIds = lastRows.filter((r) => r.type === 'msg' && r.out).map((r) => r.id)
+        const pid = pending.add({ text, files, knownIds })
+        redraw()
+        const ok = await deliver(w, text, files, reply)
+        if (!ok) pending.drop(pid)
+        await wait(AFTER_SEND_MS)
+        poll()
+        return ok
+    }
+
+    async function deliver(w, text, files, reply) {
         // an answer to a message: the messenger itself is told which one, before anything is typed
         if (reply && typeof current.adapter.REPLY === 'function') {
             const id = String(reply.id).split('+')[0]
@@ -188,10 +207,7 @@ function createChatController({ state, webviewOf, host, ipcRenderer }) {
             if (!(await run(w, current.adapter.REPLY(id)))) return false
             await wait(FOCUS_SETTLE_MS)
         }
-        const ok = files.length ? await sendFiles(w, files, text) : await sendText(w, text)
-        await wait(AFTER_SEND_MS)
-        poll()
-        return ok
+        return files.length ? sendFiles(w, files, text) : sendText(w, text)
     }
 
     function older() {
@@ -208,6 +224,8 @@ function createChatController({ state, webviewOf, host, ipcRenderer }) {
         // pictures cross from the tab once per opened chat (chat-adapters.js withImageMemo)
         const session = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`
         current = { chat, adapter, match: false, onConfirmed, confirmed: false, script: withImageMemo(adapter.CHAT, session), images: new Map() }
+        pending.clear()
+        lastRows = []
         view.show(chat)
         view.setMismatch(true, '')
         clearInterval(timer)

@@ -180,7 +180,7 @@ function signature(rows) {
         if (r.type === 'day') return `#${r.label}`
         const album = r.album ? r.album.filter((a) => a.src).length : 0
         const reacts = (r.reactions || []).map((x) => x.e + x.n + (x.mine ? '*' : '')).join(',')
-        return `${r.id}|${r.read ? 1 : 0}|${r.text.length}|${r.media ? 1 : 0}|${r.avatar ? 1 : 0}|${album}|${reacts}`
+        return `${r.id}|${r.read ? 1 : 0}|${String(r.text || '').length}|${r.media ? 1 : 0}|${r.avatar ? 1 : 0}|${album}|${reacts}|${r.pending || ''}`
     }).join(';')
 }
 
