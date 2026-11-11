@@ -4,7 +4,7 @@
 
 const DAY_NAMES_RU = ['Сегодня', 'Вчера']
 const MONTHS_RU = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря']
-const KINDS = new Set(['text', 'photo', 'video', 'voice', 'sticker', 'file', 'service'])
+const KINDS = new Set(['text', 'photo', 'video', 'voice', 'sticker', 'file', 'contact', 'service'])
 
 const RGB = /^rgb\(\d{1,3}, \d{1,3}, \d{1,3}\)$/
 const PICTURE = /^(data:image\/|https:)/
@@ -86,7 +86,9 @@ function buildTimeline(raw, now) {
             forwarded: String(m.forwarded || ''),
             reply: String(m.reply || ''),
             text,
-            name: String(m.name || ''),
+            name: String(m.name || '').slice(0, 120),
+            // a shared contact: its number, or the messenger's note under the name («Новый контакт»)
+            phone: String(m.phone || '').slice(0, 40),
             duration: String(m.duration || ''),
             media: picture(m.media),
             mediaW: Math.max(0, Math.round(Number(m.mediaW) || 0)),

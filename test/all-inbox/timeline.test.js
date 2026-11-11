@@ -31,3 +31,11 @@ test('photos with only a clock time (MAX) a couple of minutes apart still become
     assert.equal(rows.length, 2)
     assert.equal(rows[0].album.length, 3)
 })
+
+test('a shared contact keeps its name, phone and picture', () => {
+    const [row] = msgs([{ id: '1', kind: 'contact', name: 'Жахонгир Нематов', phone: '+7 999 123-45-67', media: 'data:image/png;base64,AA', at: NOW }])
+    assert.equal(row.kind, 'contact')
+    assert.equal(row.name, 'Жахонгир Нематов')
+    assert.equal(row.phone, '+7 999 123-45-67')
+    assert.equal(row.media, 'data:image/png;base64,AA')
+})

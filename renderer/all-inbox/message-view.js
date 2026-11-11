@@ -124,6 +124,40 @@ function album(m, onZoom) {
     return wrap
 }
 
+const ICON_PHONE = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/></svg>'
+
+// a shared contact, like Telegram's: the picture, the name, the number — copied with a click on it
+function contactCard(m, onOpenInTab) {
+    const box = el('div', 'aic-contact')
+    const ava = el('span', 'aic-contact-ava')
+    if (m.media) ava.append(Object.assign(el('img'), { src: m.media, alt: '' }))
+    else ava.textContent = initials(m.name)
+    const info = el('span', 'aic-contact-info')
+    info.append(el('span', 'aic-contact-name', m.name || 'Контакт'))
+    const isNumber = /\d{5,}/.test(m.phone.replace(/\D/g, ''))
+    if (m.phone) info.append(el('span', `aic-contact-phone${isNumber ? ' is-number' : ''}`, m.phone))
+    box.append(ava, info)
+    const actions = el('div', 'aic-contact-actions')
+    if (isNumber) {
+        const copy = el('button', 'aic-contact-btn')
+        copy.type = 'button'
+        copy.innerHTML = ICON_PHONE
+        copy.append(el('span', '', 'Скопировать номер'))
+        copy.addEventListener('click', () => {
+            navigator.clipboard.writeText(m.phone).then(() => { copy.lastChild.textContent = 'Скопировано'; setTimeout(() => { copy.lastChild.textContent = 'Скопировать номер' }, 1500) }).catch(() => {})
+        })
+        actions.append(copy)
+    }
+    const open = el('button', 'aic-contact-btn')
+    open.type = 'button'
+    open.textContent = 'Открыть в мессенджере'
+    open.addEventListener('click', onOpenInTab)
+    actions.append(open)
+    const wrap = el('div', 'aic-contact-wrap')
+    wrap.append(box, actions)
+    return wrap
+}
+
 function card(m, onOpenInTab) {
     const box = el('button', `aic-card kind-${m.kind}`)
     box.type = 'button'
@@ -208,7 +242,8 @@ function renderMessage(m, ctx) {
         img.src = m.media
         img.alt = ''
         b.append(img)
-    } else if (m.kind !== 'text' && m.kind !== 'photo') b.append(card(m, ctx.onOpenInTab))
+    } else if (m.kind === 'contact') { b.classList.add('has-contact'); b.append(contactCard(m, ctx.onOpenInTab)) }
+    else if (m.kind !== 'text' && m.kind !== 'photo') b.append(card(m, ctx.onOpenInTab))
 
     if (jumbo) b.append(el('div', 'aic-jumbo', m.text), meta(m, true))
     else if (m.text && m.webpage) { b.classList.add('has-webpage'); b.append(textBlock(m, ctx.onLink, false), webpageCard(m, ctx.onLink), meta(m, false)) }

@@ -692,3 +692,47 @@ html[data-theme="light"] .aic-skel:not(.is-out) { background-color: rgba(0, 0, 0
 .aic.is-opening .aic-scroll { animation: aic-open .22s cubic-bezier(.2, .8, .2, 1); }
 @keyframes aic-open { from { opacity: 0; transform: translateY(8px); } }
 @media (prefers-reduced-motion: reduce) { .aic-skel { animation: none; } .aic.is-opening .aic-scroll { animation: none; } }
+
+/* a shared contact (message-view.js contactCard): picture, name, number, two buttons under a thin line */
+.aic-bubble.has-contact { min-width: 240px; }
+.aic-contact { display: flex; align-items: center; gap: 12px; padding: 2px 2px 8px; }
+.aic-contact-ava {
+    flex: none; display: grid; place-items: center; width: 46px; height: 46px; border-radius: 50%; overflow: hidden;
+    background: linear-gradient(160deg, #72b9ff, #3d8be8); color: #fff; font-weight: 700; font-size: 16px;
+}
+.aic-contact-ava img { width: 100%; height: 100%; object-fit: cover; }
+.aic-contact-info { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.aic-contact-name { font-weight: 600; font-size: 14.5px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.aic-contact-phone { font-size: 13px; color: var(--meta); }
+.aic-contact-phone.is-number { font-variant-numeric: tabular-nums; }
+.aic-contact-actions { display: flex; gap: 4px; padding: 6px 0 16px; border-top: 1px solid color-mix(in srgb, currentColor 14%, transparent); }
+.aic-contact-btn {
+    flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 30px; padding: 0 10px; border: 0; border-radius: 8px;
+    background: transparent; color: var(--name, var(--accent)); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap;
+}
+.aic-row.is-out .aic-contact-btn { color: inherit; }
+.aic-contact-btn:hover { background: color-mix(in srgb, currentColor 10%, transparent); }
+
+/* the chat is opening: Centrio's mark turns about its own axis in the middle of the window (chat-view.js openingMark) */
+.aic-opening {
+    position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+    pointer-events: none; animation: aic-fade .2s ease-out;
+}
+.aic-opening-mark { position: relative; width: 64px; height: 64px; perspective: 400px; }
+.aic-opening-mark::before {
+    content: ''; position: absolute; inset: -18px; border-radius: 50%;
+    background: radial-gradient(closest-side, color-mix(in srgb, var(--accent) 45%, transparent), transparent);
+    animation: aic-glow 1.6s ease-in-out infinite;
+}
+.aic-opening-mark img {
+    position: relative; width: 100%; height: 100%; border-radius: 18px; object-fit: contain;
+    animation: aic-turn 1.4s cubic-bezier(.45, .05, .55, .95) infinite; filter: drop-shadow(0 8px 18px rgba(0, 0, 0, .35));
+}
+.aic-opening-text { font-size: 13px; font-weight: 600; color: rgba(255, 255, 255, .75); letter-spacing: .01em; text-shadow: 0 1px 6px rgba(0, 0, 0, .4); }
+html[data-theme="light"] .aic[data-bg="plain"] .aic-opening-text { color: var(--text-secondary); text-shadow: none; }
+@keyframes aic-turn { from { transform: rotateY(0deg); } to { transform: rotateY(360deg); } }
+@keyframes aic-glow { 50% { opacity: .45; transform: scale(.85); } }
+@media (prefers-reduced-motion: reduce) { .aic-opening-mark img { animation: none; } .aic-opening-mark::before { animation: none; } }
+
+/* avatars drawn smoothly when the picture is scaled down */
+.ai-ava > img:not(.ai-service), .aic-ava > img, .aic-avatar img, .aic-contact-ava img { image-rendering: auto; transform: translateZ(0); }

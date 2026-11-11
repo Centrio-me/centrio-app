@@ -8,6 +8,8 @@
 // Everything runs inside the page through webview.executeJavaScript; nothing leaves the computer.
 // Page scripts are plain ES5 strings: no names that a minifier could change.
 
+const { whatsappList } = require('./whatsapp')
+
 const MAX_CHATS = 60
 // Telegram gives its whole dialog list; the freshest ones are enough for one screen of history
 const TELEGRAM_CHATS = 150
@@ -23,19 +25,42 @@ const TELEGRAM_AVATARS_AT_ONCE = 8
 // people whose «в сети» is asked again on every read (the freshest chats)
 const TELEGRAM_STATUS_PEERS = 40
 
+// avatars are kept at twice the 48 px they are drawn at
+const AVATAR_PX = 96
+
 // A blob:/data: avatar (Telegram keeps them as blob: URLs only that page can read) becomes a small data URL,
 // cached per chat in the page so it is drawn once.
 const AVATAR_HELPER = `
-var __ciAv = window.__centrioInboxAvatars || (window.__centrioInboxAvatars = {});
+var __ciAv = window.__centrioInboxAvatars96 || (window.__centrioInboxAvatars96 = {});
+// A smooth small copy of a picture: twice the size it is shown at (sharp on scaled screens), shrunk in halves with
+// the best smoothing — one big jump to a small size is what makes avatars look jagged
+function __ciSmooth(src, size) {
+    var w = src.naturalWidth || src.width, h = src.naturalHeight || src.height;
+    if (!w || !h) return null;
+    var side = Math.min(w, h), sx = (w - side) / 2, sy = (h - side) / 2;
+    var cur = document.createElement('canvas'); cur.width = side; cur.height = side;
+    var cx = cur.getContext('2d'); cx.imageSmoothingEnabled = true; cx.imageSmoothingQuality = 'high';
+    cx.drawImage(src, sx, sy, side, side, 0, 0, side, side);
+    while (cur.width / 2 >= size) {
+        var half = document.createElement('canvas'); half.width = Math.round(cur.width / 2); half.height = half.width;
+        var hx = half.getContext('2d'); hx.imageSmoothingEnabled = true; hx.imageSmoothingQuality = 'high';
+        hx.drawImage(cur, 0, 0, half.width, half.height);
+        cur = half;
+    }
+    var out = document.createElement('canvas'); out.width = size; out.height = size;
+    var ox = out.getContext('2d'); ox.imageSmoothingEnabled = true; ox.imageSmoothingQuality = 'high';
+    ox.drawImage(cur, 0, 0, size, size);
+    return out;
+}
 function __ciAvatar(key, img) {
     if (!img || !img.src) return '';
     if (/^https?:/i.test(img.src)) return img.src;
     if (__ciAv[key] && __ciAv[key].src === img.src) return __ciAv[key].data;
     try {
         if (!img.complete || !img.naturalWidth) return '';
-        var c = document.createElement('canvas'); c.width = 64; c.height = 64;
-        c.getContext('2d').drawImage(img, 0, 0, 64, 64);
-        var data = c.toDataURL('image/jpeg', 0.8);
+        var c = __ciSmooth(img, ${AVATAR_PX});
+        if (!c) return '';
+        var data = c.toDataURL('image/jpeg', 0.9);
         __ciAv[key] = { src: img.src, data: data };
         return data;
     } catch (e) { return ''; }
@@ -121,7 +146,7 @@ const telegram = {
         }
         // Avatars of chats the page has not drawn: asked from Telegram a few at a time in the background, kept as
         // small pictures per photo, so the list fills in over a couple of reads and never waits for them
-        var avatars = window.__ciTgAvatars || (window.__ciTgAvatars = {});
+        var avatars = window.__ciTgAvatars96 || (window.__ciTgAvatars96 = {});
         var loadingAv = window.__ciTgAvLoading || (window.__ciTgAvLoading = {});
         function avatarOf(peerId) {
             var peer = peers[peerId], photo = peer && peer.photo;
@@ -135,9 +160,8 @@ const telegram = {
                     .then(function (blob) { return blob ? createImageBitmap(blob) : null; })
                     .then(function (bmp) {
                         if (!bmp) return;
-                        var c = document.createElement('canvas'); c.width = 64; c.height = 64;
-                        c.getContext('2d').drawImage(bmp, 0, 0, 64, 64);
-                        avatars[peerId] = { id: id, data: c.toDataURL('image/jpeg', 0.85) };
+                        var c = __ciSmooth(bmp, ${AVATAR_PX});
+                        if (c) avatars[peerId] = { id: id, data: c.toDataURL('image/jpeg', 0.9) };
                     })
                     .catch(function () {})
                     .then(function () { delete loadingAv[peerId]; });
@@ -344,7 +368,7 @@ const max = {
     })()`
 }
 
-const ADAPTERS = [telegram, max]
+const ADAPTERS = [telegram, max, whatsappList({ AVATAR_HELPER })]
 
 /** @param {string} url @returns {object|null} */
 function adapterFor(url) {

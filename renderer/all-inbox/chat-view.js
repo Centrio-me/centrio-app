@@ -39,16 +39,13 @@ function isGroupChat(rows) {
     return new Set(incoming.map((r) => r.author).filter(Boolean)).size >= 2
 }
 
-// while the conversation is read from the tab: grey bubbles on both sides where the messages will be
-const LOADING_SHAPES = [['in', 46], ['in', 30], ['out', 38], ['in', 58], ['out', 26], ['out', 44], ['in', 34]]
-function loadingBubbles() {
-    const box = el('div', 'aic-skeleton')
-    box.setAttribute('aria-label', 'Загружаю переписку…')
-    for (const [side, width] of LOADING_SHAPES) {
-        const b = el('div', `aic-skel is-${side}`)
-        b.style.width = `${width}%`
-        box.append(b)
-    }
+// while the chat opens in the tab and is read: Centrio's mark turns about its own axis in the middle of the window
+function openingMark() {
+    const box = el('div', 'aic-opening')
+    box.setAttribute('role', 'status')
+    const mark = el('div', 'aic-opening-mark')
+    mark.append(Object.assign(el('img'), { src: 'assets/logo.png', alt: '' }))
+    box.append(mark, el('div', 'aic-opening-text', 'Открываю чат…'))
     return box
 }
 
@@ -208,7 +205,7 @@ function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab
             lastRows = []
             seenIds = new Set()
             unseen = 0
-            list.replaceChildren(loadingBubbles())
+            list.replaceChildren(openingMark())
             // the window comes in softly each time a chat is opened
             root.classList.remove('is-opening')
             void root.offsetWidth
@@ -273,10 +270,15 @@ function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab
         // the tab shows another chat: nothing of it is drawn and nothing can be sent until the right one is open
         setMismatch(on, openTitle) {
             const warn = q('.aic-warn')
-            warn.hidden = !on
-            warn.textContent = on ? (openTitle ? `Во вкладке сейчас открыт другой чат: «${openTitle}». Отправка выключена.` : 'Чат ещё открывается…') : ''
+            // another chat in the tab: said plainly; the chat still opening: the turning mark, no words
+            warn.hidden = !(on && openTitle)
+            warn.textContent = on && openTitle ? `Во вкладке сейчас открыт другой чат: «${openTitle}». Отправка выключена.` : ''
             composer.setBlocked(on)
-            if (on) { lastSig = ''; list.replaceChildren() }
+            if (on) {
+                lastSig = ''
+                if (openTitle) list.replaceChildren()
+                else if (!list.querySelector('.aic-opening')) list.replaceChildren(openingMark())
+            }
         },
         setCanWrite(on) { composer.setVisible(on) },
         hide() { closeZoom(); closeMenu(); bgMenu.toggle(false); root.hidden = true },

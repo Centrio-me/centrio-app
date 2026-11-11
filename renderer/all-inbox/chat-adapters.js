@@ -6,6 +6,7 @@
 //   OLDER      — page script that scrolls the page's own message list up so the messenger loads earlier messages
 // The tab is behind our window: Centrio types into it with real input (webview.insertText + Enter).
 const { AVATAR_HELPER } = require('./adapters')
+const { whatsappChat } = require('./whatsapp')
 
 const MAX_MESSAGES = 120
 
@@ -140,6 +141,8 @@ const telegram = {
             else if (/ video /.test(cls) || b.querySelector('video')) kind = 'video';
             // a picture sent as a file is a file (with its small preview), like Telegram shows it
             else if (b.querySelector('.document-name')) kind = 'file';
+            // a shared contact: Telegram draws its name and number in a card
+            else if (b.querySelector('.contact')) kind = 'contact';
             else if (own(b, 'img.media-photo')) kind = 'photo';
             var nameEl = /hide-name/.test(cls) ? null : b.querySelector('.name .peer-title, .colored-name .peer-title');
             var img = (kind === 'file' ? own(b, '.document img, .document-thumb img, img.media-photo') : own(b, 'img.media-photo')) || (kind === 'sticker' ? own(b, 'img.media-sticker') : null) || (kind === 'video' ? own(b, 'img.thumbnail, video') : null);
@@ -166,7 +169,8 @@ const telegram = {
                 replyTitle: replyEl ? __ciText(replyEl.querySelector('.reply-title')).slice(0, 80) : '',
                 replyColor: replyEl ? __ciRgb(getComputedStyle(replyEl).backgroundColor) : '',
                 text: __ciCleanText(b.querySelector('.message'), '.time, .reply, .reactions, .name, .bubble-name-forwarded, .document, .audio, .webpage, .webpage-preview'),
-                name: __ciText(b.querySelector('.document-name')),
+                name: kind === 'contact' ? __ciText(b.querySelector('.contact-name, .contact .name')) || 'Контакт' : __ciText(b.querySelector('.document-name')),
+                phone: kind === 'contact' ? __ciText(b.querySelector('.contact-number, .contact .number')) : '',
                 size: __ciText(b.querySelector('.document-size')),
                 duration: __ciText(b.querySelector('.audio-time, .video-time')),
                 media: album ? '' : (img && img.tagName === 'IMG' ? __ciPicture('tg' + mid, img) : ''),
@@ -253,22 +257,46 @@ const max = {
                 var times = w.querySelectorAll('.text, .time');
                 var time = '';
                 for (var t = times.length - 1; t >= 0; t--) { var v = __ciText(times[t]); if (/^\\d{1,2}:\\d{2}$/.test(v)) { time = v; break; } }
-                var pics = w.querySelectorAll('img');
+                // a shared contact: its picture, the name and «Новый контакт» in the attachment block
+                var attach = w.querySelector('.attaches');
+                var contactBox = attach && !attach.querySelector('[class*=fileIcon]') && attach.querySelector('[class*=avatar]') ? attach : null;
+                var pics = contactBox ? [] : w.querySelectorAll('img');
                 var photo = null;
-                for (var p = 0; p < pics.length; p++) if (!/avatar/i.test(pics[p].className) && pics[p].naturalWidth > 40) { photo = pics[p]; break; }
+                for (var p = 0; p < pics.length; p++) {
+                    var pic = pics[p];
+                    if (/avatar/i.test(pic.className) || pic.closest('.link, .mark, [class*=reaction]')) continue;
+                    // a photo further up is not loaded yet (MAX loads them when they come into view): it counts all the same
+                    var inMedia = !!pic.closest('[class*=media], [class*=grid], [class*=photo]');
+                    if (pic.naturalWidth > 40 || (inMedia && !pic.naturalWidth && /^https?:/i.test(pic.src))) { photo = pic; break; }
+                }
                 var text = textEl ? __ciText(textEl) : '';
-                var kind = photo ? 'photo' : (w.querySelector('audio, [class*=voice]') ? 'voice' : (w.querySelector('[class*=file], [class*=document]') ? 'file' : 'text'));
+                var kind = contactBox ? 'contact' : photo ? 'photo' : (w.querySelector('audio, [class*=voice], [class*=attachAudio]') ? 'voice' : (w.querySelector('[class*=fileIcon], [class*=document]') ? 'file' : 'text'));
+                var contactName = '', contactNote = '';
+                if (contactBox) {
+                    var bits = String(contactBox.innerText || '').split('\\n').map(function (x) { return x.trim(); }).filter(Boolean);
+                    contactName = bits.filter(function (x) { return !/контакт|contact/i.test(x); })[0] || bits[0] || 'Контакт';
+                    contactNote = bits.filter(function (x) { return x !== contactName; })[0] || '';
+                }
                 if (!text && !photo && kind === 'text') continue;
                 var id = it.getAttribute('data-index') + ':' + k + ':' + time + ':' + text.slice(0, 24);
                 out.push({
                     id: id,
                     out: w.getAttribute('data-bubbles-variant') === 'outgoing',
-                    read: !!w.querySelector('.indicators [class*=read]'),
+                    // ✓✓ read: MAX draws its status as an icon «icon_status_read»
+                    read: !!w.querySelector('.indicators use[href*="read"], .indicators [class*=read]'),
                     kind: kind,
-                    author: __ciText(w.querySelector('[class*=author], [class*=senderName], .name')),
+                    // the author of this message, not of the message it quotes
+                    author: (function () {
+                        var names = w.querySelectorAll('[class*=author], [class*=senderName], .name');
+                        for (var n = 0; n < names.length; n++) if (!names[n].closest('.link, .mark, .attaches')) return __ciText(names[n]);
+                        return '';
+                    })(),
                     text: text,
-                    name: kind === 'file' ? __ciText(w.querySelector('[class*=file] [class*=name], [class*=document] [class*=name]')) : '',
-                    media: photo ? __ciPicture('max' + id, photo) : '',
+                    name: kind === 'file' ? __ciText(w.querySelector('.attaches .title, [class*=file] [class*=name], [class*=document] [class*=name]')) : (kind === 'contact' ? contactName : ''),
+                    phone: kind === 'contact' ? contactNote : '',
+                    duration: kind === 'voice' ? __ciText(w.querySelector('[class*=attachAudio] .duration, .duration')) : '',
+                    size: kind === 'file' ? __ciText(w.querySelector('.attaches .info')).replace(/^.*•\\s*/, '') : '',
+                    media: photo ? __ciPicture('max' + id, photo) : (contactBox ? __ciPicture('maxc' + id, contactBox.querySelector('img')) : ''),
                     // the picture's own size: MAX may draw a file's picture as a thin strip
                     mediaW: photo ? photo.naturalWidth : 0,
                     mediaH: photo ? photo.naturalHeight : 0,
@@ -336,7 +364,7 @@ const max = {
     })()`
 }
 
-const CHAT_ADAPTERS = { telegram, max }
+const CHAT_ADAPTERS = { telegram, max, whatsapp: whatsappChat({ AVATAR_HELPER, IMAGE_HELPER }) }
 
 const FULL_PICTURE_MAX = 1600
 
