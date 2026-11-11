@@ -8,6 +8,7 @@ const { createComposer } = require('./composer')
 const { readBackground, saveBackground, createBackgroundMenu } = require('./chat-backgrounds')
 const { createLightbox, galleryOf } = require('./lightbox')
 const { createFloatingDay } = require('./floating-day')
+const { createChatSearch } = require('./chat-search')
 
 const NEAR_BOTTOM_PX = 120
 const TOP_LOAD_PX = 40
@@ -46,6 +47,9 @@ function createChatView({ host, onSend, onOpenInTab, onClose, onOlder, onLink, o
         <header class="aic-head">
             <div class="aic-ava"></div>
             <div class="aic-who"><div class="aic-title"></div><div class="aic-sub"></div></div>
+            <button type="button" class="aic-btn aic-icon aic-search-btn" title="Поиск в переписке (Ctrl+F)" aria-label="Поиск в переписке">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+            </button>
             <button type="button" class="aic-btn aic-icon aic-bg" title="Фон чата" aria-label="Фон чата">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="9" cy="9" r="1.6"/><path d="M21 15l-5-5L5 21"/></svg>
             </button>
@@ -76,6 +80,11 @@ function createChatView({ host, onSend, onOpenInTab, onClose, onOlder, onLink, o
     root.append(composer.el)
     const lightbox = createLightbox({ root, onPicture })
     const floatingDay = createFloatingDay({ root, scroll, list })
+    const search = createChatSearch({ root, list, anchor: q('.aic-head') })
+    q('.aic-search-btn').addEventListener('click', () => (search.isOpen() ? search.hide() : search.open()))
+    root.addEventListener('keydown', (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.code === 'KeyF') { e.preventDefault(); e.stopPropagation(); search.open() }
+    })
     let lastRows = []
 
     const bgButton = q('.aic-bg')
@@ -177,6 +186,7 @@ function createChatView({ host, onSend, onOpenInTab, onClose, onOlder, onLink, o
             lastSig = ''
             stick = true
             floatingDay.reset()
+            search.reset()
             lastRows = []
             seenIds = new Set()
             unseen = 0
@@ -230,6 +240,7 @@ function createChatView({ host, onSend, onOpenInTab, onClose, onOlder, onLink, o
             seenIds = ids
             list.classList.toggle('is-group', isGroup)
             list.replaceChildren(frag)
+            search.refresh()
             if (!nearBottom && arrived) unseen += arrived
             // stay at the bottom for new messages; keep the place when earlier ones load above
             scroll.scrollTop = nearBottom ? scroll.scrollHeight : scroll.scrollHeight - fromBottom

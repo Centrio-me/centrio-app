@@ -637,3 +637,23 @@ html[data-mode="light"] .aic-row.is-out .aic-webpage, html[data-theme="light"] .
 .aic-row.is-pending:has(.aic-pending.is-failed) .aic-bubble { opacity: 1; box-shadow: inset 0 0 0 1.5px rgba(229, 72, 77, .7); }
 @keyframes aic-clock { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .aic-pending.is-sending svg { animation: none; } }
+
+/* search in the conversation (chat-search.js): a strip under the header, marks through the CSS Highlight API */
+.aic-find {
+    position: relative; z-index: 2; display: flex; align-items: center; gap: 4px; margin: 8px 16px 0; padding: 4px 4px 4px 12px;
+    border-radius: 12px; background: var(--bg-secondary); box-shadow: 0 6px 20px rgba(0, 0, 0, .25), 0 0 0 1px var(--border);
+    animation: aic-find-in .16s ease-out;
+}
+html[data-fx] .aic-find { background: rgba(14, 18, 30, .88); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); box-shadow: 0 6px 20px rgba(0, 0, 0, .3), 0 0 0 1px rgba(255, 255, 255, .08); }
+.aic-find[hidden] { display: none; }
+.aic-find-input { flex: 1; min-width: 0; height: 30px; border: 0; background: transparent; color: var(--text-primary); font: inherit; font-size: 13.5px; outline: none; }
+.aic-find-input::placeholder { color: var(--text-muted); }
+.aic-find-count { flex: none; padding: 0 6px; font-size: 12px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.aic-find.is-empty .aic-find-count { color: #e5484d; }
+.aic-find-btn { display: grid; place-items: center; width: 30px; height: 30px; border: 0; border-radius: 8px; background: transparent; color: var(--text-secondary); cursor: pointer; }
+.aic-find-btn:hover:not(:disabled) { background: var(--bg-hover); color: var(--text-primary); }
+.aic-find-btn:disabled { opacity: .35; cursor: default; }
+::highlight(aic-find) { background-color: rgba(255, 196, 0, .35); color: inherit; }
+::highlight(aic-find-now) { background-color: #ffb800; color: #1a1300; }
+.aic-search-btn.is-on, .aic.is-finding .aic-search-btn { color: var(--accent); }
+@keyframes aic-find-in { from { opacity: 0; transform: translateY(-4px); } }
