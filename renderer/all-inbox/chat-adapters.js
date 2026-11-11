@@ -7,6 +7,7 @@
 // The tab is behind our window: Centrio types into it with real input (webview.insertText + Enter).
 const { AVATAR_HELPER } = require('./adapters')
 const { whatsappChat } = require('./whatsapp')
+const { vkChat } = require('./vk')
 
 const MAX_MESSAGES = 120
 
@@ -364,7 +365,7 @@ const max = {
     })()`
 }
 
-const CHAT_ADAPTERS = { telegram, max, whatsapp: whatsappChat({ AVATAR_HELPER, IMAGE_HELPER }) }
+const CHAT_ADAPTERS = { telegram, max, whatsapp: whatsappChat({ AVATAR_HELPER, IMAGE_HELPER }), vk: vkChat() }
 
 const FULL_PICTURE_MAX = 1600
 

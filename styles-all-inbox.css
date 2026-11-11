@@ -350,7 +350,8 @@ html[data-mode="light"] .aic, html[data-theme="light"] .aic {
 .aic-loading { padding: 40px; text-align: center; color: var(--text-muted); font-size: 13px; }
 
 /* the date floats at the top while scrolling */
-.aic-day { position: sticky; top: 6px; z-index: 3; display: flex; justify-content: center; margin: 8px 0 6px; pointer-events: none; }
+/* the days are not sticky: several stuck days piled up at the top; the floating day (floating-day.js) shows the current one */
+.aic-day { position: relative; z-index: 1; display: flex; justify-content: center; margin: 8px 0 6px; pointer-events: none; }
 .aic-day > span { padding: 4px 11px; border-radius: 999px; background: rgba(0, 0, 0, .32); color: #fff; font-size: 13px; font-weight: 600; backdrop-filter: blur(10px); }
 
 .aic-row { position: relative; display: flex; align-items: flex-end; gap: 6px; }

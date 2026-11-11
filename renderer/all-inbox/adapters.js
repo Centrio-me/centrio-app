@@ -9,6 +9,7 @@
 // Page scripts are plain ES5 strings: no names that a minifier could change.
 
 const { whatsappList } = require('./whatsapp')
+const { vkList } = require('./vk')
 
 const MAX_CHATS = 60
 // Telegram gives its whole dialog list; the freshest ones are enough for one screen of history
@@ -368,7 +369,7 @@ const max = {
     })()`
 }
 
-const ADAPTERS = [telegram, max, whatsappList({ AVATAR_HELPER })]
+const ADAPTERS = [telegram, max, whatsappList({ AVATAR_HELPER }), vkList()]
 
 /** @param {string} url @returns {object|null} */
 function adapterFor(url) {
