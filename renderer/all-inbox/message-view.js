@@ -4,12 +4,16 @@
 // ticks at the end of the text line, reactions, large lonely emoji, and the tail on the last bubble of a group.
 const { linkParts } = require('./linkify')
 const { jumboCount, mediaBox, MEDIA_MAX_W } = require('./message-shape')
+const { waveBars, clock } = require('./media-player')
+
+const VOICE_BARS = 34
 
 const KIND_LABEL = { voice: 'Голосовое сообщение', video: 'Видео', sticker: 'Стикер', file: 'Файл', photo: 'Фото' }
 
 const ICON_CHECK = '<svg viewBox="0 0 16 11" width="16" height="11" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 6l3.2 3.2L11 2.5"/></svg>'
 const ICON_CHECKS = '<svg viewBox="0 0 18 11" width="18" height="11" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 6l3.2 3.2L10.5 2.5"/><path d="M7.4 8.6l.6.6L14.5 2.5"/></svg>'
 const ICON_PLAY = '<svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.4-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z"/></svg>'
+const ICON_PAUSE = '<svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><rect x="6.5" y="5" width="4" height="14" rx="1.3"/><rect x="13.5" y="5" width="4" height="14" rx="1.3"/></svg>'
 const ICON_REPLY = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>'
 const ICON_FILE ='<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>'
 
@@ -77,7 +81,47 @@ function webpageCard(m, onLink) {
     return card
 }
 
-function photo(m, onZoom) {
+// a voice message that plays right here: the button, the waveform (a click on it jumps there), the time
+function voice(m, ctx) {
+    const box = el('div', 'aic-voice')
+    box.dataset.play = m.id
+    box.dataset.duration = m.duration || ''
+    const btn = el('button', 'aic-voice-btn')
+    btn.type = 'button'
+    btn.setAttribute('aria-label', 'Слушать')
+    btn.innerHTML = `<span class="aic-voice-play">${ICON_PLAY}</span><span class="aic-voice-pause">${ICON_PAUSE}</span><span class="aic-voice-spin"></span>`
+    btn.addEventListener('click', (e) => { e.stopPropagation(); ctx.onVoice(m) })
+    const wave = el('div', 'aic-voice-wave')
+    for (const h of waveBars(m.wave, VOICE_BARS)) { const bar = el('i'); bar.style.height = `${Math.round(h * 100)}%`; wave.append(bar) }
+    wave.addEventListener('click', (e) => {
+        const r = wave.getBoundingClientRect()
+        if (r.width) ctx.onSeek(m, (e.clientX - r.left) / r.width)
+    })
+    const info = el('div', 'aic-voice-info')
+    info.append(wave, el('span', 'aic-voice-time', m.duration || ''))
+    box.append(btn, info)
+    paintVoice(box, ctx.playerState())
+    return box
+}
+
+/** Shows the player's state on a drawn voice message: playing, paused, loading, how far. */
+function paintVoice(box, state) {
+    const mine = state.id === box.dataset.play
+    const playing = mine && state.playing
+    box.classList.toggle('is-playing', playing)
+    box.classList.toggle('is-loading', mine && state.loading)
+    box.classList.toggle('is-failed', mine && state.failed)
+    const btn = box.querySelector('.aic-voice-btn')
+    if (btn) btn.setAttribute('aria-label', playing ? 'Пауза' : 'Слушать')
+    const part = mine && state.duration ? state.current / state.duration : 0
+    const bars = box.querySelectorAll('.aic-voice-wave i')
+    const lit = Math.round(part * bars.length)
+    bars.forEach((b, i) => b.classList.toggle('is-on', i < lit))
+    const time = box.querySelector('.aic-voice-time')
+    if (time) time.textContent = mine && state.failed ? 'Не загрузилось — откроется в мессенджере' : (mine && (playing || state.current > 0) ? clock(state.current) : box.dataset.duration)
+}
+
+function photo(m, onZoom, ctx = {}) {
     const box = mediaBox(m.mediaW, m.mediaH)
     const wrap = el('div', 'aic-photo')
     wrap.style.width = `${box.width}px`
@@ -89,7 +133,16 @@ function photo(m, onZoom) {
         img.decoding = 'async'
         wrap.append(img)
     }
-    if (m.kind === 'video') wrap.append(Object.assign(el('span', 'aic-play'), { innerHTML: ICON_PLAY }))
+    if (m.kind === 'video') {
+        wrap.append(Object.assign(el('span', 'aic-play'), { innerHTML: ICON_PLAY }))
+        if (m.duration) wrap.append(el('span', 'aic-video-time', m.duration))
+        if (m.round) wrap.classList.add('is-round')
+        if (ctx.onVideo) {
+            wrap.classList.add('is-zoomable')
+            wrap.title = 'Смотреть'
+            wrap.addEventListener('click', () => ctx.onVideo(m, wrap))
+        }
+    }
     if (m.kind === 'photo' && m.media) {
         wrap.classList.add('is-zoomable')
         wrap.title = 'Открыть крупно'
@@ -236,13 +289,14 @@ function renderMessage(m, ctx) {
 
     // a bubble with a photo is as wide as the photo, its caption wraps under it, like in Telegram
     if (m.album) { b.append(album(m, ctx.onZoom)); b.style.width = `${MEDIA_MAX_W}px` }
-    else if (hasMedia) { const media = photo(m, ctx.onZoom); b.append(media); b.style.width = media.style.width }
+    else if (hasMedia) { const media = photo(m, ctx.onZoom, ctx); b.append(media); b.style.width = media.style.width }
     else if (sticker) {
         const img = el('img', 'aic-sticker')
         img.src = m.media
         img.alt = ''
         b.append(img)
     } else if (m.kind === 'contact') { b.classList.add('has-contact'); b.append(contactCard(m, ctx.onOpenInTab)) }
+    else if (m.kind === 'voice' && ctx.onVoice) { b.classList.add('has-voice'); b.append(voice(m, ctx)) }
     else if (m.kind !== 'text' && m.kind !== 'photo') b.append(card(m, ctx.onOpenInTab))
 
     if (jumbo) b.append(el('div', 'aic-jumbo', m.text), meta(m, true))
@@ -267,4 +321,4 @@ function renderMessage(m, ctx) {
     return row
 }
 
-module.exports = { renderMessage }
+module.exports = { renderMessage, paintVoice }

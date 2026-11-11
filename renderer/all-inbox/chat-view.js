@@ -2,7 +2,8 @@
 // «Все мессенджеры» (3.8): our own conversation window over the messenger's tab. It only draws what timeline.js gives
 // and hands typed text back; the tab behind it does the real work.
 
-const { renderMessage } = require('./message-view')
+const { renderMessage, paintVoice } = require('./message-view')
+const { createMediaPlayer } = require('./media-player')
 const { sharedDrafts } = require('./drafts')
 const { createComposer } = require('./composer')
 const { readBackground, saveBackground, createBackgroundMenu } = require('./chat-backgrounds')
@@ -32,6 +33,15 @@ function initials(title) {
  *   onPickFiles: () => Promise<object[]>, onDescribeFiles: (paths: string[]) => Promise<object[]>,
  *   onPasteImage: () => Promise<object|null> }} deps
  */
+// what the page gave (a data: address) becomes a blob: one, which the window may play
+function dataToBlobUrl(data, mime) {
+    const comma = data.indexOf(',')
+    const bin = atob(data.slice(comma + 1))
+    const bytes = new Uint8Array(bin.length)
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
+    return URL.createObjectURL(new Blob([bytes], { type: mime || data.slice(5, data.indexOf(';')) }))
+}
+
 // a group chat: the messenger draws avatars of the people, or at least two different people write in it
 function isGroupChat(rows) {
     const incoming = rows.filter((r) => r.type === 'msg' && !r.out)
@@ -49,7 +59,7 @@ function openingMark() {
     return box
 }
 
-function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab, onClose, onOlder, onLink, onPicture, onPickFiles, onDescribeFiles, onPasteImage, canReply = () => false }) {
+function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab, onClose, onOlder, onLink, onPicture, onPickFiles, onDescribeFiles, onPasteImage, canReply = () => false, onMedia = () => Promise.resolve(null), canPlay = () => false }) {
     const root = el('section', 'aic')
     root.hidden = true
     root.dataset.bg = readBackground()
@@ -89,6 +99,31 @@ function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab
     composer.setVisible(false)
     root.append(composer.el)
     const lightbox = createLightbox({ root, onPicture })
+    // voice messages play here; every drawn bubble of a message shows the player's state again
+    const player = createMediaPlayer({
+        load: onMedia,
+        toUrl: dataToBlobUrl,
+        revoke: (url) => URL.revokeObjectURL(url),
+        onChange: (state) => { for (const box of list.querySelectorAll('.aic-voice[data-play]')) paintVoice(box, state) }
+    })
+    function onVoice(m) {
+        const s = player.state()
+        // the messenger could not give this one: it is listened to in the messenger itself
+        if (s.id === m.id && s.failed) { onOpenInTab(); return }
+        player.toggle(m.id)
+    }
+    // a video: taken from the page and played on the whole window; one too big or not given opens in the messenger
+    let videoToken = 0
+    async function onVideo(m, holder) {
+        const mine = ++videoToken
+        holder.classList.add('is-loading')
+        const got = await Promise.resolve(onMedia(m.id)).catch(() => null)
+        holder.classList.remove('is-loading')
+        if (mine !== videoToken || root.hidden) return
+        if (!got) { onOpenInTab(); return }
+        player.reset()
+        lightbox.openVideo(dataToBlobUrl(got.data, got.mime), [m.out ? 'Вы' : (m.author || q('.aic-title').textContent), m.time].filter(Boolean).join(' · '), !!m.round)
+    }
     const floatingDay = createFloatingDay({ root, scroll, list })
     const search = createChatSearch({ root, list, anchor: q('.aic-head') })
     q('.aic-search-btn').addEventListener('click', () => (search.isOpen() ? search.hide() : search.open()))
@@ -200,6 +235,8 @@ function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab
             root.hidden = false
             lastSig = ''
             stick = true
+            player.reset()
+            videoToken++
             floatingDay.reset()
             search.reset()
             lastRows = []
@@ -242,7 +279,9 @@ function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab
             if (!rows.length) frag.append(el('div', 'aic-loading', 'Сообщений пока нет'))
             // a group chat (names of authors) gets avatars next to the groups, like Telegram; private chats do not
             const isGroup = isGroupChat(rows)
-            const ctx = { isGroup, onLink, onZoom: zoom, onOpenInTab, onReply: canReply() ? (m) => composer.replyTo(m) : null }
+            const playable = canPlay()
+            const ctx = { isGroup, onLink, onZoom: zoom, onOpenInTab, onReply: canReply() ? (m) => composer.replyTo(m) : null,
+                onVoice: playable ? onVoice : null, onSeek: (m, part) => player.seek(m.id, part), onVideo: playable ? onVideo : null, playerState: player.state }
             byId = new Map()
             const firstDraw = !seenIds.size
             let arrived = 0
@@ -281,7 +320,7 @@ function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab
             }
         },
         setCanWrite(on) { composer.setVisible(on) },
-        hide() { closeZoom(); closeMenu(); bgMenu.toggle(false); root.hidden = true },
+        hide() { player.reset(); videoToken++; closeZoom(); closeMenu(); bgMenu.toggle(false); root.hidden = true },
         isShown: () => !root.hidden
     }
 }

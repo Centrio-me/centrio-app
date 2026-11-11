@@ -6,6 +6,8 @@ const DAY_NAMES_RU = ['Сегодня', 'Вчера']
 const MONTHS_RU = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря']
 const KINDS = new Set(['text', 'photo', 'video', 'voice', 'sticker', 'file', 'contact', 'service'])
 
+const { decodeWave } = require('./media-player')
+
 const RGB = /^rgb\(\d{1,3}, \d{1,3}, \d{1,3}\)$/
 const PICTURE = /^(data:image\/|https:)/
 const MAX_ALBUM = 10
@@ -13,6 +15,13 @@ const MAX_REACTIONS = 8
 
 const colour = (v) => (typeof v === 'string' && RGB.test(v) ? v : '')
 const picture = (v) => (typeof v === 'string' && PICTURE.test(v) ? v : '')
+const MAX_WAVE = 128
+// a voice message's loudness, 0..31 per point: values (VK) or Telegram's packed bytes
+function cleanWave(m, kind) {
+    if (kind !== 'voice') return []
+    const values = Array.isArray(m.wave) ? m.wave : decodeWave(Array.isArray(m.waveBytes) ? m.waveBytes.slice(0, 200) : null)
+    return values.filter((v) => typeof v === 'number' && Number.isFinite(v)).slice(0, MAX_WAVE).map((v) => Math.max(0, Math.min(31, Math.round(v))))
+}
 const share = (v) => Math.min(1, Math.max(0, Number(v) || 0))
 
 function cleanAlbum(album) {
@@ -20,7 +29,7 @@ function cleanAlbum(album) {
     return album.slice(0, MAX_ALBUM).map((a) => ({
         src: picture(a && a.src), x: share(a && a.x), y: share(a && a.y), w: share(a && a.w), h: share(a && a.h),
         // the page's own key of the picture: a click asks for it in full size
-        picture: a && typeof a.picture === 'string' ? a.picture.slice(0, 80) : '',
+        picture: a && typeof a.picture === 'string' ? a.picture.slice(0, 240) : '',
         ratio: Number(a && a.ratio) > 0 ? Number(a.ratio) : 1
     }))
 }
@@ -89,7 +98,10 @@ function buildTimeline(raw, now) {
             name: String(m.name || '').slice(0, 120),
             // a shared contact: its number, or the messenger's note under the name («Новый контакт»)
             phone: String(m.phone || '').slice(0, 40),
-            duration: String(m.duration || ''),
+            duration: String(m.duration || '').trim().slice(0, 12),
+            wave: cleanWave(m, kind),
+            // Telegram's round video message
+            round: kind === 'video' && m.round === true,
             media: picture(m.media),
             mediaW: Math.max(0, Math.round(Number(m.mediaW) || 0)),
             mediaH: Math.max(0, Math.round(Number(m.mediaH) || 0)),
@@ -106,7 +118,7 @@ function buildTimeline(raw, now) {
             size: String(m.size || '').split('/').pop().trim().slice(0, 20),
             webpage: cleanWebpage(m.webpage),
             // the page's own key for this picture: a click asks the page for it in full size
-            picture: typeof m.picture === 'string' ? m.picture.slice(0, 80) : '',
+            picture: typeof m.picture === 'string' ? m.picture.slice(0, 240) : '',
             time: String(m.time || '')
         })
     }
@@ -185,13 +197,26 @@ function markGroups(rows) {
     return rows.map((r, i) => (r.type !== 'msg' ? r : { ...r, groupStart: !same(i - 1, i), groupEnd: !same(i, i + 1) }))
 }
 
-/** A short string that changes whenever what is shown changes. */
+// a short fingerprint of a picture's data: address: its length and evenly spread characters — a placeholder that
+// became the photo changes it; hashing every byte of every picture each poll would not pay (texts are compared whole)
+const PRINT_POINTS = 48
+function print(value) {
+    const s = String(value || '')
+    if (s.length <= PRINT_POINTS * 2) return s
+    let out = `${s.length}:`
+    for (let i = 0; i < PRINT_POINTS; i++) out += s[Math.floor((i * (s.length - 1)) / (PRINT_POINTS - 1))]
+    return out + s.slice(-16)
+}
+
+/** A string that changes whenever anything a bubble shows changes: the conversation is drawn again then. */
 function signature(rows) {
     return rows.map((r) => {
         if (r.type === 'day') return `#${r.label}`
-        const album = r.album ? r.album.filter((a) => a.src).length : 0
+        const album = r.album ? r.album.map((a) => print(a.src)).join(',') : ''
         const reacts = (r.reactions || []).map((x) => x.e + x.n + (x.mine ? '*' : '')).join(',')
-        return `${r.id}|${r.read ? 1 : 0}|${String(r.text || '').length}|${r.media ? 1 : 0}|${r.avatar ? 1 : 0}|${album}|${reacts}|${r.pending || ''}`
+        return [r.id, r.read ? 1 : 0, r.kind, r.text || '', print(r.media), print(r.avatar), album, reacts, r.pending || '',
+            r.name || '', r.size || '', r.duration || '', r.author || '', r.reply || '', r.forwarded || '', r.phone || '',
+            r.webpage ? print(r.webpage.image) + (r.webpage.title || '') : '', (r.wave || []).length].join('|')
     }).join(';')
 }
 

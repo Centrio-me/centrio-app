@@ -39,3 +39,35 @@ test('a shared contact keeps its name, phone and picture', () => {
     assert.equal(row.phone, '+7 999 123-45-67')
     assert.equal(row.media, 'data:image/png;base64,AA')
 })
+
+test('signature changes when a message changes without changing its length or id', () => {
+    const { signature } = require('../../renderer/all-inbox/timeline')
+    const base = { type: 'msg', id: '5', out: true, read: false, kind: 'photo', text: 'кот', media: 'data:image/jpeg;base64,PLACEHOLDER', size: '0 Б', duration: '', name: '', album: null, reactions: [] }
+    const sig = signature([base])
+    assert.notStrictEqual(signature([{ ...base, media: 'data:image/jpeg;base64,THE-REAL-PHOTO' }]), sig, 'the placeholder became the photo')
+    assert.notStrictEqual(signature([{ ...base, text: 'кит' }]), sig, 'an edit of the same length')
+    assert.notStrictEqual(signature([{ ...base, size: '25 КБ' }]), sig, 'the size came')
+    assert.notStrictEqual(signature([{ ...base, duration: '0:29' }]), sig, 'the length came')
+    assert.notStrictEqual(signature([{ ...base, album: [{ src: 'data:a' }, { src: 'data:b' }] }]), signature([{ ...base, album: [{ src: 'data:a' }, { src: 'data:c' }] }]), 'a photo of an album loaded')
+})
+
+test('a voice message keeps its waveform: given as values, or as Telegram packed bytes', () => {
+    const rows = buildTimeline([
+        { id: '1', kind: 'voice', wave: [0, 10, 31, 99, 'x'] },
+        { id: '2', kind: 'voice', waveBytes: [0xff, 0x03] },
+        { id: '3', kind: 'text', text: 'hi', wave: [5] }
+    ], Date.now()).filter((r) => r.type === 'msg')
+    assert.deepEqual(rows[0].wave, [0, 10, 31, 31])
+    assert.deepEqual(rows[1].wave, [31, 31, 0])
+    assert.deepEqual(rows[2].wave, [])
+})
+
+test('signature changes on a one-letter edit anywhere in a long text', () => {
+    const { signature } = require('../../renderer/all-inbox/timeline')
+    const long = 'а'.repeat(150) + 'б' + 'а'.repeat(150)
+    const row = (text) => ({ type: 'msg', id: '7', kind: 'text', text, reactions: [] })
+    for (let at = 0; at < long.length; at += 37) {
+        const edited = long.slice(0, at) + 'в' + long.slice(at + 1)
+        assert.notStrictEqual(signature([row(edited)]), signature([row(long)]), `edit at ${at}`)
+    }
+})

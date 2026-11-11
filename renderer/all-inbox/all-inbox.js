@@ -7,7 +7,8 @@ const { mergeInbox } = require('./merge')
 const { createChatController, clickAt } = require('./chat-controller')
 const { sharedDrafts } = require('./drafts')
 
-const POLL_MS = 4000
+// every messenger is read this often; each one shows the moment it answers, a slow one never holds the others up
+const POLL_MS = 2000
 const READ_TIMEOUT_MS = 2500
 const OPEN_KEY = 'centrio-all-inbox-open'
 const FILTER_KEY = 'centrio-all-inbox-filter'
@@ -155,7 +156,25 @@ function createAllInbox({ state, switchTab, tGet, ipcRenderer }) {
                 services.set(m.id, adapter.id)
                 return { messenger: { ...m, service: adapter.id }, chats }
             })
-            sources = (await Promise.all(jobs)).filter(Boolean)
+            // each answer is drawn as soon as it comes (one frame for answers that come together)
+            const order = (state.activeMessengers || []).map((m) => m.id)
+            const got = new Map()
+            const pendingIds = new Set(order)
+            let frame = 0
+            const draw = () => {
+                frame = 0
+                sources = order.map((id) => got.get(id)).filter(Boolean).concat(sources.filter((x) => pendingIds.has(x.messenger.id)))
+                sources.sort((a, b) => order.indexOf(a.messenger.id) - order.indexOf(b.messenger.id))
+                render()
+            }
+            await Promise.all(jobs.map((job, i) => job.then((r) => {
+                const id = order[i]
+                pendingIds.delete(id)
+                if (r) got.set(id, r)
+                if (!frame) frame = requestAnimationFrame(draw)
+            })))
+            if (frame) cancelAnimationFrame(frame)
+            sources = order.map((id) => got.get(id)).filter(Boolean)
             loadedOnce = true
             render()
         } finally {

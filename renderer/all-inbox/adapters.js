@@ -346,17 +346,28 @@ const max = {
             for (var i = 0; i < cells.length; i++) { var t = cells[i].querySelector('.text'); if (t && __ciText(t) === key) return cells[i]; }
             return null;
         }
+        function shown(el) { var r = el && el.getBoundingClientRect(); return !!r && r.width > 0 && r.height > 0 && r.right > 0 && r.left < innerWidth; }
+        function listShown() { return shown(document.querySelector('.scrollListContent > div.item button.cell')); }
+        // a narrow tab: MAX shows either its list or the open chat; the open chat is left first (MAX's own address of the list)
+        function toList(then) {
+            if (listShown()) return then();
+            var a = document.createElement('a'); a.href = '/'; a.style.display = 'none';
+            document.body.appendChild(a); a.click(); a.remove();
+            var tries = 0;
+            (function wait() { if (listShown() || ++tries > 20) return then(); setTimeout(wait, 100); })();
+        }
         // MAX keeps only the visible part of its list on the page: scroll down to the chat when it is further away
-        return new Promise(function (resolve) {
+        return new Promise(function (resolve) { toList(function () {
             var box = document.querySelector('.scrollListScrollable');
             var steps = 0;
             (function look() {
+                if (!listShown()) return resolve(null);
                 if (find() || !box || steps > 40) return resolve(__ciCentre(find));
                 if (steps === 0) box.scrollTop = 0; else box.scrollTop += Math.max(200, box.clientHeight * 0.8);
                 steps++;
                 setTimeout(look, 140);
             })();
-        });
+        }); });
     })()`,
     // a chat MAX has opened once is opened again by its address, like MAX's own links do
     PATH: `(function () { var p = location.pathname; return p.charAt(0) === '/' && /^-?[0-9]+$/.test(p.slice(1)) ? p : ''; })()`,

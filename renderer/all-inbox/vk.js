@@ -9,8 +9,17 @@ const VK_MESSAGES = 60
 const VK_LIST_EVERY_MS = 10 * 1000
 const VK_HISTORY_EVERY_MS = 2500
 const VK_OLDER_STEP = 40
+// a voice message bigger than this is listened to in VK itself
+const VK_MEDIA_MAX_BYTES = 40 * 1024 * 1024
 
 const VK_COMMON = `
+// VK's own list on the page changes the moment a message comes (its live connection): a change of it, or of the
+// page's title with its counter, means VK is asked at once instead of waiting for the next regular ask
+function __vkPulse() {
+    var items = document.querySelectorAll('.ConvoListItem'), s = document.title;
+    for (var i = 0; i < items.length && i < 6; i++) s += '|' + String(items[i].innerText || '').slice(0, 160);
+    return s;
+}
 function __vkApi() { return window.vkApi && typeof window.vkApi.api === 'function' ? window.vkApi : null; }
 function __vkPeople(r) {
     var p = {};
@@ -48,8 +57,9 @@ function vkList() {
             var api = __vkApi();
             if (!api) return [];
             var cache = window.__ciVkList || (window.__ciVkList = { at: 0, list: [], busy: false });
-            if (cache.busy || Date.now() - cache.at < ${VK_LIST_EVERY_MS}) return cache.list;
-            cache.busy = true;
+            var pulse = __vkPulse();
+            if (cache.busy || (Date.now() - cache.at < ${VK_LIST_EVERY_MS} && pulse === cache.pulse)) return cache.list;
+            cache.busy = true; cache.pulse = pulse;
             return Promise.resolve(api.api('messages.getConversations', { count: ${VK_CHATS}, extended: 1, fields: 'photo_100,online' })).then(function (r) {
                 var people = __vkPeople(r), now = Date.now() / 1000, out = [];
                 (r && r.items || []).forEach(function (it) {
@@ -108,8 +118,10 @@ function vkChat() {
             var peer = Number(m0[1]);
             var h = window.__ciVkHist;
             if (!h || h.peer !== peer) h = window.__ciVkHist = { peer: peer, at: 0, count: ${VK_MESSAGES}, data: null, busy: false };
-            if (h.data && (h.busy || Date.now() - h.at < ${VK_HISTORY_EVERY_MS})) return h.data;
-            h.busy = true;
+            var pulse = __vkPulse();
+            if (h.data && (h.busy || (Date.now() - h.at < ${VK_HISTORY_EVERY_MS} && pulse === h.pulse))) return h.data;
+            h.busy = true; h.pulse = pulse;
+            var media = {};
             function clock(t) { var d = new Date(t * 1000); return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2); }
             function size(n) { if (!(n > 0)) return ''; if (n < 1024) return n + ' Б'; if (n < 1048576) return Math.round(n / 1024) + ' КБ'; return (n / 1048576).toFixed(1).replace('.', ',') + ' МБ'; }
             function dur(s) { s = Math.round(s || 0); return s ? Math.floor(s / 60) + ':' + ('0' + (s % 60)).slice(-2) : ''; }
@@ -160,7 +172,7 @@ function vkChat() {
                     var row = Object.assign({}, base, { id: id, kind: 'text', text: text });
                     if (other) {
                         var t = other.type, o = other[t] || {};
-                        if (t === 'audio_message') { row.kind = 'voice'; row.duration = dur(o.duration); }
+                        if (t === 'audio_message') { row.kind = 'voice'; row.duration = dur(o.duration); row.wave = o.waveform || []; media[id] = o.link_ogg || o.link_mp3 || ''; }
                         else if (t === 'doc') { row.kind = 'file'; row.name = o.title || 'Файл'; row.size = size(o.size); }
                         else if (t === 'sticker') { var img = (o.images || []).filter(function (x) { return x.width >= 128; })[0] || (o.images || [])[0]; if (img) { row.kind = 'sticker'; row.media = img.url; } }
                         else if (t === 'video') { var th = best(o.image || []); row.kind = 'video'; row.media = th ? th.url : ''; row.mediaW = th ? th.width : 0; row.mediaH = th ? th.height : 0; row.duration = dur(o.duration); }
@@ -174,6 +186,7 @@ function vkChat() {
                 });
                 var can = conv.can_write ? conv.can_write.allowed !== false : true;
                 h.data = { title: title, subtitle: subtitle, canWrite: can, messages: out };
+                h.media = media;
                 h.at = Date.now(); h.busy = false;
                 return h.data;
             }, function () { h.busy = false; return h.data || { title: '', subtitle: '', messages: [], none: true }; });
@@ -201,6 +214,20 @@ function vkChat() {
             var a = el.getBoundingClientRect(), s = send.getBoundingClientRect();
             if (!s.width) return null;
             return { caption: { x: a.left + Math.min(40, a.width / 2), y: a.top + a.height / 2 }, send: { x: s.left + s.width / 2, y: s.top + s.height / 2 } };
+        })()`,
+        // a voice message of the open conversation, from VK's own address of it
+        MEDIA: (id) => `(function () {
+            var h = window.__ciVkHist, url = h && h.media && h.media[${JSON.stringify(String(id))}];
+            if (!url || url.indexOf('https://') !== 0) return null;
+            return fetch(url).then(function (r) { return r.ok ? r.blob() : null; }).then(function (blob) {
+                if (!blob || blob.size > ${VK_MEDIA_MAX_BYTES}) return null;
+                return new Promise(function (resolve) {
+                    var fr = new FileReader();
+                    fr.onload = function () { resolve({ data: String(fr.result), mime: blob.type || 'audio/ogg' }); };
+                    fr.onerror = function () { resolve(null); };
+                    fr.readAsDataURL(blob);
+                });
+            }).catch(function () { return null; });
         })()`,
         // earlier messages: VK is asked for more of the history next time
         OLDER: `(function () {

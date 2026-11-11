@@ -18,6 +18,9 @@ const HOVER_SETTLE_MS = 250
 const POPUP_WAIT_MS = 5000
 const POPUP_POLL_MS = 150
 const AFTER_DROP_MS = 900
+// a voice message is ready in a moment; a video of tens of megabytes may take a while to come from the messenger
+const MEDIA_TIMEOUT_MS = 45000
+const MEDIA_DATA = /^data:(audio|video)\/[\w.+-]+(;[\w=.+-]+)*;base64,/
 
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms))
@@ -62,6 +65,15 @@ function createChatController({ state, webviewOf, host, ipcRenderer }) {
         onPickFiles: () => ipcRenderer.invoke('all-inbox:pick-files').catch(() => []),
         onDescribeFiles: (paths) => ipcRenderer.invoke('all-inbox:describe-files', paths).catch(() => []),
         onPasteImage: () => ipcRenderer.invoke('all-inbox:paste-image').catch(() => null),
+        canPlay: () => !!(current && typeof current.adapter.MEDIA === 'function'),
+        // the sound or video of a message, taken from the tab by the messenger's own downloader
+        onMedia: async (id) => {
+            const w = tab()
+            if (!w || !current || typeof current.adapter.MEDIA !== 'function') return null
+            const got = await withTimeout(w.executeJavaScript(current.adapter.MEDIA(String(id).split('+')[0])).catch(() => null), MEDIA_TIMEOUT_MS)
+            // only a sound or a video, in the type the data itself declares
+            return got && typeof got.data === 'string' && MEDIA_DATA.test(got.data) ? { data: got.data, mime: got.data.slice(5, got.data.indexOf(';')) } : null
+        },
         onPicture: async (key) => {
             const w = tab()
             if (!w) return ''

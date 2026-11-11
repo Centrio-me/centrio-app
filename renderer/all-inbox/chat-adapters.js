@@ -10,22 +10,66 @@ const { whatsappChat } = require('./whatsapp')
 const { vkChat } = require('./vk')
 
 const MAX_MESSAGES = 120
+// voice messages, audio and videos up to this size play in our window; bigger ones open in the messenger
+const MEDIA_MAX_BYTES = 40 * 1024 * 1024
+// MAX photos not on the page yet: at most this many messages are warmed up per read, each waited for this long
+const MAX_WARM_ITEMS = 12
+const MAX_WARM_TRIES = 12
+const MAX_WARM_STEP_MS = 120
+// how long MAX's player is given to take the address of a voice message's sound
+const MAX_AUDIO_WAIT_MS = 4000
+// a warm-up that has not finished by then is taken as broken: reads and new warm-ups go on
+const MAX_WARM_GIVE_UP_MS = 30000
 
 // A picture the page holds (often a blob: URL only the page can read) becomes a small data URL, cached per message.
 const IMAGE_HELPER = `
 var __ciImg = window.__centrioInboxImages || (window.__centrioInboxImages = {});
 function __ciPicture(key, img) {
     if (!img || !img.src) return '';
-    if (__ciImg[key] && __ciImg[key].src === img.src) return __ciImg[key].data;
+    var hit = __ciImg[key];
+    if (hit && hit.src === img.src) {
+        if (hit.data) return hit.data;
+        if (hit.busy || hit.tries > 2) return '';
+        if (hit.tries) { __ciFetchPicture(key, img.src); return ''; }
+    }
     try {
-        if (!img.complete || !img.naturalWidth) return /^https?:/i.test(img.src) ? img.src : '';
-        var w = img.naturalWidth, h = img.naturalHeight, max = 420, k = Math.min(1, max / Math.max(w, h));
+        // a video (Telegram's round messages): one frame of it, taken once
+        var isVideo = img.tagName === 'VIDEO';
+        if (isVideo ? (img.readyState < 2 || !img.videoWidth) : (!img.complete || !img.naturalWidth)) {
+            // not loaded on the page yet (MAX loads photos only when scrolled to): asked for directly
+            if (!isVideo && /^https:/i.test(img.src)) { __ciFetchPicture(key, img.src); return __ciImg[key] && __ciImg[key].data || ''; }
+            return '';
+        }
+        var w = isVideo ? img.videoWidth : img.naturalWidth, h = isVideo ? img.videoHeight : img.naturalHeight, max = 420, k = Math.min(1, max / Math.max(w, h));
         var c = document.createElement('canvas'); c.width = Math.round(w * k); c.height = Math.round(h * k);
         c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
         var data = c.toDataURL('image/jpeg', 0.82);
         __ciImg[key] = { src: img.src, data: data };
         return data;
-    } catch (e) { return /^https?:/i.test(img.src) ? img.src : ''; }
+    } catch (e) {
+        // a picture from another site (MAX keeps photos on i.oneme.ru): the page may show it but not copy it, and our
+        // window, not signed in, cannot load its address — it is asked once more as a plain request and copied then
+        if (/^https:/i.test(img.src)) { __ciFetchPicture(key, img.src); return __ciImg[key] && __ciImg[key].data || ''; }
+        return '';
+    }
+}
+function __ciFetchPicture(key, src) {
+    var had = __ciImg[key];
+    if (had && had.src === src && (had.data || had.busy || had.tries > 2)) return;
+    __ciImg[key] = { src: src, data: '', busy: true, tries: (had && had.src === src ? had.tries || 0 : 0) + 1 };
+    fetch(src, { credentials: 'omit' }).then(function (r) { return r.ok ? r.blob() : null; }).then(function (blob) {
+        return blob ? createImageBitmap(blob) : null;
+    }).then(function (bmp) {
+        var cur = __ciImg[key];
+        if (!cur || cur.src !== src) return;
+        cur.busy = false;
+        if (!bmp) return;
+        var max = 420, k = Math.min(1, max / Math.max(bmp.width, bmp.height));
+        var c = document.createElement('canvas'); c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
+        c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
+        cur.data = c.toDataURL('image/jpeg', 0.82);
+        if (bmp.close) bmp.close();
+    }).catch(function () { var cur = __ciImg[key]; if (cur && cur.src === src) cur.busy = false; });
 }
 // The first of these elements that is really on screen (a channel keeps a hidden message field)
 function __ciVisible(root, sel) {
@@ -123,6 +167,22 @@ const telegram = {
             }
             return list;
         }
+        // a voice message's waveform from Telegram's own message (asked once, ready by the next read)
+        var waves = window.__ciTgWaves || (window.__ciTgWaves = {});
+        var peerNow = window.appImManager && appImManager.chat ? appImManager.chat.peerId : 0;
+        function waveOf(mid) {
+            var k = peerNow + '_' + mid;
+            if (waves[k] !== undefined) return waves[k] || null;
+            waves[k] = 0;
+            try {
+                rootScope.managers.appMessagesManager.getMessageByPeer(peerNow, Number(mid)).then(function (m) {
+                    var d = m && m.media && m.media.document;
+                    var a = d && (d.attributes || []).filter(function (x) { return x._ === 'documentAttributeAudio'; })[0];
+                    waves[k] = a && a.waveform ? Array.prototype.slice.call(a.waveform, 0, 200) : [];
+                }, function () { waves[k] = []; });
+            } catch (e) { waves[k] = []; }
+            return null;
+        }
         var start = Math.max(0, bubbles.length - ${MAX_MESSAGES});
         var out = [];
         for (var i = start; i < bubbles.length; i++) {
@@ -137,7 +197,9 @@ const telegram = {
                 continue;
             }
             var kind = 'text';
-            if (/ voice-message /.test(cls) || b.querySelector('.audio.is-voice, .voice')) kind = 'voice';
+            // a round video message carries a sound element too: it is a video
+            if (/ round /.test(cls)) kind = 'video';
+            else if (/ voice-message /.test(cls) || b.querySelector('.audio.is-voice, .voice')) kind = 'voice';
             else if (/ sticker /.test(cls) || /emoji-big/.test(cls)) kind = 'sticker';
             else if (/ video /.test(cls) || b.querySelector('video')) kind = 'video';
             // a picture sent as a file is a file (with its small preview), like Telegram shows it
@@ -174,7 +236,9 @@ const telegram = {
                 phone: kind === 'contact' ? __ciText(b.querySelector('.contact-number, .contact .number')) : '',
                 size: __ciText(b.querySelector('.document-size')),
                 duration: __ciText(b.querySelector('.audio-time, .video-time')),
-                media: album ? '' : (img && img.tagName === 'IMG' ? __ciPicture('tg' + mid, img) : ''),
+                waveBytes: kind === 'voice' ? waveOf(mid) : null,
+                round: / round /.test(cls),
+                media: album ? '' : (img && (img.tagName === 'IMG' || (kind === 'video' && img.tagName === 'VIDEO')) ? __ciPicture('tg' + mid, img) : ''),
                 mediaW: size ? Math.round(size.width) : 0,
                 mediaH: size ? Math.round(size.height) : 0,
                 album: album,
@@ -230,6 +294,24 @@ const telegram = {
         if (!mid || !input || typeof input.initMessageReply !== 'function') return false;
         try { input.initMessageReply({ replyToMsgId: mid }); return true; } catch (e) { return false; }
     })()`,
+    // a voice message, an audio file or a video of the open chat, taken through Telegram's own downloader
+    MEDIA: (id) => `(function () {
+        var mid = Number(${JSON.stringify(String(id))});
+        var chat = window.appImManager && appImManager.chat;
+        if (!mid || !chat || !window.appDownloadManager || !window.rootScope) return null;
+        return rootScope.managers.appMessagesManager.getMessageByPeer(chat.peerId, mid).then(function (m) {
+            var doc = m && m.media && m.media.document;
+            if (!doc || !/^(audio|video)\\//.test(doc.mime_type || '') || doc.size > ${MEDIA_MAX_BYTES}) return null;
+            return appDownloadManager.downloadMediaURL({ media: doc }).then(function (url) { return fetch(url); }).then(function (r) { return r.blob(); }).then(function (blob) {
+                return new Promise(function (resolve) {
+                    var fr = new FileReader();
+                    fr.onload = function () { resolve({ data: String(fr.result), mime: blob.type || doc.mime_type }); };
+                    fr.onerror = function () { resolve(null); };
+                    fr.readAsDataURL(blob);
+                });
+            });
+        }).catch(function () { return null; });
+    })()`,
     OLDER: `(function () {
         var chat = document.querySelector('.chats-container > .chat.active, #column-center .chat.active');
         var s = chat && chat.querySelector('.bubbles .scrollable-y, .bubbles-inner');
@@ -239,21 +321,67 @@ const telegram = {
     })()`
 }
 
+// MAX's messages carry no id on the page, and its numbering of them (data-index) shifts whenever earlier messages are
+// loaded above. A message is known by what it is: its time, side, the start of its text, its sound's length or file's
+// name, how many photos — and, for messages exactly alike, which one of them it is. Reading, answering and playing all
+// find a message this way.
+const MAX_ID_HELPER = `
+function __mxTime(w) {
+    var times = w.querySelectorAll('.text, .time');
+    for (var t = times.length - 1; t >= 0; t--) { var v = __ciText(times[t]); if (/^\\d{1,2}:\\d{2}$/.test(v)) return v; }
+    return '';
+}
+function __mxKey(w) {
+    var textEl = w.querySelector('span.text[data-message-markup]');
+    // a voice message by its waveform: its time label turns into the playing position once MAX's player touches it
+    var peaks = w.querySelectorAll('[class*=attachAudio] .peak'), wave = '';
+    for (var p = 0; p < peaks.length && p < 12; p++) wave += Math.round(parseFloat(peaks[p].style.height) || 0) + '.';
+    var extra = peaks.length ? 'v' + peaks.length + ':' + wave : __ciText(w.querySelector('.attaches .title'));
+    // «+» joins the ids of photos shown as one album: it is kept out of a message's own id
+    return (__mxTime(w) + '|' + (w.getAttribute('data-bubbles-variant') === 'outgoing' ? 'o' : 'i') + '|' + (textEl ? __ciText(textEl).slice(0, 40) : '') + '|' + String(extra || '').slice(0, 30) + '|' + w.querySelectorAll('[class*=tile]').length).split('+').join('');
+}
+// every message of the open chat with its id, in order (the n-th of messages exactly alike gets #n)
+function __mxAll() {
+    var seen = {}, out = [];
+    var ws = document.querySelectorAll('.openedChat div.item[data-index] [data-bubbles-variant]');
+    for (var i = 0; i < ws.length; i++) { var k = __mxKey(ws[i]); seen[k] = (seen[k] || 0) + 1; out.push({ w: ws[i], id: k + '#' + seen[k] }); }
+    return out;
+}
+function __mxFind(id) { var all = __mxAll(); for (var i = 0; i < all.length; i++) if (all[i].id === id) return all[i].w; return null; }
+`
+
 const max = {
-    CHAT: `(function () {${AVATAR_HELPER}${IMAGE_HELPER}
+    CHAT: `(function () {${AVATAR_HELPER}${IMAGE_HELPER}${MAX_ID_HELPER}
         var chat = document.querySelector('.openedChat');
         if (!chat) return { title: '', subtitle: '', messages: [], none: true };
+        // while photos are warmed up the tab shows an earlier part of the chat: this read gives nothing, the last one stays
+        if (window.__ciMaxWarming && Date.now() - (window.__ciMaxWarmingAt || 0) < ${MAX_WARM_GIVE_UP_MS}) return { title: __ciText(chat.querySelector('.topbar span.title')), subtitle: '', messages: null, busy: true };
         var items = chat.querySelectorAll('div.item[data-index]');
         var out = [], list = [];
+        // MAX puts a photo on the page only when it is scrolled to; until then a small blurred copy stands in its place.
+        // Such photos are warmed up: the tab behind our window is scrolled to them for a moment, MAX loads them, a copy
+        // is kept under the blurred copy's own fingerprint (MAX's numbering of messages may shift; the photo's does not)
+        var phMemo = window.__ciMaxPh || (window.__ciMaxPh = {});
+        function phPrint(v) { return v.length + ':' + v.slice(-48); }
+        function placeholderOf(tile) {
+            var ph = tile.querySelector('[class*=placeholder]') || tile;
+            var bg = /url\\(["']?(data:image[^"')]+)/.exec(ph.style.backgroundImage || '');
+            return bg ? bg[1] : '';
+        }
+        var cold = [];
+        // the id of every message, known by what it is (MAX_ID_HELPER)
+        __mxAll().forEach(function (x) { x.w.__ciId = x.id; });
+        var capsSeen = {};
         for (var i = 0; i < items.length; i++) if (items[i].querySelector('.messageWrapper, .capsule')) list.push(items[i]);
         var start = Math.max(0, list.length - ${MAX_MESSAGES});
         for (var j = start; j < list.length; j++) {
             var it = list[j];
             var capsule = it.querySelector('.capsule');
-            if (capsule) out.push({ id: 'c' + it.getAttribute('data-index') + __ciText(capsule), kind: 'service', text: __ciText(capsule) });
+            if (capsule) { var ct = __ciText(capsule); capsSeen[ct] = (capsSeen[ct] || 0) + 1; out.push({ id: 'c' + ct + '#' + capsSeen[ct], kind: 'service', text: ct }); }
             var wrappers = it.querySelectorAll('[data-bubbles-variant]');
             for (var k = 0; k < wrappers.length; k++) {
                 var w = wrappers[k];
+                var id = w.__ciId || __mxKey(w);
                 var textEl = w.querySelector('span.text[data-message-markup]');
                 var times = w.querySelectorAll('.text, .time');
                 var time = '';
@@ -274,12 +402,22 @@ const max = {
                 var grid = contactBox ? null : w.querySelector('[class*=grid][aria-label], [class*=grid]');
                 var tiles = grid ? grid.querySelectorAll('[class*=tile]') : [];
                 var album = null, gridPic = '';
+                // the page's key of the copy a tile shows (a click opens it large)
+                var tileKey = '';
                 function tileSrc(tile, key) {
                     var im = tile.querySelector('img');
-                    if (im && (im.naturalWidth > 40 || /^https?:/i.test(im.src))) return __ciPicture(key, im);
-                    var ph = tile.querySelector('[class*=placeholder]') || tile;
-                    var bg = /url\\(["']?(data:image[^"')]+)/.exec(ph.style.backgroundImage || '');
-                    return bg ? bg[1] : '';
+                    tileKey = key;
+                    // the photo once it is copied; until then MAX's blurred placeholder of it
+                    var got = im && (im.naturalWidth > 40 || /^https?:/i.test(im.src)) ? __ciPicture(key, im) : '';
+                    if (got) return got;
+                    var ph = placeholderOf(tile);
+                    if (ph) {
+                        var warm = phMemo[phPrint(ph)];
+                        if (warm && __ciImg[warm.key] && __ciImg[warm.key].data) { tileKey = warm.key; return __ciImg[warm.key].data; }
+                        tileKey = '';
+                        if (!im && cold.indexOf(it) < 0) cold.push(it);
+                    }
+                    return ph;
                 }
                 if (tiles.length) {
                     var gw = parseFloat(grid.style.width) || 0, gh = parseFloat(grid.style.height) || 0;
@@ -287,12 +425,13 @@ const max = {
                         album = [];
                         for (var ti = 0; ti < tiles.length; ti++) {
                             var st = tiles[ti].style;
-                            album.push({ key: 'mx' + it.getAttribute('data-index') + '_' + ti, src: tileSrc(tiles[ti], 'mx' + it.getAttribute('data-index') + '_' + ti),
+                            album.push({ key: 'mx' + id + '_' + ti, src: tileSrc(tiles[ti], 'mx' + id + '_' + ti), picture: tileKey,
                                 x: (parseFloat(st.left) || 0) / 100, y: (parseFloat(st.top) || 0) / 100, w: (parseFloat(st.width) || 100) / 100, h: (parseFloat(st.height) || 100) / 100,
                                 ratio: gw && gh ? gw / gh : 1 });
                         }
                     } else {
-                        gridPic = tileSrc(tiles[0], 'mxg' + it.getAttribute('data-index'));
+                        gridPic = tileSrc(tiles[0], 'mxg' + id);
+                        var gridKey = tileKey;
                         if (!photo) photo = tiles[0].querySelector('img') || null;
                     }
                 }
@@ -305,7 +444,6 @@ const max = {
                     contactNote = bits.filter(function (x) { return x !== contactName; })[0] || '';
                 }
                 if (!text && !photo && !album && !gridPic && kind === 'text') continue;
-                var id = it.getAttribute('data-index') + ':' + k + ':' + time + ':' + text.slice(0, 24);
                 out.push({
                     id: id,
                     out: w.getAttribute('data-bubbles-variant') === 'outgoing',
@@ -321,18 +459,65 @@ const max = {
                     text: text,
                     name: kind === 'file' ? __ciText(w.querySelector('.attaches .title, [class*=file] [class*=name], [class*=document] [class*=name]')) : (kind === 'contact' ? contactName : ''),
                     phone: kind === 'contact' ? contactNote : '',
-                    duration: kind === 'voice' ? __ciText(w.querySelector('[class*=attachAudio] .duration, .duration')) : '',
+                    // the length as MAX first wrote it (later the label shows the position of MAX's player)
+                    duration: kind === 'voice' ? (function () {
+                        var lens = window.__ciMxLen || (window.__ciMxLen = {});
+                        var now = __ciText(w.querySelector('[class*=attachAudio] .duration, .duration'));
+                        if (!lens[id] && now && !/^0?0:00$/.test(now)) lens[id] = now;
+                        return lens[id] || now;
+                    })() : '',
+                    // MAX draws the voice message's waveform as bars with their height in per cent
+                    wave: kind === 'voice' ? [].map.call(w.querySelectorAll('[class*=attachAudio] .peak'), function (p) { return (parseFloat(p.style.height) || 0) * 0.31; }) : null,
                     size: kind === 'file' ? __ciText(w.querySelector('.attaches .info')).replace(/^.*•\\s*/, '') : '',
-                    media: album ? '' : (photo ? __ciPicture('max' + id, photo) : '') || gridPic || (contactBox ? __ciPicture('maxc' + id, contactBox.querySelector('img')) : ''),
+                    media: album ? '' : gridPic || (photo ? __ciPicture('max' + id, photo) : '') || (contactBox ? __ciPicture('maxc' + id, contactBox.querySelector('img')) : ''),
                     album: album,
                     // the picture's own size: MAX may draw a file's picture as a thin strip
                     mediaW: (photo && photo.naturalWidth) || (grid ? parseFloat(grid.style.width) || 0 : 0),
                     mediaH: (photo && photo.naturalHeight) || (grid ? parseFloat(grid.style.height) || 0 : 0),
-                    picture: photo ? 'max' + id : '',
+                    picture: gridPic ? (gridKey || '') : (photo ? 'max' + id : ''),
                     time: time
                 });
             }
         }
+        if (cold.length && !(window.__ciMaxWarming && Date.now() - (window.__ciMaxWarmingAt || 0) < ${MAX_WARM_GIVE_UP_MS})) (function warmUp() {
+            var tried = window.__ciMaxTried || (window.__ciMaxTried = {});
+            var todo = [];
+            cold.forEach(function (item) {
+                var prints = [].map.call(item.querySelectorAll('[class*=tile]'), function (t) { var p = placeholderOf(t); return p ? phPrint(p) : ''; });
+                var k = prints.join('|');
+                if (!prints.some(Boolean) || (tried[k] || 0) >= 2) return;
+                tried[k] = (tried[k] || 0) + 1;
+                todo.push({ item: item, prints: prints });
+            });
+            var box = todo.length && todo[0].item.closest('.scrollListScrollable');
+            if (!box) return;
+            window.__ciMaxWarming = true;
+            window.__ciMaxWarmingAt = Date.now();
+            var startTop = box.scrollTop, atBottom = startTop + box.clientHeight >= box.scrollHeight - 8, n = 0, startPath = location.pathname;
+            // back where the chat was — only if it is still the same chat on the page
+            function finish() {
+                window.__ciMaxWarming = false;
+                if (location.pathname === startPath && box.isConnected) box.scrollTop = atBottom ? box.scrollHeight : startTop;
+            }
+            (function next() {
+                try {
+                if (n >= todo.length || n >= ${MAX_WARM_ITEMS} || location.pathname !== startPath) return finish();
+                var job = todo[n++];
+                if (!job.item.isConnected) return next();
+                job.item.scrollIntoView({ block: 'center' });
+                var waited = 0;
+                (function look() {
+                    var tiles = job.item.querySelectorAll('[class*=tile]'), done = 0;
+                    for (var q = 0; q < tiles.length; q++) {
+                        var im = tiles[q].querySelector('img');
+                        if (im && /^https:/i.test(im.src) && job.prints[q]) { var key = 'mxph' + job.prints[q]; phMemo[job.prints[q]] = { key: key }; __ciPicture(key, im); done++; }
+                    }
+                    if (done >= tiles.length || ++waited > ${MAX_WARM_TRIES}) return next();
+                    setTimeout(look, ${MAX_WARM_STEP_MS});
+                })();
+                } catch (e) { finish(); }
+            })();
+        })();
         return {
             title: __ciText(chat.querySelector('.topbar span.title')),
             // «Был(-а) вчера в 21:12», «в сети», «печатает…», «12 участников» — the line under the name in MAX's header
@@ -366,23 +551,60 @@ const max = {
     MEDIA_POPUP: '',
     // answer a message: MAX shows its «Ответить» button only under the mouse, so the tab first gets the mouse over
     // the message (REPLY_POINT gives where), then the button is pressed
-    REPLY_POINT: (id) => `(function () {
-        var parts = ${JSON.stringify(String(id))}.split(':');
-        var it = document.querySelector('.openedChat div.item[data-index="' + parts[0] + '"]');
-        var bubbles = it ? it.querySelectorAll('[data-bubbles-variant] .bubble') : [];
-        var b = bubbles[Number(parts[1]) || 0] || bubbles[0];
+    REPLY_POINT: (id) => `(function () {${AVATAR_HELPER}${MAX_ID_HELPER}
+        var w = __mxFind(${JSON.stringify(String(id))});
+        var b = w && (w.querySelector('.bubble') || w);
         if (!b) return null;
         b.scrollIntoView({ block: 'nearest' });
         var r = b.getBoundingClientRect();
         return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
     })()`,
-    REPLY: (id) => `(function () {
-        var parts = ${JSON.stringify(String(id))}.split(':');
-        var it = document.querySelector('.openedChat div.item[data-index="' + parts[0] + '"]');
+    REPLY: (id) => `(function () {${AVATAR_HELPER}${MAX_ID_HELPER}
+        var w = __mxFind(${JSON.stringify(String(id))});
+        var it = w && w.closest('div.item[data-index]');
         var button = it && it.querySelector('button[aria-label="Ответить"]');
         if (!button) return false;
         button.click();
         return true;
+    })()`,
+    // a voice message: MAX gives the address of its sound only to its own player — its play button is pressed with the
+    // sound off, the address is taken and MAX's player stopped; the sound is then asked for as a plain request
+    MEDIA: (id) => `(function () {${AVATAR_HELPER}${MAX_ID_HELPER}
+        // one at a time: MAX has one player, a second press while the first is taken would hand over the wrong sound
+        function take() {
+        var w = __mxFind(${JSON.stringify(String(id))});
+        var box = w && w.querySelector('[class*=attachAudio]');
+        var button = box && box.querySelector('button');
+        if (!button) return null;
+        var au = document.querySelector('audio');
+        if (!au) return null;
+        var before = au.src;
+        au.muted = true;
+        button.click();
+        return new Promise(function (resolve) {
+            var started = Date.now();
+            (function wait() {
+                if (au.src && (au.src !== before || !au.paused)) {
+                    var src = au.src;
+                    au.pause(); au.muted = false;
+                    if (src.indexOf('https://') !== 0) return resolve(null);
+                    fetch(src, { credentials: 'omit' }).then(function (r) { return r.ok ? r.blob() : null; }).then(function (blob) {
+                        if (!blob || blob.size > ${MEDIA_MAX_BYTES}) return resolve(null);
+                        var fr = new FileReader();
+                        fr.onload = function () { resolve({ data: String(fr.result), mime: blob.type || 'audio/ogg' }); };
+                        fr.onerror = function () { resolve(null); };
+                        fr.readAsDataURL(blob);
+                    }).catch(function () { resolve(null); });
+                    return;
+                }
+                if (Date.now() - started > ${MAX_AUDIO_WAIT_MS}) { au.pause(); au.muted = false; return resolve(null); }
+                setTimeout(wait, 50);
+            })();
+        });
+        }
+        var next = (window.__ciMxMedia || Promise.resolve()).then(take, take);
+        window.__ciMxMedia = next.then(function () {}, function () {});
+        return next;
     })()`,
     OLDER: `(function () {
         var chat = document.querySelector('.openedChat');
@@ -412,6 +634,8 @@ function fullPicture(key) {
                 } catch (e) { resolve(''); }
             };
             img.onerror = function () { resolve(''); };
+            // a picture from another site is asked for openly, so it can be copied (MAX's photo server allows it)
+            if (/^https:/i.test(c.src)) img.crossOrigin = 'anonymous';
             img.src = c.src;
         });
     })()`

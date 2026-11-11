@@ -737,3 +737,42 @@ html[data-theme="light"] .aic[data-bg="plain"] .aic-opening-text { color: var(--
 
 /* avatars drawn smoothly when the picture is scaled down */
 .ai-ava > img:not(.ai-service), .aic-ava > img, .aic-avatar img, .aic-contact-ava img { image-rendering: auto; transform: translateZ(0); }
+
+/* a voice message that plays right in the conversation, like in Telegram */
+.aic-voice { display: flex; align-items: center; gap: 10px; min-width: 236px; margin: 2px 0 4px; }
+.aic-voice-btn {
+    position: relative; flex: 0 0 44px; width: 44px; height: 44px; border-radius: 50%; border: 0; padding: 0; cursor: pointer;
+    display: grid; place-items: center; background: #3390ec; color: #fff;
+    transition: transform .12s ease, filter .12s ease;
+}
+.aic-row.is-out .aic-voice-btn { background: #fff; color: var(--out-bg); }
+.aic-voice-btn:hover { filter: brightness(1.1); }
+.aic-voice-btn:active { transform: scale(.93); }
+.aic-voice-btn:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+.aic-voice-btn > span { grid-area: 1 / 1; display: grid; place-items: center; }
+.aic-voice-pause, .aic-voice-spin { display: none !important; }
+.aic-voice.is-playing .aic-voice-play { display: none; }
+.aic-voice.is-playing .aic-voice-pause { display: grid !important; }
+.aic-voice.is-loading .aic-voice-play { opacity: 0; }
+.aic-voice.is-loading .aic-voice-spin {
+    display: block !important; width: 40px; height: 40px; border-radius: 50%;
+    border: 2px solid transparent; border-top-color: currentColor; animation: aic-voice-spin .8s linear infinite;
+}
+@keyframes aic-voice-spin { to { transform: rotate(360deg); } }
+.aic-voice-info { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 4px; }
+.aic-voice-wave { display: flex; align-items: center; gap: 2px; height: 24px; cursor: pointer; }
+.aic-voice-wave i { flex: 0 0 3px; min-height: 3px; border-radius: 2px; background: currentColor; opacity: .38; transition: opacity .12s linear; }
+.aic-row.is-in .aic-voice-wave i { color: #3390ec; }
+.aic-voice-wave i.is-on { opacity: 1; }
+.aic-voice-time { font-size: 12.5px; color: var(--meta); font-variant-numeric: tabular-nums; }
+.aic-voice.is-failed .aic-voice-time { color: #e5484d; }
+@media (prefers-reduced-motion: reduce) { .aic-voice.is-loading .aic-voice-spin { animation-duration: 2.4s; } }
+
+/* videos: their length on the picture, round video messages are round, a video being fetched shows it */
+.aic-video-time { position: absolute; left: 8px; top: 8px; padding: 2px 7px; border-radius: 999px; background: rgba(0, 0, 0, .5); color: #fff; font-size: 12px; font-variant-numeric: tabular-nums; }
+.aic-photo.is-round { border-radius: 50%; overflow: hidden; }
+.aic-bubble:has(.aic-photo.is-round) { background: transparent !important; box-shadow: none !important; }
+.aic-photo.is-loading .aic-play { animation: aic-voice-spin 1s linear infinite; border: 2px solid transparent; border-top-color: #fff; }
+.aic-photo.is-loading .aic-play svg { opacity: 0; }
+.aic-lightbox.is-video .aic-lb-stage video { max-width: 100%; max-height: 100%; border-radius: 10px; box-shadow: 0 24px 70px rgba(0, 0, 0, .55); background: #000; outline: none; animation: aic-lb-pop .18s cubic-bezier(.2, .8, .2, 1); }
+.aic-lb-stage video[hidden], .aic-lb-stage img[hidden] { display: none; }

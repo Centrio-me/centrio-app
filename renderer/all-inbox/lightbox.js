@@ -45,7 +45,21 @@ function createLightbox({ root, onPicture }) {
     const img = document.createElement('img')
     img.alt = ''
     img.draggable = false
-    stage.append(img)
+    // a video of the conversation plays here too, with the player's own controls
+    const video = document.createElement('video')
+    video.controls = true
+    video.playsInline = true
+    video.hidden = true
+    stage.append(img, video)
+    let videoUrl = ''
+    function dropVideo() {
+        video.pause()
+        video.removeAttribute('src')
+        video.load()
+        video.hidden = true
+        box.classList.remove('is-video', 'is-round')
+        if (videoUrl) { URL.revokeObjectURL(videoUrl); videoUrl = '' }
+    }
     const top = el('div', 'aic-lb-top')
     const who = el('div', 'aic-lb-who')
     const counter = el('div', 'aic-lb-count')
@@ -80,6 +94,8 @@ function createLightbox({ root, onPicture }) {
         at = (index + items.length) % items.length
         const item = items[at]
         const token = ++shownToken
+        dropVideo()
+        img.hidden = false
         resetZoom()
         img.src = item.src
         who.textContent = [item.out ? 'Вы' : (item.author || fallbackName), item.time].filter(Boolean).join(' · ')
@@ -99,7 +115,27 @@ function createLightbox({ root, onPicture }) {
         box.focus()
         show(start)
     }
-    function hide() { box.hidden = true; img.removeAttribute('src'); items = []; shownToken++ }
+    function hide() { box.hidden = true; img.removeAttribute('src'); dropVideo(); items = []; shownToken++ }
+
+    /** A video (a blob: address made by our window): plays at once; the address is given back on close. */
+    function openVideo(url, label, round = false) {
+        shownToken++
+        dropVideo()
+        videoUrl = url
+        items = []
+        img.hidden = true
+        img.removeAttribute('src')
+        who.textContent = label || ''
+        counter.textContent = ''
+        prev.hidden = next.hidden = true
+        box.classList.add('is-video')
+        box.classList.toggle('is-round', round)
+        video.hidden = false
+        video.src = url
+        box.hidden = false
+        box.focus()
+        video.play().catch(() => {})
+    }
 
     close.addEventListener('click', hide)
     prev.addEventListener('click', (e) => { e.stopPropagation(); show(at - 1) })
@@ -108,11 +144,13 @@ function createLightbox({ root, onPicture }) {
     box.addEventListener('click', (e) => { if (e.target === box || e.target === stage) hide() })
     box.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); hide() }
+        else if (!video.hidden) { if (e.key === ' ' && e.target !== video) { e.preventDefault(); video.paused ? video.play().catch(() => {}) : video.pause() } }
         else if (e.key === 'ArrowLeft') show(at - 1)
         else if (e.key === 'ArrowRight') show(at + 1)
     })
     box.addEventListener('wheel', (e) => {
         e.preventDefault()
+        if (!video.hidden) return
         const k = e.deltaY < 0 ? WHEEL_STEP : 1 / WHEEL_STEP
         scale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, scale * k))
         if (scale === 1) { dx = 0; dy = 0 }
@@ -128,7 +166,7 @@ function createLightbox({ root, onPicture }) {
     img.addEventListener('pointermove', (e) => { if (drag) { dx = e.clientX - drag.x; dy = e.clientY - drag.y; apply() } })
     img.addEventListener('pointerup', () => { drag = null })
 
-    return { open, hide, isOpen: () => !box.hidden }
+    return { open, openVideo, hide, isOpen: () => !box.hidden }
 }
 
 module.exports = { createLightbox, galleryOf }
