@@ -24,8 +24,12 @@ function __igThreads(src) {
 }
 // the messages of a chat, newest first (the conversation's own list, else the one the inbox loaded)
 function __igMessages(src, t) {
-    var conn = __igRef(src, t, '__IGDMessagesList_slide_messages_connection') || __igRef(src, t, '__IGDInbox__slide_messages_connection');
-    return __igRefs(src, conn, 'edges').map(function (e) { return __igRef(src, e, 'node'); }).filter(Boolean);
+    var names = ['__IGDMessagesList_slide_messages_connection', '__IGDInbox__slide_messages_connection'];
+    for (var i = 0; i < names.length; i++) {
+        var got = __igRefs(src, __igRef(src, t, names[i]), 'edges').map(function (e) { return __igRef(src, e, 'node'); }).filter(Boolean);
+        if (got.length) return got;
+    }
+    return [];
 }
 function __igViewerFbid(src, t) { var v = __igRef(src, t, 'viewer'); return v ? String(v.interop_messaging_user_fbid || '') : ''; }
 // the latest moment the other side has read up to
@@ -56,7 +60,7 @@ function instagramList() {
             var src = __igSrc();
             if (!src) return [];
             var out = [];
-            __igThreads(src).forEach(function (t) {
+            __igThreads(src).forEach(function (t) { try {
                 if (t.folder === 'SPAM' || t.system_folder === 'SPAM') return;
                 var users = __igRefs(src, t, 'users');
                 var title = t.thread_title || users.map(function (u) { return u.full_name || u.username; }).join(', ');
@@ -81,7 +85,8 @@ function instagramList() {
                     outState: mine ? (__igReadUpTo(src, t, me) >= Number(last.timestamp_ms) ? 'read' : 'sent') : '',
                     avatar: !t.is_group && users[0] ? users[0].profile_pic_url || '' : (t.thread_image_url || '')
                 });
-            });
+            // one chat Instagram keeps in an unexpected shape does not cost the whole list
+            } catch (e) {} });
             out.sort(function (a, b) { return b.at - a.at; });
             return out.slice(0, ${IG_CHATS});
         })()`,
@@ -162,7 +167,8 @@ function instagramChat() {
                 if (row.kind === 'text' && !row.text) return;
                 out.push(row);
             });
-            return { title: title, subtitle: '', canWrite: true, messages: out };
+            // nothing loaded yet for this chat (Instagram is still fetching it): the turning mark stays, not «no messages»
+            return { title: title, subtitle: '', canWrite: true, messages: out.length ? out : null };
         })()`,
         COMPOSER: `(function () {
             var all = document.querySelectorAll('div[role="textbox"][contenteditable="true"]');

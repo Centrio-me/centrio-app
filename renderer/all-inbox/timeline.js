@@ -28,7 +28,8 @@ const POLL_TYPES = new Set(['anon', 'public', 'quiz'])
 function cleanPoll(p) {
     if (!p || typeof p !== 'object') return null
     const cut = (v, n) => String(v || '').replace(/\s+/g, ' ').trim().slice(0, n)
-    const options = (Array.isArray(p.options) ? p.options : []).filter((o) => o && cut(o.text, 300)).slice(0, MAX_POLL_OPTIONS)
+    // each option keeps its place in the messenger's poll: a vote names it by that place
+    const options = (Array.isArray(p.options) ? p.options : []).map((o, index) => ({ ...o, index })).filter((o) => o && cut(o.text, 300)).slice(0, MAX_POLL_OPTIONS)
     const question = cut(p.question, 300)
     if (!question && !options.length) return null
     const total = Math.max(0, Math.round(Number(p.total) || 0))
@@ -42,7 +43,7 @@ function cleanPoll(p) {
         total,
         options: options.map((o) => {
             const votes = Math.max(0, Math.round(Number(o.votes) || 0))
-            return { text: cut(o.text, 300), votes, pct: total ? Math.round((votes / total) * 100) : 0, chosen: o.chosen === true, correct: o.correct === true }
+            return { index: o.index, text: cut(o.text, 300), votes, pct: total ? Math.round((votes / total) * 100) : 0, chosen: o.chosen === true, correct: o.correct === true }
         })
     }
 }

@@ -134,7 +134,7 @@ const POLL_TYPE_LABEL = { anon: 'Анонимный опрос', public: 'Опр
 // and once you voted or it is closed, each option's share with a bar and your choice ticked
 function pollCard(m, ctx) {
     const p = m.poll
-    const box = el('div', `aic-poll${p.showResults ? ' is-results' : ''}`)
+    const box = el('div', `aic-poll${p.showResults ? ' is-results' : ''}${ctx.isVoting && ctx.isVoting(m.id) ? ' is-sending' : ''}`)
     box.append(el('div', 'aic-poll-q', p.question))
     const sub = [p.closed ? 'Опрос завершён' : POLL_TYPE_LABEL[p.type], p.multiple && !p.showResults ? 'можно несколько' : ''].filter(Boolean).join(' · ')
     box.append(el('div', 'aic-poll-type', sub))
@@ -142,7 +142,8 @@ function pollCard(m, ctx) {
     const picked = new Set()
     const canVote = !p.showResults && typeof ctx.onVote === 'function'
     let send = null
-    p.options.forEach((o, i) => {
+    p.options.forEach((o) => {
+        const i = o.index
         if (p.showResults) {
             const row = el('div', `aic-poll-opt is-result${o.chosen ? ' is-chosen' : ''}${o.correct ? ' is-correct' : ''}`)
             row.style.setProperty('--pct-n', String(o.pct / 100))

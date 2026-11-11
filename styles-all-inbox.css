@@ -800,7 +800,7 @@ html[data-theme="light"] .aic[data-bg="plain"] .aic-opening-text { color: var(--
     isolation: isolate;
 }
 .aic::after {
-    content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 1px; pointer-events: none; z-index: 30;
+    content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 1px; pointer-events: none; z-index: 5;
     background: linear-gradient(135deg,
         color-mix(in srgb, var(--accent, #7c6cf0) 75%, transparent) 0%,
         rgba(255, 255, 255, .14) 18%, rgba(255, 255, 255, .05) 45%, rgba(255, 255, 255, .03) 60%,
@@ -847,8 +847,8 @@ button.aic-poll-opt:disabled { cursor: default; }
 
 /* the list's edge next to the page: dragged to make the list wider or narrower */
 .all-inbox-panel { position: relative; }
-.ai-resize { position: absolute; top: 14px; bottom: 14px; right: -7px; width: 12px; cursor: col-resize; z-index: 6; touch-action: none; outline: none; }
-.ai-resize.is-left { right: auto; left: -7px; }
+.ai-resize { position: absolute; top: 14px; bottom: 14px; right: 0; width: 10px; cursor: col-resize; z-index: 6; touch-action: none; outline: none; }
+.ai-resize.is-left { right: auto; left: 0; }
 .ai-resize::after {
     content: ''; position: absolute; top: 50%; left: 50%; width: 4px; height: 44px; margin: -22px 0 0 -2px; border-radius: 2px;
     background: var(--text-muted); opacity: 0; transition: opacity .15s, height .15s, margin .15s, background .15s;

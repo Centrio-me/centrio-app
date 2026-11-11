@@ -112,6 +112,15 @@ function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab
         if (s.id === m.id && s.failed) { onOpenInTab(); return }
         player.toggle(m.id)
     }
+    // a vote: one at a time per poll; if the messenger did not take it, the poll can be voted in again
+    const voting = new Set()
+    async function vote(m, indexes) {
+        if (voting.has(m.id)) return
+        voting.add(m.id)
+        const ok = await Promise.resolve(onVote(m, indexes)).catch(() => false)
+        voting.delete(m.id)
+        if (!ok) for (const box of list.querySelectorAll(`.aic-row[data-id="${CSS.escape(m.id)}"] .aic-poll`)) box.classList.remove('is-sending')
+    }
     // a video: taken from the page and played on the whole window; one too big or not given opens in the messenger
     let videoToken = 0
     async function onVideo(m, holder) {
@@ -282,7 +291,7 @@ function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab
             const playable = canPlay()
             const ctx = { isGroup, onLink, onZoom: zoom, onOpenInTab, onReply: canReply() ? (m) => composer.replyTo(m) : null,
                 onVoice: playable ? onVoice : null, onSeek: (m, part) => player.seek(m.id, part), onVideo: playable ? onVideo : null, playerState: player.state,
-                onVote: onVote && canVote() ? onVote : null }
+                onVote: onVote && canVote() ? vote : null, isVoting: (id) => voting.has(id) }
             byId = new Map()
             const firstDraw = !seenIds.size
             let arrived = 0

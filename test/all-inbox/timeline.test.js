@@ -106,3 +106,8 @@ test('a shared post with no words of its own is kept as its card', () => {
     assert.equal(rows.length, 1)
     assert.equal(rows[0].webpage.title, 'tipadiler')
 })
+
+test('a poll option keeps its place in the messenger poll even when an empty one before it is left out', () => {
+    const rows = buildTimeline([{ id: '1', kind: 'poll', poll: { question: 'Q', options: [{ text: '' }, { text: 'A' }, { text: 'B' }] } }], Date.now()).filter((r) => r.type === 'msg')
+    assert.deepEqual(rows[0].poll.options.map((o) => [o.text, o.index]), [['A', 1], ['B', 2]])
+})

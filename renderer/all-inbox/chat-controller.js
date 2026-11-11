@@ -74,10 +74,11 @@ function createChatController({ state, webviewOf, host, ipcRenderer }) {
         // a vote in a poll goes through the messenger's own vote; the poll is read again right after
         onVote: async (m, indexes) => {
             const w = tab()
-            if (!w || !current || typeof current.adapter.VOTE !== 'function') return
-            await run(w, current.adapter.VOTE(String(m.id).split('+')[0], indexes), VOTE_TIMEOUT_MS)
+            if (!w || !current || typeof current.adapter.VOTE !== 'function') return false
+            const ok = (await run(w, current.adapter.VOTE(String(m.id).split('+')[0], indexes), VOTE_TIMEOUT_MS)) === true
             setTimeout(poll, AFTER_VOTE_MS)
             setTimeout(poll, AFTER_VOTE_MS * 4)
+            return ok
         },
         // the sound or video of a message, taken from the tab by the messenger's own downloader
         onMedia: async (id) => {

@@ -62,12 +62,17 @@ function attachPanelResize({ panel, contentOf }) {
             edge.removeEventListener('pointermove', move)
             edge.removeEventListener('pointerup', up)
             edge.removeEventListener('pointercancel', up)
+            edge.removeEventListener('lostpointercapture', up)
+            window.removeEventListener('blur', up)
             document.body.classList.remove('ai-resizing')
             save(width)
         }
         edge.addEventListener('pointermove', move)
         edge.addEventListener('pointerup', up)
         edge.addEventListener('pointercancel', up)
+        // the mouse let go somewhere the edge never heard of it: the drag still ends
+        edge.addEventListener('lostpointercapture', up)
+        window.addEventListener('blur', up)
     })
     edge.addEventListener('dblclick', () => { width = DEFAULT_W; apply(); save(width) })
     // the keyboard: ←/→ by 20 px
