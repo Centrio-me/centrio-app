@@ -33,10 +33,11 @@ module.exports = {
             teamLine: 'Рабочее время команды: {hours}',
             teamHint: 'Задаёт руководитель. Вне этого времени рабочие мессенджеры команды не присылают уведомлений и не звучат. Сообщения не теряются: они ждут в центре уведомлений и в утренней сводке.',
             enable: 'Мой график',
-            enableHint: 'Вне рабочего времени выбранные сервисы затихают: без всплывающих окон и звука. Счётчик непрочитанных продолжает работать.',
+            enableHint: 'Рабочие сервисы затихают вне рабочего времени, личные — в рабочее время. Без всплывающих окон и звука; счётчик непрочитанных работает, сообщения ждут в центре уведомлений.',
             days: 'Рабочие дни', hours: 'Часы', hoursHint: 'Если конец раньше начала, смена переходит через полночь.',
-            servicesTitle: 'Рабочие сервисы',
-            servicesHint: 'Эти сервисы затихают вне рабочего времени. Остальные работают как обычно.',
+            servicesTitle: 'Когда присылать уведомления',
+            servicesHint: 'Рабочий — только в рабочее время. Личный — только вечером и в выходные. Всегда — как обычно.',
+            mode_always: 'Всегда', mode_work: 'Рабочий', mode_personal: 'Личный', mode_alwaysHint: 'Уведомления приходят всегда', mode_workHint: 'Затихает вне рабочего времени и в выходные', mode_personalHint: 'Затихает в рабочее время, не отвлекает днём',
             d1: 'Пн', d2: 'Вт', d3: 'Ср', d4: 'Чт', d5: 'Пт', d6: 'Сб', d7: 'Вс'
         }
     },
@@ -72,10 +73,11 @@ module.exports = {
             teamLine: 'Team work hours: {hours}',
             teamHint: 'Set by your manager. Outside these hours team messengers send no notifications and make no sound. Messages are not lost: they wait in the notification centre and the morning summary.',
             enable: 'My schedule',
-            enableHint: 'Outside work hours the chosen services go quiet: no pop-ups and no sound. Unread counters keep counting.',
+            enableHint: 'Work services go quiet outside work hours, personal ones during them. No pop-ups and no sound; unread counters keep counting and messages wait in the notification centre.',
             days: 'Work days', hours: 'Hours', hoursHint: 'If the end is earlier than the start, the shift crosses midnight.',
-            servicesTitle: 'Work services',
-            servicesHint: 'These services go quiet outside work hours. The rest work as usual.',
+            servicesTitle: 'When to notify',
+            servicesHint: 'Work — only during work hours. Personal — only in the evening and on days off. Always — as usual.',
+            mode_always: 'Always', mode_work: 'Work', mode_personal: 'Personal', mode_alwaysHint: 'Notifications always come', mode_workHint: 'Quiet outside work hours and on days off', mode_personalHint: 'Quiet during work hours',
             d1: 'Mon', d2: 'Tue', d3: 'Wed', d4: 'Thu', d5: 'Fri', d6: 'Sat', d7: 'Sun'
         }
     },
@@ -105,9 +107,10 @@ module.exports = {
         wh: {
             title: 'Arbeitszeit', teamLine: 'Arbeitszeit des Teams: {hours}',
             teamHint: 'Vom Vorgesetzten festgelegt. Außerhalb dieser Zeit senden Team-Messenger keine Benachrichtigungen und keinen Ton. Nachrichten gehen nicht verloren.',
-            enable: 'Mein Zeitplan', enableHint: 'Außerhalb der Arbeitszeit werden die gewählten Dienste still: keine Pop-ups, kein Ton.',
+            enable: 'Mein Zeitplan', enableHint: 'Arbeitsdienste werden außerhalb der Arbeitszeit still, private während der Arbeitszeit. Keine Pop-ups, kein Ton; Zähler laufen weiter.',
             days: 'Arbeitstage', hours: 'Uhrzeit', hoursHint: 'Liegt das Ende vor dem Beginn, geht die Schicht über Mitternacht.',
-            servicesTitle: 'Arbeitsdienste', servicesHint: 'Diese Dienste werden außerhalb der Arbeitszeit still.',
+            servicesTitle: 'Wann benachrichtigen', servicesHint: 'Arbeit — nur während der Arbeitszeit. Privat — nur abends und an freien Tagen. Immer — wie gewohnt.',
+            mode_always: 'Immer', mode_work: 'Arbeit', mode_personal: 'Privat', mode_alwaysHint: 'Benachrichtigungen kommen immer', mode_workHint: 'Still außerhalb der Arbeitszeit', mode_personalHint: 'Still während der Arbeitszeit',
             d1: 'Mo', d2: 'Di', d3: 'Mi', d4: 'Do', d5: 'Fr', d6: 'Sa', d7: 'So'
         }
     },
@@ -137,9 +140,10 @@ module.exports = {
         wh: {
             title: 'Horario laboral', teamLine: 'Horario del equipo: {hours}',
             teamHint: 'Lo fija tu responsable. Fuera de este horario los mensajeros del equipo no envían avisos ni sonido. Los mensajes no se pierden.',
-            enable: 'Mi horario', enableHint: 'Fuera del horario los servicios elegidos quedan en silencio: sin ventanas ni sonido.',
+            enable: 'Mi horario', enableHint: 'Los servicios de trabajo se silencian fuera del horario y los personales durante él. Sin ventanas ni sonido; los contadores siguen.',
             days: 'Días laborables', hours: 'Horas', hoursHint: 'Si el fin es antes del inicio, el turno pasa la medianoche.',
-            servicesTitle: 'Servicios de trabajo', servicesHint: 'Estos servicios quedan en silencio fuera del horario.',
+            servicesTitle: 'Cuándo notificar', servicesHint: 'Trabajo — solo en horario laboral. Personal — solo por la tarde y en días libres. Siempre — como de costumbre.',
+            mode_always: 'Siempre', mode_work: 'Trabajo', mode_personal: 'Personal', mode_alwaysHint: 'Las notificaciones llegan siempre', mode_workHint: 'Silencio fuera del horario laboral', mode_personalHint: 'Silencio durante el horario laboral',
             d1: 'Lu', d2: 'Ma', d3: 'Mi', d4: 'Ju', d5: 'Vi', d6: 'Sá', d7: 'Do'
         }
     },
@@ -169,9 +173,10 @@ module.exports = {
         wh: {
             title: 'Heures de travail', teamLine: 'Heures de l’équipe : {hours}',
             teamHint: 'Fixées par votre responsable. En dehors, les messageries de l’équipe n’envoient ni notification ni son. Les messages ne sont pas perdus.',
-            enable: 'Mon horaire', enableHint: 'En dehors des heures de travail, les services choisis se taisent : ni fenêtre ni son.',
+            enable: 'Mon horaire', enableHint: 'Les services pro se taisent hors des heures de travail, les services perso pendant celles-ci. Ni pop-up ni son ; les compteurs continuent.',
             days: 'Jours travaillés', hours: 'Heures', hoursHint: 'Si la fin précède le début, le service passe minuit.',
-            servicesTitle: 'Services de travail', servicesHint: 'Ces services se taisent en dehors des heures de travail.',
+            servicesTitle: 'Quand notifier', servicesHint: 'Pro — seulement aux heures de travail. Perso — seulement le soir et les jours de repos. Toujours — comme d’habitude.',
+            mode_always: 'Toujours', mode_work: 'Pro', mode_personal: 'Perso', mode_alwaysHint: 'Les notifications arrivent toujours', mode_workHint: 'Silencieux hors des heures de travail', mode_personalHint: 'Silencieux pendant les heures de travail',
             d1: 'Lu', d2: 'Ma', d3: 'Me', d4: 'Je', d5: 'Ve', d6: 'Sa', d7: 'Di'
         }
     },
@@ -201,9 +206,10 @@ module.exports = {
         wh: {
             title: 'Orario di lavoro', teamLine: 'Orario del team: {hours}',
             teamHint: 'Stabilito dal responsabile. Fuori orario i messenger del team non inviano notifiche né suoni. I messaggi non vanno persi.',
-            enable: 'Il mio orario', enableHint: 'Fuori orario i servizi scelti restano in silenzio: niente finestre né suoni.',
+            enable: 'Il mio orario', enableHint: 'I servizi di lavoro tacciono fuori orario, quelli personali durante l’orario. Niente pop-up né suoni; i contatori continuano.',
             days: 'Giorni lavorativi', hours: 'Ore', hoursHint: 'Se la fine è prima dell’inizio, il turno supera la mezzanotte.',
-            servicesTitle: 'Servizi di lavoro', servicesHint: 'Questi servizi restano in silenzio fuori orario.',
+            servicesTitle: 'Quando notificare', servicesHint: 'Lavoro — solo in orario di lavoro. Personale — solo la sera e nei giorni liberi. Sempre — come al solito.',
+            mode_always: 'Sempre', mode_work: 'Lavoro', mode_personal: 'Personale', mode_alwaysHint: 'Le notifiche arrivano sempre', mode_workHint: 'Silenzioso fuori orario', mode_personalHint: 'Silenzioso in orario di lavoro',
             d1: 'Lu', d2: 'Ma', d3: 'Me', d4: 'Gi', d5: 'Ve', d6: 'Sa', d7: 'Do'
         }
     },
@@ -233,9 +239,10 @@ module.exports = {
         wh: {
             title: '工作时间', teamLine: '团队工作时间：{hours}',
             teamHint: '由管理者设置。非工作时间团队聊天工具不发送通知和声音。消息不会丢失。',
-            enable: '我的时间表', enableHint: '非工作时间，选中的服务保持安静：没有弹窗和声音。',
+            enable: '我的时间表', enableHint: '工作服务在工作时间外静音，个人服务在工作时间内静音。无弹窗、无声音；未读计数照常。',
             days: '工作日', hours: '时间', hoursHint: '如果结束早于开始，班次跨越午夜。',
-            servicesTitle: '工作服务', servicesHint: '这些服务在非工作时间保持安静。',
+            servicesTitle: '何时通知', servicesHint: '工作 — 仅在工作时间。个人 — 仅在晚上和休息日。始终 — 照常。',
+            mode_always: '始终', mode_work: '工作', mode_personal: '个人', mode_alwaysHint: '始终接收通知', mode_workHint: '工作时间外静音', mode_personalHint: '工作时间内静音',
             d1: '一', d2: '二', d3: '三', d4: '四', d5: '五', d6: '六', d7: '日'
         }
     }

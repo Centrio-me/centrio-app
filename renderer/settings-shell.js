@@ -58,7 +58,9 @@ function bindSettingsShell({ tGet }) {
             return
         }
         const section = activeSection()
-        headTitle.textContent = tGet(`settings.sections.${section}`)
+        // a section without a name of its own («Панель») takes the name its menu item shows, never the bare key
+        const name = tGet(`settings.sections.${section}`)
+        headTitle.textContent = name.startsWith('settings.') ? (sidebar.querySelector('.settings-nav-item.active span')?.textContent.trim() || '') : name
         const sub = tGet(`v371.sx.sub_${section}`)
         headSub.textContent = sub.startsWith('v371.') ? '' : sub
     }

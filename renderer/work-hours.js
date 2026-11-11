@@ -4,17 +4,21 @@
 const { quietReason, normalizeSchedule, isWithinWorkHours, nextChange } = require('../shared/work-hours')
 
 const TICK_MS = 60 * 1000
-const DEFAULT_PERSONAL = Object.freeze({ enabled: false, schedule: { days: [1, 2, 3, 4, 5], start: '09:00', end: '18:00' }, workIds: [] })
+const DEFAULT_PERSONAL = Object.freeze({ enabled: false, schedule: { days: [1, 2, 3, 4, 5], start: '09:00', end: '18:00' }, workIds: [], personalIds: [] })
 
 function createWorkHours({ state, store }) {
     const readAll = () => store.get('workHours', {}) || {}
+
+    const ids = (list) => (Array.isArray(list) ? list.filter((id) => typeof id === 'string') : [])
 
     function personal() {
         const raw = readAll().personal || {}
         return {
             enabled: raw.enabled === true,
             schedule: normalizeSchedule(raw.schedule) || { ...DEFAULT_PERSONAL.schedule },
-            workIds: Array.isArray(raw.workIds) ? raw.workIds.filter((id) => typeof id === 'string') : []
+            workIds: ids(raw.workIds),
+            // personal services: quiet during work hours (a service is in one list at most, work wins)
+            personalIds: ids(raw.personalIds).filter((id) => !ids(raw.workIds).includes(id))
         }
     }
 
@@ -33,6 +37,9 @@ function createWorkHours({ state, store }) {
         const current = personal()
         const next = { ...current, ...patch }
         next.schedule = normalizeSchedule(next.schedule) || current.schedule
+        // a service put in one list leaves the other
+        if (patch.workIds) next.personalIds = next.personalIds.filter((id) => !patch.workIds.includes(id))
+        if (patch.personalIds) next.workIds = next.workIds.filter((id) => !patch.personalIds.includes(id))
         store.set('workHours', { ...readAll(), personal: next })
         refreshMarks()
         return personal()

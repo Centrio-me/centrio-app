@@ -34,6 +34,7 @@ const { bindSettings371 } = require('./renderer/settings-371')
 const { bindAssistantTools371 } = require('./renderer/assistant-tools-371')
 const { createMorningSummary } = require('./renderer/morning-summary')
 const { createAllInbox } = require('./renderer/all-inbox/all-inbox')
+const { createAllInboxAccess } = require('./renderer/all-inbox/access')
 const { createSwitcherItems } = require('./renderer/quick-switcher-items')
 const { bindSettingsShell } = require('./renderer/settings-shell')
 const { createLockApi } = require('./renderer/lock')
@@ -4143,7 +4144,10 @@ function applyTabZoom(level) {
     window.__centrioHibernation = createHibernation({ state, store, sleepTab, isMessengerMuted })
     window.__centrioSleepTab = sleepTab
     // 3.8: «Все мессенджеры» — one list of the chats of every tab, a click opens the chat in its tab
-    window.__centrioAllInbox = createAllInbox({ state, switchTab, tGet, ipcRenderer })
+    // PRO only (alpha testing), on by default, switched off in Settings → Основные (renderer/all-inbox/access.js)
+    const allInboxAccess = createAllInboxAccess({ store, tGet, hasEffectivePro, showUpgradeModal })
+    window.__centrioAllInbox = createAllInbox({ state, switchTab, tGet, ipcRenderer, canOpen: allInboxAccess.canOpen })
+    if (window.__centrioAllInbox) allInboxAccess.attach(window.__centrioAllInbox)
     // Work hours (3.7.1): outside them team messengers / the person's work services stay quiet (renderer/webview-notify.js).
     window.__centrioWorkHours = createWorkHours({ state, store })
     bindSettings371({ state, store, tGet, invokeIpc, getMorningSummary: () => window.__centrioMorningSummary })

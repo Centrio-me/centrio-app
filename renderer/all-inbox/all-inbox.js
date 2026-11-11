@@ -80,9 +80,10 @@ function el(tag, cls, text) {
 
 /**
  * @param {{ state: object, switchTab: (id: string) => void, tGet?: (key: string, fallback: string) => string,
- *   ipcRenderer: { send: Function, invoke: Function } }} deps
+ *   ipcRenderer: { send: Function, invoke: Function }, canOpen?: (opts: { quiet: boolean }) => boolean }} deps
+ * canOpen: the PRO and on/off check of access.js; quiet = no upgrade window (opening by itself at start-up)
  */
-function createAllInbox({ state, switchTab, tGet, ipcRenderer }) {
+function createAllInbox({ state, switchTab, tGet, ipcRenderer, canOpen }) {
     const t = (key, fallback) => (typeof tGet === 'function' ? tGet(`v380.allInbox.${key}`, fallback) : fallback)
     const button = document.getElementById('allInboxBtn')
     const panel = document.getElementById('allInboxPanel')
@@ -405,7 +406,8 @@ function createAllInbox({ state, switchTab, tGet, ipcRenderer }) {
     // the list is as wide as the person made it (its edge next to the page is dragged)
     const resize = attachPanelResize({ panel, contentOf: () => document.getElementById('contentArea') })
 
-    function setOpen(next) {
+    function setOpen(next, { quiet = false } = {}) {
+        if (next && canOpen && !canOpen({ quiet })) return
         open = next
         if (open) { place(); resize.placeEdge() }
         else { chats?.close(); document.querySelectorAll(`webview.${WARM_CLASS}`).forEach((v) => v.classList.remove(WARM_CLASS)) }
@@ -460,7 +462,7 @@ function createAllInbox({ state, switchTab, tGet, ipcRenderer }) {
         listEl.scrollTop = 0
     }))
 
-    if (readStorage(OPEN_KEY, '') === '1') setOpen(true)
+    if (readStorage(OPEN_KEY, '') === '1') setOpen(true, { quiet: true })
     return { setOpen, refresh: readAll, isOpen: () => open, openChatView: (chat, adapterId) => chats?.open(chat, adapterId) }
 }
 

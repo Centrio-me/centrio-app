@@ -225,3 +225,19 @@
 #ctxNotifOpen .ctx-sub-arrow { margin-left: auto; opacity: .5; font-size: 14px; line-height: 1; }
 .context-menu .ctx-check { display: inline-block; width: 14px; flex-shrink: 0; color: var(--accent); font-weight: 700; }
 .context-menu .context-item.is-checked { color: var(--text-primary); }
+
+/* The person's schedule (11.2026): each service is always heard, a work one or a personal one */
+.v371-svc-modes { display: flex; flex-direction: column; grid-template-columns: none; gap: 2px; }
+.v371-svc-modes .v371-svc { cursor: default; gap: 10px; padding: 6px 8px; }
+.v371-svc-modes .v371-svc-name { flex: 1; min-width: 0; font-size: 12.5px; }
+.v371-seg { display: inline-flex; flex-shrink: 0; padding: 2px; gap: 2px; border-radius: 9px; background: var(--bg-tertiary); }
+.v371-seg-btn {
+    border: 0; background: transparent; color: var(--text-secondary);
+    font: inherit; font-size: 11.5px; padding: 4px 10px; border-radius: 7px; cursor: pointer;
+    transition: background .15s, color .15s;
+}
+.v371-seg-btn:hover { color: var(--text-primary); }
+.v371-seg-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.v371-seg-btn.on { background: var(--bg-primary); color: var(--text-primary); box-shadow: 0 1px 2px rgba(0, 0, 0, .18); }
+.v371-seg-btn.is-work.on { color: var(--accent); }
+.v371-seg-btn.is-personal.on { color: #c084fc; }

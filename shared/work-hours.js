@@ -64,7 +64,7 @@ function nextChange(schedule, at, timeZone) {
 
 /**
  * Why a service is quiet right now: 'team' (a team messenger outside the team schedule), 'personal' (one of the person's
- * work services outside their own schedule) or null.
+ * work services outside their own schedule), 'workTime' (one of their personal services during work hours) or null.
  */
 function quietReason(messenger, { team, personal, now = new Date(), localTimeZone } = {}) {
     if (!messenger) return null
@@ -72,9 +72,14 @@ function quietReason(messenger, { team, personal, now = new Date(), localTimeZon
         if (!isWithinWorkHours(team.schedule, now, team.timeZone)) return 'team'
         return null
     }
-    if (personal && personal.enabled && Array.isArray(personal.workIds) && personal.workIds.includes(messenger.id)) {
+    if (!personal || !personal.enabled) return null
+    const has = (list) => Array.isArray(list) && list.includes(messenger.id)
+    if (has(personal.workIds)) {
         if (!isWithinWorkHours(personal.schedule, now, localTimeZone)) return 'personal'
+        return null
     }
+    // a personal service (11.2026, asked by a customer): quiet during work hours, heard in the evening and on days off
+    if (has(personal.personalIds) && isWithinWorkHours(personal.schedule, now, localTimeZone)) return 'workTime'
     return null
 }
 

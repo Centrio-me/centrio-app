@@ -842,3 +842,82 @@ button.aic-poll-opt:disabled { cursor: default; }
 body.ai-resizing .ai-resize::after { opacity: 1; height: 72px; margin-top: -36px; background: var(--accent, #7c6cf0); }
 body.ai-resizing { cursor: col-resize; user-select: none; }
 body.ai-resizing webview, body.ai-resizing .aic { pointer-events: none !important; }
+
+/* ── PRO mode in alpha (11.2026): the aurora glyph of the button, the «α» note in the header ───────────── */
+.ai-btn-glyph { position: relative; display: inline-grid; place-items: center; width: 20px; height: 20px; flex-shrink: 0; }
+.ai-btn-glyph svg { filter: drop-shadow(0 0 5px rgba(167, 139, 250, .45)); transition: filter .2s, transform .2s; }
+.all-inbox-btn:hover .ai-btn-glyph svg { filter: drop-shadow(0 0 8px rgba(124, 196, 255, .7)); transform: scale(1.06); }
+.all-inbox-btn.active .ai-btn-glyph svg { filter: drop-shadow(0 0 9px rgba(94, 234, 212, .65)); }
+.ai-btn-alpha {
+    position: absolute; right: -8px; bottom: -7px;
+    min-width: 11px; height: 11px; padding: 0 1px; border-radius: 6px;
+    display: grid; place-items: center;
+    font: 700 8px/1 system-ui, sans-serif; color: #0b0f1a;
+    background: linear-gradient(135deg, #7cc4ff, #a78bfa 55%, #5eead4);
+    box-shadow: 0 0 0 1.5px var(--bg-secondary, #111), 0 0 6px rgba(167, 139, 250, .5);
+    pointer-events: none;
+}
+.all-inbox-btn.is-locked .ai-btn-glyph svg { filter: drop-shadow(0 0 4px rgba(167, 139, 250, .3)); opacity: .82; }
+/* without PRO the «α» becomes a gold «ПРО»: a click opens the upgrade window */
+.all-inbox-btn.is-locked .ai-btn-alpha { font-size: 0; padding: 0 3px; background: linear-gradient(135deg, #ffd27a, #f5a3ff); box-shadow: 0 0 0 2px var(--bg-secondary, #111); }
+.all-inbox-btn.is-locked .ai-btn-alpha::before { content: 'ПРО'; font: 800 7px/1 system-ui, sans-serif; letter-spacing: .03em; }
+
+.ai-head-title { display: flex; align-items: center; gap: 4px; min-width: 0; }
+.ai-alpha {
+    position: relative; display: inline-flex; align-items: center; gap: 5px; margin-left: 6px;
+    padding: 3px 8px 3px 4px; border-radius: 999px; cursor: help; outline: none;
+    background: linear-gradient(var(--bg-secondary), var(--bg-secondary)) padding-box,
+                linear-gradient(135deg, #7cc4ff, #a78bfa, #5eead4) border-box;
+    border: 1px solid transparent;
+}
+html[data-fx] .ai-alpha { background: linear-gradient(rgba(14, 18, 32, .92), rgba(14, 18, 32, .92)) padding-box, linear-gradient(135deg, #7cc4ff, #a78bfa, #5eead4) border-box; }
+.ai-alpha-mark {
+    width: 16px; height: 16px; border-radius: 50%; display: grid; place-items: center;
+    font: 700 11px/1 system-ui, sans-serif; color: #0b0f1a;
+    background: linear-gradient(135deg, #7cc4ff, #a78bfa 55%, #5eead4);
+}
+.ai-alpha-word {
+    font-size: 10.5px; font-weight: 650; letter-spacing: .02em;
+    background: linear-gradient(90deg, #9cd2ff, #c4b5fd, #7ef0dc); -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.ai-alpha:focus-visible { box-shadow: 0 0 0 2px var(--accent); }
+.ai-alpha-pop {
+    position: absolute; z-index: 40; top: calc(100% + 8px); left: -40px; width: 268px;
+    display: flex; flex-direction: column; gap: 8px; padding: 14px 15px 13px;
+    border-radius: 14px; background: var(--bg-primary, #0f1320); color: var(--text-secondary);
+    box-shadow: 0 0 0 1px rgba(167, 139, 250, .35), 0 14px 38px rgba(0, 0, 0, .45);
+    font-size: 12px; font-weight: 400; line-height: 1.55; letter-spacing: 0; white-space: normal; cursor: default;
+    opacity: 0; visibility: hidden; transform: translateY(-4px);
+    transition: opacity .16s, transform .16s, visibility 0s linear .16s;
+}
+/* a bridge over the gap, so the pointer can travel from the chip into the note */
+.ai-alpha-pop::before { content: ''; position: absolute; left: 0; right: 0; top: -10px; height: 10px; }
+.ai-alpha-pop b { color: var(--text-primary); font-size: 13px; font-weight: 650; }
+.ai-alpha:hover .ai-alpha-pop, .ai-alpha:focus-within .ai-alpha-pop {
+    opacity: 1; visibility: visible; transform: none; transition: opacity .16s, transform .16s;
+}
+.ai-alpha-feedback {
+    align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; margin-top: 2px;
+    padding: 6px 11px; border-radius: 9px; text-decoration: none; font-weight: 600; font-size: 12px;
+    color: #0b0f1a; background: linear-gradient(135deg, #7cc4ff, #a78bfa 55%, #5eead4);
+    transition: filter .15s, transform .15s;
+}
+.ai-alpha-feedback:hover { filter: brightness(1.1); transform: translateY(-1px); }
+.ai-alpha-feedback:focus-visible { outline: 2px solid var(--text-primary); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .ai-alpha-pop, .ai-btn-glyph svg, .ai-alpha-feedback { transition: none; } }
+
+/* Settings → Workspace */
+.ai-pro-chip, .ai-alpha-chip {
+    display: inline-grid; place-items: center; margin-left: 8px; padding: 2px 6px; border-radius: 5px;
+    font-size: 9.5px; font-weight: 800; letter-spacing: .05em; color: #0b0f1a; vertical-align: 2px;
+}
+.ai-pro-chip { background: linear-gradient(135deg, #ffd27a, #f5a3ff); }
+.ai-alpha-chip { margin-left: 4px; background: linear-gradient(135deg, #7cc4ff, #a78bfa 55%, #5eead4); }
+.ai-settings-pro { margin-top: 6px; }
+/* the note spans the header (the panel clips anything wider), the title never wraps */
+.ai-head { position: relative; }
+.ai-head-title { white-space: nowrap; }
+.ai-head-title > span:first-child { overflow: hidden; text-overflow: ellipsis; }
+.ai-alpha { position: static; flex-shrink: 0; white-space: nowrap; }
+.ai-alpha-pop { left: 12px; right: 12px; width: auto; top: calc(100% - 2px); }
+.ai-alpha-pop::before { top: -14px; height: 14px; }

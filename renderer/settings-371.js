@@ -174,26 +174,38 @@ function bindSettings371({ state, store, tGet, invokeIpc, getMorningSummary }) {
         times.appendChild(timeInput(p.schedule.end, (v) => { wh.setPersonal({ schedule: { ...p.schedule, end: v } }); renderWorkHours() }))
         group.appendChild(row(t('wh.hours'), t('wh.hoursHint'), times))
 
+        // every service: always heard, «рабочий» (quiet outside the hours) or «личный» (quiet during them)
         const services = state.activeMessengers.filter((m) => !m.orgAssigned)
-        const list = el('div', 'v371-svc-list')
+        const list = el('div', 'v371-svc-list v371-svc-modes')
+        const modeOf = (id) => (p.workIds.includes(id) ? 'work' : p.personalIds.includes(id) ? 'personal' : 'always')
         services.forEach((m) => {
-            const item = el('label', 'v371-svc')
-            const box = el('input')
-            box.type = 'checkbox'
-            box.checked = p.workIds.includes(m.id)
-            box.addEventListener('change', () => {
-                const ids = new Set(wh.personal().workIds)
-                if (box.checked) ids.add(m.id); else ids.delete(m.id)
-                wh.setPersonal({ workIds: [...ids] })
-            })
+            const item = el('div', 'v371-svc')
             const icon = el('img', 'v371-svc-icon')
             icon.src = m.icon || 'assets/logo.png'
             icon.alt = ''
-            item.appendChild(box)
             item.appendChild(icon)
-            item.appendChild(el('span', '', m.name))
+            item.appendChild(el('span', 'v371-svc-name', m.name))
+            const seg = el('div', 'v371-seg')
+            seg.setAttribute('role', 'radiogroup')
+            seg.setAttribute('aria-label', m.name)
+            ;['always', 'work', 'personal'].forEach((mode) => {
+                const b = button(t(`wh.mode_${mode}`), `v371-seg-btn is-${mode}${modeOf(m.id) === mode ? ' on' : ''}`, () => setMode(m.id, mode))
+                b.setAttribute('role', 'radio')
+                b.setAttribute('aria-checked', String(modeOf(m.id) === mode))
+                b.title = t(`wh.mode_${mode}Hint`)
+                seg.appendChild(b)
+            })
+            item.appendChild(seg)
             list.appendChild(item)
         })
+        function setMode(id, mode) {
+            const now = wh.personal()
+            const without = (arr) => arr.filter((x) => x !== id)
+            if (mode === 'work') wh.setPersonal({ workIds: [...without(now.workIds), id] })
+            else if (mode === 'personal') wh.setPersonal({ personalIds: [...without(now.personalIds), id] })
+            else wh.setPersonal({ workIds: without(now.workIds), personalIds: without(now.personalIds) })
+            renderWorkHours()
+        }
         group.appendChild(el('div', 'v371-sub', t('wh.servicesTitle')))
         group.appendChild(el('div', 'v371-note', t('wh.servicesHint')))
         group.appendChild(list)

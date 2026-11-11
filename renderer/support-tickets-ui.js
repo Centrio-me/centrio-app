@@ -713,6 +713,19 @@ function bindSupportTicketsUi({
         if (!cabinetEl.classList.contains('show')) leaveSupport()
     }).observe(cabinetEl, { attributes: true, attributeFilter: ['class'] })
 
+    // «Оставить отзыв» elsewhere in the app (the «α» note of «Все мессенджеры»): the support section with the new
+    // topic's form open, its kind chosen and its subject filled in, the cursor in the text.
+    document.addEventListener('open-support-new', (e) => {
+        if (!cabinetEl.classList.contains('show')) accountBtn?.click()
+        showCabinetTab('support')
+        if (lockedEl.style.display === 'flex') return
+        showNewForm()
+        const topic = e.detail?.topic
+        if (topic && topicsEl.querySelector(`.sp2-topic[data-topic="${CSS.escape(topic)}"]`)) selectTopic(topic)
+        if (typeof e.detail?.subject === 'string') newSubject.value = e.detail.subject.slice(0, 200)
+        setTimeout(() => newBody.focus(), 60)
+    })
+
     // A click on a reply notification opens that conversation.
     document.addEventListener('open-support-ticket', (e) => {
         accountBtn?.click()

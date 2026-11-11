@@ -59,7 +59,7 @@ function bindAssistantTools371({ state, store, invokeIpc, buildSummary }) {
             const p = w.personal()
             const team = w.teamStatus()
             return {
-                personal: { enabled: p.enabled, days: p.schedule.days, start: p.schedule.start, end: p.schedule.end, workServices: p.workIds.map((id) => messengerById(id)?.name).filter(Boolean) },
+                personal: { enabled: p.enabled, days: p.schedule.days, start: p.schedule.start, end: p.schedule.end, workServices: p.workIds.map((id) => messengerById(id)?.name).filter(Boolean), personalServices: p.personalIds.map((id) => messengerById(id)?.name).filter(Boolean) },
                 team: team.enabled ? { days: team.schedule.days, start: team.schedule.start, end: team.schedule.end, timeZone: team.timeZone, atWorkNow: team.atWork } : null
             }
         },
