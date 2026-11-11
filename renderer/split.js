@@ -907,13 +907,13 @@ function createSplitApi ({
             ? document.getElementById(`webview-${state.activeTabId}`) : null
         if (primaryWv) {
             primaryWv.style.left  = '0'
-            primaryWv.style.right = `calc(100% - ${pct}%)`
+            primaryWv.style.right = `calc(100% - ${pct}% + var(--split-gap, 0px))`
             primaryWv.style.width = 'auto'
         }
         const secondaryWv = state.splitTabId
             ? document.getElementById(`webview-${state.splitTabId}`) : null
         if (secondaryWv) {
-            secondaryWv.style.left  = pct + '%'
+            secondaryWv.style.left  = `calc(${pct}% + var(--split-gap, 0px))`
             secondaryWv.style.right = '0'
             secondaryWv.style.width = 'auto'
         }
@@ -1618,7 +1618,7 @@ function createSplitApi ({
         if (wv) {
             wv.classList.add('split-secondary')
             const pct = state.splitLeftPct || 50
-            wv.style.left  = pct + '%'
+            wv.style.left  = `calc(${pct}% + var(--split-gap, 0px))`
             wv.style.right = '0'
             wv.style.width = 'auto'
         }
