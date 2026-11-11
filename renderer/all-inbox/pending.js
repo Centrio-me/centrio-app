@@ -25,6 +25,15 @@ function createPending() {
     }
 }
 
+const FILE_KINDS = new Set(['file', 'photo', 'video', 'voice', 'audio'])
+
+// the real message that a message being sent became: the same text, or a new file / photo (by name when known)
+function settles(p, r) {
+    if (!p.files.length) return norm(r.text) === p.text
+    if (!FILE_KINDS.has(r.kind) && !r.album) return false
+    return !r.name || p.files.includes(r.name)
+}
+
 function fileLabel(names) {
     if (!names.length) return ''
     return names.length === 1 ? names[0] : `${names[0]} и ещё ${names.length - 1}`
@@ -41,8 +50,7 @@ function withPending(rows, pending, now) {
     const fresh = rows.filter((r) => r.type === 'msg' && r.out)
     const used = new Set()
     for (const p of pending.list()) {
-        const match = fresh.find((r) => !p.known.has(String(r.id)) && !used.has(r.id) &&
-            (p.files.length ? true : norm(r.text) === p.text))
+        const match = fresh.find((r) => !p.known.has(String(r.id)) && !used.has(r.id) && settles(p, r))
         if (match) { used.add(match.id); settled.add(p.id) }
     }
     pending.settle(settled)

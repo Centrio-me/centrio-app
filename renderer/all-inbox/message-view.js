@@ -36,7 +36,8 @@ function meta(m, floating) {
         // being sent: a clock; not taken by the messenger: a red mark
         const state = el('span', `aic-pending is-${m.pending}`)
         state.innerHTML = m.pending === 'failed' ? ICON_FAILED : ICON_CLOCK
-        state.title = m.pending === 'failed' ? 'Не отправлено' : 'Отправляется…'
+        state.title = m.pending === 'failed' ? 'Не отправлено — нажмите, чтобы убрать' : 'Отправляется…'
+        if (m.pending === 'failed') state.dataset.dismiss = m.id
         box.append(state)
     } else if (m.out) {
         const tick = el('span', `aic-check${m.read ? ' is-read' : ''}`)

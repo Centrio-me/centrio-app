@@ -52,7 +52,7 @@ function loadingBubbles() {
     return box
 }
 
-function createChatView({ host, onSend, onOpenInTab, onClose, onOlder, onLink, onPicture, onPickFiles, onDescribeFiles, onPasteImage, canReply = () => false }) {
+function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab, onClose, onOlder, onLink, onPicture, onPickFiles, onDescribeFiles, onPasteImage, canReply = () => false }) {
     const root = el('section', 'aic')
     root.hidden = true
     root.dataset.bg = readBackground()
@@ -88,7 +88,7 @@ function createChatView({ host, onSend, onOpenInTab, onClose, onOlder, onLink, o
 
     const drafts = sharedDrafts
     let chatId = ''
-    const composer = createComposer({ root, onSend, onPickFiles, onDescribeFiles, onPasteImage, onDraft: (text) => drafts.keep(chatId, text) })
+    const composer = createComposer({ root, onSend, onPickFiles, onDescribeFiles, onPasteImage, onDraft: (text) => drafts.keep(chatId, text), chatKey: () => chatId, onDraftFor: (id, text) => drafts.keep(id, text) })
     composer.setVisible(false)
     root.append(composer.el)
     const lightbox = createLightbox({ root, onPicture })
@@ -165,6 +165,11 @@ function createChatView({ host, onSend, onOpenInTab, onClose, onOlder, onLink, o
     const ICON_REPLY = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>'
     const ICON_COPY = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/></svg>'
     const ICON_OPEN = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6"/><path d="M20 4l-9 9"/><path d="M18 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4"/></svg>'
+    // a message that did not go: a click on its red mark takes it away
+    list.addEventListener('click', (e) => {
+        const mark = e.target.closest('[data-dismiss]')
+        if (mark) { e.stopPropagation(); onDismissPending(mark.dataset.dismiss) }
+    })
     list.addEventListener('contextmenu', (e) => {
         const rowEl = e.target.closest('.aic-row')
         const m = rowEl && byId.get(rowEl.dataset.id)

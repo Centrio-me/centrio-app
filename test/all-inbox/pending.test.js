@@ -68,3 +68,20 @@ test('the message being sent carries the tail of your group of messages', () => 
     assert.equal(rows[1].groupEnd, true)
     assert.equal(rows[1].groupStart, false)
 })
+
+test('a text sent meanwhile does not settle the files being sent', () => {
+    const p = createPending()
+    p.add({ text: '', files: [{ name: 'a.pdf' }], knownIds: ['1'], now: NOW })
+    const rows = withPending([out('1', 'x'), out('2', 'с телефона')], p, NOW + 500)
+    assert.equal(rows.length, 3)
+    assert.equal(p.size(), 1)
+})
+
+test('of two files sent one after another, each waits for its own name', () => {
+    const p = createPending()
+    p.add({ text: '', files: [{ name: 'a.pdf' }], knownIds: [], now: NOW })
+    p.add({ text: '', files: [{ name: 'b.pdf' }], knownIds: [], now: NOW + 10 })
+    const rows = withPending([{ type: 'msg', id: '5', out: true, kind: 'file', name: 'b.pdf', text: '' }], p, NOW + 500)
+    assert.deepEqual(p.list().map((x) => x.files[0]), ['a.pdf'])
+    assert.equal(rows.length, 2)
+})

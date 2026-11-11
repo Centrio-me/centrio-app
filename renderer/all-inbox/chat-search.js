@@ -125,8 +125,8 @@ function createChatSearch({ root, list, anchor }) {
         if (e.key === 'Enter') { e.preventDefault(); step(e.shiftKey ? 1 : -1) }
         else if (e.key === 'ArrowUp') { e.preventDefault(); step(-1) }
         else if (e.key === 'ArrowDown') { e.preventDefault(); step(1) }
-        else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); hide() }
     })
+    bar.addEventListener('keydown', (e) => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); hide() } })
     up.addEventListener('click', () => step(-1))
     down.addEventListener('click', () => step(1))
     close.addEventListener('click', hide)

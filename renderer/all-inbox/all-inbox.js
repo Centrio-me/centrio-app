@@ -224,7 +224,7 @@ function createAllInbox({ state, switchTab, tGet, ipcRenderer }) {
     // everything a row shows: the same string means the same row
     function rowSig(c) {
         return [c.id, c.unread, c.muted ? 1 : 0, c.timeLabel, c.preview, c.avatar.length, c.title, c.icon, c.online ? 1 : 0, c.outState,
-            c.pinned ? 1 : 0, c.accountLabel, c.accountTone, c.draft, c.mentions, c.typing, sharedDrafts.take(c.id), c.match ? c.match.start : '',
+            c.pinned ? 1 : 0, c.accountLabel, c.accountTone, c.draft, c.mentions, c.typing, sharedDrafts.take(c.id), c.match ? `${c.match.start}:${c.match.length}` : '',
             c.id === activeId ? 1 : 0].join('|')
     }
 
@@ -298,6 +298,7 @@ function createAllInbox({ state, switchTab, tGet, ipcRenderer }) {
         if (!quietOnce) for (const r of listEl.querySelectorAll('.ai-row[data-id]')) before.set(r.dataset.id, r.getBoundingClientRect().top)
         quietOnce = false
         listEl.replaceChildren()
+        if (!list.length) rowCache = new Map()
         if (!list.length && !loadedOnce) { listEl.append(skeleton()); return }
         if (!list.length) {
             listEl.append(el('div', 'ai-empty', sources.length
@@ -421,7 +422,7 @@ function createAllInbox({ state, switchTab, tGet, ipcRenderer }) {
         const active = document.activeElement
         const typing = /^(INPUT|TEXTAREA)$/.test(active?.tagName || '') || active?.isContentEditable
         const inChat = active?.closest?.('.aic')
-        if (((e.ctrlKey || e.metaKey) && e.code === 'KeyF' && !inChat) || (e.key === '/' && !typing)) {
+        if (((e.ctrlKey || e.metaKey) && e.code === 'KeyF' && !inChat) || (e.key === '/' && !typing && !inChat)) {
             e.preventDefault()
             searchEl.focus()
             searchEl.select()

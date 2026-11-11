@@ -19,11 +19,15 @@ function createFloatingDay({ root, scroll, list }) {
     let userAt = 0
     for (const type of ['wheel', 'pointerdown', 'keydown', 'touchstart']) scroll.addEventListener(type, () => { userAt = Date.now() }, { passive: true })
 
+    // the last day whose divider has gone above the top edge; dividers are sticky, so their row (the next
+    // sibling's place) is measured, not where the divider itself is stuck
     function current() {
-        const top = scroll.scrollTop + TOP_GAP_PX
+        const top = scroll.getBoundingClientRect().top + TOP_GAP_PX
         let found = ''
         for (const day of list.querySelectorAll('.aic-day')) {
-            if (day.offsetTop <= top) found = day.textContent
+            const next = day.nextElementSibling
+            const y = next ? next.getBoundingClientRect().top : day.getBoundingClientRect().top
+            if (y <= top) found = day.textContent
             else break
         }
         return found

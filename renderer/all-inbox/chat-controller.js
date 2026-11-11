@@ -54,6 +54,7 @@ function createChatController({ state, webviewOf, host, ipcRenderer }) {
         onSend: send,
         onOpenInTab: () => close(),
         onClose: () => close(),
+        onDismissPending: (id) => { pending.drop(id); redraw() },
         onOlder: older,
         canReply: () => !!(current && typeof current.adapter.REPLY === 'function'),
         // links open in the browser through the main process's usual scheme check

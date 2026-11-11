@@ -37,7 +37,7 @@ function pathsOf(fileList) {
  *   onPickFiles: () => Promise<object[]>, onDescribeFiles: (paths: string[]) => Promise<object[]>,
  *   onPasteImage: () => Promise<object|null> }} deps
  */
-function createComposer({ root, onSend, onPickFiles, onDescribeFiles, onPasteImage, onDraft = () => {} }) {
+function createComposer({ root, onSend, onPickFiles, onDescribeFiles, onPasteImage, onDraft = () => {}, chatKey = () => '', onDraftFor = () => {} }) {
     const form = el('form', 'aic-compose')
     form.autocomplete = 'off'
     form.innerHTML = `
@@ -136,20 +136,27 @@ function createComposer({ root, onSend, onPickFiles, onDescribeFiles, onPasteIma
         // the field empties at once (the message already shows in the conversation with its clock);
         // if the messenger could not take it, everything comes back to the field
         const sent = { text: input.value, files, reply }
+        // the send belongs to the chat it started in: the person may open another chat while it runs
+        const owner = chatKey()
         input.value = ''; files = []; renderTray(); autosize(); refreshSend(); showReply(null)
         const ok = await onSend(text, sent.files, sent.reply).catch(() => false)
         sending = false
         form.classList.remove('is-sending')
-        if (ok) onDraft('')
+        const here = chatKey() === owner
+        if (ok) onDraftFor(owner, here ? input.value : '')
+        else if (!here) onDraftFor(owner, sent.text)
         else {
-            if (!input.value.trim()) input.value = sent.text
-            if (!files.length) files = sent.files
-            if (sent.reply) showReply(sent.reply)
-            renderTray(); autosize(); refreshSend()
+            // what was typed meanwhile is kept: the text that did not go comes back in front of it
+            input.value = input.value.trim() ? `${sent.text}\n${input.value}` : sent.text
+            files = [...sent.files, ...files]
+            if (sent.reply && !reply) showReply(sent.reply)
+            renderTray(); autosize(); refreshSend(); onDraft(input.value)
             form.classList.add('is-failed')
         }
         setTimeout(() => form.classList.remove('is-failed'), 1600)
-        input.focus()
+        // the field takes the keyboard back only if nothing else (the photo viewer, the search) took it meanwhile
+        const active = document.activeElement
+        if (here && (!active || active === document.body || form.contains(active))) input.focus()
     }
 
     form.addEventListener('submit', (e) => { e.preventDefault(); submit() })
