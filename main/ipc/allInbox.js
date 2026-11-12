@@ -4,7 +4,7 @@
 const { ipcMain, dialog, clipboard, nativeImage, webContents, app } = require('electron')
 const fs = require('fs')
 const path = require('path')
-const { checkFiles, dropFiles } = require('../services/inboxFiles')
+const { checkFiles, dropFiles, startDrag, finishDrag } = require('../services/inboxFiles')
 
 const THUMB_PX = 96
 const IMAGE_EXT = /\.(png|jpe?g|gif|webp|bmp|heic)$/i
@@ -97,6 +97,23 @@ function registerAllInboxIpc({ getMainWindow }) {
         const files = checkFiles(paths, (p) => fs.statSync(p))
         if (!files.length) return false
         return dropFiles(wc, point, files)
+    })
+
+    // a drop in two steps: start over the chat, finish over the zone the window found (3.8.3, «Фото» / «Файл»)
+    const validPoint = (p) => p && Number.isFinite(p.x) && Number.isFinite(p.y)
+    ipcMain.handle('all-inbox:drag-start', async (event, payload) => {
+        const { guestId, point, paths } = payload || {}
+        const wc = guestOf(event, guestId)
+        if (!wc || !validPoint(point)) return false
+        const files = checkFiles(paths, (p) => fs.statSync(p))
+        if (!files.length) return false
+        return startDrag(wc, point, files)
+    })
+    ipcMain.handle('all-inbox:drag-finish', async (event, payload) => {
+        const { guestId, point } = payload || {}
+        const wc = guestOf(event, guestId)
+        if (!wc || !validPoint(point)) return false
+        return finishDrag(wc, point)
     })
 }
 

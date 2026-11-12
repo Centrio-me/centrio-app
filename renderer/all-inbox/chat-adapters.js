@@ -312,6 +312,17 @@ const telegram = {
         return r.width && r.height ? { x: r.left + r.width / 2, y: r.top + r.height / 2 } : null;
     })()`,
     sendsOnDrop: false,
+    // while files are dragged Telegram draws two zones: «…без сжатия» (a file) and «…быстрым способом» (a photo) (3.8.3)
+    ZONE: (asFile) => `(function () {
+        var want = ${asFile ? '/без сжатия|without compression/i' : '/быстр|quick/i'};
+        var ds = [].filter.call(document.querySelectorAll('.drops-container .drop'), function (d) { return d.offsetWidth; });
+        for (var i = 0; i < ds.length; i++) {
+            if (!want.test(ds[i].innerText || '')) continue;
+            var r = ds[i].getBoundingClientRect();
+            return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+        }
+        return null;
+    })()`,
     // Telegram's «send files» window: its caption field and its send button
     MEDIA_POPUP: `(function () {${IMAGE_HELPER}
         var p = document.querySelector('.popup-new-media.active');
@@ -637,6 +648,19 @@ const max = {
     // handled: the field with the file is its «send» window, and if no such field shows up the file has gone already.
     sendsOnDrop: false,
     dropMaySendAtOnce: true,
+    // while files are dragged MAX draws «Отправка без сжатия» (a file) and «Быстрая отправка» (a photo) (3.8.3)
+    ZONE: (asFile) => `(function () {
+        var want = ${asFile ? '/без сжатия/i' : '/быстрая отправка/i'};
+        var titles = document.querySelectorAll('.openedChat .title, .openedChat [class*=zone] [class*=title]');
+        for (var i = 0; i < titles.length; i++) {
+            var t = titles[i];
+            if (!t.offsetWidth || !want.test(t.innerText || '')) continue;
+            var zone = t.closest('[class*=zone]') || t.parentElement;
+            var r = zone.getBoundingClientRect();
+            return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+        }
+        return null;
+    })()`,
     MEDIA_POPUP: `(function () {
         var chat = document.querySelector('.openedChat');
         var bar = chat && chat.querySelector('.composer .attaches .attach');

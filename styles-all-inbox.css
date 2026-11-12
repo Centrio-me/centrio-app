@@ -987,3 +987,10 @@ html[data-fx] .ai-alpha { background: linear-gradient(rgba(14, 18, 32, .92), rgb
 .aic-menu-react:hover, .aic-menu-react:focus-visible { background: var(--bg-hover); transform: scale(1.18); outline: none; }
 /* editing an own message (3.8.3): the bar above the field in the accent, a pencil instead of the reply arrow */
 .aic-replying.is-edit { --quote: var(--accent); }
+
+/* «Фото · Файл» for pictures (3.8.3): how they go — compressed or as they are */
+.aic-mode { display: inline-flex; align-self: center; gap: 2px; padding: 2px; margin-right: 4px; border-radius: 999px; background: var(--bg-tertiary, rgba(255, 255, 255, .06)); border: 1px solid var(--border); flex: none; }
+.aic-mode-btn { height: 26px; padding: 0 11px; border: 0; border-radius: 999px; background: transparent; color: var(--text-secondary); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; transition: background .12s ease, color .12s ease; }
+.aic-mode-btn:hover { color: var(--text-primary); }
+.aic-mode-btn.is-on { background: var(--accent); color: #fff; }
+.aic-mode-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }

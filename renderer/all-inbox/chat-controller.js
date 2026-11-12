@@ -16,6 +16,9 @@ const AFTER_SEND_MS = 600
 const PICTURE_TIMEOUT_MS = 6000
 const HOVER_SETTLE_MS = 250
 const POPUP_WAIT_MS = 5000
+// the zones of a drag show up within a few frames
+const ZONE_TRIES = 6
+const ZONE_POLL_MS = 120
 const POPUP_POLL_MS = 150
 const AFTER_DROP_MS = 900
 // a voice message is ready in a moment; a video of tens of megabytes may take a while to come from the messenger
@@ -205,13 +208,29 @@ function createChatController({ state, webviewOf, host, ipcRenderer, onSubtitle 
     }
 
     // Files go to the page as a real drag-and-drop; the messenger uploads and sends them itself
-    async function sendFiles(w, files, text) {
-        const point = await run(w, current.adapter.DROP)
-        if (!point || typeof point.x !== 'number') return false
+    // «Фото» or «Файл» (3.8.3): the messenger draws its zones while files are dragged over it; the drag starts over the
+    // chat, the wanted zone is looked up, and the files are let go over it. A messenger without zones takes a plain drop.
+    async function dropInto(w, point, paths, asFile) {
         let guestId = 0
         try { guestId = w.getWebContentsId() } catch { return false }
+        if (typeof current.adapter.ZONE !== 'function') {
+            return ipcRenderer.invoke('all-inbox:drop-files', { guestId, point, paths }).catch(() => false)
+        }
+        if (!(await ipcRenderer.invoke('all-inbox:drag-start', { guestId, point, paths }).catch(() => false))) return false
+        let zone = null
+        for (let i = 0; i < ZONE_TRIES && !zone; i++) {
+            zone = await run(w, current.adapter.ZONE(asFile))
+            if (!zone) await wait(ZONE_POLL_MS)
+        }
+        const at = zone && typeof zone.x === 'number' ? zone : point
+        return ipcRenderer.invoke('all-inbox:drag-finish', { guestId, point: at }).catch(() => false)
+    }
+
+    async function sendFiles(w, files, text, asFile = false) {
+        const point = await run(w, current.adapter.DROP)
+        if (!point || typeof point.x !== 'number') return false
         const paths = files.map((f) => f.path)
-        const dropped = await ipcRenderer.invoke('all-inbox:drop-files', { guestId, point, paths }).catch(() => false)
+        const dropped = await dropInto(w, point, paths, asFile)
         if (!dropped) return false
         if (current.adapter.sendsOnDrop) {
             // MAX has sent the files already; the text follows as its own message
@@ -302,7 +321,7 @@ function createChatController({ state, webviewOf, host, ipcRenderer, onSubtitle 
         return ok
     }
 
-    async function send(text, files = [], reply = null) {
+    async function send(text, files = [], reply = null, asFile = false) {
         const w = tab()
         if (!w || !current) return false
         // check again right before typing: the tab may have moved to another chat since the last read
@@ -311,14 +330,14 @@ function createChatController({ state, webviewOf, host, ipcRenderer, onSubtitle 
         const knownIds = lastRows.filter((r) => r.type === 'msg' && r.out).map((r) => r.id)
         const pid = pending.add({ text, files, knownIds })
         redraw()
-        const ok = await deliver(w, text, files, reply)
+        const ok = await deliver(w, text, files, reply, asFile)
         if (!ok) pending.drop(pid)
         await wait(AFTER_SEND_MS)
         poll()
         return ok
     }
 
-    async function deliver(w, text, files, reply) {
+    async function deliver(w, text, files, reply, asFile = false) {
         // an answer to a message: the messenger itself is told which one, before anything is typed
         if (reply && typeof current.adapter.REPLY === 'function') {
             const id = String(reply.id).split('+')[0]
@@ -334,7 +353,7 @@ function createChatController({ state, webviewOf, host, ipcRenderer, onSubtitle 
             if (!(await run(w, current.adapter.REPLY(id)))) return false
             await wait(FOCUS_SETTLE_MS)
         }
-        return files.length ? sendFiles(w, files, text) : sendText(w, text)
+        return files.length ? sendFiles(w, files, text, asFile) : sendText(w, text)
     }
 
     function older() {

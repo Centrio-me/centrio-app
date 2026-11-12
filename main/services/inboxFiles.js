@@ -58,4 +58,46 @@ async function dropFiles(contents, point, files) {
     }
 }
 
-module.exports = { checkFiles, dropFiles, MAX_FILES, MAX_FILE_BYTES }
+// A drop in two steps (3.8.3): the messenger draws its zones («без сжатия» / «быстрая отправка») on the first dragover,
+// the window looks where the wanted zone is, then the files are let go over it. One drag per tab at a time.
+const drags = new Map()
+async function startDrag(contents, point, files) {
+    if (!contents || contents.isDestroyed() || !files.length) return false
+    const dbg = contents.debugger
+    try { if (!dbg.isAttached()) dbg.attach('1.3') } catch { return false }
+    const data = { items: [], files: files.map((f) => f.path), dragOperationsMask: 1 }
+    const x = Math.round(point.x)
+    const y = Math.round(point.y)
+    try {
+        for (const type of ['dragEnter', 'dragOver', 'dragOver']) {
+            await dbg.sendCommand('Input.dispatchDragEvent', { type, x, y, data })
+            await wait(DRAG_STEP_MS)
+        }
+        drags.set(contents.id, data)
+        return true
+    } catch {
+        try { await dbg.sendCommand('Input.dispatchDragEvent', { type: 'dragCancel', x, y, data }) } catch {}
+        return false
+    }
+}
+
+async function finishDrag(contents, point) {
+    const data = contents && drags.get(contents.id)
+    if (!data || contents.isDestroyed()) return false
+    drags.delete(contents.id)
+    const dbg = contents.debugger
+    const x = Math.round(point.x)
+    const y = Math.round(point.y)
+    try {
+        for (const type of ['dragOver', 'dragOver', 'drop']) {
+            await dbg.sendCommand('Input.dispatchDragEvent', { type, x, y, data })
+            await wait(DRAG_STEP_MS)
+        }
+        return true
+    } catch {
+        try { await dbg.sendCommand('Input.dispatchDragEvent', { type: 'dragCancel', x, y, data }) } catch {}
+        return false
+    }
+}
+
+module.exports = { checkFiles, dropFiles, startDrag, finishDrag, MAX_FILES, MAX_FILE_BYTES }

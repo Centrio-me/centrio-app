@@ -146,9 +146,36 @@ function createComposer({ root, onSend, onEdit = null, onPickFiles, onDescribeFi
         form.classList.toggle('has-content', !!(input.value.trim() || files.length))
     }
 
+    // «Фото» (compressed, the messengers' quick send) or «Файл» (as it is) for pictures (3.8.3); the choice is remembered
+    const AS_FILE_KEY = 'centrio-all-inbox-as-file'
+    let asFile = false
+    try { asFile = localStorage.getItem(AS_FILE_KEY) === '1' } catch {}
+    const isPicture = (f) => !!f.thumb || /.(jpe?g|png|gif|webp|heic|bmp)$/i.test(String(f.name || ''))
+    function modeSwitch() {
+        const box = el('div', 'aic-mode')
+        box.setAttribute('role', 'radiogroup')
+        box.setAttribute('aria-label', 'Как отправить картинки')
+        for (const [value, label, hint] of [[false, 'Фото', 'Сжатой картинкой — быстро, как в мессенджере'], [true, 'Файл', 'Файлом — без сжатия, в исходном качестве']]) {
+            const b = el('button', `aic-mode-btn${asFile === value ? ' is-on' : ''}`, label)
+            b.type = 'button'
+            b.title = hint
+            b.setAttribute('role', 'radio')
+            b.setAttribute('aria-checked', String(asFile === value))
+            b.addEventListener('click', () => {
+                asFile = value
+                try { localStorage.setItem(AS_FILE_KEY, value ? '1' : '0') } catch {}
+                renderTray()
+                input.focus()
+            })
+            box.append(b)
+        }
+        return box
+    }
+
     function renderTray() {
         tray.replaceChildren()
         tray.hidden = !files.length
+        if (files.some(isPicture)) tray.append(modeSwitch())
         for (const f of files) {
             const chip = el('div', `aic-chip${f.thumb ? ' has-thumb' : ''}`)
             chip.title = f.name
@@ -200,7 +227,7 @@ function createComposer({ root, onSend, onEdit = null, onPickFiles, onDescribeFi
         // the send belongs to the chat it started in: the person may open another chat while it runs
         const owner = chatKey()
         input.value = ''; files = []; renderTray(); autosize(); refreshSend(); showReply(null)
-        const ok = await onSend(text, sent.files, sent.reply).catch(() => false)
+        const ok = await onSend(text, sent.files, sent.reply, asFile && sent.files.some(isPicture)).catch(() => false)
         sending = false
         form.classList.remove('is-sending')
         const here = chatKey() === owner
