@@ -5,6 +5,7 @@
 const { renderMessage, paintVoice } = require('./message-view')
 const { createMediaPlayer } = require('./media-player')
 const { sharedDrafts } = require('./drafts')
+const { firstUnreadId } = require('./first-unread')
 const { createComposer } = require('./composer')
 const { readBackground, saveBackground, createBackgroundMenu } = require('./chat-backgrounds')
 const { createLightbox, galleryOf } = require('./lightbox')
@@ -59,7 +60,7 @@ function openingMark() {
     return box
 }
 
-function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab, onClose, onOlder, onLink, onPicture, onPickFiles, onDescribeFiles, onPasteImage, canReply = () => false, onMedia = () => Promise.resolve(null), canPlay = () => false, onVote = null, canVote = () => false }) {
+function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab, onClose, onOlder, onLink, onPicture, onPickFiles, onDescribeFiles, onPasteImage, canReply = () => false, onEdit = null, canEdit = () => false, onReact = null, reactionsFor = () => [], onMedia = () => Promise.resolve(null), canPlay = () => false, onVote = null, canVote = () => false }) {
     const root = el('section', 'aic')
     root.hidden = true
     root.dataset.bg = readBackground()
@@ -95,7 +96,7 @@ function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab
 
     const drafts = sharedDrafts
     let chatId = ''
-    const composer = createComposer({ root, onSend, onPickFiles, onDescribeFiles, onPasteImage, onDraft: (text) => drafts.keep(chatId, text), chatKey: () => chatId, onDraftFor: (id, text) => drafts.keep(id, text) })
+    const composer = createComposer({ root, onSend, onEdit, onPickFiles, onDescribeFiles, onPasteImage, onDraft: (text) => drafts.keep(chatId, text), chatKey: () => chatId, onDraftFor: (id, text) => drafts.keep(id, text) })
     composer.setVisible(false)
     root.append(composer.el)
     const lightbox = createLightbox({ root, onPicture })
@@ -187,6 +188,10 @@ function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab
     }, { passive: true })
     let seenIds = new Set()
     let byId = new Map()
+    // a chat with unread messages opens where they begin, under a «Непрочитанные сообщения» bar (3.8.3, like Telegram);
+    // the bar stays until the chat is opened again
+    let unreadAtOpen = 0
+    let startId = ''
 
     // the menu of a message on a right click: answer, copy the text, open it in the messenger
     const menu = el('div', 'aic-menu')
@@ -205,6 +210,7 @@ function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab
     }
     const ICON_REPLY = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>'
     const ICON_COPY = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/></svg>'
+    const ICON_EDIT = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>'
     const ICON_OPEN = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6"/><path d="M20 4l-9 9"/><path d="M18 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4"/></svg>'
     // a message that did not go: a click on its red mark takes it away
     list.addEventListener('click', (e) => {
@@ -217,7 +223,21 @@ function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab
         if (!m) return
         e.preventDefault()
         menu.replaceChildren()
+        // reactions of the messenger in a row on top, like Telegram and MAX (3.8.3); a second press takes one off
+        const emojis = onReact && m.kind !== 'note' ? reactionsFor() : []
+        if (emojis.length) {
+            const row = el('div', 'aic-menu-reacts')
+            for (const emoji of emojis) {
+                const b = el('button', 'aic-menu-react', emoji)
+                b.type = 'button'
+                b.title = emoji
+                b.addEventListener('click', () => { closeMenu(); onReact(m, emoji) })
+                row.append(b)
+            }
+            menu.append(row)
+        }
         if (canReply()) item('Ответить', ICON_REPLY, () => composer.replyTo(m))
+        if (onEdit && m.out && m.text && canEdit(m)) item('Изменить', ICON_EDIT, () => composer.edit(m))
         const selected = String(window.getSelection() || '').trim()
         if (selected || m.text) item(selected ? 'Копировать выделенное' : 'Копировать текст', ICON_COPY, () => navigator.clipboard.writeText(selected || m.text).catch(() => {}))
         item('Открыть в мессенджере', ICON_OPEN, onOpenInTab)
@@ -251,6 +271,8 @@ function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab
             lastRows = []
             seenIds = new Set()
             unseen = 0
+            unreadAtOpen = Math.max(0, Number(chat.unread) || 0)
+            startId = ''
             list.replaceChildren(openingMark())
             // the window comes in softly each time a chat is opened
             root.classList.remove('is-opening')
@@ -294,6 +316,9 @@ function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab
                 onVote: onVote && canVote() ? vote : null, isVoting: (id) => voting.has(id) }
             byId = new Map()
             const firstDraw = !seenIds.size
+            const openAtUnread = firstDraw && rows.length > 0 && unreadAtOpen > 0
+            if (openAtUnread) startId = firstUnreadId(rows, unreadAtOpen)
+            let startBar = null
             let arrived = 0
             const ids = new Set()
             for (const r of rows) {
@@ -301,6 +326,11 @@ function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab
                 // an event in the chat: a small note in the middle, like Telegram's service messages
                 if (r.type === 'note') { const note = el('div', 'aic-note'); note.append(el('span', '', r.text)); frag.append(note); continue }
                 const node = renderMessage(r, ctx)
+                if (startId && r.id === startId) {
+                    startBar = el('div', 'aic-unread-bar')
+                    startBar.append(el('span', '', 'Непрочитанные сообщения'))
+                    frag.append(startBar)
+                }
                 ids.add(r.id)
                 byId.set(r.id, r)
                 // what came in since the last look slides in softly, like in Telegram
@@ -312,6 +342,14 @@ function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab
             list.replaceChildren(frag)
             search.refresh()
             if (!nearBottom && arrived) unseen += arrived
+            if (openAtUnread && startBar) {
+                // the first unread message near the top of the window; the «down» button counts what is below
+                stick = false
+                unseen = unreadAtOpen
+                scroll.scrollTop = Math.max(0, startBar.getBoundingClientRect().top - scroll.getBoundingClientRect().top + scroll.scrollTop - 12)
+                refreshDown()
+                return
+            }
             // stay at the bottom for new messages; keep the place when earlier ones load above
             scroll.scrollTop = nearBottom ? scroll.scrollHeight : scroll.scrollHeight - fromBottom
             refreshDown()

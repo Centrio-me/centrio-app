@@ -31,6 +31,17 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms))
 const withTimeout = (p, ms) => Promise.race([p, wait(ms).then(() => null)])
 
 /** A real click inside a tab; a tab with its own zoom takes the point in screen pixels. */
+// a right click inside the tab: MAX opens its message menu (edit, reactions) this way
+const MENU_SETTLE_MS = 600
+function contextAt(view, point) {
+    let zoom = 1
+    try { zoom = Number(view.getZoomFactor()) || 1 } catch {}
+    const x = Math.round(point.x * zoom)
+    const y = Math.round(point.y * zoom)
+    view.sendInputEvent({ type: 'mouseMove', x, y })
+    for (const type of ['mouseDown', 'mouseUp']) view.sendInputEvent({ type, x, y, button: 'right', clickCount: 1 })
+}
+
 function clickAt(view, point) {
     let zoom = 1
     try { zoom = Number(view.getZoomFactor()) || 1 } catch {}
@@ -64,6 +75,11 @@ function createChatController({ state, webviewOf, host, ipcRenderer, onSubtitle 
         onDismissPending: (id) => { pending.drop(id); redraw() },
         onOlder: older,
         canReply: () => !!(current && typeof current.adapter.REPLY === 'function'),
+        // edit an own message and react (3.8.3)
+        onEdit: (m, text) => edit(m, text),
+        canEdit: () => !!(current && (typeof current.adapter.EDIT === 'function' || current.adapter.contextEdit)),
+        onReact: (m, emoji) => react(m, emoji),
+        reactionsFor: () => (current ? reactions : []),
         // links open in the browser through the main process's usual scheme check
         onLink: (url) => ipcRenderer.send('open-url', url),
         onPickFiles: () => ipcRenderer.invoke('all-inbox:pick-files').catch(() => []),
@@ -216,6 +232,76 @@ function createChatController({ state, webviewOf, host, ipcRenderer, onSubtitle 
         return true
     }
 
+    // ── edit and react (3.8.3) ────────────────────────────────────────────────
+    let reactions = []
+    function loadReactions(adapter) {
+        reactions = Array.isArray(adapter.REACTIONS) ? adapter.REACTIONS : []
+        if (!adapter.REACTIONS_LIST) return
+        const w = tab()
+        if (w) run(w, adapter.REACTIONS_LIST).then((list) => { if (current && current.adapter === adapter && Array.isArray(list)) reactions = list.filter((e) => typeof e === 'string').slice(0, 8) })
+    }
+
+    // the chat in the tab is still the one in our window
+    async function stillHere(w) {
+        const data = await run(w, current.adapter.CHAT)
+        if (!data || !sameChat(current.chat.title, data.title)) { view.setMismatch(true, data && data.title); return false }
+        return true
+    }
+
+    // MAX: the message menu on a right click over the message
+    async function openMessageMenu(w, id) {
+        const point = await run(w, current.adapter.REPLY_POINT(id))
+        if (!point || typeof point.x !== 'number') return false
+        contextAt(w, point)
+        await wait(MENU_SETTLE_MS)
+        return true
+    }
+    function pressEscape(w) {
+        w.sendInputEvent({ type: 'keyDown', keyCode: 'Escape' })
+        w.sendInputEvent({ type: 'keyUp', keyCode: 'Escape' })
+    }
+
+    async function edit(m, text) {
+        const w = tab()
+        if (!w || !current || !m || !text) return false
+        if (!(await stillHere(w))) return false
+        const id = String(m.id).split('+')[0]
+        let ok = false
+        if (typeof current.adapter.EDIT === 'function') {
+            ok = await run(w, current.adapter.EDIT(id, text)) === true
+        } else if (current.adapter.contextEdit) {
+            if (await openMessageMenu(w, id) && await run(w, current.adapter.MENU_ITEM('Редактировать'))) {
+                await wait(FOCUS_SETTLE_MS * 3)
+                const point = await run(w, current.adapter.COMPOSER)
+                ok = !!point && typeof point.x === 'number' && await typeAt(w, point, text)
+                if (ok) pressEnter(w)
+            } else pressEscape(w)
+        }
+        await wait(AFTER_SEND_MS)
+        poll()
+        return ok
+    }
+
+    async function react(m, emoji) {
+        const w = tab()
+        if (!w || !current || !m || !emoji) return false
+        if (!(await stillHere(w))) return false
+        const id = String(m.id).split('+')[0]
+        let ok = false
+        if (typeof current.adapter.REACT === 'function') {
+            ok = await run(w, current.adapter.REACT(id, emoji)) === true
+        } else if (current.adapter.REACT_PICK) {
+            const index = reactions.indexOf(emoji)
+            if (index >= 0 && await openMessageMenu(w, id)) {
+                ok = await run(w, current.adapter.REACT_PICK(index)) === true
+                if (!ok) pressEscape(w)
+            }
+        }
+        await wait(AFTER_SEND_MS)
+        poll()
+        return ok
+    }
+
     async function send(text, files = [], reply = null) {
         const w = tab()
         if (!w || !current) return false
@@ -265,6 +351,7 @@ function createChatController({ state, webviewOf, host, ipcRenderer, onSubtitle 
         // pictures cross from the tab once per opened chat (chat-adapters.js withImageMemo)
         const session = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`
         current = { chat, adapter, match: false, onConfirmed, confirmed: false, script: withImageMemo(adapter.CHAT, session), images: new Map() }
+        loadReactions(adapter)
         pending.clear()
         lastRows = []
         view.show(chat)

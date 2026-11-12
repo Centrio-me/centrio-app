@@ -76,3 +76,10 @@ test('«печатает» of a chat passes through, too long text is cut', () =
     const [none] = mergeInbox([{ messenger: tg, chats: [chat('2', { typing: { evil: 1 } })] }], NOW)
     assert.equal(none.typing, '')
 })
+
+test('a folder shows only its chats (3.8.3)', () => {
+
+    const sources = [{ messenger: { id: 'tg', name: 'Telegram' }, chats: [{ key: '1', title: 'Анна', time: '10:00' }, { key: '2', title: 'Пётр', time: '10:01' }] }]
+    const list = mergeInbox(sources, Date.now(), { chatIds: new Set(['tg::2']) })
+    assert.deepStrictEqual(list.map((c) => c.title), ['Пётр'])
+})

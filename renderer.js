@@ -582,6 +582,9 @@ async function bootstrap() {
         ['workHours', {}],
         ['morningSummary', {}],
         ['notifOpenIn', {}],
+        // 3.8.3 BUGFIX: «Все мессенджеры» (on/off, own folders) was read with the cache-only store.get() but never
+        // hydrated — the mode turned itself on again after every restart and folders vanished
+        ['allInbox', {}],
         // 3.7.2 BUGFIX: these were read with the cache-only store.get() but never hydrated. 'todos' came back empty
         // on every start, and the task panel then saved that empty list over the real one (tasks lost on restart since
         // 2.5); 'tabOrder' never restored the tab order; 'globalProxy' went to the cloud empty.
@@ -4148,7 +4151,7 @@ function applyTabZoom(level) {
     // «Друг Centrio» (3.8.2): beta testing in Settings → Система and the badge in the profile
     require('./renderer/beta-program').createBetaProgram({ cloudApi, cloudStore, tGet })
     const allInboxAccess = createAllInboxAccess({ store, tGet, hasEffectivePro, showUpgradeModal })
-    window.__centrioAllInbox = createAllInbox({ state, switchTab, tGet, ipcRenderer, canOpen: allInboxAccess.canOpen })
+    window.__centrioAllInbox = createAllInbox({ state, switchTab, tGet, ipcRenderer, canOpen: allInboxAccess.canOpen, store })
     if (window.__centrioAllInbox) allInboxAccess.attach(window.__centrioAllInbox)
     // Work hours (3.7.1): outside them team messengers / the person's work services stay quiet (renderer/webview-notify.js).
     window.__centrioWorkHours = createWorkHours({ state, store })

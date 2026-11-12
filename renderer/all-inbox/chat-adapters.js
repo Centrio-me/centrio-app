@@ -330,6 +330,30 @@ const telegram = {
         if (!mid || !input || typeof input.initMessageReply !== 'function') return false;
         try { input.initMessageReply({ replyToMsgId: mid }); return true; } catch (e) { return false; }
     })()`,
+    // edit an own message (3.8.3) through Telegram's own edit; Telegram itself refuses what may not be edited
+    EDIT: (id, text) => `(function () {
+        var mid = Number(${JSON.stringify(String(id))}), text = ${JSON.stringify(String(text))};
+        var c = window.appImManager && appImManager.chat;
+        if (!mid || !c || !text) return false;
+        var M = rootScope.managers;
+        return M.appMessagesManager.getMessageByPeer(c.peerId, mid).then(function (m) {
+            if (!m || m._ !== 'message') return false;
+            return Promise.resolve(M.appMessagesManager.editMessage(m, text)).then(function () { return true; });
+        }).catch(function () { return false; });
+    })()`,
+    // a reaction (3.8.3) through Telegram's own; the same reaction again takes it off
+    REACT: (id, emoji) => `(function () {
+        var mid = Number(${JSON.stringify(String(id))}), emoticon = ${JSON.stringify(String(emoji))};
+        var c = window.appImManager && appImManager.chat;
+        if (!mid || !c || !emoticon) return false;
+        var M = rootScope.managers;
+        return M.appMessagesManager.getMessageByPeer(c.peerId, mid).then(function (m) {
+            if (!m || m._ !== 'message') return false;
+            return Promise.resolve(M.appReactionsManager.sendReaction({ message: m, reaction: { _: 'reactionEmoji', emoticon: emoticon } })).then(function () { return true; });
+        }).catch(function () { return false; });
+    })()`,
+    // Telegram's free reactions most chats allow
+    REACTIONS: ['👍', '❤', '🔥', '🥰', '👏', '😁', '🤔', '😢'],
     // a vote in a poll of the open chat, through Telegram's own vote (indexes of the chosen options)
     VOTE: (id, indexes) => `(function () {
         var mid = Number(${JSON.stringify(String(id))}), pick = ${JSON.stringify((indexes || []).map(Number).filter((n) => Number.isInteger(n) && n >= 0))};
@@ -634,6 +658,52 @@ const max = {
         b.scrollIntoView({ block: 'nearest' });
         var r = b.getBoundingClientRect();
         return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+    })()`,
+    // edit and react (3.8.3): MAX does both from its own menu on a right click over the message (REPLY_POINT gives
+    // where): MENU_ITEM presses «Редактировать», then the field holds the text and Enter saves; REACT_PICK presses the
+    // n-th reaction of the menu's row, in the order of MAX's own setting «reactions-menu» (REACTIONS_LIST)
+    contextEdit: true,
+    MENU_ITEM: (label) => `(function () {
+        var label = ${JSON.stringify(String(label))};
+        var items = document.querySelectorAll('[role=menu] [role=menuitem], [role=menu] button');
+        for (var i = 0; i < items.length; i++) {
+            var it = items[i], name = it.getAttribute('aria-label') || it.innerText || '';
+            if (it.offsetWidth && name.trim() === label) { it.click(); return true; }
+        }
+        return false;
+    })()`,
+    REACT_PICK: (index) => `(function () {
+        var n = ${Number(index) || 0};
+        var all = [].filter.call(document.querySelectorAll('button.reaction'), function (b) { return b.offsetWidth && !b.closest('.openedChat div.item'); });
+        if (!all[n]) return false;
+        all[n].click();
+        return true;
+    })()`,
+    REACTIONS_LIST: `(function () {
+        var fallback = ['👍', '❤️', '🤣', '🔥', '😭', '💯', '💩', '😡'];
+        if (!window.indexedDB || !indexedDB.databases) return fallback;
+        return indexedDB.databases().then(function (dbs) {
+            var d = dbs.filter(function (x) { return /^max-db/.test(x.name); })[0];
+            if (!d) return fallback;
+            return new Promise(function (resolve) {
+                var open = indexedDB.open(d.name);
+                open.onerror = function () { resolve(fallback); };
+                open.onsuccess = function () {
+                    try {
+                        var q = open.result.transaction('config', 'readonly').objectStore('config').getAll();
+                        q.onsuccess = function () {
+                            var text = JSON.stringify(q.result || []);
+                            var m = text.match(/"reactions-menu":(\\[[^\\]]*\\])/);
+                            var list = null;
+                            try { list = m ? JSON.parse(m[1]) : null; } catch (e) {}
+                            // the menu shows seven of them, the eighth is behind «more»
+                            resolve(Array.isArray(list) && list.length ? list.slice(0, 7) : fallback.slice(0, 7));
+                        };
+                        q.onerror = function () { resolve(fallback.slice(0, 7)); };
+                    } catch (e) { resolve(fallback.slice(0, 7)); }
+                };
+            });
+        }).catch(function () { return fallback.slice(0, 7); });
     })()`,
     REPLY: (id) => `(function () {${AVATAR_HELPER}${MAX_ID_HELPER}
         var w = __mxFind(${JSON.stringify(String(id))});

@@ -7,7 +7,8 @@ const { mergeInbox } = require('./merge')
 const { attachPanelResize } = require('./panel-resize')
 const { createChatController, clickAt } = require('./chat-controller')
 const { sharedDrafts } = require('./drafts')
-const { isChannelSubtitle, createChannelMemory, withChannelKinds } = require('./channel-memory')
+const { kindFromSubtitle, createChannelMemory, withChannelKinds } = require('./channel-memory')
+const { createFolderBar, FOLDER_PREFIX } = require('./folders-ui')
 
 // remembered channels (MAX does not mark them in its list): a small JSON in this computer's local storage
 const channelMemory = createChannelMemory({
@@ -90,7 +91,7 @@ function el(tag, cls, text) {
  *   ipcRenderer: { send: Function, invoke: Function }, canOpen?: (opts: { quiet: boolean }) => boolean }} deps
  * canOpen: the PRO and on/off check of access.js; quiet = no upgrade window (opening by itself at start-up)
  */
-function createAllInbox({ state, switchTab, tGet, ipcRenderer, canOpen }) {
+function createAllInbox({ state, switchTab, tGet, ipcRenderer, canOpen, store = null }) {
     const t = (key, fallback) => (typeof tGet === 'function' ? tGet(`v380.allInbox.${key}`, fallback) : fallback)
     const button = document.getElementById('allInboxBtn')
     const panel = document.getElementById('allInboxPanel')
@@ -109,8 +110,9 @@ function createAllInbox({ state, switchTab, tGet, ipcRenderer, canOpen }) {
     const lastChats = new Map()
     const services = new Map()
     const savedFilter = readStorage(FILTER_KEY, 'all')
-    let filter = FILTERS.includes(savedFilter) ? savedFilter : 'all'
+    let filter = FILTERS.includes(savedFilter) || String(savedFilter).startsWith(FOLDER_PREFIX) ? savedFilter : 'all'
     let loadedOnce = false
+    let folderBar = null
     // a list the person changed (filter, search, messenger) is drawn at once, without sliding
     let quietOnce = false
     const clearEl = panel.querySelector('.ai-search-clear')
@@ -158,10 +160,11 @@ function createAllInbox({ state, switchTab, tGet, ipcRenderer, canOpen }) {
     let paths = {}
     try { paths = JSON.parse(readStorage(PATHS_KEY, '{}')) || {} } catch { paths = {} }
     const contentArea = document.getElementById('contentArea')
-    // a chat whose open window says «… подписчиков» is a channel from now on (channel-memory.js)
+    // a chat whose open window says «… подписчиков» / «… участников» is a channel / group from now on (channel-memory.js)
     const onSubtitle = (chat, subtitle) => {
-        if (!chat || !isChannelSubtitle(subtitle) || channelMemory.has(chat.messengerId, chat.title)) return
-        channelMemory.remember(chat.messengerId, chat.title)
+        const kind = kindFromSubtitle(subtitle)
+        if (!chat || !kind || channelMemory.kindOf(chat.messengerId, chat.title) === kind) return
+        channelMemory.remember(chat.messengerId, chat.title, kind)
         lastListSig = ''
         render()
     }
@@ -341,13 +344,15 @@ function createAllInbox({ state, switchTab, tGet, ipcRenderer, canOpen }) {
         const query = searchEl ? searchEl.value : ''
         const known = withChannelKinds(sources, channelMemory)
         const all = mergeInbox(known, Date.now())
-        const list = mergeInbox(known, Date.now(), { unreadOnly: filter === 'unread', kind: filter, query, messengerId: source })
+        const chatIds = folderBar ? folderBar.chatsOf(filter) : null
+        const list = mergeInbox(known, Date.now(), { unreadOnly: filter === 'unread', kind: chatIds ? '' : filter, chatIds, query, messengerId: source })
         if (clearEl) clearEl.hidden = !query
         renderSources(all)
         const unreadChats = all.filter((c) => c.unread > 0 && !c.muted).length
         if (badgeEl) { badgeEl.hidden = unreadChats === 0; badgeEl.textContent = unreadChats > 99 ? '99+' : String(unreadChats) }
         if (countEl) countEl.textContent = String(all.length)
         filterButtons.forEach((b) => b.classList.toggle('is-on', b.dataset.aiFilter === filter))
+        panel.querySelectorAll('.ai-folder').forEach((b) => b.classList.toggle('is-on', FOLDER_PREFIX + b.dataset.aiFolder === filter))
 
         // the list is drawn again only when something in it changed: no blinking pictures, hover and scroll stay
         const sigs = list.map(rowSig)
@@ -494,14 +499,23 @@ function createAllInbox({ state, switchTab, tGet, ipcRenderer, canOpen }) {
             searchEl.select()
         }
     })
-    filterButtons.forEach((b) => b.addEventListener('click', () => {
-        filter = b.dataset.aiFilter
+    function selectFilter(next) {
+        filter = next
         writeStorage(FILTER_KEY, filter)
         lastListSig = ''
         quietOnce = true
         render()
         listEl.scrollTop = 0
-    }))
+    }
+    filterButtons.forEach((b) => b.addEventListener('click', () => selectFilter(b.dataset.aiFilter)))
+
+    // own folders (3.8.3): chips after the filters, a right click on a chat puts it into one (folders-ui.js)
+    folderBar = store ? createFolderBar({ panel, store, isOn: (f) => f === filter, onSelect: selectFilter, onChange: () => { lastListSig = ''; render() } }) : null
+    if (!FILTERS.includes(filter) && !(folderBar && folderBar.exists(filter))) filter = 'all'
+    listEl.addEventListener('contextmenu', (e) => {
+        const row = e.target.closest('.ai-row[data-id]')
+        if (row && folderBar) folderBar.chatMenu(e, row.dataset.id)
+    })
 
     if (readStorage(OPEN_KEY, '') === '1') setOpen(true, { quiet: true })
     return { setOpen, refresh: readAll, isOpen: () => open, openChatView: (chat, adapterId) => chats?.open(chat, adapterId) }

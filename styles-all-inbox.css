@@ -949,3 +949,41 @@ html[data-fx] .ai-alpha { background: linear-gradient(rgba(14, 18, 32, .92), rgb
 .all-inbox-btn.is-locked .ai-btn-alpha .ai-alpha-glyph { display: none; }
 .ai-alpha-mark { padding: 3px; }
 .ai-alpha-chip { width: 18px; height: 16px; padding: 3px 4px; }
+
+/* where the unread messages begin (3.8.3): a soft full-width bar, like Telegram's «Непрочитанные сообщения» */
+.aic-unread-bar { position: relative; z-index: 1; display: flex; justify-content: center; margin: 10px -16px 8px; padding: 5px 0; background: rgba(0, 0, 0, .22); backdrop-filter: blur(8px); pointer-events: none; }
+.aic-unread-bar > span { color: #fff; font-size: 13px; font-weight: 600; letter-spacing: .01em; }
+
+/* own folders (3.8.3): chips after the filters by kind, «+» makes one */
+.ai-filters .ai-folder { max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ai-filters .ai-folder-add { display: inline-grid; place-items: center; width: 28px; padding: 0; color: var(--text-secondary); border: 1px dashed var(--border); }
+.ai-filters .ai-folder-add:hover { color: var(--accent); border-color: var(--accent); background: var(--accent-dim); }
+.ai-folder-input {
+    flex: none; width: 140px; height: 28px; padding: 0 11px; border: 1px solid var(--accent); border-radius: 999px; outline: none;
+    background: var(--bg-tertiary, var(--bg-secondary)); color: var(--text-primary); font: inherit; font-size: 12px; font-weight: 600;
+}
+.ai-fmenu {
+    position: fixed; z-index: 10050; min-width: 210px; max-width: 280px; padding: 5px; border-radius: 12px; border: 1px solid var(--border-light, var(--border));
+    background: var(--bg-secondary); box-shadow: 0 14px 40px rgba(0, 0, 0, .45);
+}
+.ai-fmenu[hidden] { display: none; }
+.ai-fmenu-item {
+    display: flex; align-items: center; gap: 9px; width: 100%; padding: 7px 10px; border: 0; border-radius: 8px; background: transparent;
+    color: var(--text-primary); font: inherit; font-size: 13px; text-align: left; cursor: pointer;
+}
+.ai-fmenu-item > span:last-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ai-fmenu-item:hover, .ai-fmenu-item:focus-visible { background: var(--bg-hover); outline: none; }
+.ai-fmenu-item.is-danger { color: #f87171; }
+.ai-fmenu-mark { display: inline-grid; place-items: center; width: 16px; height: 16px; flex: none; color: var(--accent); }
+.ai-fmenu-sep { height: 1px; margin: 4px 6px; background: var(--border); }
+
+/* reactions on top of the message menu (3.8.3), like Telegram and MAX */
+.aic-menu-reacts { display: flex; gap: 2px; padding: 4px 4px 6px; margin-bottom: 4px; border-bottom: 1px solid var(--border); }
+.aic-menu-react {
+    display: grid; place-items: center; width: 34px; height: 34px; padding: 0; border: 0; border-radius: 10px; background: transparent;
+    font-family: 'Centrio Emoji', 'Segoe UI Emoji', sans-serif; font-size: 21px; line-height: 1; cursor: pointer;
+    transition: transform .12s ease, background .12s ease;
+}
+.aic-menu-react:hover, .aic-menu-react:focus-visible { background: var(--bg-hover); transform: scale(1.18); outline: none; }
+/* editing an own message (3.8.3): the bar above the field in the accent, a pencil instead of the reply arrow */
+.aic-replying.is-edit { --quote: var(--accent); }

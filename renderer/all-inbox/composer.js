@@ -37,7 +37,7 @@ function pathsOf(fileList) {
  *   onPickFiles: () => Promise<object[]>, onDescribeFiles: (paths: string[]) => Promise<object[]>,
  *   onPasteImage: () => Promise<object|null> }} deps
  */
-function createComposer({ root, onSend, onPickFiles, onDescribeFiles, onPasteImage, onDraft = () => {}, chatKey = () => '', onDraftFor = () => {} }) {
+function createComposer({ root, onSend, onEdit = null, onPickFiles, onDescribeFiles, onPasteImage, onDraft = () => {}, chatKey = () => '', onDraftFor = () => {} }) {
     const form = el('form', 'aic-compose')
     form.autocomplete = 'off'
     form.innerHTML = `
@@ -77,7 +77,34 @@ function createComposer({ root, onSend, onPickFiles, onDescribeFiles, onPasteIma
         q('.aic-replying-title').textContent = m.out ? 'Ответ себе' : `Ответ ${m.author || ''}`.trim()
         q('.aic-replying-text').textContent = m.text || ({ photo: 'Фото', video: 'Видео', voice: 'Голосовое сообщение', file: m.name || 'Файл', sticker: 'Стикер' }[m.kind] || '')
     }
-    q('.aic-replying-x').addEventListener('click', () => { showReply(null); input.focus() })
+    // editing an own message (3.8.3): the bar says «Редактирование», the field holds its text, Enter saves, Esc cancels;
+    // what was typed before waits and comes back after
+    let editing = null
+    let beforeEdit = ''
+    function showEdit(m) {
+        if (!editing) beforeEdit = input.value
+        reply = null
+        editing = m
+        replying.hidden = false
+        replying.classList.add('is-edit')
+        replying.style.removeProperty('--quote')
+        q('.aic-replying-title').textContent = 'Редактирование'
+        q('.aic-replying-text').textContent = m.text
+        input.value = m.text
+        autosize(); refreshSend()
+        input.focus()
+        input.setSelectionRange(input.value.length, input.value.length)
+    }
+    function endEdit() {
+        if (!editing) return
+        editing = null
+        replying.classList.remove('is-edit')
+        replying.hidden = true
+        input.value = beforeEdit
+        beforeEdit = ''
+        autosize(); refreshSend()
+    }
+    q('.aic-replying-x').addEventListener('click', () => { if (editing) endEdit(); else showReply(null); input.focus() })
 
     const picker = createEmojiPicker({ onPick: insertAtCursor })
     form.append(picker.el)
@@ -146,7 +173,22 @@ function createComposer({ root, onSend, onPickFiles, onDescribeFiles, onPasteIma
         input.focus()
     }
 
+    async function saveEdit() {
+        const m = editing
+        const text = input.value.trim()
+        if (!text || text === String(m.text || '').trim()) { endEdit(); return }
+        sending = true
+        form.classList.add('is-sending')
+        const ok = await onEdit(m, text).catch(() => false)
+        sending = false
+        form.classList.remove('is-sending')
+        if (ok && editing === m) endEdit()
+        else if (!ok) { form.classList.add('is-failed'); setTimeout(() => form.classList.remove('is-failed'), 1600) }
+        input.focus()
+    }
+
     async function submit() {
+        if (editing && onEdit) { if (!sending) await saveEdit(); return }
         const text = input.value.trim()
         if ((!text && !files.length) || sending || blocked) return
         sending = true
@@ -183,9 +225,10 @@ function createComposer({ root, onSend, onPickFiles, onDescribeFiles, onPasteIma
     form.addEventListener('submit', (e) => { e.preventDefault(); submit() })
     input.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); submit() }
-        if (e.key === 'Escape' && picker.isOpen()) { e.preventDefault(); picker.toggle(false) } else if (e.key === 'Escape' && reply) { e.preventDefault(); showReply(null) }
+        if (e.key === 'Escape' && picker.isOpen()) { e.preventDefault(); picker.toggle(false) } else if (e.key === 'Escape' && editing) { e.preventDefault(); endEdit() } else if (e.key === 'Escape' && reply) { e.preventDefault(); showReply(null) }
     })
-    input.addEventListener('input', () => { autosize(); refreshSend(); onDraft(input.value) })
+    // the text of a message being edited is not a draft of the chat
+    input.addEventListener('input', () => { autosize(); refreshSend(); if (!editing) onDraft(input.value) })
     q('.aic-attach').addEventListener('click', async () => stage(await onPickFiles()))
     emojiBtn.addEventListener('click', () => { emojiBtn.classList.toggle('is-on', picker.toggle()); input.focus() })
     document.addEventListener('mousedown', (e) => {
@@ -224,6 +267,9 @@ function createComposer({ root, onSend, onPickFiles, onDescribeFiles, onPasteIma
         el: form,
         // a chat opened again comes back with what was typed and not sent there
         reset(draft = '') {
+            editing = null
+            beforeEdit = ''
+            replying.classList.remove('is-edit')
             input.value = draft
             showReply(null)
             files = []
@@ -234,7 +280,8 @@ function createComposer({ root, onSend, onPickFiles, onDescribeFiles, onPasteIma
             emojiBtn.classList.remove('is-on')
         },
         focus() { input.focus(); input.setSelectionRange(input.value.length, input.value.length) },
-        replyTo(m) { showReply(m); input.focus() },
+        replyTo(m) { if (editing) endEdit(); showReply(m); input.focus() },
+        edit(m) { if (onEdit && m && m.text) showEdit(m) },
         // the tab shows another chat: nothing can be sent until the right one is open
         setBlocked(on) {
             blocked = on

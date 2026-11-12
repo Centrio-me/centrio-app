@@ -34,3 +34,15 @@ test('the memory survives a restart and stays per tab', () => {
     assert.strictEqual(again.has('max1', 'RT на русском'), true)
     assert.strictEqual(again.has('max2', 'RT на русском'), false)
 })
+
+test('a group is told by «участников» and remembered as a group (Oleg: the filters did not work for MAX)', () => {
+    const { kindFromSubtitle } = require('../../renderer/all-inbox/channel-memory.js')
+    assert.strictEqual(kindFromSubtitle('12 участников'), 'group')
+    assert.strictEqual(kindFromSubtitle('3 участника, 1 в сети'), 'group')
+    assert.strictEqual(kindFromSubtitle('1 234 подписчика'), 'channel')
+    assert.strictEqual(kindFromSubtitle('был(а) вчера'), '')
+    const memory = createChannelMemory(fakeStorage())
+    memory.remember('max1', 'Родители 2Б', 'group')
+    const out = withChannelKinds([{ messenger: { id: 'max1' }, chats: [{ title: 'Родители 2Б', kind: 'user' }] }], memory)
+    assert.strictEqual(out[0].chats[0].kind, 'group')
+})

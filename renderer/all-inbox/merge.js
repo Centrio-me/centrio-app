@@ -18,7 +18,7 @@ const KIND_FILTERS = {
 /**
  * @param {{ messenger: { id: string, name: string, icon?: string }, chats: object[] }[]} sources
  * @param {number} now ms
- * @param {{ unreadOnly?: boolean, query?: string, messengerId?: string, kind?: 'personal'|'groups'|'channels' }} [filter]
+ * @param {{ unreadOnly?: boolean, query?: string, messengerId?: string, kind?: 'personal'|'groups'|'channels', chatIds?: Set<string> }} [filter]
  */
 function mergeInbox(sources, now, filter = {}) {
     const seen = new Set()
@@ -80,6 +80,8 @@ function mergeInbox(sources, now, filter = {}) {
         .filter((c) => !filter.unreadOnly || c.unread > 0)
         .filter((c) => !filter.messengerId || c.messengerId === filter.messengerId)
         .filter((c) => !kinds || kinds.has(c.kind))
+        // an own folder (3.8.3, folders.js): only its chats
+        .filter((c) => !filter.chatIds || filter.chatIds.has(c.id))
         .filter((c) => !query || c.title.toLowerCase().includes(query) || c.preview.toLowerCase().includes(query))
         .map((c) => {
             const start = query ? c.title.toLowerCase().indexOf(query) : -1
