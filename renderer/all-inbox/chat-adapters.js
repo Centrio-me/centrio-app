@@ -11,6 +11,19 @@ const { vkChat } = require('./vk')
 const { instagramChat } = require('./instagram')
 
 const MAX_MESSAGES = 120
+// scrolling up in our window reads this many more of what the page has loaded, up to the most (3.8.3, owner: in
+// MAX channels the history stopped at a date — only the newest 120 were read however far the page had loaded)
+const OLDER_STEP = 80
+const MOST_MESSAGES = 1000
+// how many of the newest messages a read takes: MAX_MESSAGES for a chat just opened, more once the person scrolled up
+const LIMIT_HELPER = `
+function __ciLimit() {
+    var at = location.pathname + location.hash;
+    if (window.__ciLimitAt !== at) { window.__ciLimitAt = at; window.__ciLimitN = ${MAX_MESSAGES}; }
+    return window.__ciLimitN || ${MAX_MESSAGES};
+}
+function __ciMore() { window.__ciLimitN = Math.min(${MOST_MESSAGES}, __ciLimit() + ${OLDER_STEP}); }
+`
 // voice messages, audio and videos up to this size play in our window; bigger ones open in the messenger
 const MEDIA_MAX_BYTES = 100 * 1024 * 1024 // 3.8.3: channel videos are often bigger than 40 MB; bigger ones open in the tab
 // a poll's votes are asked again this often while the chat is open
@@ -91,7 +104,7 @@ function __ciCleanText(el, drop) {
 `
 
 const telegram = {
-    CHAT: `(function () {${AVATAR_HELPER}${IMAGE_HELPER}
+    CHAT: `(function () {${AVATAR_HELPER}${IMAGE_HELPER}${LIMIT_HELPER}
         // Telegram keeps the previous chats on the page too: only the active one counts
         var chat = document.querySelector('.chats-container > .chat.active, #column-center .chat.active');
         if (!chat) return { title: '', subtitle: '', messages: [], none: true };
@@ -243,7 +256,7 @@ const telegram = {
             }
             return c.data;
         }
-        var start = Math.max(0, bubbles.length - ${MAX_MESSAGES});
+        var start = Math.max(0, bubbles.length - __ciLimit());
         var out = [];
         for (var i = start; i < bubbles.length; i++) {
             var b = bubbles[i], cls = ' ' + b.className + ' ';
@@ -461,11 +474,12 @@ const telegram = {
             });
         }).catch(function () { return null; });
     })()`,
-    OLDER: `(function () {
+    OLDER: `(function () {${LIMIT_HELPER}
         var chat = document.querySelector('.chats-container > .chat.active, #column-center .chat.active');
         var s = chat && chat.querySelector('.bubbles .scrollable-y, .bubbles-inner');
         var box = s && (s.classList.contains('scrollable-y') ? s : s.closest('.scrollable-y'));
         if (box) box.scrollTop = 0;
+        __ciMore();
         return !!box;
     })()`
 }
@@ -500,7 +514,7 @@ function __mxFind(id) { var all = __mxAll(); for (var i = 0; i < all.length; i++
 `
 
 const max = {
-    CHAT: `(function () {${AVATAR_HELPER}${IMAGE_HELPER}${MAX_ID_HELPER}
+    CHAT: `(function () {${AVATAR_HELPER}${IMAGE_HELPER}${MAX_ID_HELPER}${LIMIT_HELPER}
         var chat = document.querySelector('.openedChat');
         if (!chat) return { title: '', subtitle: '', messages: [], none: true };
         // while photos are warmed up the tab shows an earlier part of the chat: this read gives nothing, the last one stays
@@ -522,7 +536,7 @@ const max = {
         __mxAll().forEach(function (x) { x.w.__ciId = x.id; });
         var capsSeen = {};
         for (var i = 0; i < items.length; i++) if (items[i].querySelector('.messageWrapper, .capsule')) list.push(items[i]);
-        var start = Math.max(0, list.length - ${MAX_MESSAGES});
+        var start = Math.max(0, list.length - __ciLimit());
         for (var j = start; j < list.length; j++) {
             var it = list[j];
             var capsule = it.querySelector('.capsule');
@@ -878,11 +892,15 @@ const max = {
         window.__ciMxMedia = next.then(function () {}, function () {});
         return next;
     })()`,
-    OLDER: `(function () {
-        var chat = document.querySelector('.openedChat');
-        var items = chat ? chat.querySelectorAll('div.item[data-index]') : [];
-        for (var i = 0; i < items.length; i++) { if (items[i].querySelector('.messageWrapper')) { items[i].scrollIntoView({ block: 'start' }); return true; } }
-        return false;
+    // MAX loads earlier messages once its list is at its very top (the first message put at the top was not always
+    // the top — a date line or a channel's header lies above it, and nothing loaded)
+    OLDER: `(function () {${LIMIT_HELPER}
+        var box = document.querySelector('.openedChat .scrollListScrollable');
+        if (!box) return false;
+        box.scrollTop = 0;
+        box.dispatchEvent(new Event('scroll'));
+        __ciMore();
+        return true;
     })()`
 }
 
