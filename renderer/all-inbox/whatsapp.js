@@ -4,7 +4,9 @@
 // A chat is opened with WhatsApp's own command; the open conversation is read from the page, and each message's type,
 // time, author and ticks come from the store by the message's id. Page scripts are plain ES5 strings.
 
+// every chat is listed, so search finds any (3.8.3, as Telegram); only the freshest get avatars asked for
 const WA_CHATS = 150
+const WA_ALL_CHATS = 1500
 const WA_MESSAGES = 120
 const WA_AVATARS_AT_ONCE = 6
 
@@ -60,12 +62,16 @@ function whatsappList({ AVATAR_HELPER }) {
             if (!C || !C.Chat) return [];
             var now = Date.now(), me = '';
             var loading = window.__ciWaAvLoading || (window.__ciWaAvLoading = {});
+            // the chat with oneself is there even before anything was written in it (WhatsApp keeps no time for it)
+            var meLid = '', mePn = '';
+            try { var mu = window.require('WAWebUserPrefsMeUser'); var l = mu.getMaybeMeLidUser && mu.getMaybeMeLidUser(); var p = mu.getMaybeMePnUser && mu.getMaybeMePnUser(); meLid = l ? l._serialized : ''; mePn = p ? p._serialized : ''; } catch (e) {}
+            var isMe = function (c) { var id = c.id && c.id._serialized || ''; return !!id && (id === meLid || id === mePn); };
             var chats = C.Chat.getModelsArray().filter(function (c) {
                 var id = c.id && c.id._serialized || '';
-                return c.t && !c.archive && id !== 'status@broadcast' && id.indexOf('@broadcast') < 0;
-            }).sort(function (a, b) { return (b.t || 0) - (a.t || 0); }).slice(0, ${WA_CHATS});
+                return (c.t || isMe(c)) && id !== 'status@broadcast' && id.indexOf('@broadcast') < 0;
+            }).sort(function (a, b) { return (b.t || 0) - (a.t || 0); }).slice(0, ${WA_ALL_CHATS});
             var out = [];
-            chats.forEach(function (c) {
+            chats.forEach(function (c, place) {
                 var title = __waTitle(C, c);
                 if (!title) return;
                 var last = c.msgs && c.msgs.last ? c.msgs.last() : null;
@@ -75,7 +81,7 @@ function whatsappList({ AVATAR_HELPER }) {
                 // the small avatar: from the store when it has one (asked a few at a time), else the one on the page
                 var pic = C.ProfilePicThumb && C.ProfilePicThumb.get(c.id);
                 var avatar = (pic && (pic.img || pic.imgFull)) || seen[title] || '';
-                if (!avatar && C.ProfilePicThumb && !loading[c.id._serialized] && Object.keys(loading).length < ${WA_AVATARS_AT_ONCE}) {
+                if (!avatar && place < ${WA_CHATS} && C.ProfilePicThumb && !loading[c.id._serialized] && Object.keys(loading).length < ${WA_AVATARS_AT_ONCE}) {
                     loading[c.id._serialized] = 1;
                     Promise.resolve(C.ProfilePicThumb.find(c.id)).catch(function () {}).then(function () { setTimeout(function () { delete loading[c.id._serialized]; }, 60000); });
                 }
@@ -85,7 +91,7 @@ function whatsappList({ AVATAR_HELPER }) {
                     key: c.id._serialized,
                     title: title,
                     preview: line,
-                    at: c.t * 1000,
+                    at: (c.t || 0) * 1000,
                     unread: c.unreadCount > 0 ? c.unreadCount : (c.unreadCount === -1 ? 1 : 0),
                     muted: !!(c.muteExpiration && (c.muteExpiration === -1 || c.muteExpiration * 1000 > now)),
                     pinned: !!c.pin,
@@ -163,6 +169,16 @@ function whatsappChat({ AVATAR_HELPER, IMAGE_HELPER }) {
                 var text = textEl ? __ciText(textEl) : (m && type === 'chat' ? String(m.body || '') : '');
                 if (type === 'revoked') { kind = 'text'; text = 'Сообщение удалено'; }
                 if (type === 'location' || type === 'liveLocation') { kind = 'text'; text = '📍 Геопозиция' + (m.loc ? ': ' + m.loc : ''); }
+                // a photo or video WhatsApp has not downloaded yet (its tab is not on screen, so it waits) shows only a
+                // blurred little preview, and a click opened that (owner, 2026-11-12): WhatsApp is asked once to download it,
+                // as if the person had scrolled to it — the next read has the real picture (3.8.3)
+                if (m && (kind === 'photo' || kind === 'video' || kind === 'sticker') && typeof m.downloadMedia === 'function') {
+                    var md = m.mediaData, asked = window.__ciWaAsked || (window.__ciWaAsked = {});
+                    if (md && md.mediaStage && md.mediaStage !== 'RESOLVED' && md.mediaStage !== 'FETCHING' && !asked[id]) {
+                        asked[id] = 1;
+                        try { Promise.resolve(m.downloadMedia({ downloadEvenIfExpensive: true, rmrReason: 1, isUserInitiated: true })).catch(function () {}); } catch (e) {}
+                    }
+                }
                 var pic = null;
                 if (kind === 'photo' || kind === 'video' || kind === 'sticker') {
                     var imgs = row.querySelectorAll('img');
