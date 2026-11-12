@@ -10,6 +10,20 @@ The format is based on Keep a Changelog. This project does not currently follow 
 
 _No unreleased changes yet — add entries here as they land, then move them under a new version heading at release time._
 
+## [3.8.3-beta.1] - 2026-11-12 (тестовая, только «Друзья Centrio»)
+
+### Added
+- «Все мессенджеры»: свои папки (renderer/all-inbox/folders.js, folders-ui.js; хранятся в store allInbox.folders, по профилю).
+- Реакции и редактирование своих сообщений в Telegram (его appReactionsManager/appMessagesManager) и MAX (его меню по правой кнопке; список реакций из настройки MAX «reactions-menu»).
+- «Фото · Файл» для картинок: двухшаговое перетаскивание (all-inbox:drag-start / drag-finish) и выбор зоны мессенджера («без сжатия» / «быстрым способом»).
+
+### Changed
+- Чат с непрочитанными открывается на первом непрочитанном (first-unread.js) под полосой «Непрочитанные сообщения».
+
+### Fixed
+- Группы MAX запоминаются по «… участников» в шапке и попадают в «Группы».
+- Раздел store «allInbox» не гидрировался: выключенный режим включался после перезапуска.
+
 ## [3.8.2] - 2026-11-12
 
 ### Added
