@@ -10,6 +10,15 @@ The format is based on Keep a Changelog. This project does not currently follow 
 
 _No unreleased changes yet — add entries here as they land, then move them under a new version heading at release time._
 
+## [3.8.3-beta.3] - 2026-11-12 (тестовая, только «Друзья Centrio»)
+
+### Fixed
+- WhatsApp: все чаты (WA_ALL_CHATS = 1500, архив), чат с самим собой без даты; нескачанные фото/видео докачиваются (msg.downloadMedia) — вместо размытого превью настоящая картинка.
+- Telegram: эмодзи-статус у имени (video в .emoji-status) делал текстовое сообщение «видео»; статус — картинкой у имени (authorBadge).
+
+### Changed
+- Логотип компании TEAM (org-branding.js) скругляется (img.is-org-logo, 22%).
+
 ## [3.8.3-beta.2] - 2026-11-12 (тестовая, только «Друзья Centrio»)
 
 ### Added
