@@ -11,6 +11,7 @@
 const { whatsappList } = require('./whatsapp')
 const { vkList } = require('./vk')
 const { instagramList } = require('./instagram')
+const { maxTitleOf } = require('./max-title')
 
 const MAX_CHATS = 60
 // Telegram gives its whole dialog list; the freshest ones are enough for one screen of history
@@ -284,26 +285,29 @@ const telegram = {
     })()`
 }
 
+// the name of a MAX row, shared by reading the list and finding a chat to open (max-title.js)
+const MAX_TITLE_HELPER = `var __ciMaxTitle = (${maxTitleOf.toString()});`
+
 const max = {
     id: 'max',
     match: (url) => /^https:\/\/web\.max\.ru\//.test(url),
     // MAX draws only the chats on screen and keeps no list anywhere else: the rows are remembered as they are seen,
     // and while the tab is not on screen its list is walked through now and then (scrolled down a screen at a time, then
     // back to where it was), so every chat gets on the list. New messages lift a chat to the top, where it is seen at once.
-    listScript: ({ sweep }) => `(function () {${AVATAR_HELPER}
+    listScript: ({ sweep }) => `(function () {${AVATAR_HELPER}${MAX_TITLE_HELPER}
         function readCells() {
             var cells = document.querySelectorAll('.scrollListContent > div.item button.cell');
             var out = [], seen = {};
             for (var i = 0; i < cells.length; i++) {
                 var c = cells[i];
                 var leaves = [], all = c.querySelectorAll('.text, .time');
-                for (var j = 0; j < all.length; j++) if (all[j].children.length === 0 || /textMultiline/.test(all[j].className)) leaves.push(all[j]);
-                var title = '', time = '', unread = 0, preview = [];
+                // the innermost texts: a text may hold an icon (a photo, a file, a channel's mark) beside its words
+                for (var j = 0; j < all.length; j++) if (!all[j].querySelector('.text, .time')) leaves.push(all[j]);
+                var named = __ciMaxTitle(c, __ciText), title = named.title, time = '', unread = 0, preview = [];
                 for (var k = 0; k < leaves.length; k++) {
                     var el = leaves[k], text = __ciText(el), cls = String(el.className);
-                    if (!text) continue;
+                    if (!text || (named.el && (named.el === el || named.el.contains(el) || el.contains(named.el)))) continue;
                     if (/(^|\\s)time(\\s|$)/.test(cls)) { time = text; continue; }
-                    if (!title) { title = text; continue; }
                     if (/text--20/.test(cls) && /^\\d+$/.test(text)) { unread = text; continue; }
                     preview.push(text);
                 }
@@ -340,11 +344,11 @@ const max = {
         if (${sweep ? 1 : 0} && !window.__ciMaxWalking && Date.now() - (window.__ciMaxWalkedAt || 0) > ${MAX_WALK_EVERY_MS}) walk();
         return Object.keys(cache).map(function (k) { return cache[k].row; });
     })()`,
-    locate: (key) => `(function () {${AVATAR_HELPER}
+    locate: (key) => `(function () {${AVATAR_HELPER}${MAX_TITLE_HELPER}
         var key = ${JSON.stringify(String(key))};
         function find() {
             var cells = document.querySelectorAll('.scrollListContent > div.item button.cell');
-            for (var i = 0; i < cells.length; i++) { var t = cells[i].querySelector('.text'); if (t && __ciText(t) === key) return cells[i]; }
+            for (var i = 0; i < cells.length; i++) { if (__ciMaxTitle(cells[i], __ciText).title === key) return cells[i]; }
             return null;
         }
         function shown(el) { var r = el && el.getBoundingClientRect(); return !!r && r.width > 0 && r.height > 0 && r.right > 0 && r.left < innerWidth; }

@@ -114,7 +114,31 @@ function createAllInbox({ state, switchTab, tGet, ipcRenderer, canOpen }) {
     sourcesEl.className = 'ai-sources'
     sourcesEl.setAttribute('role', 'toolbar')
     sourcesEl.setAttribute('aria-label', t('sources', 'Мессенджеры'))
-    panel.querySelector('.ai-tools')?.append(sourcesEl)
+    // the messengers that do not fit are reached by arrows at the ends of the row (Oleg, 2026-11-12: only four were seen,
+    // nothing told the row scrolls); a fade marks the side where more are hidden
+    const sourcesWrap = document.createElement('div')
+    sourcesWrap.className = 'ai-sources-wrap'
+    const sourceArrows = ['prev', 'next'].map((side) => {
+        const b = document.createElement('button')
+        b.type = 'button'
+        b.className = `ai-sources-arrow is-${side}`
+        b.tabIndex = -1
+        b.setAttribute('aria-label', side === 'prev' ? t('sourcesPrev', 'Назад') : t('sourcesNext', 'Ещё мессенджеры'))
+        b.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="${side === 'prev' ? 'M15 6l-6 6 6 6' : 'M9 6l6 6-6 6'}"/></svg>`
+        b.addEventListener('click', () => sourcesEl.scrollBy({ left: (side === 'prev' ? -1 : 1) * sourcesEl.clientWidth * 0.8, behavior: 'smooth' }))
+        return b
+    })
+    sourcesWrap.append(sourceArrows[0], sourcesEl, sourceArrows[1])
+    panel.querySelector('.ai-tools')?.append(sourcesWrap)
+    function updateSourceEnds() {
+        const more = sourcesEl.scrollWidth - sourcesEl.clientWidth > 2
+        const atStart = sourcesEl.scrollLeft <= 2
+        const atEnd = sourcesEl.scrollLeft >= sourcesEl.scrollWidth - sourcesEl.clientWidth - 2
+        sourcesWrap.classList.toggle('has-prev', more && !atStart)
+        sourcesWrap.classList.toggle('has-next', more && !atEnd)
+    }
+    sourcesEl.addEventListener('scroll', updateSourceEnds, { passive: true })
+    if (typeof ResizeObserver === 'function') new ResizeObserver(updateSourceEnds).observe(sourcesEl)
     // the rows of filters and messengers scroll sideways with the ordinary mouse wheel
     for (const strip of [sourcesEl, panel.querySelector('.ai-filters')]) {
         strip?.addEventListener('wheel', (e) => {
@@ -295,6 +319,8 @@ function createAllInbox({ state, switchTab, tGet, ipcRenderer, canOpen }) {
             sourcesEl.append(b)
         }
         sourcesEl.querySelector('.ai-src.is-on')?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+        sourcesWrap.hidden = sourcesEl.hidden
+        updateSourceEnds()
     }
 
     function render() {

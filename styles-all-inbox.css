@@ -321,7 +321,21 @@ html[data-fx] .aic-head { border-bottom-color: rgba(255, 255, 255, .06); }
 webview.inbox-warm:not(.active) { display: flex; opacity: 0; pointer-events: none; z-index: -1; }
 
 /* one pill per messenger tab: narrows the list to it */
-.ai-sources { display: flex; gap: 6px; overflow-x: auto; padding: 2px 0 2px; scrollbar-width: none; mask-image: linear-gradient(90deg, #000 88%, transparent); }
+.ai-sources-wrap { position: relative; min-width: 0; }
+.ai-sources-wrap[hidden] { display: none; }
+.ai-sources { display: flex; gap: 6px; overflow-x: auto; padding: 2px 0 2px; scrollbar-width: none; }
+.ai-sources-wrap.has-next .ai-sources { mask-image: linear-gradient(90deg, #000 calc(100% - 56px), transparent calc(100% - 12px)); }
+.ai-sources-wrap.has-prev .ai-sources { mask-image: linear-gradient(90deg, transparent 12px, #000 56px); }
+.ai-sources-wrap.has-prev.has-next .ai-sources { mask-image: linear-gradient(90deg, transparent 12px, #000 56px, #000 calc(100% - 56px), transparent calc(100% - 12px)); }
+.ai-sources-arrow {
+    position: absolute; top: 50%; z-index: 1; display: none; place-items: center; width: 26px; height: 26px; margin-top: -13px; padding: 0;
+    border: 1px solid var(--border); border-radius: 50%; background: var(--bg-secondary); color: var(--text-primary);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, .25); cursor: pointer; transition: background .12s ease, transform .12s ease;
+}
+.ai-sources-arrow.is-prev { left: 0; }
+.ai-sources-arrow.is-next { right: 0; }
+.ai-sources-arrow:hover { background: var(--bg-hover); transform: scale(1.06); }
+.ai-sources-wrap.has-prev .ai-sources-arrow.is-prev, .ai-sources-wrap.has-next .ai-sources-arrow.is-next { display: grid; }
 .ai-sources::-webkit-scrollbar { display: none; }
 .ai-sources[hidden] { display: none; }
 .ai-src {

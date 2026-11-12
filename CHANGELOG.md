@@ -8,7 +8,10 @@ The format is based on Keep a Changelog. This project does not currently follow 
 
 ## [Unreleased]
 
-_No unreleased changes yet — add entries here as they land, then move them under a new version heading at release time._
+### Fixed
+- «Все мессенджеры»: каналы MAX показываются со своими названиями, а не цифрами, и открываются по клику.
+- «Все мессенджеры»: у чатов MAX видно последнее сообщение, если это фото, файл или стикер.
+- «Все мессенджеры»: если мессенджеры не помещаются в строку вверху, по краям появляются стрелки — видно, что дальше есть ещё.
 
 ## [3.8.0]
 
