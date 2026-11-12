@@ -357,6 +357,10 @@ function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab
     return {
         show(chat) {
             root.hidden = false
+            // the split's own layer (zone placeholders, handles) lies over the page above everything; while our
+            // window is open it steps aside, or in three columns the window can't be clicked (3.8.3)
+            document.body.classList.add('all-inbox-chat-open')
+            document.dispatchEvent(new CustomEvent('close-all-popups'))
             lastSig = ''
             stick = true
             player.reset()
@@ -468,7 +472,7 @@ function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab
         setCanWrite(on) { composer.setVisible(on) },
         // a pressed reaction: only that message's reactions change, at once
         showReactions(id, items) { return patchReactions(list, id, items) },
-        hide() { player.reset(); videoToken++; closeZoom(); closeMenu(); bgMenu.toggle(false); root.hidden = true },
+        hide() { player.reset(); videoToken++; closeZoom(); closeMenu(); bgMenu.toggle(false); root.hidden = true; document.body.classList.remove('all-inbox-chat-open') },
         isShown: () => !root.hidden,
         // the person really sees the newest messages: our window on screen, Centrio in focus, the conversation at its end
         isReading: () => !root.hidden && !lightbox.isOpen() && document.visibilityState === 'visible' && document.hasFocus() && atBottom()
