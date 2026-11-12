@@ -10,6 +10,20 @@ The format is based on Keep a Changelog. This project does not currently follow 
 
 _No unreleased changes yet — add entries here as they land, then move them under a new version heading at release time._
 
+## [3.8.3-beta.6] - 2026-11-12 (тестовая, только «Друзья Centrio»)
+
+### Fixed
+- WhatsApp: ответ на сообщение (chat.composeQuotedMsg); MAX: цитата ответа читается (.bubbleContent .link > .mark).
+- Тройной сплит: окно чата перекрывали #splitZones (fixed, z-index 99999) — пока окно открыто, слой сплита скрыт (body.all-inbox-chat-open).
+- История: чтение берёт 120 последних, каждая прокрутка вверх +80 (до 1000, LIMIT_HELPER); OLDER у MAX ставит список ровно в 0 — раньше над первым сообщением была строка даты и MAX не догружал.
+- MAX: видео — тип «video», обложка из poster, длина, проигрывание по currentSrc плеера MAX; кружки — кадр с canvas.
+- Telegram: видео берётся appDownloadManager.downloadMedia целиком (fetch потоковой ссылки давал 206 и 512 КБ — ролик прыгал в конец); предел 100 МБ, ожидание 2 мин.
+- Telegram: альбом выше края окна — рамка считалась от 0 (maxY = 0 при отрицательных координатах) и превращалась в «простыню».
+- WhatsApp: картинка старого сообщения из хранилища (mediaData) или миниатюра m.body, когда страница её не нарисовала.
+
+### Added
+- Заметки: копирование картинки — кнопка на миниатюре, правый клик, Ctrl+C в просмотре.
+
 ## [3.8.3-beta.5] - 2026-11-12 (тестовая, только «Друзья Centrio»)
 
 ### Fixed
