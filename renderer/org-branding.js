@@ -43,10 +43,15 @@ function applyOrgLogo(user) {
             // unreachable (deleted org logo file, offline, etc).
             el.onerror = () => {
                 const defaultSrc = el.getAttribute(DEFAULT_SRC_ATTR)
+                el.classList.remove('is-org-logo')
                 if (defaultSrc) el.src = defaultSrc
             }
+            // a company's own logo is usually a square picture with sharp corners: it is rounded like an app icon
+            // (3.8.3, owner: «логотип компании нужно немного скруглять»)
+            el.classList.add('is-org-logo')
             el.src = orgLogoUrl
         } else {
+            el.classList.remove('is-org-logo')
             const defaultSrc = el.getAttribute(DEFAULT_SRC_ATTR)
             if (defaultSrc && el.getAttribute('src') !== defaultSrc) el.src = defaultSrc
         }

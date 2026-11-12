@@ -266,3 +266,6 @@
     display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere;
 }
 .ms-more, .ms-todos { font-size: 11.5px; color: var(--text-secondary); }
+
+/* a TEAM company's own logo in place of Centrio's (org-branding.js, 3.8.3): rounded like an app icon */
+img.is-org-logo { border-radius: 22%; }
