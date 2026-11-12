@@ -2,7 +2,7 @@
 // «Все мессенджеры» (3.8): our own conversation window over the messenger's tab. It only draws what timeline.js gives
 // and hands typed text back; the tab behind it does the real work.
 
-const { renderMessage, paintVoice } = require('./message-view')
+const { renderMessage, paintVoice, patchReactions } = require('./message-view')
 const { createMediaPlayer } = require('./media-player')
 const { sharedDrafts } = require('./drafts')
 const { firstUnreadId } = require('./first-unread')
@@ -466,6 +466,8 @@ function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab
             }
         },
         setCanWrite(on) { composer.setVisible(on) },
+        // a pressed reaction: only that message's reactions change, at once
+        showReactions(id, items) { return patchReactions(list, id, items) },
         hide() { player.reset(); videoToken++; closeZoom(); closeMenu(); bgMenu.toggle(false); root.hidden = true },
         isShown: () => !root.hidden,
         // the person really sees the newest messages: our window on screen, Centrio in focus, the conversation at its end

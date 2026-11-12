@@ -16,7 +16,7 @@ function emojiNodes(text) {
         const url = emojiUrl(part.emoji, getEmojiSet())
         if (!url) { frag.append(document.createTextNode(part.emoji)); continue }
         const img = document.createElement('img')
-        img.className = 'aic-emoji'
+        img.className = 'aic-emo-img'
         img.alt = part.emoji
         img.draggable = false
         img.decoding = 'async'
@@ -407,4 +407,17 @@ function renderMessage(m, ctx) {
     return row
 }
 
-module.exports = { renderMessage, paintVoice, setEmojiSet, emojiNodes }
+/** Only the reactions of one drawn message, put in place at once (3.8.3: a pressed reaction shows instantly) */
+function patchReactions(listEl, id, list) {
+    const row = [...listEl.querySelectorAll('.aic-row[data-id]')].find((r) => r.dataset.id === String(id))
+    const bubble = row && row.querySelector('.aic-bubble')
+    if (!bubble) return false
+    const old = bubble.querySelector(':scope > .aic-reactions')
+    const next = list && list.length ? reactions({ reactions: list }) : null
+    if (old && next) old.replaceWith(next)
+    else if (old) old.remove()
+    else if (next) bubble.append(next)
+    return true
+}
+
+module.exports = { renderMessage, paintVoice, setEmojiSet, emojiNodes, patchReactions }

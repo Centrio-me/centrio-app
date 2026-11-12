@@ -393,7 +393,12 @@ const telegram = {
         var M = rootScope.managers;
         return M.appMessagesManager.getMessageByPeer(c.peerId, mid).then(function (m) {
             if (!m || m._ !== 'message') return false;
-            return Promise.resolve(M.appReactionsManager.sendReaction({ message: m, reaction: { _: 'reactionEmoji', emoticon: emoticon } })).then(function () { return true; });
+            return Promise.resolve(M.appReactionsManager.sendReaction({ message: m, reaction: { _: 'reactionEmoji', emoticon: emoticon } })).then(function () {
+                // the next read asks Telegram for this message's reactions again at once
+                var k = c.peerId + '_' + mid;
+                if (window.__ciTgReacts && window.__ciTgReacts[k]) window.__ciTgReacts[k].at = 0;
+                return true;
+            });
         }).catch(function () { return false; });
     })()`,
     // delete an own message (3.8.3) through Telegram's own; «у всех» revokes it for the other side too
@@ -623,7 +628,11 @@ const max = {
                         var list = [];
                         for (var q = 0; q < bs.length && list.length < 8; q++) {
                             var cv = bs[q].querySelector('canvas');
-                            var key = id + ':' + q;
+                            var count = String(bs[q].innerText || '').replace(/\\s+/g, '') || '1';
+                            var active = /reaction--active/.test(bs[q].className);
+                            // one picture per place, count and «yours»: taken again when any of them changes (the reaction
+                            // there may be another one now), not on every read — the canvas animates
+                            var key = id + ':' + q + ':' + count + (active ? '*' : '');
                             if (cv && !shots[key]) {
                                 try {
                                     var px = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data, ink = 0;
@@ -631,8 +640,7 @@ const max = {
                                     if (ink > 0) shots[key] = cv.toDataURL('image/png');
                                 } catch (e) {}
                             }
-                            var count = String(bs[q].innerText || '').replace(/\\s+/g, '') || '1';
-                            if (shots[key]) list.push({ e: '', img: shots[key], n: count.slice(0, 6), mine: /reaction--active/.test(bs[q].className) });
+                            if (shots[key]) list.push({ e: '', img: shots[key], n: count.slice(0, 6), mine: active });
                         }
                         return list;
                     })(),

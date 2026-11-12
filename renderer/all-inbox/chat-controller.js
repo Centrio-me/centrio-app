@@ -3,6 +3,7 @@
 // what is typed through that tab with real input (the messenger itself sends it, nothing goes around it).
 const { chatAdapterFor, fullPicture, withImageMemo, resolveImages } = require('./chat-adapters')
 const { canEditNow } = require('./edit-window')
+const { toggleReaction, overlayReactions } = require('./quick-reactions')
 const { setEmojiSet } = require('./emoji-images')
 const { buildTimeline, signature } = require('./timeline')
 const { createChatView } = require('./chat-view')
@@ -67,8 +68,10 @@ function createChatController({ state, webviewOf, host, ipcRenderer, onSubtitle 
     // what was just sent shows at once with a clock (pending.js); the rows of the last read are kept to redraw with it
     const pending = createPending()
     let lastRows = []
+    // reactions shown the moment they are pressed, until the messenger's data says the same (quick-reactions.js)
+    const pressed = new Map()
     function redraw() {
-        const rows = withPending(lastRows, pending, Date.now())
+        const rows = overlayReactions(withPending(lastRows, pending, Date.now()), pressed)
         view.update(rows, signature(rows))
     }
 
@@ -336,7 +339,14 @@ function createChatController({ state, webviewOf, host, ipcRenderer, onSubtitle 
     async function react(m, emoji) {
         const w = tab()
         if (!w || !current || !m || !emoji) return false
-        if (!(await stillHere(w))) return false
+        // shown at once; the messenger is told right after
+        const shownNow = (pressed.get(m.id) || {}).list || m.reactions || []
+        const list = toggleReaction(shownNow, emoji)
+        pressed.set(m.id, { list, mine: (list.find((r) => r.mine) || {}).e || '', at: Date.now() })
+        // on screen at once (the whole conversation takes a moment to draw); the full drawing follows without hurry
+        if (!view.showReactions(m.id, list)) redraw()
+        else setTimeout(redraw, 0)
+        if (!(await stillHere(w))) { pressed.delete(m.id); redraw(); return false }
         const id = String(m.id).split('+')[0]
         let ok = false
         if (typeof current.adapter.REACT === 'function') {
@@ -348,6 +358,7 @@ function createChatController({ state, webviewOf, host, ipcRenderer, onSubtitle 
                 if (!ok) pressEscape(w)
             }
         }
+        if (!ok) { pressed.delete(m.id); redraw() }
         await wait(AFTER_SEND_MS)
         poll()
         return ok
@@ -413,6 +424,7 @@ function createChatController({ state, webviewOf, host, ipcRenderer, onSubtitle 
         current = { chat, adapter, match: false, onConfirmed, confirmed: false, script: withImageMemo(adapter.CHAT, session), images: new Map() }
         loadReactions(adapter)
         pending.clear()
+        pressed.clear()
         lastRows = []
         setEmojiSet(adapterId)
         view.show(chat)

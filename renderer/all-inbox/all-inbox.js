@@ -343,8 +343,21 @@ function createAllInbox({ state, switchTab, tGet, ipcRenderer, canOpen, store = 
         updateSourceEnds()
     }
 
+    // how many rows are drawn: grows by a page as the list is scrolled to its end, starts again on a new filter or search
+    const DRAW_PAGE = 120
+    let drawLimit = DRAW_PAGE
+    let drawnFor = ''
+    listEl.addEventListener('scroll', () => {
+        if (listEl.scrollTop + listEl.clientHeight < listEl.scrollHeight - 600) return
+        const before = drawLimit
+        drawLimit += DRAW_PAGE
+        if (before !== drawLimit) { quietOnce = true; render() }
+    }, { passive: true })
+
     function render() {
         const query = searchEl ? searchEl.value : ''
+        const viewKey = [filter, query, source].join('|')
+        if (viewKey !== drawnFor) { drawnFor = viewKey; drawLimit = DRAW_PAGE }
         const known = withChannelKinds(sources, channelMemory)
         const all = mergeInbox(known, Date.now())
         const chatIds = folderBar ? folderBar.chatsOf(filter) : null
@@ -355,20 +368,32 @@ function createAllInbox({ state, switchTab, tGet, ipcRenderer, canOpen, store = 
         if (badgeEl) { badgeEl.hidden = unreadChats === 0; badgeEl.textContent = unreadChats > 99 ? '99+' : String(unreadChats) }
         if (countEl) countEl.textContent = String(all.length)
         filterButtons.forEach((b) => b.classList.toggle('is-on', b.dataset.aiFilter === filter))
-        // unread chats of every filter and folder, in the column
+        // unread chats of every filter and folder, in the column — counted in one pass over the list (3.8.3: with every
+        // chat listed, counting each filter separately stalled typing)
         if (rail) {
-            const now = Date.now()
+            const byKind = { personal: 0, groups: 0, channels: 0 }
+            const unreadIds = new Set()
+            for (const c of all) {
+                if (!(c.unread > 0) || c.muted) continue
+                unreadIds.add(c.id)
+                if (c.kind === 'user' || c.kind === 'bot' || c.kind === 'saved') byKind.personal++
+                else if (c.kind === 'group') byKind.groups++
+                else if (c.kind === 'channel') byKind.channels++
+            }
             for (const b of filterButtons) {
                 const f = b.dataset.aiFilter
-                rail.setCount(b, f === 'all' || f === 'unread' ? unreadChats : mergeInbox(known, now, { kind: f, unreadOnly: true }).filter((c) => !c.muted).length)
+                rail.setCount(b, f === 'all' || f === 'unread' ? unreadChats : (byKind[f] || 0))
             }
-            if (folderBar) folderBar.setCounts((ids) => mergeInbox(known, now, { chatIds: ids, unreadOnly: true }).filter((c) => !c.muted).length)
+            if (folderBar) folderBar.setCounts((ids) => { let n = 0; for (const id of ids) if (unreadIds.has(id)) n++; return n })
         }
         panel.querySelectorAll('.ai-folder').forEach((b) => b.classList.toggle('is-on', FOLDER_PREFIX + b.dataset.aiFolder === filter))
 
+        // only the first rows are drawn; more come as the list is scrolled down (3.8.3: with every chat of every
+        // messenger listed, drawing them all on each update stalled typing)
+        const shown = list.slice(0, drawLimit)
         // the list is drawn again only when something in it changed: no blinking pictures, hover and scroll stay
-        const sigs = list.map(rowSig)
-        const sig = sigs.join(';') + '#' + loadedOnce
+        const sigs = shown.map(rowSig)
+        const sig = sigs.join(';') + '#' + loadedOnce + '#' + (list.length > shown.length ? list.length : '')
         if (sig === lastListSig) return
         lastListSig = sig
         const keepScroll = listEl.scrollTop
@@ -388,7 +413,7 @@ function createAllInbox({ state, switchTab, tGet, ipcRenderer, canOpen, store = 
         // a chat that did not change keeps its row (and its decoded picture); only changed ones are built again
         const next = new Map()
         const frag = document.createDocumentFragment()
-        list.forEach((chat, i) => {
+        shown.forEach((chat, i) => {
             const kept = rowCache.get(chat.id)
             const row = kept && kept.sig === sigs[i] ? kept.row : rowFor(chat)
             next.set(chat.id, { sig: sigs[i], row })
