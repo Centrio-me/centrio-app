@@ -601,6 +601,17 @@ const max = {
                         return '';
                     })(),
                     text: text,
+                    // the message this one answers (3.8.3): MAX draws it as a button with the author and a line of text
+                    reply: (function () {
+                        var mark = w.querySelector('.bubbleContent .link > .mark');
+                        if (!mark) return '';
+                        var parts = [].filter.call(mark.children, function (c) { return /(^|\\s)text(\\s|$)/.test(c.className); });
+                        return parts.length ? __ciText(parts[parts.length - 1]).slice(0, 140) : (mark.querySelector('img') ? 'Фото' : '');
+                    })(),
+                    replyTitle: (function () {
+                        var who = w.querySelector('.bubbleContent .link > .mark .author');
+                        return who ? __ciText(who).slice(0, 80) : '';
+                    })(),
                     name: kind === 'file' ? __ciText(w.querySelector('.attaches .title, [class*=file] [class*=name], [class*=document] [class*=name]')) : (kind === 'contact' ? contactName : ''),
                     phone: kind === 'contact' ? contactNote : '',
                     // the length as MAX first wrote it (later the label shows the position of MAX's player)

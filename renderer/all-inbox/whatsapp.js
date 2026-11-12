@@ -279,6 +279,13 @@ function whatsappChat({ AVATAR_HELPER, IMAGE_HELPER }) {
             return Promise.resolve(window.require('WAWebSendReactionMsgAction').sendReactionToMsg(m, mine === emoji ? '' : emoji))
                 .then(function () { return true; }, function () { return false; });
         })()`,
+        // answer a message (3.8.3): WhatsApp's own quote of the chat, set before the text is typed into its field
+        REPLY: (id) => `(function () {${WA_STORE}
+            var C = __waStore(), m = __waMsg(C, ${JSON.stringify(String(id))});
+            var chat = C && C.Chat.getActive ? C.Chat.getActive() : null;
+            if (!m || !chat) return false;
+            try { chat.composeQuotedMsg = m; return true; } catch (e) { return false; }
+        })()`,
         // WhatsApp lets an own message be edited for 15 minutes
         EDIT_WINDOW_MS: 15 * 60 * 1000,
         EDIT: (id, text) => `(function () {${WA_STORE}
