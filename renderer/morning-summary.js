@@ -1,4 +1,4 @@
-// Morning summary and the assistant's own messages (3.7.1).
+// Morning summary and the assistant's own messages (3.7.1; wider in 3.8.2: who wrote, how often and their latest message).
 // Once a day, when the person sits down at the computer in the morning (after the work day starts, if a schedule is
 // set), the assistant writes what came in while they were away. The card shows next to the assistant button even with
 // the panel closed; the same text goes into the assistant chat. The summary is built on the computer
@@ -53,20 +53,58 @@ function createMorningSummary({ state, store, tGet, switchTab, assistantUi, open
         })
     }
 
-    function senderLine(service) {
-        const names = service.senders.map((s) => (s.count > 1 ? `${s.name} (${s.count})` : s.name))
-        if (service.moreSenders) names.push(t('more', { n: service.moreSenders }))
-        return names.join(', ')
-    }
+    const t380 = (key, params) => tGet(`v380.ms.${key}`, params)
+    const who = (s) => (s.count > 1 ? `${s.name} (${s.count})` : s.name)
 
+    // The same summary as text for the assistant chat: a line per service, under it who wrote and their latest message
     function asText(summary) {
         const lines = [summary.totalUnread ? t('leadUnread', { n: summary.totalUnread }) : t('leadQuiet')]
         summary.services.forEach((s) => {
-            const who = senderLine(s)
-            lines.push(`• ${s.name}${s.unread ? ` — ${s.unread}` : ''}${who ? `: ${who}` : ''}`)
+            lines.push(`• ${s.name}${s.unread ? ` — ${s.unread}` : ''}`)
+            s.senders.forEach((p) => lines.push(`   ${who(p)}${p.last ? `: «${p.last}»` : ''}`))
+            if (s.moreSenders) lines.push(`   ${t('more', { n: s.moreSenders })}`)
         })
         if (summary.openTodos) lines.push(t('todos', { n: summary.openTodos }))
         return lines.join('\n')
+    }
+
+    // «Чего хотят клиенты» (3.8.2, PRO, on a click): the messages go to the AI with the question; the chat shows only the
+    // question, not the messages again
+    function askWhatTheyWant(summary) {
+        const list = summary.messages.map((m) => `[${m.service}] ${m.sender}: ${m.text}`).join('\n')
+        openAssistant()
+        assistantUi?.ask?.(`${t380('wantsPrompt')}\n\n${list}`, t380('wantsShort'))
+    }
+
+    const CARD_SERVICES = 4
+    const CARD_SENDERS = 4
+
+    // The card: a block per service — its name and unread count, then who wrote, how many times and their latest message
+    function cardBody(summary) {
+        const body = el('div', 'ai-bubble-body ms-body')
+        body.appendChild(el('div', 'ai-bubble-line ms-lead', summary.totalUnread ? t('leadUnread', { n: summary.totalUnread }) : t('leadQuiet')))
+        summary.services.slice(0, CARD_SERVICES).forEach((s) => {
+            const block = el('div', 'ms-service')
+            const head = el('div', 'ms-service-head')
+            head.appendChild(el('span', 'ms-service-name', s.name))
+            if (s.unread) head.appendChild(el('span', 'ms-service-count', String(s.unread)))
+            block.appendChild(head)
+            s.senders.slice(0, CARD_SENDERS).forEach((p) => {
+                const row = el('div', 'ms-sender')
+                const name = el('span', 'ms-sender-name', p.name)
+                if (p.count > 1) name.appendChild(el('span', 'ms-sender-times', `×${p.count}`))
+                row.appendChild(name)
+                if (p.last) row.appendChild(el('span', 'ms-sender-text', p.last))
+                block.appendChild(row)
+            })
+            const hidden = s.moreSenders + Math.max(0, s.senders.length - CARD_SENDERS)
+            if (hidden) block.appendChild(el('div', 'ms-more', t('more', { n: hidden })))
+            block.addEventListener('click', (e) => { e.stopPropagation(); hideCard(); setBadge(false); switchTab(s.id) })
+            body.appendChild(block)
+        })
+        if (summary.services.length > CARD_SERVICES) body.appendChild(el('div', 'ms-more', t380('moreServices', { n: summary.services.length - CARD_SERVICES })))
+        if (summary.openTodos) body.appendChild(el('div', 'ai-bubble-line ms-todos', t('todos', { n: summary.openTodos })))
+        return body
     }
 
     function greeting() {
@@ -110,9 +148,14 @@ function createMorningSummary({ state, store, tGet, switchTab, assistantUi, open
         close.addEventListener('click', (e) => { e.stopPropagation(); hideCard() })
         head.appendChild(close)
         card.appendChild(head)
-        const body = el('div', 'ai-bubble-body')
-        message.lines.forEach((line) => body.appendChild(el('div', line.startsWith('•') ? 'ai-bubble-line ai-bubble-item' : 'ai-bubble-line', line)))
-        card.appendChild(body)
+        if (message.body) {
+            card.classList.add('is-wide')
+            card.appendChild(message.body)
+        } else {
+            const body = el('div', 'ai-bubble-body')
+            message.lines.forEach((line) => body.appendChild(el('div', line.startsWith('•') ? 'ai-bubble-line ai-bubble-item' : 'ai-bubble-line', line)))
+            card.appendChild(body)
+        }
         const actions = el('div', 'ai-bubble-actions')
         message.actions.forEach((a) => {
             const b = el('button', a.primary ? 'ai-bubble-btn primary' : 'ai-bubble-btn', a.label)
@@ -138,10 +181,11 @@ function createMorningSummary({ state, store, tGet, switchTab, assistantUi, open
         const actions = []
         if (top) actions.push({ label: t('open', { name: top.name }), primary: true, run: () => switchTab(top.id) })
         if (typeof hasEffectivePro === 'function' && hasEffectivePro() && !summary.isEmpty) {
-            actions.push({ label: t('discuss'), run: () => { openAssistant(); assistantUi?.ask?.(t('discussPrompt')) } })
+            if (summary.messages.length) actions.push({ label: t380('wants'), run: () => askWhatTheyWant(summary) })
+            else actions.push({ label: t('discuss'), run: () => { openAssistant(); assistantUi?.ask?.(t('discussPrompt')) } })
         }
         actions.push({ label: t('later'), run: () => {} })
-        showCard({ title: greeting(), lines: text.split('\n'), actions })
+        showCard({ title: greeting(), lines: text.split('\n'), body: cardBody(summary), actions })
         return true
     }
 
@@ -177,6 +221,8 @@ function createMorningSummary({ state, store, tGet, switchTab, assistantUi, open
     return {
         current,
         showNow: () => present(current(), { force: true }),
+        // the card for a made-up summary (screenshots for the changelog, never real chats)
+        preview: (summary) => present(summary, { force: true }),
         isEnabled: () => readState().enabled !== false,
         setEnabled: (on) => writeState({ enabled: !!on })
     }

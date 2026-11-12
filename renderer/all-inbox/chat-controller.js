@@ -43,7 +43,7 @@ function clickAt(view, point) {
  * @param {{ state: object, webviewOf: (id: string) => any, host: HTMLElement,
  *   ipcRenderer: { send: Function, invoke: Function } }} deps — the IPC shim of renderer.js (the page has no Node)
  */
-function createChatController({ state, webviewOf, host, ipcRenderer }) {
+function createChatController({ state, webviewOf, host, ipcRenderer, onSubtitle = () => {} }) {
     let current = null // { chat, adapter }
     let timer = null
     let lastOlder = 0
@@ -121,6 +121,7 @@ function createChatController({ state, webviewOf, host, ipcRenderer }) {
             markRead(w)
             const sub = [data.subtitle, current.chat.messengerName].filter(Boolean).join(' · ')
             view.setSubtitle(sub)
+            onSubtitle(current.chat, data.subtitle)
         } finally {
             reading = false
         }
@@ -201,8 +202,9 @@ function createChatController({ state, webviewOf, host, ipcRenderer }) {
             await wait(AFTER_DROP_MS)
             return text ? sendText(w, text) : true
         }
-        // Telegram: its «send» window, the text as the caption, its own send button
+        // Telegram: its «send» window, the text as the caption, its own send button; MAX: its message field holding the file
         const popup = await waitSettled(w, current.adapter.MEDIA_POPUP, POPUP_WAIT_MS)
+        if (!popup && current.adapter.dropMaySendAtOnce) return text ? sendText(w, text) : true
         if (!popup || !popup.send) return false
         // Enter in the caption sends; a click while the window still slides in would land on its backdrop and close it
         if (popup.caption) {

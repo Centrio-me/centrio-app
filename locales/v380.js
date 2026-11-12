@@ -2,6 +2,13 @@
 // a missing string falls back to English, then Russian (renderer/i18n.js).
 module.exports = {
     ru: {
+        // the morning summary (3.8.2): wider, «Чего хотят клиенты»
+        ms: {
+            wants: "Чего хотят клиенты",
+            wantsShort: "Чего хотят клиенты?",
+            moreServices: "и ещё сервисов: {n}",
+            wantsPrompt: "Ниже — сообщения, которые пришли, пока меня не было. Разбери их: для каждого человека коротко — чего он хочет, насколько это срочно и что ему ответить. В конце скажи, с кого начать. Опирайся только на эти сообщения, ничего не додумывай."
+        },
         // «Друг Centrio» — beta testers (3.8.2)
         friend: {
             title: "Бета-тестирование",
@@ -56,6 +63,13 @@ module.exports = {
         }
     },
     en: {
+        // the morning summary (3.8.2): wider, «Чего хотят клиенты»
+        ms: {
+            wants: "What people want",
+            wantsShort: "What do people want?",
+            moreServices: "and {n} more services",
+            wantsPrompt: "Below are the messages that came in while I was away. Go through them: for each person, briefly — what they want, how urgent it is and what to answer. At the end, say whom to start with. Use only these messages, do not make anything up."
+        },
         // «Друг Centrio» — beta testers (3.8.2)
         friend: {
             title: "Beta testing",
@@ -110,6 +124,13 @@ module.exports = {
         }
     },
     de: {
+        // the morning summary (3.8.2): wider, «Чего хотят клиенты»
+        ms: {
+            wants: "Was die Leute wollen",
+            wantsShort: "Was wollen die Leute?",
+            moreServices: "und {n} weitere Dienste",
+            wantsPrompt: "Unten stehen die Nachrichten, die kamen, während ich weg war. Geh sie durch: für jede Person kurz — was sie will, wie dringend es ist und was ich antworten soll. Sag am Ende, mit wem ich anfangen soll. Nutze nur diese Nachrichten, erfinde nichts."
+        },
         // «Друг Centrio» — beta testers (3.8.2)
         friend: {
             title: "Beta-Test",
@@ -164,6 +185,13 @@ module.exports = {
         }
     },
     es: {
+        // the morning summary (3.8.2): wider, «Чего хотят клиенты»
+        ms: {
+            wants: "Qué quieren los clientes",
+            wantsShort: "¿Qué quieren los clientes?",
+            moreServices: "y {n} servicios más",
+            wantsPrompt: "Abajo están los mensajes que llegaron mientras no estaba. Revísalos: para cada persona, en breve — qué quiere, qué tan urgente es y qué responder. Al final, di por quién empezar. Usa solo estos mensajes, no inventes nada."
+        },
         // «Друг Centrio» — beta testers (3.8.2)
         friend: {
             title: "Pruebas beta",
@@ -218,6 +246,13 @@ module.exports = {
         }
     },
     fr: {
+        // the morning summary (3.8.2): wider, «Чего хотят клиенты»
+        ms: {
+            wants: "Ce que veulent les clients",
+            wantsShort: "Que veulent les clients ?",
+            moreServices: "et {n} autres services",
+            wantsPrompt: "Voici les messages arrivés pendant mon absence. Passe-les en revue : pour chaque personne, brièvement — ce qu’elle veut, l’urgence et quoi répondre. À la fin, dis par qui commencer. Appuie-toi uniquement sur ces messages, n’invente rien."
+        },
         // «Друг Centrio» — beta testers (3.8.2)
         friend: {
             title: "Tests bêta",
@@ -272,6 +307,13 @@ module.exports = {
         }
     },
     it: {
+        // the morning summary (3.8.2): wider, «Чего хотят клиенты»
+        ms: {
+            wants: "Cosa vogliono i clienti",
+            wantsShort: "Cosa vogliono i clienti?",
+            moreServices: "e altri {n} servizi",
+            wantsPrompt: "Qui sotto ci sono i messaggi arrivati mentre ero via. Esaminali: per ogni persona, in breve — cosa vuole, quanto è urgente e cosa rispondere. Alla fine dimmi da chi iniziare. Usa solo questi messaggi, non inventare nulla."
+        },
         // «Друг Centrio» — beta testers (3.8.2)
         friend: {
             title: "Beta test",
@@ -326,6 +368,13 @@ module.exports = {
         }
     },
     zh: {
+        // the morning summary (3.8.2): wider, «Чего хотят клиенты»
+        ms: {
+            wants: "客户想要什么",
+            wantsShort: "客户想要什么？",
+            moreServices: "另有 {n} 个服务",
+            wantsPrompt: "下面是我不在时收到的消息。请逐一分析：对每个人简要说明——他想要什么、有多紧急、该怎么回复。最后告诉我先回复谁。只依据这些消息，不要编造。"
+        },
         // «Друг Centrio» — beta testers (3.8.2)
         friend: {
             title: "Beta 测试",

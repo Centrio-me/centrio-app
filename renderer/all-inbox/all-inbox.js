@@ -7,6 +7,13 @@ const { mergeInbox } = require('./merge')
 const { attachPanelResize } = require('./panel-resize')
 const { createChatController, clickAt } = require('./chat-controller')
 const { sharedDrafts } = require('./drafts')
+const { isChannelSubtitle, createChannelMemory, withChannelKinds } = require('./channel-memory')
+
+// remembered channels (MAX does not mark them in its list): a small JSON in this computer's local storage
+const channelMemory = createChannelMemory({
+    get: (key) => JSON.parse(readStorage(key, 'null')),
+    set: (key, value) => writeStorage(key, JSON.stringify(value))
+})
 
 // every messenger is read this often; each one shows the moment it answers, a slow one never holds the others up
 const POLL_MS = 2000
@@ -151,7 +158,14 @@ function createAllInbox({ state, switchTab, tGet, ipcRenderer, canOpen }) {
     let paths = {}
     try { paths = JSON.parse(readStorage(PATHS_KEY, '{}')) || {} } catch { paths = {} }
     const contentArea = document.getElementById('contentArea')
-    const chats = contentArea ? createChatController({ state, webviewOf: (id) => document.getElementById(`webview-${id}`), host: contentArea, ipcRenderer }) : null
+    // a chat whose open window says «… подписчиков» is a channel from now on (channel-memory.js)
+    const onSubtitle = (chat, subtitle) => {
+        if (!chat || !isChannelSubtitle(subtitle) || channelMemory.has(chat.messengerId, chat.title)) return
+        channelMemory.remember(chat.messengerId, chat.title)
+        lastListSig = ''
+        render()
+    }
+    const chats = contentArea ? createChatController({ state, webviewOf: (id) => document.getElementById(`webview-${id}`), host: contentArea, ipcRenderer, onSubtitle }) : null
 
     function webviewOf(messengerId) {
         return document.getElementById(`webview-${messengerId}`)
@@ -325,8 +339,9 @@ function createAllInbox({ state, switchTab, tGet, ipcRenderer, canOpen }) {
 
     function render() {
         const query = searchEl ? searchEl.value : ''
-        const all = mergeInbox(sources, Date.now())
-        const list = mergeInbox(sources, Date.now(), { unreadOnly: filter === 'unread', kind: filter, query, messengerId: source })
+        const known = withChannelKinds(sources, channelMemory)
+        const all = mergeInbox(known, Date.now())
+        const list = mergeInbox(known, Date.now(), { unreadOnly: filter === 'unread', kind: filter, query, messengerId: source })
         if (clearEl) clearEl.hidden = !query
         renderSources(all)
         const unreadChats = all.filter((c) => c.unread > 0 && !c.muted).length

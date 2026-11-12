@@ -82,9 +82,28 @@ function createComposer({ root, onSend, onPickFiles, onDescribeFiles, onPasteIma
     const picker = createEmojiPicker({ onPick: insertAtCursor })
     form.append(picker.el)
 
+    // The height is measured on an invisible copy of the field: shrinking the field itself to measure it made the
+    // conversation above jump by the field's lines on every key (Oleg, 2026-11-12). The field changes only when it must.
+    let mirror = null
+    function measuredHeight() {
+        if (!mirror) {
+            mirror = input.cloneNode(false)
+            mirror.removeAttribute('id')
+            mirror.removeAttribute('name')
+            mirror.setAttribute('aria-hidden', 'true')
+            mirror.tabIndex = -1
+            mirror.style.cssText = 'position:absolute;left:-10000px;top:0;visibility:hidden;pointer-events:none;height:0;min-height:0;overflow:hidden'
+            input.parentNode.appendChild(mirror)
+        }
+        mirror.style.width = `${input.getBoundingClientRect().width}px`
+        mirror.value = input.value || ' '
+        return mirror.scrollHeight
+    }
+
     function autosize() {
-        input.style.height = 'auto'
-        input.style.height = Math.min(MAX_INPUT_PX, input.scrollHeight) + 'px'
+        if (!input.getBoundingClientRect().width) return // the window is hidden: nothing to measure against
+        const next = `${Math.min(MAX_INPUT_PX, measuredHeight())}px`
+        if (input.style.height !== next) input.style.height = next
     }
 
     function insertAtCursor(text) {
@@ -154,9 +173,11 @@ function createComposer({ root, onSend, onPickFiles, onDescribeFiles, onPasteIma
             form.classList.add('is-failed')
         }
         setTimeout(() => form.classList.remove('is-failed'), 1600)
-        // the field takes the keyboard back only if nothing else (the photo viewer, the search) took it meanwhile
+        // the field takes the keyboard back only if nothing else (the photo viewer, the search) took it meanwhile; the
+        // messenger's own tab does not count — the text was typed there, so it holds the focus after every send
+        // (Oleg, 2026-11-12: after Enter the cursor left the field and had to be clicked back)
         const active = document.activeElement
-        if (here && (!active || active === document.body || form.contains(active))) input.focus()
+        if (here && (!active || active === document.body || active.tagName === 'WEBVIEW' || form.contains(active))) input.focus()
     }
 
     form.addEventListener('submit', (e) => { e.preventDefault(); submit() })

@@ -171,17 +171,19 @@ function bindAssistantUi({ store, ipcRenderer, invokeIpc, tGet, toolsApi, openRi
     function renderHistory() {
         if (history.length === 0) { renderEmptyState(); return }
         messagesEl.innerHTML = history
-            .map(m => `<div class="assistant-msg assistant-msg-${m.role === 'user' ? 'user' : 'bot'}">${m.role === 'user' ? '' : BOT_AVATAR}<div class="assistant-msg-content">${escapeHtml(m.content)}</div></div>`)
+            .map(m => `<div class="assistant-msg assistant-msg-${m.role === 'user' ? 'user' : 'bot'}">${m.role === 'user' ? '' : BOT_AVATAR}<div class="assistant-msg-content">${escapeHtml(m.display || m.content)}</div></div>`)
             .join('')
         scrollToBottom()
     }
 
-    function appendUserMessage(text) {
+    // display: what the chat shows when the request carries data the person need not see again (3.8.2: the morning
+    // summary's messages for «Чего хотят клиенты»); the model gets the full text
+    function appendUserMessage(text, display = '') {
         if (history.length === 0) messagesEl.innerHTML = ''
-        history.push({ role: 'user', content: text })
+        history.push(display ? { role: 'user', content: text, display } : { role: 'user', content: text })
         const el = document.createElement('div')
         el.className = 'assistant-msg assistant-msg-user'
-        el.innerHTML = `<div class="assistant-msg-content">${escapeHtml(text)}</div>`
+        el.innerHTML = `<div class="assistant-msg-content">${escapeHtml(display || text)}</div>`
         messagesEl.appendChild(el)
         scrollToBottom()
     }
@@ -308,10 +310,10 @@ function bindAssistantUi({ store, ipcRenderer, invokeIpc, tGet, toolsApi, openRi
         ]
     }
 
-    async function sendMessage(text) {
+    async function sendMessage(text, display = '') {
         if (activeRequestId) return
 
-        appendUserMessage(text)
+        appendUserMessage(text, display)
         saveHistory()
 
         const requestId = `req_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
@@ -514,7 +516,7 @@ function bindAssistantUi({ store, ipcRenderer, invokeIpc, tGet, toolsApi, openRi
 
     return {
         addProactiveMessage,
-        ask: (text) => sendMessage(String(text || '')),
+        ask: (text, display) => sendMessage(String(text || ''), typeof display === 'string' ? display : ''),
         isBusy: () => !!activeRequestId,
         cancelActive() {
             if (activeRequestId) ipcRenderer.send('assistant:cancel', { requestId: activeRequestId })

@@ -608,8 +608,23 @@ const max = {
         var h = Math.min(r.height, window.innerHeight - r.top);
         return r.width && h > 0 ? { x: r.left + r.width / 2, y: r.top + h * 0.25 } : null;
     })()`,
-    sendsOnDrop: true,
-    MEDIA_POPUP: '',
+    // MAX used to send a dropped file at once; since November 2026 it puts the file into its message field («png» under
+    // the field) and waits for «Отправить» — the file then went only with the next message (Oleg, 2026-11-12). Both are
+    // handled: the field with the file is its «send» window, and if no such field shows up the file has gone already.
+    sendsOnDrop: false,
+    dropMaySendAtOnce: true,
+    MEDIA_POPUP: `(function () {
+        var chat = document.querySelector('.openedChat');
+        var bar = chat && chat.querySelector('.composer .attaches .attach');
+        var composer = bar && bar.closest('.composerContainer, .composer');
+        if (!composer) return null;
+        function at(el) { if (!el) return null; var r = el.getBoundingClientRect(); return r.width && r.height ? { x: r.left + Math.min(40, r.width / 2), y: r.top + r.height / 2 } : null; }
+        var send = chat.querySelector('button[aria-label="Отправить сообщение"]');
+        var sr = send && send.getBoundingClientRect();
+        var field = composer.querySelector('div.contenteditable[contenteditable], [role=textbox][contenteditable]') || chat.querySelector('div.contenteditable[contenteditable], [role=textbox][contenteditable]');
+        if (field) field.focus();
+        return { caption: at(field), send: sr && sr.width ? { x: sr.left + sr.width / 2, y: sr.top + sr.height / 2 } : null };
+    })()`,
     // answer a message: MAX shows its «Ответить» button only under the mouse, so the tab first gets the mouse over
     // the message (REPLY_POINT gives where), then the button is pressed
     REPLY_POINT: (id) => `(function () {${AVATAR_HELPER}${MAX_ID_HELPER}

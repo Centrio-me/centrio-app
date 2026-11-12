@@ -312,7 +312,7 @@ const max = {
                     preview.push(text);
                 }
                 if (!title || seen[title]) continue; seen[title] = 1;
-                out.push({ key: title, title: title, preview: preview.join(': '), time: time, unread: unread, kind: preview.length > 1 ? 'group' : 'user', avatar: __ciAvatar('max' + title, c.querySelector('img.avatarImage')) });
+                out.push({ key: title, title: title, preview: preview.join(': '), time: time, unread: unread, kind: c.querySelector('.title use[href*="megaphone"], .title use[href*="channel"]') ? 'channel' : (preview.length > 1 ? 'group' : 'user'), avatar: __ciAvatar('max' + title, c.querySelector('img.avatarImage')) });
             }
             return out;
         }
