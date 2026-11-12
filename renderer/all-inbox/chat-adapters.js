@@ -12,7 +12,7 @@ const { instagramChat } = require('./instagram')
 
 const MAX_MESSAGES = 120
 // voice messages, audio and videos up to this size play in our window; bigger ones open in the messenger
-const MEDIA_MAX_BYTES = 40 * 1024 * 1024
+const MEDIA_MAX_BYTES = 100 * 1024 * 1024 // 3.8.3: channel videos are often bigger than 40 MB; bigger ones open in the tab
 // a poll's votes are asked again this often while the chat is open
 const POLL_REFRESH_MS = 5000
 // MAX photos not on the page yet: at most this many messages are warmed up per read, each waited for this long
@@ -448,7 +448,10 @@ const telegram = {
         return rootScope.managers.appMessagesManager.getMessageByPeer(chat.peerId, mid).then(function (m) {
             var doc = m && m.media && m.media.document;
             if (!doc || !/^(audio|video)\\//.test(doc.mime_type || '') || doc.size > ${MEDIA_MAX_BYTES}) return null;
-            return appDownloadManager.downloadMediaURL({ media: doc }).then(function (url) { return fetch(url); }).then(function (r) { return r.blob(); }).then(function (blob) {
+            // the whole file: a video's address is Telegram's stream, and reading it plainly gave only its first
+            // half-megabyte — the video played a few seconds and jumped to its end (3.8.3)
+            return Promise.resolve(appDownloadManager.downloadMedia({ media: doc })).then(function (blob) {
+                if (!(blob instanceof Blob) || blob.size < (Number(doc.size) || 0) * 0.95) return null;
                 return new Promise(function (resolve) {
                     var fr = new FileReader();
                     fr.onload = function () { resolve({ data: String(fr.result), mime: blob.type || doc.mime_type }); };

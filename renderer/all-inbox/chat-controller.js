@@ -25,7 +25,7 @@ const ZONE_POLL_MS = 120
 const POPUP_POLL_MS = 150
 const AFTER_DROP_MS = 900
 // a voice message is ready in a moment; a video of tens of megabytes may take a while to come from the messenger
-const MEDIA_TIMEOUT_MS = 45000
+const MEDIA_TIMEOUT_MS = 120000
 // how often the messenger is told that the open chat is read, while it is in front of the person
 const MARK_READ_EVERY_MS = 2000
 const VOTE_TIMEOUT_MS = 8000
