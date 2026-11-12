@@ -10,6 +10,11 @@ The format is based on Keep a Changelog. This project does not currently follow 
 
 _No unreleased changes yet — add entries here as they land, then move them under a new version heading at release time._
 
+## [3.8.3-beta.4] - 2026-11-12 (тестовая, только «Друзья Centrio»)
+
+### Added
+- WhatsApp: реакции из C.Reactions и через WAWebSendReactionMsgAction (повтор снимает), правка WAWebSendMessageEditAction (15 минут), удаление у всех (WAWebRevokeMsgAction.sendRevoke) и у себя (Cmd.sendDeleteMsgs), «Файл» — документом через WAWebPrepRawMedia({ asDocument }) и all-inbox:read-files.
+
 ## [3.8.3-beta.3] - 2026-11-12 (тестовая, только «Друзья Centrio»)
 
 ### Fixed
