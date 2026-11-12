@@ -573,6 +573,12 @@ const max = {
                     // the photo once it is copied; until then MAX's blurred placeholder of it
                     var got = im && (im.naturalWidth > 40 || /^https?:/i.test(im.src)) ? __ciPicture(key, im) : '';
                     if (got) return got;
+                    // a video has no picture of its own, only its poster (3.8.3: older videos showed empty)
+                    var vd = !im && tile.querySelector('video');
+                    if (vd && /^https:/i.test(vd.poster || '')) {
+                        got = __ciPicture(key, { src: vd.poster, complete: false, naturalWidth: 0, tagName: 'IMG' });
+                        if (got) return got;
+                    }
                     var ph = placeholderOf(tile);
                     if (ph) {
                         var warm = phMemo[phPrint(ph)];
@@ -600,6 +606,19 @@ const max = {
                 }
                 var text = textEl ? __ciText(textEl) : '';
                 var kind = contactBox ? 'contact' : (album || gridPic) ? 'photo' : photo ? 'photo' : (w.querySelector('audio, [class*=voice], [class*=attachAudio]') ? 'voice' : (w.querySelector('[class*=fileIcon], [class*=document]') ? 'file' : 'text'));
+                // a video: one tile holding MAX's player, or a round video message (MAX draws its frame on a canvas)
+                var videoEl = !album && tiles.length === 1 ? tiles[0].querySelector('video') : null;
+                var roundCanvas = !contactBox && !album && !gridPic ? w.querySelector('div.videoMessage canvas') : null;
+                var roundPic = '';
+                if (roundCanvas) { try { roundPic = roundCanvas.width ? roundCanvas.toDataURL('image/jpeg', 0.82) : ''; } catch (e) { roundPic = ''; } }
+                if (videoEl || roundCanvas) kind = 'video';
+                var videoLen = (function () {
+                    var label = w.querySelector('[class*=duration], [class*=Duration]');
+                    var said = label ? __ciText(label) : '';
+                    if (/^\\d{1,2}:\\d{2}(:\\d{2})?$/.test(said)) return said;
+                    var d = videoEl && isFinite(videoEl.duration) ? Math.round(videoEl.duration) : 0;
+                    return d ? Math.floor(d / 60) + ':' + ('0' + (d % 60)).slice(-2) : '';
+                })();
                 var contactName = '', contactNote = '';
                 if (contactBox) {
                     var bits = String(contactBox.innerText || '').split('\\n').map(function (x) { return x.trim(); }).filter(Boolean);
@@ -639,11 +658,12 @@ const max = {
                         var now = __ciText(w.querySelector('[class*=attachAudio] .duration, .duration'));
                         if (!lens[id] && now && !/^0?0:00$/.test(now)) lens[id] = now;
                         return lens[id] || now;
-                    })() : '',
+                    })() : (kind === 'video' ? videoLen : ''),
                     // MAX draws the voice message's waveform as bars with their height in per cent
                     wave: kind === 'voice' ? [].map.call(w.querySelectorAll('[class*=attachAudio] .peak'), function (p) { return (parseFloat(p.style.height) || 0) * 0.31; }) : null,
                     size: kind === 'file' ? __ciText(w.querySelector('.attaches .info')).replace(/^.*•\\s*/, '') : '',
-                    media: album ? '' : gridPic || (photo ? __ciPicture('max' + id, photo) : '') || (contactBox ? __ciPicture('maxc' + id, contactBox.querySelector('img')) : ''),
+                    media: album ? '' : gridPic || roundPic || (photo ? __ciPicture('max' + id, photo) : '') || (contactBox ? __ciPicture('maxc' + id, contactBox.querySelector('img')) : ''),
+                    round: !!roundCanvas,
                     album: album,
                     // the picture's own size: MAX may draw a file's picture as a thin strip
                     mediaW: (photo && photo.naturalWidth) || (grid ? parseFloat(grid.style.width) || 0 : 0),
@@ -859,6 +879,21 @@ const max = {
         // one at a time: MAX has one player, a second press while the first is taken would hand over the wrong sound
         function take() {
         var w = __mxFind(${JSON.stringify(String(id))});
+        // a video: MAX's player in the message already holds the file's address (3.8.3)
+        var vd = w && w.querySelector('[class*=grid] video, div.video video');
+        var vsrc = vd && (vd.currentSrc || (vd.querySelector('source') || {}).src || vd.src || '');
+        if (vd && /^https:/i.test(vsrc)) {
+            return fetch(vsrc, { credentials: 'omit' }).then(function (r) { return r.ok ? r.blob() : null; }).then(function (blob) {
+                if (!blob || !blob.size || blob.size > ${MEDIA_MAX_BYTES}) return null;
+                if (blob.type.indexOf('video/') !== 0) blob = new Blob([blob], { type: 'video/mp4' });
+                return new Promise(function (resolve) {
+                    var fr = new FileReader();
+                    fr.onload = function () { resolve({ data: String(fr.result), mime: blob.type }); };
+                    fr.onerror = function () { resolve(null); };
+                    fr.readAsDataURL(blob);
+                });
+            }).catch(function () { return null; });
+        }
         var box = w && w.querySelector('[class*=attachAudio]');
         var button = box && box.querySelector('button');
         if (!button) return null;
