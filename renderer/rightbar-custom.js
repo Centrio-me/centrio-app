@@ -7,7 +7,7 @@
 // Stored as store key 'rightbarLayout' = { hidden: string[], order: string[] }
 // and synced between devices through the settings `extra` payload.
 const ITEMS = [
-    { id: 'assistant', buttonId: 'assistantBtn', labelKey: 'rightbar.assistant', labelFallback: 'AI-ассистент', panelKey: 'assistant' },
+    { id: 'assistant', buttonId: 'assistantBtn', labelKey: 'rightbar.assistant', labelFallback: 'Centrio Ассистент', panelKey: 'assistant' },
     { id: 'todos', buttonId: 'todosBtn', labelKey: 'rightbar.todos', labelFallback: 'Задачи', panelKey: 'todos' },
     { id: 'notes', buttonId: 'notesBtn', labelKey: 'rightbar.notes', labelFallback: 'Заметки', panelKey: 'notes' },
     { id: 'quickReplies', buttonId: 'quickRepliesBtn', labelKey: 'rightbar.quickReplies', labelFallback: 'Быстрые ответы', panelKey: 'quickReplies' },

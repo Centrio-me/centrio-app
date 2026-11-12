@@ -94,10 +94,14 @@ function createFolderBar({ panel, store, isOn, onSelect, onChange }) {
                 e.preventDefault()
                 openMenu(e.clientX, e.clientY, [
                     { label: 'Переименовать', run: () => askName(b, f.name, (name) => save(F.renameFolder(folders, f.id, name))) },
-                    { label: 'Удалить папку', danger: true, run: () => {
-                        save(F.deleteFolder(folders, f.id))
-                        if (isOn(FOLDER_PREFIX + f.id)) onSelect('all')
-                    } }
+                    // asked first, as in Telegram: the folder went at once, with no way back (3.8.3 check); its chats stay
+                    { label: 'Удалить папку', danger: true, run: () => openMenu(e.clientX, e.clientY, [
+                        { label: `Удалить «${f.name}»? Чаты останутся`, danger: true, run: () => {
+                            save(F.deleteFolder(folders, f.id))
+                            if (isOn(FOLDER_PREFIX + f.id)) onSelect('all')
+                        } },
+                        { label: 'Отмена', run: () => {} }
+                    ]) }
                 ])
             })
             strip.append(b)

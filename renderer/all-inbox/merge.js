@@ -74,9 +74,20 @@ function mergeInbox(sources, now, filter = {}) {
             })
         }
     }
+    // pinned chats first, as in the messengers themselves
+    list.sort((a, b) => (Number(b.pinned) - Number(a.pinned)) || (b.at - a.at))
+    return filterInbox(list, filter)
+}
+
+/**
+ * The merged list narrowed by a filter, order kept. The panel merges once and filters that (3.8.3 speed check: it
+ * merged ~2700 chats twice on every read).
+ * @param {object[]} all a list from mergeInbox
+ */
+function filterInbox(all, filter = {}) {
     const query = String(filter.query || '').trim().toLowerCase()
     const kinds = KIND_FILTERS[filter.kind]
-    return list
+    return all
         .filter((c) => !filter.unreadOnly || c.unread > 0)
         .filter((c) => !filter.messengerId || c.messengerId === filter.messengerId)
         .filter((c) => !kinds || kinds.has(c.kind))
@@ -87,8 +98,6 @@ function mergeInbox(sources, now, filter = {}) {
             const start = query ? c.title.toLowerCase().indexOf(query) : -1
             return start >= 0 ? { ...c, match: { start, length: query.length } } : c
         })
-        // pinned chats first, as in the messengers themselves
-        .sort((a, b) => (Number(b.pinned) - Number(a.pinned)) || (b.at - a.at))
 }
 
-module.exports = { mergeInbox, ACCOUNT_TONES }
+module.exports = { mergeInbox, filterInbox, ACCOUNT_TONES }

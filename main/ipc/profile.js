@@ -83,6 +83,9 @@ function registerProfileIpc() {
 
     ipcMain.handle('profile:sign-out', async (_event, userId, pushed) => {
         replacing = true
+        // «Все мессенджеры» keeps the addresses and kinds of chats in the page's own storage, outside the profile:
+        // they are the account's chat names, and the next person must not get them (3.8.3 check)
+        try { await _event.sender.executeJavaScript('["centrio-all-inbox-paths","allInboxChannels"].forEach(function (k) { localStorage.removeItem(k) })') } catch {}
         try {
             if (typeof userId === 'string' && USER_ID.test(userId)) saveSnapshot(userId, pushed)
             wipeProfile()

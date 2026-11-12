@@ -383,12 +383,22 @@ function renderMessage(m, ctx) {
     else if (m.kind === 'poll' && m.poll) { b.classList.add('has-poll'); b.append(pollCard(m, ctx)) }
     else if (m.kind === 'voice' && ctx.onVoice) { b.classList.add('has-voice'); b.append(voice(m, ctx)) }
     else if (m.kind !== 'text' && m.kind !== 'photo') b.append(card(m, ctx.onOpenInTab))
+    // a photo whose picture has not come (not loaded yet in the tab, or forwarded): its place, not a bubble of a lone
+    // time sticking out of it (3.8.3 check)
+    const emptyPhoto = m.kind === 'photo' && !hasMedia && !m.album
+    if (emptyPhoto) {
+        b.classList.add('has-empty-photo')
+        const ph = el('div', 'aic-photo is-empty')
+        ph.innerHTML = '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2.5"/><circle cx="9" cy="10" r="1.8"/><path d="M21 16l-5-5-8 8"/></svg>'
+        ph.append(el('span', '', 'Фото загружается в мессенджере'))
+        b.append(ph)
+    }
 
     if (jumbo) { const big = el('div', 'aic-jumbo'); big.append(emojiNodes(m.text)); b.append(big, meta(m, true)) }
     // a link preview; a shared post may come with no words of its own — then just its card
     else if (m.webpage) { b.classList.add('has-webpage'); if (m.text) b.append(textBlock(m, ctx.onLink, false)); b.append(webpageCard(m, ctx.onLink), meta(m, false)) }
     else if (m.text) b.append(textBlock(m, ctx.onLink))
-    else b.append(meta(m, hasMedia || sticker))
+    else b.append(meta(m, hasMedia || sticker || emptyPhoto))
 
     if (m.reactions && m.reactions.length) b.append(reactions(m))
     row.append(b)

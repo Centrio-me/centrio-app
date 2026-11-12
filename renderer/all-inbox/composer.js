@@ -65,6 +65,8 @@ function createComposer({ root, onSend, onEdit = null, onPickFiles, onDescribeFi
 
     let files = []
     let sending = false
+    // the chat the running send belongs to: a send still going in one chat does not lock the field of another
+    let sendingFor = null
     let blocked = false
     // the message being answered: shown above the field, sent as a reply
     let reply = null
@@ -217,8 +219,9 @@ function createComposer({ root, onSend, onEdit = null, onPickFiles, onDescribeFi
     async function submit() {
         if (editing && onEdit) { if (!sending) await saveEdit(); return }
         const text = input.value.trim()
-        if ((!text && !files.length) || sending || blocked) return
+        if ((!text && !files.length) || (sending && sendingFor === chatKey()) || blocked) return
         sending = true
+        sendingFor = chatKey()
         form.classList.add('is-sending')
         picker.toggle(false)
         // the field empties at once (the message already shows in the conversation with its clock);
@@ -228,9 +231,9 @@ function createComposer({ root, onSend, onEdit = null, onPickFiles, onDescribeFi
         const owner = chatKey()
         input.value = ''; files = []; renderTray(); autosize(); refreshSend(); showReply(null)
         const ok = await onSend(text, sent.files, sent.reply, asFile && sent.files.some(isPicture)).catch(() => false)
-        sending = false
-        form.classList.remove('is-sending')
         const here = chatKey() === owner
+        if (sendingFor === owner) { sending = false; sendingFor = null }
+        if (here) form.classList.remove('is-sending')
         if (ok) onDraftFor(owner, here ? input.value : '')
         else if (!here) onDraftFor(owner, sent.text)
         else {
@@ -284,6 +287,8 @@ function createComposer({ root, onSend, onEdit = null, onPickFiles, onDescribeFi
     })
     document.addEventListener('mousedown', (e) => { if (!fieldMenu.hidden && !fieldMenu.contains(e.target)) closeFieldMenu() })
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeFieldMenu() })
+    // Esc first closes what is open over the field; the window itself only after (chat-view.js asks this)
+    const hasPopup = () => !fieldMenu.hidden || picker.isOpen()
 
     // the text of a message being edited is not a draft of the chat
     input.addEventListener('input', () => { autosize(); refreshSend(); if (!editing) onDraft(input.value) })
@@ -336,7 +341,11 @@ function createComposer({ root, onSend, onEdit = null, onPickFiles, onDescribeFi
             refreshSend()
             picker.toggle(false)
             emojiBtn.classList.remove('is-on')
+            // another chat: its field is not «sending» because of the previous one
+            form.classList.remove('is-sending')
         },
+        hasPopup: () => hasPopup(),
+        closePopups() { closeFieldMenu(); picker.toggle(false); emojiBtn.classList.remove('is-on') },
         focus() { input.focus(); input.setSelectionRange(input.value.length, input.value.length) },
         replyTo(m) { if (editing) endEdit(); showReply(m); input.focus() },
         edit(m) { if (onEdit && m && m.text) showEdit(m) },

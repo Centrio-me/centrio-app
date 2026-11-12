@@ -1,5 +1,5 @@
 'use strict'
-// «Все мессенджеры» (11.2026): a PRO mode in alpha testing. This file keeps its button in step with the plan and the
+// «Все мессенджеры» (11.2026): a ПРО mode in alpha testing. This file keeps its button in step with the plan and the
 // on/off setting, draws that setting (Settings → Все мессенджеры) and the «α» note in the list's header, whose link opens
 // a new support topic in the account window.
 const { accessOf, isEnabledIn } = require('./access-rules')

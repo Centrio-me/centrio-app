@@ -503,12 +503,14 @@ function __mxKey(w) {
     // «+» joins the ids of photos shown as one album: it is kept out of a message's own id
     return (__mxTime(w) + '|' + (w.getAttribute('data-bubbles-variant') === 'outgoing' ? 'o' : 'i') + '|' + (textEl ? __ciText(textEl).slice(0, 40) : '') + '|' + String(extra || '').slice(0, 30) + '|' + w.querySelectorAll('[class*=tile]').length).split('+').join('');
 }
-// every message of the open chat with its id, in order (the n-th of messages exactly alike gets #n)
+// every message of the open chat with its id, in order. Messages exactly alike are told apart by their place counted
+// from the newest (#1 is the last of them): earlier messages load above, and counted from the top their numbers
+// shifted — an answer, edit or delete then went to another «Ок 10:15» (3.8.3 check)
 function __mxAll() {
     var seen = {}, out = [];
     var ws = document.querySelectorAll('.openedChat div.item[data-index] [data-bubbles-variant]');
-    for (var i = 0; i < ws.length; i++) { var k = __mxKey(ws[i]); seen[k] = (seen[k] || 0) + 1; out.push({ w: ws[i], id: k + '#' + seen[k] }); }
-    return out;
+    for (var i = ws.length - 1; i >= 0; i--) { var k = __mxKey(ws[i]); seen[k] = (seen[k] || 0) + 1; out.push({ w: ws[i], id: k + '#' + seen[k] }); }
+    return out.reverse();
 }
 function __mxFind(id) { var all = __mxAll(); for (var i = 0; i < all.length; i++) if (all[i].id === id) return all[i].w; return null; }
 `
@@ -1020,4 +1022,15 @@ function resolveImages(messages, cache) {
     })
 }
 
-module.exports = { chatAdapterFor, fullPicture, withImageMemo, resolveImages, MAX_MESSAGES }
+/**
+ * Whether a message holds a «@key» picture we never received (the answer that carried it was lost or thrown away):
+ * then the chat starts a new picture session and everything comes again — the picture stayed blank until the chat
+ * was opened anew (3.8.3 check).
+ */
+function missingImages(messages, cache) {
+    const lost = (v) => typeof v === 'string' && v.startsWith('@') && !cache.has(v.slice(1))
+    return (messages || []).some((m) => m && (lost(m.media) || lost(m.avatar)
+        || (Array.isArray(m.album) && m.album.some((a) => a && lost(a.src))) || (m.webpage && lost(m.webpage.image))))
+}
+
+module.exports = { chatAdapterFor, fullPicture, withImageMemo, resolveImages, missingImages, MAX_MESSAGES }

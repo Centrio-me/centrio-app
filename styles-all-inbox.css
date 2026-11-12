@@ -169,7 +169,8 @@ html[data-fx] .all-inbox-panel { --ai-ring: rgba(20, 24, 36, .9); }
 /* the chosen chat background stays in Аврора / Время суток; the window is never see-through (the tab is behind it) */
 html[data-fx] .aic { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .07); }
 html[data-fx] .aic[data-bg="plain"] { background: linear-gradient(var(--fx-panel, rgba(8, 11, 20, .78)), var(--fx-panel, rgba(8, 11, 20, .78))), var(--fx-ground, #04060c); }
-html[data-mode="light"] .aic, html[data-theme="light"] .aic { background: #f5f6f9; }
+/* only the plain background: a chosen wallpaper was hidden under this in the light theme (3.8.3 check) */
+html[data-theme="light"] .aic[data-bg="plain"] { background: #e7ebf0; }
 
 .aic-head { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--border); }
 html[data-fx] .aic-head { border-bottom-color: rgba(255, 255, 255, .06); }
@@ -413,6 +414,10 @@ html[data-mode="light"] .aic, html[data-theme="light"] .aic {
 
 .aic-author { margin-bottom: 1px; color: var(--name, #6ab2f2); font-size: 13.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .aic-fwd { margin-bottom: 2px; color: var(--name, #6ab2f2); font-size: 13px; }
+/* blue on an own (accent) bubble could not be read */
+.aic-row.is-out .aic-fwd { color: var(--out-fg); opacity: .8; }
+/* forwarded with no words: the time does not lie on the line */
+.aic-fwd:nth-last-child(2):has(+ .aic-meta) { padding-right: var(--meta-w); padding-bottom: 14px; }
 
 /* the quote of the message answered: its author's colour bar and a tint of it */
 .aic-quote {
@@ -463,11 +468,11 @@ html[data-mode="light"] .aic-row.is-out .aic-check, html[data-theme="light"] .ai
 .aic-bubble.is-sticker .aic-meta, .aic-bubble.is-jumbo .aic-meta { bottom: 0; right: 0; }
 
 /* files and voice messages */
-.aic-card { display: flex; align-items: center; gap: 10px; margin: 2px 0 4px; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; min-width: 220px; }
+.aic-card { display: flex; align-items: center; gap: 10px; margin: 2px 0 4px; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; min-width: min(220px, 100%); max-width: 100%; }
 .aic-card-icon { flex: 0 0 44px; width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; background: #3390ec; color: #fff; }
 .aic-row.is-out .aic-card-icon { background: #fff; color: var(--out-bg); }
 .aic-card.kind-file .aic-card-icon { border-radius: 10px; }
-.aic-card-info { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.aic-card-info { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .aic-card-name { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .aic-card-sub { font-size: 12.5px; color: var(--meta); font-variant-numeric: tabular-nums; }
 .aic-card:hover .aic-card-icon { filter: brightness(1.1); }
@@ -539,8 +544,10 @@ html[data-mode="light"] .aic-line .aic-send, html[data-theme="light"] .aic-line 
 /* the wallpaper runs under the header and the message field, like in Telegram */
 .aic[data-bg="plain"] { background: var(--bg-primary); }
 /* own messages and the send button take the theme's accent; other people's bubbles its surface */
-.aic { --out-bg: color-mix(in srgb, var(--accent, #766ac8) 88%, #000); --in-bg: color-mix(in srgb, var(--bg-secondary, #1c1c1e) 86%, #fff 4%); }
-html[data-fx] .aic { --in-bg: rgba(22, 25, 38, .9); }
+.aic { --out-bg: color-mix(in srgb, var(--accent, #766ac8) 88%, #000); --in-bg: color-mix(in srgb, var(--bg-secondary, #1c1c1e) 96%, #fff 4%); }
+/* opaque: the wallpaper showed through other people's bubbles in Аврора (3.8.3 check) */
+html[data-fx] .aic { --in-bg: #1d2233; }
+html[data-fx] .aic-row.is-in .aic-bubble { box-shadow: 0 1px 2px rgba(0, 0, 0, .3), inset 0 0 0 1px rgba(255, 255, 255, .04); }
 html[data-mode="light"] .aic, html[data-theme="light"] .aic {
     --out-bg: color-mix(in srgb, var(--accent, #3390ec) 16%, #fff); --out-fg: #0f1419; --out-meta: color-mix(in srgb, var(--accent, #3390ec) 80%, #000);
     --in-bg: #fff;
@@ -927,7 +934,7 @@ html[data-fx] .ai-alpha { background: linear-gradient(rgba(14, 18, 32, .92), rgb
     display: inline-grid; place-items: center; margin-left: 8px; padding: 2px 6px; border-radius: 5px;
     font-size: 9.5px; font-weight: 800; letter-spacing: .05em; color: #0b0f1a; vertical-align: 2px;
 }
-.ai-pro-chip { background: linear-gradient(135deg, #ffd27a, #f5a3ff); }
+.ai-pro-chip { background: var(--accent); color: #fff; } /* the same PRO mark as in the settings menu (.settings-nav-pro-badge) */
 .ai-alpha-chip { margin-left: 4px; background: linear-gradient(135deg, #7cc4ff, #a78bfa 55%, #5eead4); }
 .ai-settings-pro { margin-top: 6px; }
 /* the note spans the header (the panel clips anything wider), the title never wraps */
@@ -1092,3 +1099,23 @@ html[data-theme="light"] .aic[data-bg="plain"] .aic-stuck-text { color: var(--te
 }
 .aic-stuck-btn:hover { filter: brightness(1.1); }
 .aic-stuck-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+
+/* ── 3.8.3 look check ── */
+/* a photo whose picture has not come: its place with a word, the time floating on it */
+.aic-photo.is-empty {
+    width: min(260px, 100%); aspect-ratio: 4 / 3; display: grid; place-content: center; justify-items: center; gap: 8px;
+    border-radius: 12px; background: color-mix(in srgb, currentColor 8%, transparent); color: var(--meta); font-size: 12.5px; text-align: center; padding: 0 16px;
+}
+.aic-bubble.has-empty-photo { padding: 4px; }
+/* reactions keep the time in their row, as in Telegram (the time lay over the reactions) */
+.aic-bubble:has(> .aic-reactions) .aic-text::after { display: none; }
+.aic-bubble:has(> .aic-reactions) .aic-reactions { padding-right: calc(var(--meta-w) + 6px); min-height: 26px; align-items: center; }
+.aic-bubble:has(> .aic-reactions) > .aic-meta:not(.is-floating) { bottom: 11px; }
+/* the «down» button and the toast stand above the field, however tall it is (answer strip, files) */
+.aic-down { bottom: calc(var(--aic-compose-h, 72px) + 14px); transition: bottom .18s ease; }
+.aic-toast { bottom: calc(var(--aic-compose-h, 72px) + 12px); }
+/* ticks on a photo stay white in the light theme */
+html[data-theme="light"] .aic-meta.is-floating .aic-check { color: #fff; }
+/* no sideways scroll in a narrow window */
+.aic-scroll { overflow-x: hidden; }

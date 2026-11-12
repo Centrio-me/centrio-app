@@ -4,7 +4,9 @@
 // The lists are read from the tabs' pages (adapters.js) only while the panel is open; nothing leaves the computer.
 const { isAway, isHidden, onAttentionChange } = require('../window-attention')
 const { adapterFor } = require('./adapters')
-const { mergeInbox } = require('./merge')
+const { visibleMessengers } = require('../team-strict')
+const { withListMemo, resolveListAvatars } = require('./list-memo')
+const { mergeInbox, filterInbox } = require('./merge')
 const { attachPanelResize } = require('./panel-resize')
 const { createChatController, clickAt } = require('./chat-controller')
 const { sharedDrafts } = require('./drafts')
@@ -177,13 +179,19 @@ function createAllInbox({ state, switchTab, tGet, ipcRenderer, canOpen, store = 
         lastListSig = ''
         render()
     }
-    const chats = contentArea ? createChatController({ state, webviewOf: (id) => document.getElementById(`webview-${id}`), host: contentArea, ipcRenderer, onSubtitle, onClosed: () => { openToken++ } }) : null
+    const chats = contentArea ? createChatController({ state, webviewOf: (id) => document.getElementById(`webview-${id}`), host: contentArea, ipcRenderer, onSubtitle, onClosed: () => { openToken++ }, onHidden: () => { activeId = ''; listEl.querySelectorAll('.ai-row.is-active').forEach((r) => r.classList.remove('is-active')) } }) : null
 
     function webviewOf(messengerId) {
         return document.getElementById(`webview-${messengerId}`)
     }
 
     let lastReadAt = 0
+    // avatars cross from each tab once per session (list-memo.js); per tab, as two Telegram accounts share chat keys
+    const listSessions = new Map()
+    const listAvatars = new Map()
+    const newListSession = (id) => { listSessions.set(id, `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`); return listSessions.get(id) }
+    const listSessionOf = (id) => listSessions.get(id) || newListSession(id)
+    const avatarsOf = (id) => listAvatars.get(id) || (listAvatars.set(id, new Map()), listAvatars.get(id))
     async function readAll() {
         if (reading) return
         if (loadedOnce && (isHidden() || (isAway() && Date.now() - lastReadAt < AWAY_POLL_MS))) return
@@ -192,17 +200,25 @@ function createAllInbox({ state, switchTab, tGet, ipcRenderer, canOpen, store = 
         try {
             // a tab that is asleep or slow this time keeps the chats it gave last time: the list never blinks
             const kept = (m) => (lastChats.has(m.id) ? { messenger: { ...m, service: services.get(m.id) || '' }, chats: lastChats.get(m.id) } : null)
-            const jobs = (state.activeMessengers || []).map(async (m) => {
-                const view = webviewOf(m.id)
-                if (!view || typeof view.executeJavaScript !== 'function') return null
+            // TEAM strict mode: the personal messengers hidden from the sidebar are not read either (their chats and
+            // counts showed here, 3.8.3 check)
+            const shownMessengers = visibleMessengers(state.activeMessengers || [], { strict: !!state.orgStrict, teamWorkspaceActive: true })
+            const jobs = shownMessengers.map(async (m) => {
+                // a sleeping tab has no page at all: it keeps the chats it gave last time (it vanished from the list)
                 if (state.sleepingTabs?.has(m.id)) return kept(m)
+                const view = webviewOf(m.id)
+                if (!view || typeof view.executeJavaScript !== 'function') return kept(m)
                 let url = ''
-                try { url = view.getURL() } catch { return null }
+                // a tab reloading cannot say its address for a moment: its last chats stay (the list blinked)
+                try { url = view.getURL() } catch { return kept(m) }
                 const adapter = adapterFor(url)
                 if (!adapter) return null
                 // MAX walks its list through only while the person is not looking at that tab
                 const script = typeof adapter.listScript === 'function' ? adapter.listScript({ sweep: state.activeTabId !== m.id }) : adapter.LIST
-                const chats = await withTimeout(view.executeJavaScript(script).catch(() => null), READ_TIMEOUT_MS)
+                const raw = await withTimeout(view.executeJavaScript(withListMemo(script, listSessionOf(m.id))).catch(() => null), READ_TIMEOUT_MS)
+                const { chats, missing } = resolveListAvatars(raw, avatarsOf(m.id))
+                // an avatar we never got (an answer lost on the way): everything comes again on the next read
+                if (missing) newListSession(m.id)
                 // a messenger that was never opened since start-up does not start in a page without layout
                 // (Telegram waits for a frame to draw): it gets an invisible layout until its chats show up
                 view.classList.toggle(WARM_CLASS, !(Array.isArray(chats) && chats.length))
@@ -212,7 +228,7 @@ function createAllInbox({ state, switchTab, tGet, ipcRenderer, canOpen, store = 
                 return { messenger: { ...m, service: adapter.id }, chats }
             })
             // each answer is drawn as soon as it comes (one frame for answers that come together)
-            const order = (state.activeMessengers || []).map((m) => m.id)
+            const order = shownMessengers.map((m) => m.id)
             const got = new Map()
             const pendingIds = new Set(order)
             let frame = 0
@@ -241,7 +257,6 @@ function createAllInbox({ state, switchTab, tGet, ipcRenderer, canOpen, store = 
         const row = el('button', `ai-row${chat.unread ? ' is-unread' : ''}${chat.id === activeId ? ' is-active' : ''}${chat.muted ? ' is-muted' : ''}`)
         row.type = 'button'
         row.dataset.id = chat.id
-        row.setAttribute('role', 'listitem')
 
         const ava = el('div', `ai-ava${chat.icon ? ` is-icon is-${chat.icon}` : ''}`)
         if (chat.icon && CHAT_ICONS[chat.icon]) {
@@ -370,13 +385,13 @@ function createAllInbox({ state, switchTab, tGet, ipcRenderer, canOpen, store = 
         const known = withChannelKinds(sources, channelMemory)
         const all = mergeInbox(known, Date.now())
         const chatIds = folderBar ? folderBar.chatsOf(filter) : null
-        const list = mergeInbox(known, Date.now(), { unreadOnly: filter === 'unread', kind: chatIds ? '' : filter, chatIds, query, messengerId: source })
+        const list = filterInbox(all, { unreadOnly: filter === 'unread', kind: chatIds ? '' : filter, chatIds, query, messengerId: source })
         if (clearEl) clearEl.hidden = !query
         renderSources(all)
         const unreadChats = all.filter((c) => c.unread > 0 && !c.muted).length
         if (badgeEl) { badgeEl.hidden = unreadChats === 0; badgeEl.textContent = unreadChats > 99 ? '99+' : String(unreadChats) }
-        if (countEl) countEl.textContent = String(all.length)
-        filterButtons.forEach((b) => b.classList.toggle('is-on', b.dataset.aiFilter === filter))
+        if (countEl) { countEl.textContent = String(all.length); countEl.title = `Всего чатов: ${all.length}` }
+        filterButtons.forEach((b) => { const on = b.dataset.aiFilter === filter; b.classList.toggle('is-on', on); b.setAttribute('aria-pressed', String(on)) })
         // unread chats of every filter and folder, in the column — counted in one pass over the list (3.8.3: with every
         // chat listed, counting each filter separately stalled typing)
         if (rail) {
@@ -455,19 +470,30 @@ function createAllInbox({ state, switchTab, tGet, ipcRenderer, canOpen, store = 
 
     async function openChat(chat) {
         const token = ++openToken
-        const stale = () => token !== openToken || !open
+        // stale: a later click, the panel closed, or the person went to another tab themselves meanwhile
+        let tabAtStart = null
+        const stale = () => token !== openToken || !open || (tabAtStart !== null && state.activeTabId !== tabAtStart)
         activeId = chat.id
         listEl.querySelectorAll('.ai-row.is-active').forEach((r) => r.classList.remove('is-active'))
         listEl.querySelector(`.ai-row[data-id="${CSS.escape(chat.id)}"]`)?.classList.add('is-active')
         switchTab(chat.messengerId)
-        await new Promise((r) => setTimeout(r, TAB_SETTLE_MS))
-        if (stale()) return
+        tabAtStart = state.activeTabId
         const view = webviewOf(chat.messengerId)
         if (!view) return
         let adapter = null
         try { adapter = adapterFor(view.getURL()) } catch {}
         if (!adapter) return
         const run = (code, ms = READ_TIMEOUT_MS) => withTimeout(view.executeJavaScript(code).catch(() => null), ms)
+        // our conversation window comes at once with «Открываю чат…» (it came half a second after the click with nothing
+        // happening meanwhile, 3.8.3 check); the tab behind it is brought to the chat meanwhile. Once the right chat is
+        // confirmed open, its address is remembered for next time
+        chats?.open(chat, adapter.id, async () => {
+            if (!adapter.PATH) return
+            const path = await run(adapter.PATH)
+            if (path) { paths[chat.id] = path; writeStorage(PATHS_KEY, JSON.stringify(paths)) }
+        })
+        await new Promise((r) => setTimeout(r, TAB_SETTLE_MS))
+        if (stale()) return
         const knownPath = paths[chat.id]
         let opened = false
         if (typeof adapter.open === 'function') {
@@ -486,13 +512,6 @@ function createAllInbox({ state, switchTab, tGet, ipcRenderer, canOpen, store = 
             if (!point || typeof point.x !== 'number') { chats?.close(); return }
             clickAt(view, point)
         }
-        // our conversation window goes over the tab, which keeps working behind it; once the right chat is confirmed
-        // open, its address is remembered for next time
-        chats?.open(chat, adapter.id, async () => {
-            if (!adapter.PATH) return
-            const path = await run(adapter.PATH)
-            if (path) { paths[chat.id] = path; writeStorage(PATHS_KEY, JSON.stringify(paths)) }
-        })
         setTimeout(readAll, 900)
     }
 
@@ -551,7 +570,8 @@ function createAllInbox({ state, switchTab, tGet, ipcRenderer, canOpen, store = 
         if (!open || !searchEl) return
         const active = document.activeElement
         const typing = /^(INPUT|TEXTAREA)$/.test(active?.tagName || '') || active?.isContentEditable
-        const inChat = active?.closest?.('.aic')
+        // an open conversation keeps Ctrl+F for itself unless the person is in the list (chat-view.js)
+        const inChat = active?.closest?.('.aic') || (document.querySelector('.aic:not([hidden])') && !panel.contains(active))
         if (((e.ctrlKey || e.metaKey) && e.code === 'KeyF' && !inChat) || (e.key === '/' && !typing && !inChat)) {
             e.preventDefault()
             searchEl.focus()

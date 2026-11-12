@@ -328,14 +328,20 @@ const max = {
             var box = listBox();
             if (!box) return;
             window.__ciMaxWalking = true;
-            var start = box.scrollTop, steps = 0, waited = 0, height = box.scrollHeight;
+            var start = box.scrollTop, steps = 0, waited = 0, height = box.scrollHeight, began = Date.now(), seenNow = {};
             (function step() {
-                remember(readCells());
+                var rows = readCells();
+                remember(rows);
+                for (var r = 0; r < rows.length; r++) seenNow[rows[r].key] = 1;
                 var end = box.scrollTop + box.clientHeight >= box.scrollHeight - 4;
                 // at the bottom MAX fetches the next older chats: wait for them a moment before calling it the end
                 if (end && box.scrollHeight === height && waited < ${MAX_WALK_WAIT_TRIES}) { waited++; setTimeout(step, ${MAX_WALK_WAIT_MS}); return; }
                 if (box.scrollHeight !== height) { height = box.scrollHeight; waited = 0; end = false; }
-                if (end || ++steps > ${MAX_WALK_STEPS} || Object.keys(cache).length >= ${MAX_ALL_CHATS}) {
+                // the chats met on THIS walk are counted: counted from the whole kept list, a walk stopped at its first
+                // step once 200 chats were kept, and the unread marks below the first screen never changed again (3.8.3)
+                if (end || ++steps > ${MAX_WALK_STEPS} || Object.keys(seenNow).length >= ${MAX_ALL_CHATS}) {
+                    // a walk to the very end saw every chat there is: the ones it did not meet are gone (left, deleted)
+                    if (end) for (var k in cache) if (cache[k].at < began) delete cache[k];
                     box.scrollTop = start;
                     window.__ciMaxWalking = false;
                     window.__ciMaxWalkedAt = Date.now();

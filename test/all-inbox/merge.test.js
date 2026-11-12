@@ -83,3 +83,15 @@ test('a folder shows only its chats (3.8.3)', () => {
     const list = mergeInbox(sources, Date.now(), { chatIds: new Set(['tg::2']) })
     assert.deepStrictEqual(list.map((c) => c.title), ['Пётр'])
 })
+
+test('filtering the merged list gives the same as merging with the filter', () => {
+    const { filterInbox } = require('../../renderer/all-inbox/merge')
+    const sources = [
+        { messenger: { ...tg, service: 'telegram' }, chats: [chat('1', { unread: 2, kind: 'user', at: NOW - 1000 }), chat('2', { kind: 'channel', title: 'Новости', pinned: true })] },
+        { messenger: { ...max, service: 'max' }, chats: [chat('3', { unread: 1, kind: 'group', at: NOW - 500 }), chat('4', { kind: 'user', preview: 'про новости' })] }
+    ]
+    const all = mergeInbox(sources, NOW)
+    for (const f of [{}, { unreadOnly: true }, { kind: 'personal' }, { query: 'новост' }, { messengerId: 'max' }, { chatIds: new Set(['tg::1', 'max::4']) }]) {
+        assert.deepEqual(filterInbox(all, f), mergeInbox(sources, NOW, f))
+    }
+})

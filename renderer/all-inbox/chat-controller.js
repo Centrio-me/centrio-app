@@ -1,7 +1,7 @@
 'use strict'
 // «Все мессенджеры» (3.8): keeps our conversation window in step with the chat open in the tab behind it, and sends
 // what is typed through that tab with real input (the messenger itself sends it, nothing goes around it).
-const { chatAdapterFor, fullPicture, withImageMemo, resolveImages } = require('./chat-adapters')
+const { chatAdapterFor, fullPicture, withImageMemo, resolveImages, missingImages } = require('./chat-adapters')
 const { canEditNow } = require('./edit-window')
 const { toggleReaction, overlayReactions } = require('./quick-reactions')
 const { setEmojiSet } = require('./emoji-images')
@@ -67,7 +67,7 @@ function clickAt(view, point) {
  * @param {{ state: object, webviewOf: (id: string) => any, host: HTMLElement,
  *   ipcRenderer: { send: Function, invoke: Function } }} deps — the IPC shim of renderer.js (the page has no Node)
  */
-function createChatController({ state, webviewOf, host, ipcRenderer, onSubtitle = () => {}, onClosed = () => {} }) {
+function createChatController({ state, webviewOf, host, ipcRenderer, onSubtitle = () => {}, onClosed = () => {}, onHidden = () => {} }) {
     let current = null // { chat, adapter }
     let timer = null
     let lastOlder = 0
@@ -135,6 +135,8 @@ function createChatController({ state, webviewOf, host, ipcRenderer, onSubtitle 
     // back to the window: the chat is read at once
     onAttentionChange(() => { if (current && !isAway()) poll() })
 
+    const newSession = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`
+
     function tab() {
         return current ? webviewOf(current.chat.messengerId) : null
     }
@@ -158,9 +160,16 @@ function createChatController({ state, webviewOf, host, ipcRenderer, onSubtitle 
             if (!data || !Array.isArray(data.messages)) return
             // only the chat the person chose is shown and written to
             current.match = sameChat(current.chat.title, data.title)
-            view.setMismatch(!current.match, data.title)
+            cur.misses = current.match ? 0 : (cur.misses || 0) + 1
+            // a chat already shown is not wiped by one read with an empty or flickering title (the conversation turned into
+            // the opening mark and the place in the history was lost, 3.8.3 check): two misses in a row say it really moved
+            if (!current.match && cur.confirmed && cur.misses < 2) return
+            // until the chat is first seen, the tab is still on its way to it: the opening mark, not «another chat is open»
+            view.setMismatch(!current.match, cur.confirmed ? data.title : '')
             if (!current.match) return
             if (!current.confirmed) { current.confirmed = true; if (typeof current.onConfirmed === 'function') current.onConfirmed() }
+            // a picture whose answer was lost: a new session, so the next read brings every picture again
+            if (missingImages(data.messages, cur.images)) cur.script = withImageMemo(cur.adapter.CHAT, newSession())
             lastRows = buildTimeline(resolveImages(data.messages, current.images), Date.now())
             redraw()
             view.setCanWrite(data.canWrite !== false)
@@ -393,14 +402,15 @@ function createChatController({ state, webviewOf, host, ipcRenderer, onSubtitle 
 
     async function send(text, files = [], reply = null, asFile = false) {
         const w = tab()
-        if (!w || !current) return false
-        // check again right before typing: the tab may have moved to another chat since the last read
-        const data = await run(w, current.adapter.CHAT)
-        if (!data || !sameChat(current.chat.title, data.title)) { view.setMismatch(true, data && data.title); return false }
+        const cur = current
+        if (!w || !cur) return false
+        // check again right before typing: the tab may have moved to another chat since the last read, and our window
+        // to another chat while this was checked (the text then went to the new one, 3.8.3 check)
+        if (!(await stillHere(w, cur))) return false
         const knownIds = lastRows.filter((r) => r.type === 'msg' && r.out).map((r) => r.id)
         const pid = pending.add({ text, files, knownIds })
         redraw()
-        const ok = await deliver(w, text, files, reply, asFile, current)
+        const ok = await deliver(w, text, files, reply, asFile, cur)
         if (!ok) pending.drop(pid)
         await wait(AFTER_SEND_MS)
         poll()
@@ -448,7 +458,7 @@ function createChatController({ state, webviewOf, host, ipcRenderer, onSubtitle 
         const adapter = chatAdapterFor(adapterId)
         if (!adapter) { close(); return false }
         // pictures cross from the tab once per opened chat (chat-adapters.js withImageMemo)
-        const session = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`
+        const session = newSession()
         current = { chat, adapter, match: false, onConfirmed, confirmed: false, openedAt: Date.now(), script: withImageMemo(adapter.CHAT, session), images: new Map() }
         loadReactions(adapter)
         pending.clear()
@@ -468,6 +478,8 @@ function createChatController({ state, webviewOf, host, ipcRenderer, onSubtitle 
         clearInterval(timer)
         timer = null
         view.hide()
+        // the row of the chat stops looking open in the list
+        onHidden()
     }
 
     return { open, close, isOpen: () => !!current }

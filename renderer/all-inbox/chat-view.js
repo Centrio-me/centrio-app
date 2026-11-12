@@ -96,9 +96,16 @@ function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab
 
     const drafts = sharedDrafts
     let chatId = ''
+    let shownOnce = false // the field has shown for this chat (it takes the cursor then)
     let chatIsSaved = false // «Избранное»: nobody else to delete a message for
-    const composer = createComposer({ root, onSend, onEdit, onPickFiles, onDescribeFiles, onPasteImage, onDraft: (text) => drafts.keep(chatId, text), chatKey: () => chatId, onDraftFor: (id, text) => drafts.keep(id, text) })
+    // a failure says what happened and what to do; a red edge for a moment said nothing (3.8.3 check)
+    const said = (p, text) => Promise.resolve(p).then((ok) => { if (ok === false) flash(text); return ok }, () => { flash(text); return false })
+    const sendSaying = (...a) => said(onSend(...a), 'Не отправилось. Текст остался в поле — попробуйте ещё раз или откройте чат в мессенджере')
+    const editSaying = onEdit ? (...a) => said(onEdit(...a), 'Не удалось изменить сообщение') : onEdit
+    const composer = createComposer({ root, onSend: sendSaying, onEdit: editSaying, onPickFiles, onDescribeFiles, onPasteImage, onDraft: (text) => drafts.keep(chatId, text), chatKey: () => chatId, onDraftFor: (id, text) => drafts.keep(id, text) })
     composer.setVisible(false)
+    // the «down» button and the toast stand above the field, however tall it grows (styles-all-inbox.css)
+    new ResizeObserver(() => root.style.setProperty('--aic-compose-h', `${composer.el.offsetHeight}px`)).observe(composer.el)
     root.append(composer.el)
     const lightbox = createLightbox({ root, onPicture })
     // voice messages play here; every drawn bubble of a message shows the player's state again
@@ -158,9 +165,22 @@ function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab
     q('.aic-x').addEventListener('click', onClose)
     // Esc closes the conversation, as in Telegram — after the emoji panel, the answer strip, the menu and the photo
     root.addEventListener('keydown', (e) => {
-        if (e.key !== 'Escape' || e.defaultPrevented || lightbox.isOpen() || !menu.hidden || bgMenu.isOpen()) return
+        if (e.key !== 'Escape' || e.defaultPrevented || lightbox.isOpen() || !menu.hidden || bgMenu.isOpen() || !askBox.hidden) return
         e.preventDefault()
+        // the field's menu or the emoji panel goes first
+        if (composer.hasPopup()) { composer.closePopups(); return }
         onClose()
+    })
+    // a click on the history (or a photo or the search just closed) leaves the focus on the page, outside the window:
+    // Esc and Ctrl+F still belong to the open conversation, unless the person is typing somewhere else
+    document.addEventListener('keydown', (e) => {
+        if (root.hidden || e.defaultPrevented || root.contains(e.target)) return
+        const t = e.target
+        if (t && (/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) || t.isContentEditable)) return
+        // a window of Centrio over everything (settings, a modal) keeps its own keys
+        if (document.querySelector('.modal.active, .modal-overlay.active') || [...document.querySelectorAll('[role="dialog"]')].some((d) => !root.contains(d) && d.offsetParent)) return
+        if ((e.ctrlKey || e.metaKey) && e.code === 'KeyF') { e.preventDefault(); search.open(); return }
+        if (e.key === 'Escape' && !lightbox.isOpen() && menu.hidden && !bgMenu.isOpen() && askBox.hidden) { e.preventDefault(); onClose() }
     })
     // the conversation sticks to its newest message until the person scrolls up; pictures that load late keep it there
     let stick = true
@@ -239,7 +259,7 @@ function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab
                 const b = el('button', 'aic-menu-react', emoji)
                 b.type = 'button'
                 b.title = emoji
-                b.addEventListener('click', () => { closeMenu(); onReact(m, emoji) })
+                b.addEventListener('click', () => { closeMenu(); said(onReact(m, emoji), 'Реакция не поставилась') })
                 row.append(b)
             }
             menu.append(row)
@@ -303,7 +323,7 @@ function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab
         toast.textContent = text
         toast.hidden = false
         clearTimeout(toastTimer)
-        toastTimer = setTimeout(() => { toast.hidden = true }, 2200)
+        toastTimer = setTimeout(() => { toast.hidden = true }, Math.max(2200, text.length * 55)) // a longer word stays longer
     }
     function savePicture(src, m) {
         const name = String(m.name || '').trim() || `Изображение_${new Date().toISOString().slice(0, 19).replace(/[-:T]/g, '')}`
@@ -334,7 +354,7 @@ function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab
         cancel.type = 'button'
         ok.type = 'button'
         cancel.addEventListener('click', () => { askBox.hidden = true })
-        ok.addEventListener('click', () => { askBox.hidden = true; onDelete(m, !!(forAll && forAll.checked)) })
+        ok.addEventListener('click', () => { askBox.hidden = true; said(onDelete(m, !!(forAll && forAll.checked)), 'Не удалось удалить сообщение') })
         row.append(cancel, ok)
         card.append(row)
         askBox.append(card)
@@ -343,7 +363,14 @@ function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab
         cancel.focus()
     }
     askBox.addEventListener('mousedown', (e) => { if (e.target === askBox) askBox.hidden = true })
-    askBox.addEventListener('keydown', (e) => { if (e.key === 'Escape') askBox.hidden = true })
+    askBox.addEventListener('keydown', (e) => {
+        if (e.key !== 'Escape') return
+        // only the question goes; the conversation stays open (Esc reached the window and closed it too)
+        e.preventDefault()
+        e.stopPropagation()
+        askBox.hidden = true
+        composer.focus()
+    })
 
     document.addEventListener('mousedown', (e) => { if (!menu.hidden && !menu.contains(e.target)) closeMenu() })
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeMenu() })
@@ -389,11 +416,13 @@ function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab
             if (chat.messengerIcon) { const mark = el('img', 'ai-service'); mark.src = chat.messengerIcon; mark.alt = ''; ava.append(mark) }
             chatId = chat.id
             chatIsSaved = chat.icon === 'saved'
+            // the photos of the previous chat do not stay over this one
+            closeZoom()
             // a question about a message of the previous chat must not stay to act on this one
             askBox.hidden = true
             composer.reset(drafts.take(chat.id))
             composer.setVisible(false)
-            setTimeout(() => composer.focus(), 50)
+            shownOnce = false
         },
         // «печатает…» in the header in the accent colour, with its dots, like in Telegram
         setSubtitle(text) {
@@ -427,10 +456,14 @@ function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab
             let startBar = null
             let arrived = 0
             const ids = new Set()
-            for (const r of rows) {
-                if (r.type === 'day') { dayLabel = r.label; const day = el('div', 'aic-day'); day.append(el('span', '', r.label)); frag.append(day); continue }
+            // new means below the newest message already seen: earlier ones loaded above are history, not news (they
+            // counted in the «down» button and slid in as new, 3.8.3 check)
+            let lastSeenAt = -1
+            rows.forEach((r, i) => { if (r.id && seenIds.has(r.id)) lastSeenAt = i })
+            rows.forEach((r, i) => {
+                if (r.type === 'day') { dayLabel = r.label; const day = el('div', 'aic-day'); day.append(el('span', '', r.label)); frag.append(day); return }
                 // an event in the chat: a small note in the middle, like Telegram's service messages
-                if (r.type === 'note') { const note = el('div', 'aic-note'); note.append(el('span', '', r.text)); frag.append(note); continue }
+                if (r.type === 'note') { const note = el('div', 'aic-note'); note.append(el('span', '', r.text)); frag.append(note); return }
                 const node = renderMessage(r, ctx)
                 if (startId && r.id === startId) {
                     startBar = el('div', 'aic-unread-bar')
@@ -441,9 +474,9 @@ function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab
                 byId.set(r.id, r)
                 dayOf.set(r.id, dayLabel)
                 // what came in since the last look slides in softly, like in Telegram
-                if (!firstDraw && !seenIds.has(r.id)) { node.classList.add('is-new'); arrived++ }
+                if (!firstDraw && !seenIds.has(r.id) && lastSeenAt >= 0 && i > lastSeenAt) { node.classList.add('is-new'); arrived++ }
                 frag.append(node)
-            }
+            })
             seenIds = ids
             list.classList.toggle('is-group', isGroup)
             list.replaceChildren(frag)
@@ -487,7 +520,16 @@ function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab
                 el('div', 'aic-stuck-text', 'Мессенджер ещё загружается или в нём не выполнен вход.'), go)
             list.replaceChildren(stuck)
         },
-        setCanWrite(on) { composer.setVisible(on) },
+        setCanWrite(on) {
+            const firstShow = on && !shownOnce
+            composer.setVisible(on)
+            if (on) shownOnce = true
+            // as in Telegram: the chat opens ready to type (the field was focused while still hidden, which did nothing)
+            if (firstShow && !root.hidden) {
+                const a = document.activeElement
+                if (!a || a === document.body || a.closest?.('.ai-row, .aic')) composer.focus()
+            }
+        },
         // a pressed reaction: only that message's reactions change, at once
         showReactions(id, items) { return patchReactions(list, id, items) },
         hide() { player.reset(); videoToken++; closeZoom(); closeMenu(); askBox.hidden = true; bgMenu.toggle(false); root.hidden = true; document.body.classList.remove('all-inbox-chat-open') },

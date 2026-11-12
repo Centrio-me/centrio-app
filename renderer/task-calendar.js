@@ -136,7 +136,7 @@ function createTaskCalendar({ getTodosApi, tGet, getLang, invokeIpc, isPro = () 
         daySub.textContent = ''
         dayList.textContent = ''
         const card = el('div', 'tcal-pro')
-        card.appendChild(el('span', 'tcal-pro-badge', tGet('cloud.planPro') || 'ПРО'))
+        card.appendChild(el('span', 'tcal-pro-badge', tGet('cloud.planPro') || 'PRO'))
         card.appendChild(el('div', 'tcal-pro-title', t('proTitle', 'Задачи в календаре — в ПРО')))
         card.appendChild(el('div', 'tcal-pro-text', t('proText', '')))
         const btn = el('button', 'tcal-pro-btn', t('proBtn', 'Подключить ПРО'))

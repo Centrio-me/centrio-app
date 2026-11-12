@@ -58,8 +58,9 @@ function vkList() {
             if (!api) return [];
             var cache = window.__ciVkList || (window.__ciVkList = { at: 0, list: [], busy: false });
             var pulse = __vkPulse();
-            if (cache.busy || (Date.now() - cache.at < ${VK_LIST_EVERY_MS} && pulse === cache.pulse)) return cache.list;
-            cache.busy = true; cache.pulse = pulse;
+            // a request VK never answered froze the list for good: «busy» lasts 20 seconds at most (3.8.3 check)
+            if ((cache.busy && Date.now() - (cache.busyAt || 0) < 20000) || (Date.now() - cache.at < ${VK_LIST_EVERY_MS} && pulse === cache.pulse)) return cache.list;
+            cache.busy = true; cache.busyAt = Date.now(); cache.pulse = pulse;
             return Promise.resolve(api.api('messages.getConversations', { count: ${VK_CHATS}, extended: 1, fields: 'photo_100,online' })).then(function (r) {
                 var people = __vkPeople(r), now = Date.now() / 1000, out = [];
                 (r && r.items || []).forEach(function (it) {
@@ -119,8 +120,8 @@ function vkChat() {
             var h = window.__ciVkHist;
             if (!h || h.peer !== peer) h = window.__ciVkHist = { peer: peer, at: 0, count: ${VK_MESSAGES}, data: null, busy: false };
             var pulse = __vkPulse();
-            if (h.data && (h.busy || (Date.now() - h.at < ${VK_HISTORY_EVERY_MS} && pulse === h.pulse))) return h.data;
-            h.busy = true; h.pulse = pulse;
+            if (h.data && ((h.busy && Date.now() - (h.busyAt || 0) < 20000) || (Date.now() - h.at < ${VK_HISTORY_EVERY_MS} && pulse === h.pulse))) return h.data;
+            h.busy = true; h.busyAt = Date.now(); h.pulse = pulse;
             var media = {}, pollRefs = {};
             function clock(t) { var d = new Date(t * 1000); return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2); }
             function size(n) { if (!(n > 0)) return ''; if (n < 1024) return n + ' Б'; if (n < 1048576) return Math.round(n / 1024) + ' КБ'; return (n / 1048576).toFixed(1).replace('.', ',') + ' МБ'; }
