@@ -2,6 +2,7 @@
 // «Все мессенджеры» (3.8): keeps our conversation window in step with the chat open in the tab behind it, and sends
 // what is typed through that tab with real input (the messenger itself sends it, nothing goes around it).
 const { chatAdapterFor, fullPicture, withImageMemo, resolveImages } = require('./chat-adapters')
+const { canEditNow } = require('./edit-window')
 const { buildTimeline, signature } = require('./timeline')
 const { createChatView } = require('./chat-view')
 const { sameChat } = require('./same-chat')
@@ -80,7 +81,8 @@ function createChatController({ state, webviewOf, host, ipcRenderer, onSubtitle 
         canReply: () => !!(current && typeof current.adapter.REPLY === 'function'),
         // edit an own message and react (3.8.3)
         onEdit: (m, text) => edit(m, text),
-        canEdit: () => !!(current && (typeof current.adapter.EDIT === 'function' || current.adapter.contextEdit)),
+        canEdit: (m, dayLabel) => !!(current && (typeof current.adapter.EDIT === 'function' || current.adapter.contextEdit)
+            && canEditNow(m, dayLabel, current.adapter.EDIT_WINDOW_MS || 0)),
         onReact: (m, emoji) => react(m, emoji),
         reactionsFor: () => (current ? reactions : []),
         // links open in the browser through the main process's usual scheme check
@@ -341,6 +343,15 @@ function createChatController({ state, webviewOf, host, ipcRenderer, onSubtitle 
         // an answer to a message: the messenger itself is told which one, before anything is typed
         if (reply && typeof current.adapter.REPLY === 'function') {
             const id = String(reply.id).split('+')[0]
+            // MAX (3.8.3): «Ответить» from its own menu on a right click — the hover button was missed and the reply did
+            // not go (owner, 2026-11-12); the hover button stays as the second try
+            let set = false
+            if (current.adapter.contextEdit && typeof current.adapter.MENU_ITEM === 'function') {
+                set = await openMessageMenu(w, id) && await run(w, current.adapter.MENU_ITEM('Ответить')) === true
+                if (set) await wait(FOCUS_SETTLE_MS * 2)
+                else pressEscape(w)
+            }
+            if (set) return files.length ? sendFiles(w, files, text, asFile) : sendText(w, text)
             // MAX: its reply button comes only under the mouse — the mouse is moved over the message first
             if (typeof current.adapter.REPLY_POINT === 'function') {
                 const point = await run(w, current.adapter.REPLY_POINT(id))

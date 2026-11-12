@@ -186,6 +186,28 @@ const telegram = {
             } catch (e) { waves[k] = []; }
             return null;
         }
+        // reactions from Telegram's own message (3.8.3): its bubbles draw them as animated pictures with no text, so the
+        // emoji, the count and «yours» are taken from the message data, asked again every few seconds
+        var reacts = window.__ciTgReacts || (window.__ciTgReacts = {});
+        function reactsOf(mid, b) {
+            var k = peerNow + '_' + mid, c = reacts[k];
+            if (!c) c = reacts[k] = { at: 0, list: null, busy: false };
+            var hasEl = !!b.querySelector('.reactions .reaction');
+            if (!c.busy && (Date.now() - c.at > ${POLL_REFRESH_MS} || (hasEl && !c.list))) {
+                c.busy = true; c.at = Date.now();
+                try {
+                    rootScope.managers.appMessagesManager.getMessageByPeer(peerNow, Number(mid)).then(function (m) {
+                        c.busy = false;
+                        var rs = (m && m.reactions && m.reactions.results) || [];
+                        c.list = rs.map(function (r) {
+                            var e = r.reaction && r.reaction._ === 'reactionEmoji' ? r.reaction.emoticon : (r.reaction && r.reaction._ === 'reactionPaid' ? '⭐' : '');
+                            return e ? { e: String(e).slice(0, 8), n: String(r.count || 1), mine: r.chosen_order !== undefined } : null;
+                        }).filter(Boolean).slice(0, 8);
+                    }, function () { c.busy = false; });
+                } catch (e) { c.busy = false; }
+            }
+            return c.list && c.list.length ? c.list : reactionsOf(b);
+        }
         // a poll from Telegram's own message: question, options, votes, yours (asked again every few seconds)
         var polls = window.__ciTgPolls || (window.__ciTgPolls = {});
         function pollOf(mid) {
@@ -279,7 +301,7 @@ const telegram = {
                 mediaH: size ? Math.round(size.height) : 0,
                 album: album,
                 picture: !album && img && img.tagName === 'IMG' && kind === 'photo' ? 'tg' + mid : '',
-                reactions: reactionsOf(b),
+                reactions: reactsOf(mid, b),
                 webpage: webpageOf(b, mid),
                 time: __ciText(b.querySelector('.time .time-inner, .time')).replace(/[^0-9:]/g, '').slice(-5)
             });
@@ -363,6 +385,8 @@ const telegram = {
             return Promise.resolve(M.appReactionsManager.sendReaction({ message: m, reaction: { _: 'reactionEmoji', emoticon: emoticon } })).then(function () { return true; });
         }).catch(function () { return false; });
     })()`,
+    // Telegram lets an own message be edited for 48 hours
+    EDIT_WINDOW_MS: 48 * 3600 * 1000,
     // Telegram's free reactions most chats allow
     REACTIONS: ['👍', '❤', '🔥', '🥰', '👏', '😁', '🤔', '😢'],
     // a vote in a poll of the open chat, through Telegram's own vote (indexes of the chosen options)
@@ -571,6 +595,28 @@ const max = {
                     mediaW: (photo && photo.naturalWidth) || (grid ? parseFloat(grid.style.width) || 0 : 0),
                     mediaH: (photo && photo.naturalHeight) || (grid ? parseFloat(grid.style.height) || 0 : 0),
                     picture: gridPic ? (gridKey || '') : (photo ? 'max' + id : ''),
+                    // reactions (3.8.3): MAX draws each one on a canvas with no text — its picture is taken off the canvas
+                    // (once it has been drawn) and shown with the count
+                    reactions: (function () {
+                        var shots = window.__ciMxReacts || (window.__ciMxReacts = {});
+                        var box = w.closest('div.item') || w;
+                        var bs = box.querySelectorAll('.reactions button.reaction');
+                        var list = [];
+                        for (var q = 0; q < bs.length && list.length < 8; q++) {
+                            var cv = bs[q].querySelector('canvas');
+                            var key = id + ':' + q;
+                            if (cv && !shots[key]) {
+                                try {
+                                    var px = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data, ink = 0;
+                                    for (var p = 3; p < px.length; p += 16) ink += px[p];
+                                    if (ink > 0) shots[key] = cv.toDataURL('image/png');
+                                } catch (e) {}
+                            }
+                            var count = String(bs[q].innerText || '').replace(/\\s+/g, '') || '1';
+                            if (shots[key]) list.push({ e: '', img: shots[key], n: count.slice(0, 6), mine: /reaction--active/.test(bs[q].className) });
+                        }
+                        return list;
+                    })(),
                     time: time
                 });
             }
@@ -687,6 +733,8 @@ const max = {
     // where): MENU_ITEM presses «Редактировать», then the field holds the text and Enter saves; REACT_PICK presses the
     // n-th reaction of the menu's row, in the order of MAX's own setting «reactions-menu» (REACTIONS_LIST)
     contextEdit: true,
+    // MAX lets an own message be edited for 7 days (its setting edit-timeout = 604800 s)
+    EDIT_WINDOW_MS: 7 * 24 * 3600 * 1000,
     MENU_ITEM: (label) => `(function () {
         var label = ${JSON.stringify(String(label))};
         var items = document.querySelectorAll('[role=menu] [role=menuitem], [role=menu] button');

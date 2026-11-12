@@ -293,7 +293,9 @@ function reactions(m) {
     const row = el('div', 'aic-reactions')
     for (const r of m.reactions) {
         const pill = el('span', `aic-reaction${r.mine ? ' is-mine' : ''}`)
-        pill.append(el('span', 'aic-reaction-e', r.e))
+        // MAX gives the reaction as a picture (taken off its canvas), Telegram as an emoji
+        if (r.img && /^data:image\/png;base64,/.test(r.img)) { const pic = el('img', 'aic-reaction-img'); pic.src = r.img; pic.alt = ''; pill.append(pic) }
+        else pill.append(el('span', 'aic-reaction-e', r.e))
         if (r.n && r.n !== '1') pill.append(el('span', 'aic-reaction-n', r.n))
         row.append(pill)
     }

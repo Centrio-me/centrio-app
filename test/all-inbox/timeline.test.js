@@ -111,3 +111,11 @@ test('a poll option keeps its place in the messenger poll even when an empty one
     const rows = buildTimeline([{ id: '1', kind: 'poll', poll: { question: 'Q', options: [{ text: '' }, { text: 'A' }, { text: 'B' }] } }], Date.now()).filter((r) => r.type === 'msg')
     assert.deepEqual(rows[0].poll.options.map((o) => [o.text, o.index]), [['A', 1], ['B', 2]])
 })
+
+test('a reaction given as a picture (MAX) is kept, other pictures are not (3.8.3)', () => {
+
+    const img = 'data:image/png;base64,iVBORw0KGgo='
+    const rows = buildTimeline([{ id: 'a', kind: 'text', text: 'hi', time: '10:00', reactions: [{ e: '', img, n: '2', mine: true }, { e: '', img: 'https://evil/x.png', n: '1' }] }], Date.now())
+    const m = rows.find((r) => r.type === 'msg')
+    assert.deepStrictEqual(m.reactions, [{ e: '', img, n: '2', mine: true }])
+})

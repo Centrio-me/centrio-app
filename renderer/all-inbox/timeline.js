@@ -67,10 +67,15 @@ function cleanWebpage(w) {
     return { site: cut(w.site, 60), title: cut(w.title, 140), text: cut(w.text, 280), image: picture(w.image), url }
 }
 
+const MAX_REACTION_IMG = 20000
 function cleanReactions(list) {
     if (!Array.isArray(list)) return []
-    return list.filter((r) => r && typeof r.e === 'string' && r.e).slice(0, MAX_REACTIONS)
-        .map((r) => ({ e: r.e.slice(0, 8), n: String(r.n || '').slice(0, 6), mine: r.mine === true }))
+    // an emoji (Telegram), or a small picture taken off MAX's canvas — only a PNG data address, never a web address
+    const picture = (r) => typeof r.img === 'string' && r.img.length < MAX_REACTION_IMG && /^data:image\/png;base64,/.test(r.img)
+    return list.filter((r) => r && ((typeof r.e === 'string' && r.e) || picture(r))).slice(0, MAX_REACTIONS)
+        .map((r) => (picture(r) && !r.e
+            ? { e: '', img: r.img, n: String(r.n || '').slice(0, 6), mine: r.mine === true }
+            : { e: r.e.slice(0, 8), n: String(r.n || '').slice(0, 6), mine: r.mine === true }))
 }
 
 function dayLabel(at, now) {
@@ -243,7 +248,7 @@ function signature(rows) {
     return rows.map((r) => {
         if (r.type === 'day') return `#${r.label}`
         const album = r.album ? r.album.map((a) => print(a.src)).join(',') : ''
-        const reacts = (r.reactions || []).map((x) => x.e + x.n + (x.mine ? '*' : '')).join(',')
+        const reacts = (r.reactions || []).map((x) => (x.e || (x.img ? 'p' + x.img.length : '')) + x.n + (x.mine ? '*' : '')).join(',')
         return [r.id, r.read ? 1 : 0, r.kind, r.text || '', print(r.media), print(r.avatar), album, reacts, r.pending || '',
             r.name || '', r.size || '', r.duration || '', r.author || '', r.reply || '', r.forwarded || '', r.phone || '',
             r.webpage ? print(r.webpage.image) + (r.webpage.title || '') : '', (r.wave || []).length, r.poll ? JSON.stringify(r.poll) : ''].join('|')

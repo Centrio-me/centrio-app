@@ -104,6 +104,8 @@ html[data-fx] .ai-search-box:focus-within { background: rgba(255, 255, 255, .09)
 .ai-top, .ai-bottom { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .ai-title { flex: 0 1 auto; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 14px; font-weight: 600; color: var(--text-primary); }
 .ai-hit { padding: 0 1px; border-radius: 3px; background: var(--accent-dim); color: var(--accent); }
+/* on the chosen row (accent background) the found part stays readable — it vanished there (owner, 2026-11-12) */
+.ai-row.is-active .ai-hit { background: rgba(255, 255, 255, .26); color: inherit; }
 .ai-muted { flex: none; display: inline-flex; color: var(--text-muted); }
 .ai-account {
     flex: none; max-width: 76px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; padding: 1px 6px; border-radius: 6px;
@@ -994,3 +996,4 @@ html[data-fx] .ai-alpha { background: linear-gradient(rgba(14, 18, 32, .92), rgb
 .aic-mode-btn:hover { color: var(--text-primary); }
 .aic-mode-btn.is-on { background: var(--accent); color: #fff; }
 .aic-mode-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.aic-reaction-img { width: 17px; height: 17px; object-fit: contain; display: block; }

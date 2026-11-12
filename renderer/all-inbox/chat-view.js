@@ -190,6 +190,8 @@ function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab
     let byId = new Map()
     // a chat with unread messages opens where they begin, under a «Непрочитанные сообщения» bar (3.8.3, like Telegram);
     // the bar stays until the chat is opened again
+    // the day mark above each message («Сегодня», «3 сентября»): MAX gives no date of its own (edit-window.js)
+    let dayOf = new Map()
     let unreadAtOpen = 0
     let startId = ''
 
@@ -237,7 +239,7 @@ function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab
             menu.append(row)
         }
         if (canReply()) item('Ответить', ICON_REPLY, () => composer.replyTo(m))
-        if (onEdit && m.out && m.text && canEdit(m)) item('Изменить', ICON_EDIT, () => composer.edit(m))
+        if (onEdit && m.out && m.text && canEdit(m, dayOf.get(m.id))) item('Изменить', ICON_EDIT, () => composer.edit(m))
         const selected = String(window.getSelection() || '').trim()
         if (selected || m.text) item(selected ? 'Копировать выделенное' : 'Копировать текст', ICON_COPY, () => navigator.clipboard.writeText(selected || m.text).catch(() => {}))
         item('Открыть в мессенджере', ICON_OPEN, onOpenInTab)
@@ -315,6 +317,8 @@ function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab
                 onVoice: playable ? onVoice : null, onSeek: (m, part) => player.seek(m.id, part), onVideo: playable ? onVideo : null, playerState: player.state,
                 onVote: onVote && canVote() ? vote : null, isVoting: (id) => voting.has(id) }
             byId = new Map()
+            dayOf = new Map()
+            let dayLabel = ''
             const firstDraw = !seenIds.size
             const openAtUnread = firstDraw && rows.length > 0 && unreadAtOpen > 0
             if (openAtUnread) startId = firstUnreadId(rows, unreadAtOpen)
@@ -322,7 +326,7 @@ function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab
             let arrived = 0
             const ids = new Set()
             for (const r of rows) {
-                if (r.type === 'day') { const day = el('div', 'aic-day'); day.append(el('span', '', r.label)); frag.append(day); continue }
+                if (r.type === 'day') { dayLabel = r.label; const day = el('div', 'aic-day'); day.append(el('span', '', r.label)); frag.append(day); continue }
                 // an event in the chat: a small note in the middle, like Telegram's service messages
                 if (r.type === 'note') { const note = el('div', 'aic-note'); note.append(el('span', '', r.text)); frag.append(note); continue }
                 const node = renderMessage(r, ctx)
@@ -333,6 +337,7 @@ function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab
                 }
                 ids.add(r.id)
                 byId.set(r.id, r)
+                dayOf.set(r.id, dayLabel)
                 // what came in since the last look slides in softly, like in Telegram
                 if (!firstDraw && !seenIds.has(r.id)) { node.classList.add('is-new'); arrived++ }
                 frag.append(node)
