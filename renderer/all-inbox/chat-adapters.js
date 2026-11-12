@@ -253,8 +253,12 @@ const telegram = {
                 continue;
             }
             var kind = 'text';
+            // a message of one to three emoji: Telegram draws them as big animated stickers and keeps no text — the emoji
+            // are on the stickers (data-sticker-emoji); it is a text, drawn big by our window (owner, 2026-11-12: «пустое место»)
+            var bigEmoji = /emoji-big/.test(cls) ? [].map.call(b.querySelectorAll('[data-sticker-emoji]'), function (e) { return e.getAttribute('data-sticker-emoji') || ''; }).join('') : '';
             // a round video message carries a sound element too: it is a video
-            if (/ round /.test(cls)) kind = 'video';
+            if (bigEmoji) kind = 'text';
+            else if (/ round /.test(cls)) kind = 'video';
             else if (b.querySelector('poll-element, .poll')) kind = 'poll';
             else if (/ voice-message /.test(cls) || b.querySelector('.audio.is-voice, .voice')) kind = 'voice';
             else if (/ sticker /.test(cls) || /emoji-big/.test(cls)) kind = 'sticker';
@@ -288,7 +292,7 @@ const telegram = {
                 reply: __ciText(b.querySelector('.reply .reply-subtitle')).slice(0, 140),
                 replyTitle: replyEl ? __ciText(replyEl.querySelector('.reply-title')).slice(0, 80) : '',
                 replyColor: replyEl ? __ciRgb(getComputedStyle(replyEl).backgroundColor) : '',
-                text: __ciCleanText(b.querySelector('.message'), '.time, .reply, .reactions, .name, .bubble-name-forwarded, .document, .audio, .webpage, .webpage-preview'),
+                text: bigEmoji || __ciCleanText(b.querySelector('.message'), '.time, .reply, .reactions, .name, .bubble-name-forwarded, .document, .audio, .webpage, .webpage-preview'),
                 name: kind === 'contact' ? __ciText(b.querySelector('.contact-name, .contact .name')) || 'Контакт' : __ciText(b.querySelector('.document-name')),
                 phone: kind === 'contact' ? __ciText(b.querySelector('.contact-number, .contact .number')) : '',
                 size: __ciText(b.querySelector('.document-size')),

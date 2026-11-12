@@ -997,3 +997,9 @@ html[data-fx] .ai-alpha { background: linear-gradient(rgba(14, 18, 32, .92), rgb
 .aic-mode-btn.is-on { background: var(--accent); color: #fff; }
 .aic-mode-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .aic-reaction-img { width: 17px; height: 17px; object-fit: contain; display: block; }
+
+/* emoji as the messenger draws them (3.8.3): Telegram's and MAX's own pictures, in line with the text */
+.aic-emoji { display: inline-block; width: 1.3em; height: 1.3em; margin: 0 .05em; vertical-align: -0.3em; object-fit: contain; }
+.aic-jumbo .aic-emoji { width: 1.15em; height: 1.15em; vertical-align: middle; }
+.aic-reaction-e .aic-emoji { width: 17px; height: 17px; margin: 0; vertical-align: -3px; }
+.aie-e img { width: 26px; height: 26px; object-fit: contain; display: block; margin: auto; pointer-events: none; }

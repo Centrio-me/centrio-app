@@ -5,6 +5,27 @@
 const { linkParts } = require('./linkify')
 const { jumboCount, mediaBox, MEDIA_MAX_W } = require('./message-shape')
 const { waveBars, clock } = require('./media-player')
+// the emoji set of the open chat's messenger (3.8.3): Telegram and MAX pictures from their own servers, others our font
+const { emojiUrl, emojiParts, setEmojiSet, getEmojiSet } = require('./emoji-images')
+
+/** text with every emoji as the messenger's own picture; a picture that does not load becomes the character again */
+function emojiNodes(text) {
+    const frag = document.createDocumentFragment()
+    for (const part of emojiParts(text)) {
+        if (part.text) { frag.append(document.createTextNode(part.text)); continue }
+        const url = emojiUrl(part.emoji, getEmojiSet())
+        if (!url) { frag.append(document.createTextNode(part.emoji)); continue }
+        const img = document.createElement('img')
+        img.className = 'aic-emoji'
+        img.alt = part.emoji
+        img.draggable = false
+        img.decoding = 'async'
+        img.addEventListener('error', () => img.replaceWith(document.createTextNode(part.emoji)), { once: true })
+        img.src = url
+        frag.append(img)
+    }
+    return frag
+}
 
 const VOICE_BARS = 34
 
@@ -54,7 +75,7 @@ function meta(m, floating) {
 function textBlock(m, onLink, withMeta = true) {
     const node = el('div', 'aic-text')
     for (const part of linkParts(m.text)) {
-        if (!part.url) { node.append(document.createTextNode(part.text)); continue }
+        if (!part.url) { node.append(emojiNodes(part.text)); continue }
         const a = el('a', 'aic-link', part.text)
         a.href = part.url
         a.title = part.url
@@ -295,7 +316,7 @@ function reactions(m) {
         const pill = el('span', `aic-reaction${r.mine ? ' is-mine' : ''}`)
         // MAX gives the reaction as a picture (taken off its canvas), Telegram as an emoji
         if (r.img && /^data:image\/png;base64,/.test(r.img)) { const pic = el('img', 'aic-reaction-img'); pic.src = r.img; pic.alt = ''; pill.append(pic) }
-        else pill.append(el('span', 'aic-reaction-e', r.e))
+        else { const e = el('span', 'aic-reaction-e'); e.append(emojiNodes(r.e)); pill.append(e) }
         if (r.n && r.n !== '1') pill.append(el('span', 'aic-reaction-n', r.n))
         row.append(pill)
     }
@@ -359,7 +380,7 @@ function renderMessage(m, ctx) {
     else if (m.kind === 'voice' && ctx.onVoice) { b.classList.add('has-voice'); b.append(voice(m, ctx)) }
     else if (m.kind !== 'text' && m.kind !== 'photo') b.append(card(m, ctx.onOpenInTab))
 
-    if (jumbo) b.append(el('div', 'aic-jumbo', m.text), meta(m, true))
+    if (jumbo) { const big = el('div', 'aic-jumbo'); big.append(emojiNodes(m.text)); b.append(big, meta(m, true)) }
     // a link preview; a shared post may come with no words of its own — then just its card
     else if (m.webpage) { b.classList.add('has-webpage'); if (m.text) b.append(textBlock(m, ctx.onLink, false)); b.append(webpageCard(m, ctx.onLink), meta(m, false)) }
     else if (m.text) b.append(textBlock(m, ctx.onLink))
@@ -382,4 +403,4 @@ function renderMessage(m, ctx) {
     return row
 }
 
-module.exports = { renderMessage, paintVoice }
+module.exports = { renderMessage, paintVoice, setEmojiSet, emojiNodes }

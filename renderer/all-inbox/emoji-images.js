@@ -41,4 +41,9 @@ function emojiParts(text) {
     return parts
 }
 
-module.exports = { emojiUrl, emojiParts, emojiCode }
+// the set of the open chat's messenger, shared by the messages and the emoji panel
+let current = ''
+const setEmojiSet = (service) => { current = String(service || '') }
+const getEmojiSet = () => current
+
+module.exports = { emojiUrl, emojiParts, emojiCode, setEmojiSet, getEmojiSet }

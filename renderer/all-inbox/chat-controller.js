@@ -3,6 +3,7 @@
 // what is typed through that tab with real input (the messenger itself sends it, nothing goes around it).
 const { chatAdapterFor, fullPicture, withImageMemo, resolveImages } = require('./chat-adapters')
 const { canEditNow } = require('./edit-window')
+const { setEmojiSet } = require('./emoji-images')
 const { buildTimeline, signature } = require('./timeline')
 const { createChatView } = require('./chat-view')
 const { sameChat } = require('./same-chat')
@@ -384,6 +385,7 @@ function createChatController({ state, webviewOf, host, ipcRenderer, onSubtitle 
         loadReactions(adapter)
         pending.clear()
         lastRows = []
+        setEmojiSet(adapterId)
         view.show(chat)
         view.setMismatch(true, '')
         clearInterval(timer)

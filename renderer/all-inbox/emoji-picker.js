@@ -2,6 +2,7 @@
 // «Все мессенджеры»: the emoji panel of our message field — groups like in messengers, recently used first.
 const { EMOJI_GROUPS } = require('./emoji-data')
 const { rememberRecent, RECENT_MAX } = require('./emoji-picker-recent')
+const { emojiUrl, getEmojiSet } = require('./emoji-images')
 
 const RECENT_KEY = 'centrio-all-inbox-emoji-recent'
 
@@ -41,7 +42,20 @@ function createEmojiPicker({ onPick }) {
             const b = document.createElement('button')
             b.type = 'button'
             b.className = 'aie-e'
-            b.textContent = e
+            b.dataset.e = e
+            b.title = e
+            // the open chat's messenger draws its own emoji (3.8.3): its pictures, loaded as the panel scrolls
+            const url = emojiUrl(e, builtFor)
+            if (url) {
+                const img = document.createElement('img')
+                img.alt = e
+                img.loading = 'lazy'
+                img.decoding = 'async'
+                img.draggable = false
+                img.addEventListener('error', () => { b.textContent = e }, { once: true })
+                img.src = url
+                b.append(img)
+            } else b.textContent = e
             cells.append(b)
         }
         box.append(h, cells)
@@ -63,8 +77,10 @@ function createEmojiPicker({ onPick }) {
     }
 
     // built on first open: ~1900 buttons are not worth making for people who never open the panel
+    let builtFor = ''
     function build() {
         built = true
+        builtFor = getEmojiSet()
         const recentSec = section('recent', 'Недавние', recent)
         recentSec.hidden = !recent.length
         grid.append(recentSec)
@@ -87,7 +103,7 @@ function createEmojiPicker({ onPick }) {
     grid.addEventListener('click', (e) => {
         const b = e.target.closest('.aie-e')
         if (!b) return
-        const emoji = b.textContent
+        const emoji = b.dataset.e || b.textContent
         onPick(emoji)
         recent = rememberRecent(recent, emoji)
         try { localStorage.setItem(RECENT_KEY, JSON.stringify(recent)) } catch {}
@@ -99,6 +115,8 @@ function createEmojiPicker({ onPick }) {
         el: root,
         toggle(force) {
             const open = typeof force === 'boolean' ? force : root.hidden
+            // another messenger's chat: the panel is built again with its emoji
+            if (open && built && builtFor !== getEmojiSet()) { grid.replaceChildren(); tabs.replaceChildren(); sections.length = 0; built = false }
             if (open && !built) build()
             else if (open) refreshRecent()
             root.hidden = !open
