@@ -10,6 +10,21 @@ The format is based on Keep a Changelog. This project does not currently follow 
 
 _No unreleased changes yet — add entries here as they land, then move them under a new version heading at release time._
 
+## [3.8.3-beta.2] - 2026-11-12 (тестовая, только «Друзья Centrio»)
+
+### Added
+- Колонка папок слева от списка (folder-rail.js) со значками и счётчиками; переключатель «Автофильтры» в настройках режима (store allInbox.autoFilters).
+- Эмодзи мессенджера: картинки Telegram (web.telegram.org/k/assets/img/emoji) и MAX (st.max.ru/emojis) в тексте, крупных эмодзи, реакциях и панели (emoji-images.js).
+- Меню сообщения: копировать/сохранить картинку (all-inbox:save-picture), задача на сегодня и заметка из сообщения (событие all-inbox-make), удаление своего сообщения (Telegram deleteMessages, MAX — меню и его вопрос «Удалить у всех?»); меню поля ввода.
+
+### Fixed
+- Реакции не были видны: Telegram — из данных сообщения, MAX — картинка с холста; timeline выбрасывал реакции без текста эмодзи.
+- Сообщение из одного эмодзи (Telegram emoji-big) было пустым местом.
+- Ответ в MAX — через его меню «Ответить».
+- «Изменить» только в пределах срока правки (edit-window.js: Telegram 48 ч, MAX 7 дней).
+- Все чаты Telegram из хранилища и архива (TELEGRAM_ALL_CHATS = 1500), аватарки — первым 150.
+- Подсветка найденного в названии на выбранной строке.
+
 ## [3.8.3-beta.1] - 2026-11-12 (тестовая, только «Друзья Centrio»)
 
 ### Added
