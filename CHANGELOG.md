@@ -10,6 +10,13 @@ The format is based on Keep a Changelog. This project does not currently follow 
 
 _No unreleased changes yet — add entries here as they land, then move them under a new version heading at release time._
 
+## [3.8.3-beta.5] - 2026-11-12 (тестовая, только «Друзья Centrio»)
+
+### Fixed
+- Подтормаживание при наборе: список рисует по 120 строк (догружает при прокрутке), счётчики папок за один проход; было до 14 подвисаний за 15 с (до 0,38 с), стало 3 по ~55 мс, нажатие клавиши ~1 мс.
+- Реакция видна в момент нажатия (quick-reactions.js), патч только строки реакций сообщения; Telegram перечитывает реакции сразу; MAX — снимок картинки заново при смене числа/«ваша».
+- Значок смайликов в поле ввода: картинки эмодзи носили тот же класс .aic-emoji → теперь .aic-emo-img.
+
 ## [3.8.3-beta.4] - 2026-11-12 (тестовая, только «Друзья Centrio»)
 
 ### Added
