@@ -287,6 +287,40 @@ function bindNotesUi({ store, tGet, authorizedInvoke, invokeIpc, openRightPanel,
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !viewer.hidden) { e.stopPropagation(); viewer.hidden = true } }, true)
     let imagesFor = ''
     const MAX_PICTURE_BYTES = 10 * 1024 * 1024
+    // the clipboard takes PNG: the full picture is drawn once and handed over as such
+    function toPngBlob(src) {
+        return new Promise((resolve, reject) => {
+            const im = new Image()
+            im.onload = () => {
+                const c = document.createElement('canvas')
+                c.width = im.naturalWidth
+                c.height = im.naturalHeight
+                c.getContext('2d').drawImage(im, 0, 0)
+                c.toBlob((b) => (b ? resolve(b) : reject(new Error('no picture'))), 'image/png')
+            }
+            im.onerror = () => reject(new Error('no picture'))
+            im.src = src
+        })
+    }
+    async function copyPicture(src) {
+        try {
+            await navigator.clipboard.write([new ClipboardItem({ 'image/png': await toPngBlob(src) })])
+            saveIndicator.textContent = tGet('notes.imageCopied') || 'Картинка скопирована'
+        } catch (err) {
+            console.warn('[notes] copy picture failed:', err && err.message)
+            saveIndicator.textContent = tGet('notes.imageCopyFailed') || 'Картинку не удалось скопировать'
+        }
+    }
+    async function copyNotePicture(noteId, img) {
+        const full = invokeIpc ? await invokeIpc('notes-images:full', noteId, img.id).catch(() => '') : ''
+        await copyPicture(full || img.thumb)
+    }
+    viewer.addEventListener('contextmenu', (e) => { e.preventDefault(); if (viewerImg.src) copyPicture(viewerImg.src) })
+    document.addEventListener('keydown', (e) => {
+        if (viewer.hidden || !viewerImg.src || !(e.ctrlKey || e.metaKey) || e.code !== 'KeyC') return
+        e.preventDefault()
+        copyPicture(viewerImg.src)
+    }, true)
     // a deleted note's pictures go from this computer too
     const dropPictures = (id) => { invokeIpc?.('notes-images:delete-note', id).catch(() => {}) }
     async function loadImages(noteId) {
@@ -313,6 +347,15 @@ function bindNotesUi({ store, tGet, authorizedInvoke, invokeIpc, openRightPanel,
             const full = await invokeIpc('notes-images:full', noteId, img.id).catch(() => '')
             if (full && !viewer.hidden && imagesFor === noteId) viewerImg.src = full
         })
+        // «Копировать» (3.8.3, owner: a picture put into a note couldn't be taken out again to send it on)
+        const copy = document.createElement('button')
+        copy.type = 'button'
+        copy.className = 'notes-image-copy'
+        copy.title = tGet('notes.copyImage') || 'Копировать картинку'
+        copy.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/></svg>'
+        const copyThis = (e) => { e.preventDefault(); e.stopPropagation(); copyNotePicture(imagesFor, img) }
+        copy.addEventListener('click', copyThis)
+        pic.addEventListener('contextmenu', copyThis)
         const del = document.createElement('button')
         del.type = 'button'
         del.className = 'notes-image-del'
@@ -325,7 +368,7 @@ function bindNotesUi({ store, tGet, authorizedInvoke, invokeIpc, openRightPanel,
             box.remove()
             imagesEl.hidden = !imagesEl.children.length
         })
-        box.append(pic, del)
+        box.append(pic, copy, del)
         imagesEl.append(box)
         imagesEl.hidden = false
     }

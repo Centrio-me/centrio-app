@@ -140,7 +140,9 @@ const telegram = {
         function albumOf(b, mid) {
             var items = b.querySelectorAll('.album-item');
             if (items.length < 2) return null;
-            var rects = [], minX = Infinity, minY = Infinity, maxX = 0, maxY = 0;
+            // the edges start from nothing: an album scrolled above the top has places below zero (3.8.3 — from 0 the
+            // frame reached down to the window's top and the album became a tall grey sheet)
+            var rects = [], minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
             for (var k = 0; k < items.length; k++) {
                 var r = items[k].getBoundingClientRect();
                 rects.push(r);
