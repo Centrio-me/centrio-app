@@ -395,10 +395,13 @@ body:has(.first-steps.is-collapsed) .app-hint-stack { bottom: 100px; }
 .ach-bar { height: 4px; margin-top: 5px; border-radius: 2px; background: var(--border); overflow: hidden; }
 .ach-bar i { display: block; height: 100%; background: var(--accent); transform-origin: left; }
 
+.lk-badges { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 7px; }
+.lk-badges .lk-plan { margin-top: 0; }
+
 /* «Друг Centrio» (3.8.2): a beta tester — an aurora pill next to the plan (renderer/beta-program.js) */
 .lk-friend {
-    display: inline-flex; align-items: center; gap: 5px; margin: 6px 0 0 6px; padding: 3px 10px 3px 7px; border: 1px solid transparent;
-    border-radius: 20px; vertical-align: top; font-size: 10.5px; font-weight: 700; letter-spacing: .02em; color: var(--text-primary);
+    display: inline-flex; align-items: center; gap: 5px; margin: 0; padding: 3px 10px 3px 7px; border: 1px solid transparent;
+    border-radius: 20px; font-size: 10.5px; font-weight: 700; letter-spacing: .02em; color: var(--text-primary);
     background:
         linear-gradient(var(--lk-card, var(--bg-secondary)), var(--lk-card, var(--bg-secondary))) padding-box,
         linear-gradient(110deg, #7cc4ff, #a78bfa 50%, #f0abfc) border-box;

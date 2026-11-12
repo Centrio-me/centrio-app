@@ -22,10 +22,15 @@ function createBetaProgram({ cloudApi, cloudStore, tGet }) {
         if (!plan) return
         let badge = document.getElementById('cloudFriendBadge')
         if (!badge) {
+            // the plan and «Друг Centrio» share one row with one left edge: in the narrow profile column the badge wraps
+            // under the plan, flush with it
+            const row = el('div', 'lk-badges')
+            plan.before(row)
+            row.append(plan)
             badge = el('span', 'lk-friend')
             badge.id = 'cloudFriendBadge'
             badge.append(createIcon('heart-handshake'), el('span', 'lk-friend-text'))
-            plan.after(badge)
+            row.append(badge)
         }
         badge.querySelector('.lk-friend-text').textContent = t('badge')
         badge.title = t('badgeTitle')
