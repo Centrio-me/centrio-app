@@ -1834,7 +1834,8 @@ function registerAppEvents({
                 // gstatic.com-hosted picker, or an about:blank frame that
                 // never re-navigates because Chromium renders its content via
                 // FedCM's chrome-level UI instead of an actual page load).
-                log.info(`[oauth-broker][DEBUG] will-frame-navigate subframe url=${details.url} matchesOAuthHost=${isOAuthProviderUrl(details.url)}`)
+                // only sign-in pages: every ad frame of Mail.ru (each 15 s, with whole data: URLs) went to main.log (3.8.3 check)
+                if (isOAuthProviderUrl(details.url)) log.info(`[oauth-broker][DEBUG] will-frame-navigate subframe url=${details.url}`)
 
                 if (!isOAuthProviderUrl(details.url)) return
 

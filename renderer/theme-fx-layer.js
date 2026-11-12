@@ -2,6 +2,7 @@
 // 3.7.3: the layer behind the window for the themes with effects («Аврора», «Время суток»), see shared/theme-fx.js.
 // <html data-fx="aurora|daytime" data-tod="morning|day|evening|night">; styles-themes-fx.css draws the rest.
 // The animation stops while the window is hidden (no GPU work for nobody) and for «Уменьшить движение».
+const { isAway, onAttentionChange } = require('./window-attention')
 const { resolveTheme } = require('../shared/theme-fx')
 
 const PHASE_CHECK_MS = 60 * 1000
@@ -75,8 +76,11 @@ function applyThemeFx(theme, reapply) {
     return base
 }
 
-document.addEventListener('visibilitychange', () => {
-    document.documentElement.classList.toggle('fx-paused', document.hidden)
-})
+// the light stands still while nobody looks: hidden, or another window in front (the window never counts as hidden
+// behind others — background throttling is off for the messengers)
+function syncFxPause() {
+    document.documentElement.classList.toggle('fx-paused', isAway())
+}
+onAttentionChange(syncFxPause)
 
 module.exports = { applyThemeFx }

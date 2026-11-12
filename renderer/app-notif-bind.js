@@ -181,7 +181,7 @@ function bindAppNotifUi({
 
                 const webview = document.getElementById(`webview-${n.messengerId}`)
                 if (webview && typeof webview.loadURL === 'function') {
-                    webview.loadURL(n.actionUrl)
+                    Promise.resolve(webview.loadURL(n.actionUrl)).catch(() => {})
                 }
             } catch {}
         }

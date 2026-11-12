@@ -1652,7 +1652,7 @@ module.exports = {
         newNote: 'Заметка',
         newChecklist: 'Список покупок',
         emptyTitle: 'Заметок пока нет',
-        emptyHint: 'Нажмите «+», чтобы создать первую заметку или список покупок',
+        emptyHint: 'Создайте первую заметку или список покупок кнопками вверху',
         titlePlaceholder: 'Заголовок',
         bodyPlaceholder: 'Текст заметки…',
         addItemPlaceholder: 'Добавить пункт…',

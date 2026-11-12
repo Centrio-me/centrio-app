@@ -2,6 +2,7 @@
 // «Все мессенджеры» (3.8, first version): one list of the chats of every open messenger, freshest first. A click opens
 // that chat in its own tab next to the list — replies, files and voice stay in the messenger's real interface.
 // The lists are read from the tabs' pages (adapters.js) only while the panel is open; nothing leaves the computer.
+const { isAway, isHidden, onAttentionChange } = require('../window-attention')
 const { adapterFor } = require('./adapters')
 const { mergeInbox } = require('./merge')
 const { attachPanelResize } = require('./panel-resize')
@@ -19,6 +20,9 @@ const channelMemory = createChannelMemory({
 
 // every messenger is read this often; each one shows the moment it answers, a slow one never holds the others up
 const POLL_MS = 2000
+// Centrio behind another window reads its chats this seldom; hidden or minimised, not at all (3.8.3 check: the lists
+// of all messengers came every 2 seconds, about a megabyte a second, all day long)
+const AWAY_POLL_MS = 10000
 const READ_TIMEOUT_MS = 2500
 const OPEN_KEY = 'centrio-all-inbox-open'
 const FILTER_KEY = 'centrio-all-inbox-filter'
@@ -160,6 +164,8 @@ function createAllInbox({ state, switchTab, tGet, ipcRenderer, canOpen, store = 
         }, { passive: false })
     }
     let activeId = ''
+    // each click on a chat gets its number; a slower earlier click, or one the person has since closed, gives up
+    let openToken = 0
     let paths = {}
     try { paths = JSON.parse(readStorage(PATHS_KEY, '{}')) || {} } catch { paths = {} }
     const contentArea = document.getElementById('contentArea')
@@ -171,14 +177,17 @@ function createAllInbox({ state, switchTab, tGet, ipcRenderer, canOpen, store = 
         lastListSig = ''
         render()
     }
-    const chats = contentArea ? createChatController({ state, webviewOf: (id) => document.getElementById(`webview-${id}`), host: contentArea, ipcRenderer, onSubtitle }) : null
+    const chats = contentArea ? createChatController({ state, webviewOf: (id) => document.getElementById(`webview-${id}`), host: contentArea, ipcRenderer, onSubtitle, onClosed: () => { openToken++ } }) : null
 
     function webviewOf(messengerId) {
         return document.getElementById(`webview-${messengerId}`)
     }
 
+    let lastReadAt = 0
     async function readAll() {
         if (reading) return
+        if (loadedOnce && (isHidden() || (isAway() && Date.now() - lastReadAt < AWAY_POLL_MS))) return
+        lastReadAt = Date.now()
         reading = true
         try {
             // a tab that is asleep or slow this time keeps the chats it gave last time: the list never blinks
@@ -405,9 +414,13 @@ function createAllInbox({ state, switchTab, tGet, ipcRenderer, canOpen, store = 
         if (!list.length) rowCache = new Map()
         if (!list.length && !loadedOnce) { listEl.append(skeleton()); return }
         if (!list.length) {
-            listEl.append(el('div', 'ai-empty', sources.length
+            // a search that found nothing says so, not that there are no chats at all
+            const asked = query.trim()
+            listEl.append(el('div', 'ai-empty', asked
+                ? t('nothingFound', 'Ничего не найдено по запросу «{q}»').replace('{q}', asked)
+                : sources.length
                 ? t('empty', 'Здесь пока пусто')
-                : t('noSources', 'Откройте Telegram или MAX: их чаты появятся здесь')))
+                : t('noSources', 'Откройте Telegram, WhatsApp, MAX или ВКонтакте: их чаты появятся здесь')))
             return
         }
         // a chat that did not change keeps its row (and its decoded picture); only changed ones are built again
@@ -441,11 +454,14 @@ function createAllInbox({ state, switchTab, tGet, ipcRenderer, canOpen, store = 
     }
 
     async function openChat(chat) {
+        const token = ++openToken
+        const stale = () => token !== openToken || !open
         activeId = chat.id
         listEl.querySelectorAll('.ai-row.is-active').forEach((r) => r.classList.remove('is-active'))
         listEl.querySelector(`.ai-row[data-id="${CSS.escape(chat.id)}"]`)?.classList.add('is-active')
         switchTab(chat.messengerId)
         await new Promise((r) => setTimeout(r, TAB_SETTLE_MS))
+        if (stale()) return
         const view = webviewOf(chat.messengerId)
         if (!view) return
         let adapter = null
@@ -457,13 +473,16 @@ function createAllInbox({ state, switchTab, tGet, ipcRenderer, canOpen, store = 
         if (typeof adapter.open === 'function') {
             // Telegram opens a chat by its id itself: nothing is clicked
             opened = (await run(adapter.open(chat.key))) === true
+            if (stale()) return
         } else if (knownPath && typeof adapter.navigate === 'function') {
             // MAX: a chat opened before is opened again by its address
             opened = (await run(adapter.navigate(knownPath))) === true
+            if (stale()) return
         }
         if (!opened) {
             // the first time: a real click on the chat in the messenger's own list (the pages ignore synthetic ones)
             const point = await run(adapter.locate(chat.key), LOCATE_TIMEOUT_MS)
+            if (stale()) return
             if (!point || typeof point.x !== 'number') { chats?.close(); return }
             clickAt(view, point)
         }
@@ -505,6 +524,9 @@ function createAllInbox({ state, switchTab, tGet, ipcRenderer, canOpen, store = 
             timer = setInterval(readAll, POLL_MS)
         }
     }
+
+    // back to the window: the list is read at once, not at the next tick
+    onAttentionChange(() => { if (open && !isAway()) readAll() })
 
     button.addEventListener('click', () => setOpen(!open))
     panel.querySelector('.ai-close')?.addEventListener('click', () => setOpen(false))

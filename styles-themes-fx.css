@@ -68,9 +68,10 @@ html[data-fx="aurora"] body { color: var(--text-primary); }
 @keyframes fx-drift-3 { to { transform: translate(12%, -20%) scale(1.2); } }
 /* the open messenger and the unread counters glow */
 /* no ring around the open messenger: the side mark and the glow say it already (owner) */
-html[data-fx="aurora"] .messenger-item.active .messenger-icon { box-shadow: 0 0 16px var(--accent-glow); animation: fx-breathe 4s ease-in-out infinite; }
+/* a steady glow: a breathing box-shadow redrew the window every frame and took a third of its time (3.8.3 check);
+   the icon is an <img>, so there is no layer of its own whose opacity could breathe instead */
+html[data-fx="aurora"] .messenger-item.active .messenger-icon { box-shadow: 0 0 20px var(--accent-glow); }
 html[data-fx="aurora"] .messenger-badge { box-shadow: 0 0 10px var(--accent-glow); }
-@keyframes fx-breathe { 50% { box-shadow: 0 0 26px var(--accent-glow); } }
 
 /* ── Время суток ── */
 .theme-fx .fx-sky { inset: 0; opacity: 0; }

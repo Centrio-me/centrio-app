@@ -10,8 +10,17 @@ const dictionaries = {
     zh: require('../../locales/zh')
 }
 
+// The language is kept here and refreshed when the setting changes: every store.get reads and parses the whole
+// config file (870 KB with the password vault), and the tray asked for it four times on each unread badge (3.8.3 check)
+let cachedLanguage = null
 function getCurrentLanguage() {
-    return store.get('settings.language', 'ru')
+    if (cachedLanguage === null) {
+        cachedLanguage = store.get('settings.language', 'ru')
+        if (typeof store.onDidChange === 'function') {
+            store.onDidChange('settings.language', (next) => { cachedLanguage = next || 'ru' })
+        }
+    }
+    return cachedLanguage
 }
 
 function getDictionary(lang = getCurrentLanguage()) {

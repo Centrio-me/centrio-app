@@ -135,7 +135,7 @@ function bindWindowUi({
             try {
                 // same site only: the link comes from the content of a third-party page
                 if (new URL(url).hostname !== new URL(messenger.url).hostname) return
-                webview.loadURL(url)
+                Promise.resolve(webview.loadURL(url)).catch(() => {})
             } catch {}
         }
         if (nid) openNotifiedChat(messengerId, nid, openByLink)

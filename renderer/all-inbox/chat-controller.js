@@ -9,8 +9,13 @@ const { buildTimeline, signature } = require('./timeline')
 const { createChatView } = require('./chat-view')
 const { sameChat } = require('./same-chat')
 const { createPending, withPending } = require('./pending')
+const { isAway, isHidden, onAttentionChange } = require('../window-attention')
 
 const CHAT_POLL_MS = 1500
+// a chat not shown by then is said to have not opened, with the way to the messenger itself
+const STUCK_AFTER_MS = 10000
+// the open chat is read this seldom while another window is in front; not at all while Centrio is hidden
+const AWAY_POLL_MS = 6000
 const READ_TIMEOUT_MS = 2500
 const OLDER_THROTTLE_MS = 1500
 const FOCUS_SETTLE_MS = 120
@@ -29,6 +34,8 @@ const MEDIA_TIMEOUT_MS = 120000
 // how often the messenger is told that the open chat is read, while it is in front of the person
 const MARK_READ_EVERY_MS = 2000
 const VOTE_TIMEOUT_MS = 8000
+// WhatsApp uploads documents itself before it answers
+const DOCUMENTS_TIMEOUT_MS = 120000
 const AFTER_VOTE_MS = 400
 const MEDIA_DATA = /^data:(audio|video)\/[\w.+-]+(;[\w=.+-]+)*;base64,/
 
@@ -60,7 +67,7 @@ function clickAt(view, point) {
  * @param {{ state: object, webviewOf: (id: string) => any, host: HTMLElement,
  *   ipcRenderer: { send: Function, invoke: Function } }} deps — the IPC shim of renderer.js (the page has no Node)
  */
-function createChatController({ state, webviewOf, host, ipcRenderer, onSubtitle = () => {} }) {
+function createChatController({ state, webviewOf, host, ipcRenderer, onSubtitle = () => {}, onClosed = () => {} }) {
     let current = null // { chat, adapter }
     let timer = null
     let lastOlder = 0
@@ -78,8 +85,9 @@ function createChatController({ state, webviewOf, host, ipcRenderer, onSubtitle 
     const view = createChatView({
         host,
         onSend: send,
-        onOpenInTab: () => close(),
-        onClose: () => close(),
+        // closed by the person: a chat still on its way to open must not come back (all-inbox.js openChat)
+        onOpenInTab: () => { close(); onClosed() },
+        onClose: () => { close(); onClosed() },
         onDismissPending: (id) => { pending.drop(id); redraw() },
         onOlder: older,
         canReply: () => !!(current && typeof current.adapter.REPLY === 'function'),
@@ -124,20 +132,30 @@ function createChatController({ state, webviewOf, host, ipcRenderer, onSubtitle 
         }
     })
 
+    // back to the window: the chat is read at once
+    onAttentionChange(() => { if (current && !isAway()) poll() })
+
     function tab() {
         return current ? webviewOf(current.chat.messengerId) : null
     }
 
+    let lastPollAt = 0
     async function poll() {
         if (!current || reading) return
+        if (current.confirmed && (isHidden() || (isAway() && Date.now() - lastPollAt < AWAY_POLL_MS))) return
+        lastPollAt = Date.now()
         // the person switched to a messenger themselves: our window steps aside
         if (state.activeTabId !== current.chat.messengerId) { close(); return }
         const w = tab()
         if (!w) return
         reading = true
+        const cur = current
         try {
-            const data = await withTimeout(w.executeJavaScript(current.script).catch(() => null), READ_TIMEOUT_MS)
-            if (!current || !data || !Array.isArray(data.messages)) return
+            const data = await withTimeout(w.executeJavaScript(cur.script).catch(() => null), READ_TIMEOUT_MS)
+            // the person opened another chat while this was read: its answer belongs to the old one
+            if (current !== cur) return
+            if (!cur.confirmed && Date.now() - cur.openedAt > STUCK_AFTER_MS) view.setStuck()
+            if (!data || !Array.isArray(data.messages)) return
             // only the chat the person chose is shown and written to
             current.match = sameChat(current.chat.title, data.title)
             view.setMismatch(!current.match, data.title)
@@ -194,8 +212,10 @@ function createChatController({ state, webviewOf, host, ipcRenderer, onSubtitle 
         return true
     }
 
-    async function sendText(w, text) {
-        const point = await run(w, current.adapter.COMPOSER)
+    async function sendText(w, text, cur = current) {
+        // checked right before typing: files may have taken seconds, and the person may have opened another chat since
+        if (!(await stillHere(w, cur))) return false
+        const point = await run(w, cur.adapter.COMPOSER)
         if (!point || typeof point.x !== 'number') return false
         if (!(await typeAt(w, point, text))) return false
         pressEnter(w)
@@ -219,43 +239,44 @@ function createChatController({ state, webviewOf, host, ipcRenderer, onSubtitle 
     // Files go to the page as a real drag-and-drop; the messenger uploads and sends them itself
     // «Фото» or «Файл» (3.8.3): the messenger draws its zones while files are dragged over it; the drag starts over the
     // chat, the wanted zone is looked up, and the files are let go over it. A messenger without zones takes a plain drop.
-    async function dropInto(w, point, paths, asFile) {
+    async function dropInto(w, point, paths, asFile, cur = current) {
         let guestId = 0
         try { guestId = w.getWebContentsId() } catch { return false }
-        if (typeof current.adapter.ZONE !== 'function') {
+        if (typeof cur.adapter.ZONE !== 'function') {
             return ipcRenderer.invoke('all-inbox:drop-files', { guestId, point, paths }).catch(() => false)
         }
         if (!(await ipcRenderer.invoke('all-inbox:drag-start', { guestId, point, paths }).catch(() => false))) return false
         let zone = null
         for (let i = 0; i < ZONE_TRIES && !zone; i++) {
-            zone = await run(w, current.adapter.ZONE(asFile))
+            zone = await run(w, cur.adapter.ZONE(asFile))
             if (!zone) await wait(ZONE_POLL_MS)
         }
         const at = zone && typeof zone.x === 'number' ? zone : point
         return ipcRenderer.invoke('all-inbox:drag-finish', { guestId, point: at }).catch(() => false)
     }
 
-    async function sendFiles(w, files, text, asFile = false) {
-        // WhatsApp «Файл»: sent as documents by WhatsApp itself (it has no drop zone for them)
-        if (asFile && typeof current.adapter.SEND_DOCUMENTS === 'function') {
+    async function sendFiles(w, files, text, asFile = false, cur = current) {
+        // WhatsApp «Файл»: sent as documents by WhatsApp itself (it has no drop zone for them); the upload takes a
+        // while, and a short wait gave up while WhatsApp went on sending — pressed again, the file went twice
+        if (asFile && typeof cur.adapter.SEND_DOCUMENTS === 'function') {
             const data = await ipcRenderer.invoke('all-inbox:read-files', files.map((f) => f.path)).catch(() => [])
-            if (!data.length) return false
-            return await run(w, current.adapter.SEND_DOCUMENTS(data, text)) === true
+            if (!data.length || !(await stillHere(w, cur))) return false
+            return await run(w, cur.adapter.SEND_DOCUMENTS(data, text), DOCUMENTS_TIMEOUT_MS) === true
         }
-        const point = await run(w, current.adapter.DROP)
+        const point = await run(w, cur.adapter.DROP)
         if (!point || typeof point.x !== 'number') return false
         const paths = files.map((f) => f.path)
-        const dropped = await dropInto(w, point, paths, asFile)
+        const dropped = await dropInto(w, point, paths, asFile, cur)
         if (!dropped) return false
-        if (current.adapter.sendsOnDrop) {
+        if (cur.adapter.sendsOnDrop) {
             // MAX has sent the files already; the text follows as its own message
             await wait(AFTER_DROP_MS)
-            return text ? sendText(w, text) : true
+            return text ? sendText(w, text, cur) : true
         }
         // Telegram: its «send» window, the text as the caption, its own send button; MAX: its message field holding the file
-        const popup = await waitSettled(w, current.adapter.MEDIA_POPUP, POPUP_WAIT_MS)
-        if (!popup && current.adapter.dropMaySendAtOnce) return text ? sendText(w, text) : true
-        if (!popup || !popup.send) return false
+        const popup = await waitSettled(w, cur.adapter.MEDIA_POPUP, POPUP_WAIT_MS)
+        if (!popup && cur.adapter.dropMaySendAtOnce) return text ? sendText(w, text, cur) : true
+        if (!popup || !popup.send || current !== cur) return false
         // Enter in the caption sends; a click while the window still slides in would land on its backdrop and close it
         if (popup.caption) {
             if (!(await typeAt(w, popup.caption, text))) return false
@@ -276,9 +297,12 @@ function createChatController({ state, webviewOf, host, ipcRenderer, onSubtitle 
     }
 
     // the chat in the tab is still the one in our window
-    async function stillHere(w) {
-        const data = await run(w, current.adapter.CHAT)
-        if (!data || !sameChat(current.chat.title, data.title)) { view.setMismatch(true, data && data.title); return false }
+    async function stillHere(w, cur = current) {
+        // another chat opened in our window meanwhile: nothing of the old action may land in it
+        if (!cur || current !== cur) return false
+        const data = await run(w, cur.adapter.CHAT)
+        if (current !== cur) return false
+        if (!data || !sameChat(cur.chat.title, data.title)) { view.setMismatch(true, data && data.title); return false }
         return true
     }
 
@@ -297,16 +321,17 @@ function createChatController({ state, webviewOf, host, ipcRenderer, onSubtitle 
 
     async function edit(m, text) {
         const w = tab()
-        if (!w || !current || !m || !text) return false
-        if (!(await stillHere(w))) return false
+        const cur = current
+        if (!w || !cur || !m || !text) return false
+        if (!(await stillHere(w, cur))) return false
         const id = String(m.id).split('+')[0]
         let ok = false
-        if (typeof current.adapter.EDIT === 'function') {
-            ok = await run(w, current.adapter.EDIT(id, text)) === true
-        } else if (current.adapter.contextEdit) {
-            if (await openMessageMenu(w, id) && await run(w, current.adapter.MENU_ITEM('Редактировать'))) {
+        if (typeof cur.adapter.EDIT === 'function') {
+            ok = await run(w, cur.adapter.EDIT(id, text)) === true
+        } else if (cur.adapter.contextEdit) {
+            if (await openMessageMenu(w, id) && await run(w, cur.adapter.MENU_ITEM('Редактировать'))) {
                 await wait(FOCUS_SETTLE_MS * 3)
-                const point = await run(w, current.adapter.COMPOSER)
+                const point = await run(w, cur.adapter.COMPOSER)
                 ok = !!point && typeof point.x === 'number' && await typeAt(w, point, text)
                 if (ok) pressEnter(w)
             } else pressEscape(w)
@@ -318,16 +343,17 @@ function createChatController({ state, webviewOf, host, ipcRenderer, onSubtitle 
 
     async function removeMessage(m, forAll) {
         const w = tab()
-        if (!w || !current || !m) return false
-        if (!(await stillHere(w))) return false
+        const cur = current
+        if (!w || !cur || !m) return false
+        if (!(await stillHere(w, cur))) return false
         const id = String(m.id).split('+')[0]
         let ok = false
-        if (typeof current.adapter.DELETE === 'function') {
-            ok = await run(w, current.adapter.DELETE(id, forAll)) === true
-        } else if (current.adapter.DELETE_CONFIRM) {
-            if (await openMessageMenu(w, id) && await run(w, current.adapter.MENU_ITEM('Удалить'))) {
+        if (typeof cur.adapter.DELETE === 'function') {
+            ok = await run(w, cur.adapter.DELETE(id, forAll)) === true
+        } else if (cur.adapter.DELETE_CONFIRM) {
+            if (await openMessageMenu(w, id) && await run(w, cur.adapter.MENU_ITEM('Удалить'))) {
                 await wait(MENU_SETTLE_MS)
-                ok = await run(w, current.adapter.DELETE_CONFIRM(forAll)) === true
+                ok = await run(w, cur.adapter.DELETE_CONFIRM(forAll)) === true
                 if (!ok) pressEscape(w)
             } else pressEscape(w)
         }
@@ -338,7 +364,8 @@ function createChatController({ state, webviewOf, host, ipcRenderer, onSubtitle 
 
     async function react(m, emoji) {
         const w = tab()
-        if (!w || !current || !m || !emoji) return false
+        const cur = current
+        if (!w || !cur || !m || !emoji) return false
         // shown at once; the messenger is told right after
         const shownNow = (pressed.get(m.id) || {}).list || m.reactions || []
         const list = toggleReaction(shownNow, emoji)
@@ -346,15 +373,15 @@ function createChatController({ state, webviewOf, host, ipcRenderer, onSubtitle 
         // on screen at once (the whole conversation takes a moment to draw); the full drawing follows without hurry
         if (!view.showReactions(m.id, list)) redraw()
         else setTimeout(redraw, 0)
-        if (!(await stillHere(w))) { pressed.delete(m.id); redraw(); return false }
+        if (!(await stillHere(w, cur))) { pressed.delete(m.id); redraw(); return false }
         const id = String(m.id).split('+')[0]
         let ok = false
-        if (typeof current.adapter.REACT === 'function') {
-            ok = await run(w, current.adapter.REACT(id, emoji)) === true
-        } else if (current.adapter.REACT_PICK) {
+        if (typeof cur.adapter.REACT === 'function') {
+            ok = await run(w, cur.adapter.REACT(id, emoji)) === true
+        } else if (cur.adapter.REACT_PICK) {
             const index = reactions.indexOf(emoji)
             if (index >= 0 && await openMessageMenu(w, id)) {
-                ok = await run(w, current.adapter.REACT_PICK(index)) === true
+                ok = await run(w, cur.adapter.REACT_PICK(index)) === true
                 if (!ok) pressEscape(w)
             }
         }
@@ -373,14 +400,14 @@ function createChatController({ state, webviewOf, host, ipcRenderer, onSubtitle 
         const knownIds = lastRows.filter((r) => r.type === 'msg' && r.out).map((r) => r.id)
         const pid = pending.add({ text, files, knownIds })
         redraw()
-        const ok = await deliver(w, text, files, reply, asFile)
+        const ok = await deliver(w, text, files, reply, asFile, current)
         if (!ok) pending.drop(pid)
         await wait(AFTER_SEND_MS)
         poll()
         return ok
     }
 
-    async function deliver(w, text, files, reply, asFile = false) {
+    async function deliver(w, text, files, reply, asFile = false, cur = current) {
         // an answer to a message: the messenger itself is told which one, before anything is typed
         if (reply && typeof current.adapter.REPLY === 'function') {
             const id = String(reply.id).split('+')[0]
@@ -392,7 +419,7 @@ function createChatController({ state, webviewOf, host, ipcRenderer, onSubtitle 
                 if (set) await wait(FOCUS_SETTLE_MS * 2)
                 else pressEscape(w)
             }
-            if (set) return files.length ? sendFiles(w, files, text, asFile) : sendText(w, text)
+            if (set) return files.length ? sendFiles(w, files, text, asFile, cur) : sendText(w, text, cur)
             // MAX: its reply button comes only under the mouse — the mouse is moved over the message first
             if (typeof current.adapter.REPLY_POINT === 'function') {
                 const point = await run(w, current.adapter.REPLY_POINT(id))
@@ -405,7 +432,8 @@ function createChatController({ state, webviewOf, host, ipcRenderer, onSubtitle 
             if (!(await run(w, current.adapter.REPLY(id)))) return false
             await wait(FOCUS_SETTLE_MS)
         }
-        return files.length ? sendFiles(w, files, text, asFile) : sendText(w, text)
+        if (current !== cur) return false
+        return files.length ? sendFiles(w, files, text, asFile, cur) : sendText(w, text, cur)
     }
 
     function older() {
@@ -421,7 +449,7 @@ function createChatController({ state, webviewOf, host, ipcRenderer, onSubtitle 
         if (!adapter) { close(); return false }
         // pictures cross from the tab once per opened chat (chat-adapters.js withImageMemo)
         const session = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`
-        current = { chat, adapter, match: false, onConfirmed, confirmed: false, script: withImageMemo(adapter.CHAT, session), images: new Map() }
+        current = { chat, adapter, match: false, onConfirmed, confirmed: false, openedAt: Date.now(), script: withImageMemo(adapter.CHAT, session), images: new Map() }
         loadReactions(adapter)
         pending.clear()
         pressed.clear()

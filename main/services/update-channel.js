@@ -8,13 +8,15 @@
 // link keeps the beta channel until the account says otherwise.
 
 /**
- * @param {{ betaTester?: boolean, version: string }} input
+ * @param {{ betaTester?: boolean, version: string, current?: string }} input — current: the channel electron-updater reads now
  * @returns {'beta' | 'latest' | null}
  */
-function updateChannelFor({ betaTester, version }) {
+function updateChannelFor({ betaTester, version, current }) {
     const onTestVersion = /-beta\b/.test(String(version || ''))
     if (betaTester === true) return 'beta'
     if (betaTester === false && onTestVersion) return 'latest'
+    // taken off the list while Centrio runs: the beta channel set earlier in this run is left at once
+    if (betaTester === false && current === 'beta') return 'latest'
     if (onTestVersion) return 'beta'
     return null
 }

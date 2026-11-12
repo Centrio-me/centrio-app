@@ -92,10 +92,11 @@ function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab
     const q = (s) => root.querySelector(s)
     const scroll = q('.aic-scroll')
     const list = q('.aic-list')
-    let lastSig = ''
+    let lastSig = null // null: nothing drawn yet — an empty chat ('' signature) is still drawn once
 
     const drafts = sharedDrafts
     let chatId = ''
+    let chatIsSaved = false // «Избранное»: nobody else to delete a message for
     const composer = createComposer({ root, onSend, onEdit, onPickFiles, onDescribeFiles, onPasteImage, onDraft: (text) => drafts.keep(chatId, text), chatKey: () => chatId, onDraftFor: (id, text) => drafts.keep(id, text) })
     composer.setVisible(false)
     root.append(composer.el)
@@ -319,7 +320,7 @@ function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab
         card.setAttribute('role', 'dialog')
         card.append(el('div', 'aic-ask-title', 'Удалить сообщение?'))
         let forAll = null
-        if (m.out) {
+        if (m.out && !chatIsSaved) {
             const lab = el('label', 'aic-ask-check')
             forAll = el('input')
             forAll.type = 'checkbox'
@@ -338,7 +339,8 @@ function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab
         card.append(row)
         askBox.append(card)
         askBox.hidden = false
-        ok.focus()
+        // the safe answer under Enter; deleting is a deliberate click
+        cancel.focus()
     }
     askBox.addEventListener('mousedown', (e) => { if (e.target === askBox) askBox.hidden = true })
     askBox.addEventListener('keydown', (e) => { if (e.key === 'Escape') askBox.hidden = true })
@@ -361,7 +363,7 @@ function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab
             // window is open it steps aside, or in three columns the window can't be clicked (3.8.3)
             document.body.classList.add('all-inbox-chat-open')
             document.dispatchEvent(new CustomEvent('close-all-popups'))
-            lastSig = ''
+            lastSig = null
             stick = true
             player.reset()
             videoToken++
@@ -386,6 +388,9 @@ function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab
             else if (chat.avatar) { const img = el('img'); img.src = chat.avatar; img.alt = ''; ava.append(img) } else ava.textContent = initials(chat.title)
             if (chat.messengerIcon) { const mark = el('img', 'ai-service'); mark.src = chat.messengerIcon; mark.alt = ''; ava.append(mark) }
             chatId = chat.id
+            chatIsSaved = chat.icon === 'saved'
+            // a question about a message of the previous chat must not stay to act on this one
+            askBox.hidden = true
             composer.reset(drafts.take(chat.id))
             composer.setVisible(false)
             setTimeout(() => composer.focus(), 50)
@@ -464,15 +469,28 @@ function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab
             warn.textContent = on && openTitle ? `Во вкладке сейчас открыт другой чат: «${openTitle}». Отправка выключена.` : ''
             composer.setBlocked(on)
             if (on) {
-                lastSig = ''
+                lastSig = null
                 if (openTitle) list.replaceChildren()
                 else if (!list.querySelector('.aic-opening')) list.replaceChildren(openingMark())
             }
         },
+        // the chat has not shown up for a while: said plainly, with the way out, instead of turning forever
+        setStuck() {
+            const box = list.querySelector('.aic-opening')
+            if (!box || box.classList.contains('is-stuck')) return
+            const stuck = el('div', 'aic-opening is-stuck')
+            stuck.setAttribute('role', 'status')
+            const go = el('button', 'aic-stuck-btn', 'Открыть в мессенджере')
+            go.type = 'button'
+            go.addEventListener('click', () => onOpenInTab())
+            stuck.append(el('div', 'aic-opening-text', 'Чат пока не открылся'),
+                el('div', 'aic-stuck-text', 'Мессенджер ещё загружается или в нём не выполнен вход.'), go)
+            list.replaceChildren(stuck)
+        },
         setCanWrite(on) { composer.setVisible(on) },
         // a pressed reaction: only that message's reactions change, at once
         showReactions(id, items) { return patchReactions(list, id, items) },
-        hide() { player.reset(); videoToken++; closeZoom(); closeMenu(); bgMenu.toggle(false); root.hidden = true; document.body.classList.remove('all-inbox-chat-open') },
+        hide() { player.reset(); videoToken++; closeZoom(); closeMenu(); askBox.hidden = true; bgMenu.toggle(false); root.hidden = true; document.body.classList.remove('all-inbox-chat-open') },
         isShown: () => !root.hidden,
         // the person really sees the newest messages: our window on screen, Centrio in focus, the conversation at its end
         isReading: () => !root.hidden && !lightbox.isOpen() && document.visibilityState === 'visible' && document.hasFocus() && atBottom()

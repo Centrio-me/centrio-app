@@ -20,3 +20,7 @@ test('someone taken off the list while on a test version goes back to the ordina
 test('a test version installed by a link keeps reading the beta channel before the account is known', () => {
     assert.strictEqual(updateChannelFor({ betaTester: undefined, version: '3.8.2-beta.1' }), 'beta')
 })
+
+test('a tester taken off the list during this run stops reading the beta channel at once', () => {
+    assert.strictEqual(updateChannelFor({ betaTester: false, version: '3.8.1', current: 'beta' }), 'latest')
+})

@@ -48,8 +48,10 @@ function initApp({
         tracker.start()
         const win = getMainWindow()
         if (win && !win.isDestroyed()) {
-            win.on('focus', () => tracker.onFocus())
-            win.on('blur',  () => tracker.onBlur())
+            // the page itself cannot tell: with a messenger tab in focus, document.hasFocus() is false (3.8.3)
+            const tellFocus = (on) => { try { if (!win.isDestroyed()) win.webContents.send('window-focus', on) } catch {} }
+            win.on('focus', () => { tracker.onFocus(); tellFocus(true) })
+            win.on('blur',  () => { tracker.onBlur(); tellFocus(false) })
         }
 
         // ── Start visitor tracker (anonymous users only) ──────────

@@ -11,6 +11,8 @@
 // закрытие панели — общий контроллер openRightPanel/closeRightPanel (как у
 // Ассистента/Задач/Уведомлений), этот модуль отвечает за содержимое.
 
+const { createSaveQueue } = require('./notes-save-queue')
+
 function bindNotesUi({ store, tGet, authorizedInvoke, invokeIpc, openRightPanel, closeRightPanel, getUserIsPro, requirePro, onNotesChange }) {
     const btn = document.getElementById('notesBtn')
     const panel = document.getElementById('notesPanel')
@@ -51,8 +53,8 @@ function bindNotesUi({ store, tGet, authorizedInvoke, invokeIpc, openRightPanel,
     let notes = []
     let loading = false
     let activeNote = null // текущая открытая заметка (полный объект с сервера)
-    let saveTimer = null
-    let pendingSave = null // функция отложенного сохранения — дёргаем сразу по кнопке "Сохранить"
+    let savedLabelTimer = null // гасит подпись «Сохранено»; свой таймер, не общий с сохранением
+    const saveQueue = createSaveQueue({ delay: 500, send: (id, patch) => { sendNotePatch(id, patch) } })
     let searchQuery = ''
     let viewingArchived = false
     let dragId = null // id перетаскиваемой карточки — drag&drop сортировка списка
@@ -417,8 +419,8 @@ function bindNotesUi({ store, tGet, authorizedInvoke, invokeIpc, openRightPanel,
     }
     function setSaved() {
         saveIndicator.textContent = tGet('notes.savedIndicator') || 'Сохранено'
-        clearTimeout(saveTimer)
-        saveTimer = setTimeout(() => { saveIndicator.textContent = '' }, 1500)
+        clearTimeout(savedLabelTimer)
+        savedLabelTimer = setTimeout(() => { saveIndicator.textContent = '' }, 1500)
     }
 
     async function handleAuthError(result) {
@@ -499,27 +501,32 @@ function bindNotesUi({ store, tGet, authorizedInvoke, invokeIpc, openRightPanel,
         // activeNote ниже тихо улетели бы не в ту заметку (нашли живьём: правка
         // заголовка заметки A применялась к заметке B, если успеть переключиться
         // за 500мс debounce).
-        const noteId = activeNote.id
-        clearTimeout(saveTimer)
-        const run = async () => {
-            pendingSave = null
-            setSaving()
-            const result = await authorizedInvoke('api-notes-update', noteId, patch)
-            if (!result?.success) { await handleAuthError(result); return }
-            notes = notes.map(n => n.id === noteId ? result.data.note : n)
-            // Применяем к activeNote/UI только если пользователь всё ещё
-            // редактирует ТУ ЖЕ заметку — иначе это уже состояние другой
-            // заметки или списка, трогать их нельзя.
-            if (activeNote?.id !== noteId) return
-            activeNote = result.data.note
-            setSaved()
-            if (editDateEl) {
-                const label = tGet('notes.editedLabel') || 'Изменено'
-                editDateEl.textContent = `${label}: ${formatNoteDate(activeNote.updatedAt)}`
-            }
+        // Правки копятся в общий патч (notes-save-queue.js): раньше каждая
+        // правка отменяла предыдущий отложенный запрос и отправляла только
+        // свой кусок — заголовок, изменённый за полсекунды до текста,
+        // терялся.
+        saveQueue.add(activeNote.id, patch)
+        if (immediate) saveQueue.flush()
+    }
+
+    async function sendNotePatch(noteId, patch) {
+        setSaving()
+        const result = await authorizedInvoke('api-notes-update', noteId, patch)
+        if (!result?.success) { await handleAuthError(result); return }
+        // То, что человек успел изменить, пока запрос шёл, ещё не сохранено —
+        // ответ сервера не должен это затирать.
+        const server = { ...result.data.note, ...saveQueue.pending(noteId) }
+        notes = notes.map(n => n.id === noteId ? server : n)
+        // Применяем к activeNote/UI только если пользователь всё ещё
+        // редактирует ТУ ЖЕ заметку — иначе это уже состояние другой
+        // заметки или списка, трогать их нельзя.
+        if (activeNote?.id !== noteId) return
+        activeNote = server
+        setSaved()
+        if (editDateEl) {
+            const label = tGet('notes.editedLabel') || 'Изменено'
+            editDateEl.textContent = `${label}: ${formatNoteDate(activeNote.updatedAt)}`
         }
-        if (immediate) run()
-        else { pendingSave = run; saveTimer = setTimeout(run, 500) }
     }
 
     // Кнопка "Сохранить" — для клиентов, которым непонятно молчаливое
@@ -527,9 +534,7 @@ function bindNotesUi({ store, tGet, authorizedInvoke, invokeIpc, openRightPanel,
     // сохранять нечего) просто мигает индикатором "Сохранено".
     function forceSave() {
         if (!activeNote) return
-        clearTimeout(saveTimer)
-        if (pendingSave) { const run = pendingSave; pendingSave = null; run() }
-        else setSaved()
+        if (!saveQueue.flush()) setSaved()
     }
 
     async function deleteActiveNote() {

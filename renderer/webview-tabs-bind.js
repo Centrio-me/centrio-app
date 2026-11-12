@@ -188,7 +188,7 @@ function navigateTelegramWebview(webview, target) {
         // эффект, что при обычном F5 на уже залогиненной странице.
         const clientPath = `https://web.telegram.org/${clientMatch[1]}/`
         if (target.type === 'username') {
-            try { webview.loadURL(`${clientPath}#@${target.value}`) } catch {}
+            try { Promise.resolve(webview.loadURL(`${clientPath}#@${target.value}`)).catch(() => {}) /* a failed load shows its own error page; nothing to throw */ } catch {}
             return
         }
 
@@ -199,7 +199,7 @@ function navigateTelegramWebview(webview, target) {
         // обычного браузера — см. core.telegram.org/api/links про формат
         // tg://join?invite=<hash>).
         const uri = `tg://join?invite=${target.value}`
-        try { webview.loadURL(`${clientPath}#?tgaddr=${encodeURIComponent(uri)}`) } catch {}
+        try { Promise.resolve(webview.loadURL(`${clientPath}#?tgaddr=${encodeURIComponent(uri)}`)).catch(() => {}) /* a failed load shows its own error page; nothing to throw */ } catch {}
         return
     }
 
@@ -207,7 +207,7 @@ function navigateTelegramWebview(webview, target) {
     // ничего умнее t.me тут предложить не можем, это тот же фолбэк, что и
     // при отсутствии вкладки вообще.
     try {
-        webview.loadURL(target.type === 'username' ? `https://t.me/${target.value}` : `https://t.me/+${target.value}`)
+        Promise.resolve(webview.loadURL(target.type === 'username' ? `https://t.me/${target.value}` : `https://t.me/+${target.value}`)).catch(() => {}) /* a failed load shows its own error page; nothing to throw */
     } catch {}
 }
 
@@ -255,7 +255,7 @@ function navigateMaxWebview(webview, token) {
         if (/(^|\.)max\.ru$/i.test(parsed.hostname)) targetOrigin = parsed.origin
     } catch {}
 
-    try { webview.loadURL(`${targetOrigin}/join/${token}`) } catch {}
+    try { Promise.resolve(webview.loadURL(`${targetOrigin}/join/${token}`)).catch(() => {}) /* a failed load shows its own error page; nothing to throw */ } catch {}
 }
 
 // ── OAuth-брокер для входа через сторонний провайдер внутри webview ────────
@@ -441,7 +441,7 @@ function createWebviewTabsApi({
                 const token = extractMaxJoinToken(special.href)
                 if (token) navigateMaxWebview(targetWebview, token)
             } else {
-                try { targetWebview.loadURL(url) } catch {}
+                try { Promise.resolve(targetWebview.loadURL(url)).catch(() => {}) /* a failed load shows its own error page; nothing to throw */ } catch {}
             }
         }
         return true
@@ -531,7 +531,7 @@ function createWebviewTabsApi({
         }
         try {
             if (finalUrl) {
-                webview.loadURL(finalUrl)
+                Promise.resolve(webview.loadURL(finalUrl)).catch(() => {}) /* a failed load shows its own error page; nothing to throw */
             } else {
                 webview.reload()
             }
@@ -1409,7 +1409,7 @@ function createWebviewTabsApi({
             const delay = Math.min(1000 * Math.pow(2, attempts - 1), 30000)
             clearTimeout(webview._reloadTimer)
             webview._reloadTimer = setTimeout(() => {
-                try { webview.loadURL(messenger.url) } catch {}
+                try { Promise.resolve(webview.loadURL(messenger.url)).catch(() => {}) /* a failed load shows its own error page; nothing to throw */ } catch {}
             }, delay)
         })
 

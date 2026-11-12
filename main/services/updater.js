@@ -207,7 +207,7 @@ function initUpdater(getMainWindow) {
 function applyUpdateChannel() {
     const user = store.get('cloud.user')
     const betaTester = user && typeof user === 'object' && typeof user.betaTester === 'boolean' ? user.betaTester : undefined
-    const channel = updateChannelFor({ betaTester, version: app.getVersion() })
+    const channel = updateChannelFor({ betaTester, version: app.getVersion(), current: autoUpdater && autoUpdater.channel })
     if (!channel || autoUpdater.channel === channel) return
     autoUpdater.channel = channel
     writeLog('update channel:', channel)

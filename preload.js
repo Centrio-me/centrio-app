@@ -2,6 +2,8 @@ const { contextBridge, ipcRenderer, webUtils } = require('electron')
 
 const validReceiveChannels = new Set([
     'app-hidden',
+    // the main window took or lost focus (renderer/window-attention.js): a messenger tab in focus is not «away»
+    'window-focus',
     'app-quitting',
     'update-available',
     'update-downloaded',

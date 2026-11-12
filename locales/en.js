@@ -1593,7 +1593,7 @@ module.exports = {
         newNote: 'Note',
         newChecklist: 'Shopping list',
         emptyTitle: 'No notes yet',
-        emptyHint: 'Tap "+" to create your first note or shopping list',
+        emptyHint: 'Create your first note or shopping list with the buttons above',
         titlePlaceholder: 'Title',
         bodyPlaceholder: 'Note text…',
         addItemPlaceholder: 'Add item…',
