@@ -829,6 +829,8 @@ function bindNotesUi({ store, tGet, authorizedInvoke, invokeIpc, openRightPanel,
         setFolders(list) { folders = Array.isArray(list) ? list : []; if (folderFilter !== 'all' && !folders.some(fd => fd.id === folderFilter)) folderFilter = 'all'; renderFolderSelect(); renderList() },
         moveToFolder(id, folderId) { return patchNoteById(id, { folderId: folderId || null }) },
         getNotes: () => notes,
+        // a note made of a message in «Все мессенджеры» (3.8.3)
+        createFromText: (title, body) => createNote('NOTE', { title: String(title || '').slice(0, 120), body: String(body || '') }),
         reload: () => loadNotes(),
         // Вызывается после логина/логаута/синка — сбрасываем кэш, чтобы
         // при следующем открытии панели заново подтянуть актуальный список

@@ -254,6 +254,37 @@ function createComposer({ root, onSend, onEdit = null, onPickFiles, onDescribeFi
         if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); submit() }
         if (e.key === 'Escape' && picker.isOpen()) { e.preventDefault(); picker.toggle(false) } else if (e.key === 'Escape' && editing) { e.preventDefault(); endEdit() } else if (e.key === 'Escape' && reply) { e.preventDefault(); showReply(null) }
     })
+    // the field's own menu on a right click (3.8.3): cut, copy, paste, select all — Electron gives a page none
+    const fieldMenu = el('div', 'aic-menu aic-field-menu')
+    fieldMenu.hidden = true
+    fieldMenu.setAttribute('role', 'menu')
+    root.append(fieldMenu)
+    const closeFieldMenu = () => { fieldMenu.hidden = true }
+    function fieldItem(label, enabled, run) {
+        const b = el('button', 'aic-menu-item', label)
+        b.type = 'button'
+        b.disabled = !enabled
+        b.setAttribute('role', 'menuitem')
+        b.addEventListener('mousedown', (e) => e.preventDefault())
+        b.addEventListener('click', () => { closeFieldMenu(); input.focus(); run() })
+        fieldMenu.append(b)
+    }
+    input.addEventListener('contextmenu', (e) => {
+        e.preventDefault()
+        const chosen = input.selectionStart !== input.selectionEnd
+        fieldMenu.replaceChildren()
+        fieldItem('Вырезать', chosen, () => document.execCommand('cut'))
+        fieldItem('Копировать', chosen, () => document.execCommand('copy'))
+        fieldItem('Вставить', true, () => document.execCommand('paste'))
+        fieldItem('Выделить всё', !!input.value, () => input.select())
+        fieldMenu.hidden = false
+        const box = root.getBoundingClientRect()
+        fieldMenu.style.left = `${Math.max(8, Math.min(e.clientX - box.left, box.width - fieldMenu.offsetWidth - 8))}px`
+        fieldMenu.style.top = `${Math.max(8, Math.min(e.clientY - box.top - fieldMenu.offsetHeight, box.height - fieldMenu.offsetHeight - 8))}px`
+    })
+    document.addEventListener('mousedown', (e) => { if (!fieldMenu.hidden && !fieldMenu.contains(e.target)) closeFieldMenu() })
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeFieldMenu() })
+
     // the text of a message being edited is not a draft of the chat
     input.addEventListener('input', () => { autosize(); refreshSend(); if (!editing) onDraft(input.value) })
     q('.aic-attach').addEventListener('click', async () => stage(await onPickFiles()))

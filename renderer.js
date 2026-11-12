@@ -4207,6 +4207,31 @@ function applyTabZoom(level) {
 
     // 2026-11-11: notes open in the middle of the screen, like the tasks, with the person's folders beside them
     const notesWindow = createNotesWindow({ tGet, authorizedInvoke, getNotesApi: () => notesUiApiRef })
+    // «Все мессенджеры» (3.8.3): a task or a note made of a message, a picture saved from the conversation
+    document.addEventListener('all-inbox-make', async (e) => {
+        const { kind, text, from, done } = e.detail || {}
+        const body = String(text || '').trim()
+        if (!body) return
+        const say = typeof done === 'function' ? done : () => {}
+        if (kind === 'task') {
+            // for today: a task with no date shows in none of the panel's tabs (Сегодня, Предстоящие, Важное)
+            const d = new Date()
+            const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+            const item = todosUiApiRef?.addTask?.({ text: body.replace(/\s+/g, ' ').slice(0, 200), dueDate: today })
+            say(item ? 'Задача создана' : 'Не удалось создать задачу')
+        } else if (kind === 'note') {
+            try {
+                notesWindow.open()
+                await notesUiApiRef?.createFromText?.(from ? `Из чата «${from}»` : '', body)
+                say('Заметка создана')
+            } catch { say('Не удалось создать заметку') }
+        }
+    })
+    document.addEventListener('all-inbox-save-picture', async (e) => {
+        const { src, name, done } = e.detail || {}
+        const ok = await ipcRenderer.invoke('all-inbox:save-picture', { src, name }).catch(() => false)
+        if (typeof done === 'function' && ok) done('Картинка сохранена')
+    })
     notesUiApiRef = bindNotesUi({
         store,
         tGet,

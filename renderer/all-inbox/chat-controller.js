@@ -86,6 +86,9 @@ function createChatController({ state, webviewOf, host, ipcRenderer, onSubtitle 
             && canEditNow(m, dayLabel, current.adapter.EDIT_WINDOW_MS || 0)),
         onReact: (m, emoji) => react(m, emoji),
         reactionsFor: () => (current ? reactions : []),
+        // delete an own message (3.8.3); it leaves our window when the messenger has removed it
+        onDelete: (m, forAll) => removeMessage(m, forAll),
+        canDelete: (m) => !!(m && m.out && current && (typeof current.adapter.DELETE === 'function' || current.adapter.DELETE_CONFIRM)),
         // links open in the browser through the main process's usual scheme check
         onLink: (url) => ipcRenderer.send('open-url', url),
         onPickFiles: () => ipcRenderer.invoke('all-inbox:pick-files').catch(() => []),
@@ -297,6 +300,26 @@ function createChatController({ state, webviewOf, host, ipcRenderer, onSubtitle 
                 const point = await run(w, current.adapter.COMPOSER)
                 ok = !!point && typeof point.x === 'number' && await typeAt(w, point, text)
                 if (ok) pressEnter(w)
+            } else pressEscape(w)
+        }
+        await wait(AFTER_SEND_MS)
+        poll()
+        return ok
+    }
+
+    async function removeMessage(m, forAll) {
+        const w = tab()
+        if (!w || !current || !m) return false
+        if (!(await stillHere(w))) return false
+        const id = String(m.id).split('+')[0]
+        let ok = false
+        if (typeof current.adapter.DELETE === 'function') {
+            ok = await run(w, current.adapter.DELETE(id, forAll)) === true
+        } else if (current.adapter.DELETE_CONFIRM) {
+            if (await openMessageMenu(w, id) && await run(w, current.adapter.MENU_ITEM('Удалить'))) {
+                await wait(MENU_SETTLE_MS)
+                ok = await run(w, current.adapter.DELETE_CONFIRM(forAll)) === true
+                if (!ok) pressEscape(w)
             } else pressEscape(w)
         }
         await wait(AFTER_SEND_MS)

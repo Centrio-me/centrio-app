@@ -1,7 +1,7 @@
 'use strict'
 // «Все мессенджеры» (3.8): files for our conversation window — picked, pasted or dragged in — and their hand-over to
 // the messenger tab behind it.
-const { ipcMain, dialog, clipboard, nativeImage, webContents, app } = require('electron')
+const { ipcMain, dialog, clipboard, nativeImage, webContents, app, BrowserWindow } = require('electron')
 const fs = require('fs')
 const path = require('path')
 const { checkFiles, dropFiles, startDrag, finishDrag } = require('../services/inboxFiles')
@@ -97,6 +97,27 @@ function registerAllInboxIpc({ getMainWindow }) {
         const files = checkFiles(paths, (p) => fs.statSync(p))
         if (!files.length) return false
         return dropFiles(wc, point, files)
+    })
+
+    // «Сохранить картинку» from the conversation (3.8.3): only a picture given as a data address, within a sane size,
+    // saved where the person chooses (the Downloads folder is offered)
+    const PICTURE_DATA = /^data:image\/(png|jpeg|webp|gif);base64,([A-Za-z0-9+/=]+)$/
+    const MAX_PICTURE_BYTES = 30 * 1024 * 1024
+    ipcMain.handle('all-inbox:save-picture', async (event, payload) => {
+        const m = PICTURE_DATA.exec(String((payload && payload.src) || ''))
+        if (!m) return false
+        const bytes = Buffer.from(m[2], 'base64')
+        if (!bytes.length || bytes.length > MAX_PICTURE_BYTES) return false
+        const ext = m[1] === 'jpeg' ? 'jpg' : m[1]
+        const base = String((payload && payload.name) || 'Изображение').replace(/[\\/:*?"<>|]+/g, ' ').trim().slice(0, 80) || 'Изображение'
+        const name = IMAGE_EXT.test(base) ? base : `${base}.${ext}`
+        const win = BrowserWindow.fromWebContents(event.sender)
+        const { canceled, filePath } = await dialog.showSaveDialog(win, {
+            defaultPath: path.join(app.getPath('downloads'), name),
+            filters: [{ name: 'Изображение', extensions: [ext] }]
+        })
+        if (canceled || !filePath) return false
+        try { fs.writeFileSync(filePath, bytes); return true } catch { return false }
     })
 
     // a drop in two steps: start over the chat, finish over the zone the window found (3.8.3, «Фото» / «Файл»)

@@ -60,7 +60,7 @@ function openingMark() {
     return box
 }
 
-function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab, onClose, onOlder, onLink, onPicture, onPickFiles, onDescribeFiles, onPasteImage, canReply = () => false, onEdit = null, canEdit = () => false, onReact = null, reactionsFor = () => [], onMedia = () => Promise.resolve(null), canPlay = () => false, onVote = null, canVote = () => false }) {
+function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab, onClose, onOlder, onLink, onPicture, onPickFiles, onDescribeFiles, onPasteImage, canReply = () => false, onEdit = null, canEdit = () => false, onReact = null, reactionsFor = () => [], onDelete = null, canDelete = () => false, onMedia = () => Promise.resolve(null), canPlay = () => false, onVote = null, canVote = () => false }) {
     const root = el('section', 'aic')
     root.hidden = true
     root.dataset.bg = readBackground()
@@ -201,8 +201,8 @@ function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab
     menu.setAttribute('role', 'menu')
     root.append(menu)
     function closeMenu() { menu.hidden = true }
-    function item(label, icon, run) {
-        const b = el('button', 'aic-menu-item')
+    function item(label, icon, run, danger = false) {
+        const b = el('button', `aic-menu-item${danger ? ' is-danger' : ''}`)
         b.type = 'button'
         b.setAttribute('role', 'menuitem')
         b.innerHTML = icon
@@ -213,6 +213,11 @@ function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab
     const ICON_REPLY = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>'
     const ICON_COPY = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/></svg>'
     const ICON_EDIT = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>'
+    const ICON_IMAGE = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></svg>'
+    const ICON_SAVE = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>'
+    const ICON_TASK = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="m8 12 3 3 5-6"/></svg>'
+    const ICON_NOTE = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/><path d="M8 13h8M8 17h5"/></svg>'
+    const ICON_DELETE = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M6 6l1 14a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-14"/></svg>'
     const ICON_OPEN = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6"/><path d="M20 4l-9 9"/><path d="M18 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4"/></svg>'
     // a message that did not go: a click on its red mark takes it away
     list.addEventListener('click', (e) => {
@@ -242,7 +247,19 @@ function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab
         if (onEdit && m.out && m.text && canEdit(m, dayOf.get(m.id))) item('Изменить', ICON_EDIT, () => composer.edit(m))
         const selected = String(window.getSelection() || '').trim()
         if (selected || m.text) item(selected ? 'Копировать выделенное' : 'Копировать текст', ICON_COPY, () => navigator.clipboard.writeText(selected || m.text).catch(() => {}))
+        // a picture (3.8.3): copied or saved in full size
+        if (m.media && (m.kind === 'photo' || m.kind === 'sticker' || m.picture)) {
+            item('Копировать картинку', ICON_IMAGE, () => fullPictureOf(m).then(copyPicture).catch(() => {}))
+            item('Сохранить картинку', ICON_SAVE, () => fullPictureOf(m).then((src) => savePicture(src, m)).catch(() => {}))
+        }
+        // a task or a note made of the message (3.8.3): the main window makes them (renderer.js, «all-inbox-make»)
+        const what = selected || m.text || m.name || ''
+        if (what) {
+            item('Создать задачу', ICON_TASK, () => document.dispatchEvent(new CustomEvent('all-inbox-make', { detail: { kind: 'task', text: what, from: q('.aic-title').textContent, done: flash } })))
+            item('Создать заметку', ICON_NOTE, () => document.dispatchEvent(new CustomEvent('all-inbox-make', { detail: { kind: 'note', text: what, from: q('.aic-title').textContent, done: flash } })))
+        }
         item('Открыть в мессенджере', ICON_OPEN, onOpenInTab)
+        if (onDelete && canDelete(m)) item('Удалить', ICON_DELETE, () => askDelete(m), true)
         menu.hidden = false
         const box = root.getBoundingClientRect()
         const x = Math.min(e.clientX - box.left, box.width - menu.offsetWidth - 8)
@@ -250,6 +267,82 @@ function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab
         menu.style.left = `${Math.max(8, x)}px`
         menu.style.top = `${Math.max(8, y)}px`
     })
+    // ── pictures: the full size from the tab, copied as PNG or saved through the main process (3.8.3) ──────────
+    async function fullPictureOf(m) {
+        const full = m.picture ? await onPicture(m.picture).catch(() => '') : ''
+        return full || m.media
+    }
+    function toPngBlob(src) {
+        return new Promise((resolve, reject) => {
+            const img = new Image()
+            img.onload = () => {
+                const c = document.createElement('canvas')
+                c.width = img.naturalWidth
+                c.height = img.naturalHeight
+                c.getContext('2d').drawImage(img, 0, 0)
+                c.toBlob((b) => (b ? resolve(b) : reject(new Error('no picture'))), 'image/png')
+            }
+            img.onerror = () => reject(new Error('no picture'))
+            img.src = src
+        })
+    }
+    async function copyPicture(src) {
+        const blob = await toPngBlob(src)
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })])
+        flash('Картинка скопирована')
+    }
+    // a short word at the bottom of the window: what just happened (3.8.3)
+    const toast = el('div', 'aic-toast')
+    toast.hidden = true
+    toast.setAttribute('role', 'status')
+    root.append(toast)
+    let toastTimer = null
+    function flash(text) {
+        if (!text) return
+        toast.textContent = text
+        toast.hidden = false
+        clearTimeout(toastTimer)
+        toastTimer = setTimeout(() => { toast.hidden = true }, 2200)
+    }
+    function savePicture(src, m) {
+        const name = String(m.name || '').trim() || `Изображение_${new Date().toISOString().slice(0, 19).replace(/[-:T]/g, '')}`
+        document.dispatchEvent(new CustomEvent('all-inbox-save-picture', { detail: { src, name, done: flash } }))
+    }
+
+    // ── deleting (3.8.3): asked first; the message leaves our window only when it is gone in the messenger ──────
+    const askBox = el('div', 'aic-ask')
+    askBox.hidden = true
+    root.append(askBox)
+    function askDelete(m) {
+        askBox.replaceChildren()
+        const card = el('div', 'aic-ask-card')
+        card.setAttribute('role', 'dialog')
+        card.append(el('div', 'aic-ask-title', 'Удалить сообщение?'))
+        let forAll = null
+        if (m.out) {
+            const lab = el('label', 'aic-ask-check')
+            forAll = el('input')
+            forAll.type = 'checkbox'
+            forAll.checked = true
+            lab.append(forAll, el('span', '', 'Удалить у всех'))
+            card.append(lab)
+        } else card.append(el('div', 'aic-ask-text', 'Сообщение удалится у вас.'))
+        const row = el('div', 'aic-ask-actions')
+        const cancel = el('button', 'aic-ask-btn', 'Отмена')
+        const ok = el('button', 'aic-ask-btn is-danger', 'Удалить')
+        cancel.type = 'button'
+        ok.type = 'button'
+        cancel.addEventListener('click', () => { askBox.hidden = true })
+        ok.addEventListener('click', () => { askBox.hidden = true; onDelete(m, !!(forAll && forAll.checked)) })
+        row.append(cancel, ok)
+        card.append(row)
+        askBox.append(card)
+        askBox.hidden = false
+        ok.focus()
+    }
+    askBox.addEventListener('mousedown', (e) => { if (e.target === askBox) askBox.hidden = true })
+    askBox.addEventListener('keydown', (e) => { if (e.key === 'Escape') askBox.hidden = true })
+
     document.addEventListener('mousedown', (e) => { if (!menu.hidden && !menu.contains(e.target)) closeMenu() })
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeMenu() })
     scroll.addEventListener('scroll', closeMenu, { passive: true })

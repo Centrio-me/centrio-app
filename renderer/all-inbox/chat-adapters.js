@@ -389,6 +389,14 @@ const telegram = {
             return Promise.resolve(M.appReactionsManager.sendReaction({ message: m, reaction: { _: 'reactionEmoji', emoticon: emoticon } })).then(function () { return true; });
         }).catch(function () { return false; });
     })()`,
+    // delete an own message (3.8.3) through Telegram's own; «у всех» revokes it for the other side too
+    DELETE: (id, forAll) => `(function () {
+        var mid = Number(${JSON.stringify(String(id))});
+        var c = window.appImManager && appImManager.chat;
+        if (!mid || !c) return false;
+        return Promise.resolve(rootScope.managers.appMessagesManager.deleteMessages(c.peerId, [mid], ${forAll ? 'true' : 'false'}))
+            .then(function () { return true; }, function () { return false; });
+    })()`,
     // Telegram lets an own message be edited for 48 hours
     EDIT_WINDOW_MS: 48 * 3600 * 1000,
     // Telegram's free reactions most chats allow
@@ -737,6 +745,17 @@ const max = {
     // where): MENU_ITEM presses «Редактировать», then the field holds the text and Enter saves; REACT_PICK presses the
     // n-th reaction of the menu's row, in the order of MAX's own setting «reactions-menu» (REACTIONS_LIST)
     contextEdit: true,
+    // «Удалить» from the message menu opens MAX's question «Удалить у всех?» with a box: set as asked, then «Удалить»
+    DELETE_CONFIRM: (forAll) => `(function () {
+        var modal = [].filter.call(document.querySelectorAll('.modal'), function (m) { return m.offsetWidth; }).pop();
+        if (!modal) return false;
+        var box = modal.querySelector('input[type=checkbox]');
+        if (box && box.checked !== ${forAll ? 'true' : 'false'}) box.click();
+        var ok = [].filter.call(modal.querySelectorAll('button'), function (b) { return (b.innerText || '').trim() === 'Удалить'; })[0];
+        if (!ok) return false;
+        ok.click();
+        return true;
+    })()`,
     // MAX lets an own message be edited for 7 days (its setting edit-timeout = 604800 s)
     EDIT_WINDOW_MS: 7 * 24 * 3600 * 1000,
     MENU_ITEM: (label) => `(function () {
