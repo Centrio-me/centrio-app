@@ -233,6 +233,12 @@ function createChatController({ state, webviewOf, host, ipcRenderer, onSubtitle 
     }
 
     async function sendFiles(w, files, text, asFile = false) {
+        // WhatsApp «Файл»: sent as documents by WhatsApp itself (it has no drop zone for them)
+        if (asFile && typeof current.adapter.SEND_DOCUMENTS === 'function') {
+            const data = await ipcRenderer.invoke('all-inbox:read-files', files.map((f) => f.path)).catch(() => [])
+            if (!data.length) return false
+            return await run(w, current.adapter.SEND_DOCUMENTS(data, text)) === true
+        }
         const point = await run(w, current.adapter.DROP)
         if (!point || typeof point.x !== 'number') return false
         const paths = files.map((f) => f.path)

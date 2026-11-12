@@ -120,6 +120,21 @@ function registerAllInboxIpc({ getMainWindow }) {
         try { fs.writeFileSync(filePath, bytes); return true } catch { return false }
     })
 
+    // «Файл» in WhatsApp (3.8.3): its own document sending needs the files' bytes — only files that pass the usual
+    // check (checkFiles), at most 64 MB in all, handed to our own window only
+    const MAX_DOC_BYTES = 64 * 1024 * 1024
+    const MIME = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp', bmp: 'image/bmp', heic: 'image/heic', pdf: 'application/pdf', mp4: 'video/mp4', mov: 'video/quicktime', txt: 'text/plain', zip: 'application/zip', doc: 'application/msword', docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', xls: 'application/vnd.ms-excel', xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }
+    ipcMain.handle('all-inbox:read-files', async (event, paths) => {
+        const files = checkFiles(paths, (p) => fs.statSync(p))
+        if (!files.length || files.reduce((n, f) => n + f.size, 0) > MAX_DOC_BYTES) return []
+        try {
+            return files.map((f) => {
+                const ext = path.extname(f.name).slice(1).toLowerCase()
+                return { name: f.name, mime: MIME[ext] || 'application/octet-stream', data: fs.readFileSync(f.path).toString('base64') }
+            })
+        } catch { return [] }
+    })
+
     // a drop in two steps: start over the chat, finish over the zone the window found (3.8.3, «Фото» / «Файл»)
     const validPoint = (p) => p && Number.isFinite(p.x) && Number.isFinite(p.y)
     ipcMain.handle('all-inbox:drag-start', async (event, payload) => {

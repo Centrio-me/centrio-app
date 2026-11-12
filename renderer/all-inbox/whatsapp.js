@@ -20,6 +20,28 @@ function __waName(C, wid) {
     var c = C.Contact.get(wid);
     return c ? (c.name || c.verifiedName || c.pushname || c.formattedName || '') : '';
 }
+// a message of the open chat by the id our window has (the row's data-id, or WhatsApp's own short id)
+function __waMsg(C, id) {
+    var chat = C && C.Chat.getActive ? C.Chat.getActive() : null;
+    if (!chat || !chat.msgs) return null;
+    var all = chat.msgs.getModelsArray();
+    for (var i = all.length - 1; i >= 0; i--) {
+        var m = all[i], k = m.id || {};
+        if (k._serialized === id || k.id === id || (k.id && String(id).indexOf(k.id) >= 0)) return m;
+    }
+    return null;
+}
+// the reactions of a message from WhatsApp's own store: emoji, how many, yours (3.8.3)
+function __waReactions(C, m) {
+    try {
+        var agg = C.Reactions && (C.Reactions.get(m.id._serialized) || C.Reactions.get(m.id));
+        if (!agg || !agg.reactions) return [];
+        return agg.reactions.getModelsArray().map(function (g) {
+            var n = g.senders ? (g.senders.length || (g.senders.getModelsArray ? g.senders.getModelsArray().length : 0)) : 0;
+            return g.aggregateEmoji ? { e: String(g.aggregateEmoji).slice(0, 8), n: String(n || 1), mine: !!g.hasReactionByMe } : null;
+        }).filter(Boolean).slice(0, 8);
+    } catch (e) { return []; }
+}
 function __waTitle(C, chat) {
     var c = chat.contact;
     return (c && (c.name || c.verifiedName)) || chat.formattedTitle || chat.name || '';
@@ -205,6 +227,7 @@ function whatsappChat({ AVATAR_HELPER, IMAGE_HELPER }) {
                     mediaW: m && m.width || (pic ? pic.naturalWidth : 0),
                     mediaH: m && m.height || (pic ? pic.naturalHeight : 0),
                     picture: pic && kind === 'photo' ? 'wa' + id : '',
+                    reactions: m ? __waReactions(C, m) : [],
                     at: m && m.t ? m.t * 1000 : 0,
                     time: m && m.t ? clock(m.t) : ''
                 });
@@ -243,6 +266,60 @@ function whatsappChat({ AVATAR_HELPER, IMAGE_HELPER }) {
             function centre(el) { var r = el.getBoundingClientRect(); return { x: r.left + Math.min(40, r.width / 2), y: r.top + r.height / 2 }; }
             var s = send.getBoundingClientRect();
             return { caption: cap ? centre(cap) : null, send: { x: s.left + s.width / 2, y: s.top + s.height / 2 } };
+        })()`,
+        // ── reactions, editing, deleting, a file as a document (3.8.3) — through WhatsApp's own actions ──────────
+        // the reaction picker of WhatsApp
+        REACTIONS: ['👍', '❤️', '😂', '😮', '😢', '🙏'],
+        // the same reaction again takes it off (WhatsApp keeps one reaction per person)
+        REACT: (id, emoji) => `(function () {${WA_STORE}
+            var C = __waStore(), m = __waMsg(C, ${JSON.stringify(String(id))}), emoji = ${JSON.stringify(String(emoji))};
+            if (!m) return false;
+            var mine = '';
+            try { var agg = C.Reactions.get(m.id._serialized) || C.Reactions.get(m.id); mine = agg && agg.reactionByMe ? agg.reactionByMe.reactionText || '' : ''; } catch (e) {}
+            return Promise.resolve(window.require('WAWebSendReactionMsgAction').sendReactionToMsg(m, mine === emoji ? '' : emoji))
+                .then(function () { return true; }, function () { return false; });
+        })()`,
+        // WhatsApp lets an own message be edited for 15 minutes
+        EDIT_WINDOW_MS: 15 * 60 * 1000,
+        EDIT: (id, text) => `(function () {${WA_STORE}
+            var C = __waStore(), m = __waMsg(C, ${JSON.stringify(String(id))});
+            if (!m || !m.id || !m.id.fromMe) return false;
+            return Promise.resolve(window.require('WAWebSendMessageEditAction').sendMessageEdit(m, ${JSON.stringify(String(text))}, { mentionedJidList: [], groupMentions: [] }))
+                .then(function () { return true; }, function () { return false; });
+        })()`,
+        // «у всех» revokes it (WhatsApp leaves «Вы удалили это сообщение»), otherwise it goes from this chat only
+        DELETE: (id, forAll) => `(function () {${WA_STORE}
+            var C = __waStore(), m = __waMsg(C, ${JSON.stringify(String(id))});
+            var chat = C && C.Chat.getActive ? C.Chat.getActive() : null;
+            if (!m || !chat) return false;
+            try {
+                var done = ${forAll ? 'true' : 'false'}
+                    ? window.require('WAWebRevokeMsgAction').sendRevoke({ type: 'message', data: m }, 'Sender', true)
+                    : window.require('WAWebCmd').Cmd.sendDeleteMsgs(chat, { list: [m], type: 'message' }, true);
+                return Promise.resolve(done).then(function () { return true; }, function () { return false; });
+            } catch (e) { return false; }
+        })()`,
+        // «Файл»: WhatsApp has no drop zone for documents — the files (read by the main process) are prepared as
+        // documents by WhatsApp itself and sent to the open chat; the text is the caption of the first
+        SEND_DOCUMENTS: (files, caption) => `(function () {${WA_STORE}
+            var C = __waStore(), chat = C && C.Chat.getActive ? C.Chat.getActive() : null;
+            var files = ${JSON.stringify(files)}, caption = ${JSON.stringify(String(caption || ''))};
+            if (!chat || !files.length) return false;
+            var OD = window.require('WAWebMediaOpaqueData'), prepRaw = window.require('WAWebPrepRawMedia').prepRawMedia;
+            function one(f, i) {
+                var bin = atob(f.data), bytes = new Uint8Array(bin.length);
+                for (var k = 0; k < bin.length; k++) bytes[k] = bin.charCodeAt(k);
+                var file = new File([bytes], f.name, { type: f.mime });
+                return Promise.resolve(OD.createFromData(file, f.mime)).then(function (opaque) {
+                    var prep = prepRaw(opaque, { asDocument: true });
+                    return Promise.resolve(prep.waitForPrep()).then(function () {
+                        return prep.sendToChat({ chat: chat, options: i === 0 && caption ? { caption: caption } : {} });
+                    });
+                });
+            }
+            var chain = Promise.resolve();
+            files.forEach(function (f, i) { chain = chain.then(function () { return one(f, i); }); });
+            return chain.then(function () { return true; }, function () { return false; });
         })()`,
         // the open chat read, through WhatsApp's own «seen» (only when something in it is unread)
         READ: `(function () {${WA_STORE}

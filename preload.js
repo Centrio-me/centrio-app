@@ -131,6 +131,7 @@ const validInvokeChannels = new Set([
     'all-inbox:drag-start',
     'all-inbox:drag-finish',
     'all-inbox:save-picture',
+    'all-inbox:read-files',
     'pagemenu:action',
     'detached:focus',
     'detached:close',
