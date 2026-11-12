@@ -9,6 +9,7 @@ const { createChatController, clickAt } = require('./chat-controller')
 const { sharedDrafts } = require('./drafts')
 const { kindFromSubtitle, createChannelMemory, withChannelKinds } = require('./channel-memory')
 const { createFolderBar, FOLDER_PREFIX } = require('./folders-ui')
+const { attachFolderRail } = require('./folder-rail')
 
 // remembered channels (MAX does not mark them in its list): a small JSON in this computer's local storage
 const channelMemory = createChannelMemory({
@@ -102,6 +103,8 @@ function createAllInbox({ state, switchTab, tGet, ipcRenderer, canOpen, store = 
     const countEl = panel.querySelector('.ai-count')
     const badgeEl = button.querySelector('.ai-badge')
     const filterButtons = [...panel.querySelectorAll('[data-ai-filter]')]
+    // filters and folders in a column on the left (3.8.3, folder-rail.js)
+    const rail = attachFolderRail({ panel, store })
 
     let open = false
     let timer = null
@@ -352,6 +355,15 @@ function createAllInbox({ state, switchTab, tGet, ipcRenderer, canOpen, store = 
         if (badgeEl) { badgeEl.hidden = unreadChats === 0; badgeEl.textContent = unreadChats > 99 ? '99+' : String(unreadChats) }
         if (countEl) countEl.textContent = String(all.length)
         filterButtons.forEach((b) => b.classList.toggle('is-on', b.dataset.aiFilter === filter))
+        // unread chats of every filter and folder, in the column
+        if (rail) {
+            const now = Date.now()
+            for (const b of filterButtons) {
+                const f = b.dataset.aiFilter
+                rail.setCount(b, f === 'all' || f === 'unread' ? unreadChats : mergeInbox(known, now, { kind: f, unreadOnly: true }).filter((c) => !c.muted).length)
+            }
+            if (folderBar) folderBar.setCounts((ids) => mergeInbox(known, now, { chatIds: ids, unreadOnly: true }).filter((c) => !c.muted).length)
+        }
         panel.querySelectorAll('.ai-folder').forEach((b) => b.classList.toggle('is-on', FOLDER_PREFIX + b.dataset.aiFolder === filter))
 
         // the list is drawn again only when something in it changed: no blinking pictures, hover and scroll stay
@@ -512,6 +524,13 @@ function createAllInbox({ state, switchTab, tGet, ipcRenderer, canOpen, store = 
     // own folders (3.8.3): chips after the filters, a right click on a chat puts it into one (folders-ui.js)
     folderBar = store ? createFolderBar({ panel, store, isOn: (f) => f === filter, onSelect: selectFilter, onChange: () => { lastListSig = ''; render() } }) : null
     if (!FILTERS.includes(filter) && !(folderBar && folderBar.exists(filter))) filter = 'all'
+    if (rail && !rail.autoFiltersOn() && rail.isKindFilter(filter)) filter = 'all'
+    // the filters by kind switched on or off in the mode's settings (access.js)
+    document.addEventListener('all-inbox-autofilters', () => {
+        if (!rail) return
+        const on = rail.applyAutoFilters()
+        if (!on && rail.isKindFilter(filter)) selectFilter('all')
+    })
     listEl.addEventListener('contextmenu', (e) => {
         const row = e.target.closest('.ai-row[data-id]')
         if (row && folderBar) folderBar.chatMenu(e, row.dataset.id)

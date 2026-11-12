@@ -31,6 +31,8 @@ module.exports = {
             current: "Сейчас"
         },
         allInbox: {
+            autoFilters: "Автофильтры",
+            autoFiltersHint: "Личные, Группы и Каналы в колонке папок. Выключите, если раскладываете чаты по своим папкам.",
             feedbackLabel: 'Отзыв о режиме',
             feedbackHint: 'Режим в альфа-тестировании. Расскажите, что удобно, что сломалось и чего не хватает — читаем каждое сообщение.',
             alpha: 'Альфа',
@@ -92,6 +94,8 @@ module.exports = {
             current: "Now"
         },
         allInbox: {
+            autoFilters: "Automatic filters",
+            autoFiltersHint: "Personal, Groups and Channels in the folder column. Turn off if you sort chats into your own folders.",
             feedbackLabel: 'Feedback on the mode',
             feedbackHint: 'The mode is in alpha testing. Tell us what works, what broke and what is missing — we read every message.',
             alpha: 'Alpha',
@@ -153,6 +157,8 @@ module.exports = {
             current: "Jetzt"
         },
         allInbox: {
+            autoFilters: "Automatische Filter",
+            autoFiltersHint: "Privat, Gruppen und Kanäle in der Ordnerspalte. Ausschalten, wenn du Chats selbst in Ordner sortierst.",
             feedbackLabel: 'Feedback zum Modus',
             feedbackHint: 'Der Modus ist in der Alpha-Phase. Sag uns, was gut ist, was kaputt ist und was fehlt.',
             alpha: 'Alpha',
@@ -214,6 +220,8 @@ module.exports = {
             current: "Ahora"
         },
         allInbox: {
+            autoFilters: "Filtros automáticos",
+            autoFiltersHint: "Personales, Grupos y Canales en la columna de carpetas. Desactívalo si ordenas los chats en tus carpetas.",
             feedbackLabel: 'Opinión sobre el modo',
             feedbackHint: 'El modo está en fase alfa. Cuéntanos qué funciona, qué falla y qué falta.',
             alpha: 'Alfa',
@@ -275,6 +283,8 @@ module.exports = {
             current: "Actuelle"
         },
         allInbox: {
+            autoFilters: "Filtres automatiques",
+            autoFiltersHint: "Personnels, Groupes et Canaux dans la colonne des dossiers. Désactivez si vous rangez les chats vous-même.",
             feedbackLabel: 'Avis sur le mode',
             feedbackHint: 'Le mode est en phase alpha. Dites-nous ce qui marche, ce qui casse et ce qui manque.',
             alpha: 'Alpha',
@@ -336,6 +346,8 @@ module.exports = {
             current: "Ora"
         },
         allInbox: {
+            autoFilters: "Filtri automatici",
+            autoFiltersHint: "Personali, Gruppi e Canali nella colonna delle cartelle. Disattiva se ordini le chat nelle tue cartelle.",
             feedbackLabel: 'Parere sulla modalità',
             feedbackHint: 'La modalità è in fase alpha. Dicci cosa funziona, cosa non va e cosa manca.',
             alpha: 'Alpha',
@@ -397,6 +409,8 @@ module.exports = {
             current: "当前"
         },
         allInbox: {
+            autoFilters: "自动筛选",
+            autoFiltersHint: "文件夹栏中的个人、群组和频道。如果你自己整理聊天到文件夹，可以关闭。",
             feedbackLabel: '关于此模式的反馈',
             feedbackHint: '此模式正在 Alpha 测试中。告诉我们哪些好用、哪些有问题、还缺什么。',
             alpha: 'Alpha 测试',

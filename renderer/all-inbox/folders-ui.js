@@ -2,6 +2,7 @@
 // a folder renames or deletes it, a right click on a chat puts it into a folder or takes it out. Kept in the app's
 // settings (store root allInbox, key folders), so they survive a restart. The logic lives in folders.js.
 const F = require('./folders')
+const { dressButton, setCount } = require('./folder-rail')
 
 // the folders live inside the store root «allInbox» (beside «enabled», access.js); the renderer's store reads whole roots
 const STORE_ROOT = 'allInbox'
@@ -86,6 +87,8 @@ function createFolderBar({ panel, store, isOn, onSelect, onChange }) {
             b.type = 'button'
             b.dataset.aiFolder = f.id
             b.title = `${f.name}: чатов — ${f.chats.length}. Правая кнопка — переименовать или удалить`
+            dressButton(b, 'folder')
+            b.title = `${f.name}: чатов — ${f.chats.length}. Правая кнопка — переименовать или удалить`
             b.addEventListener('click', () => onSelect(FOLDER_PREFIX + f.id))
             b.addEventListener('contextmenu', (e) => {
                 e.preventDefault()
@@ -104,7 +107,9 @@ function createFolderBar({ panel, store, isOn, onSelect, onChange }) {
             add.type = 'button'
             add.title = 'Новая папка'
             add.setAttribute('aria-label', 'Новая папка')
-            add.innerHTML = ICON_PLUS
+            add.textContent = 'Папка'
+            dressButton(add, 'plus')
+            add.title = 'Новая папка'
             add.addEventListener('click', () => askName(add, '', (name) => save(F.addFolder(folders, name))))
             strip.append(add)
         }
@@ -135,6 +140,10 @@ function createFolderBar({ panel, store, isOn, onSelect, onChange }) {
 
     return {
         render,
+        // unread chats of each folder, drawn on its button
+        setCounts(countOf) {
+            for (const f of folders) setCount(strip.querySelector(`.ai-folder[data-ai-folder="${f.id}"]`), countOf(new Set(f.chats)))
+        },
         chatMenu,
         /** the chats of a folder filter, or null when the filter is not a folder (or the folder is gone) */
         chatsOf(filter) {

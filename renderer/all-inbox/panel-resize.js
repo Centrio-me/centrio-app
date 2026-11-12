@@ -2,10 +2,11 @@
 // «Все мессенджеры»: the list's width is the person's — its edge next to the page is dragged wider or narrower, the
 // width is kept on this computer, a double click on the edge brings back the usual one.
 
-const WIDTH_KEY = 'centrio-all-inbox-width'
-const DEFAULT_W = 340
-const MIN_W = 280
-const MAX_W = 640
+// 3.8.3: the width takes in the folder column (72 px) — a new key, so a width kept before does not squeeze the list
+const WIDTH_KEY = 'centrio-all-inbox-width-2'
+const DEFAULT_W = 412
+const MIN_W = 352
+const MAX_W = 712
 
 /**
  * A width the list may take: between its smallest and largest, and not more than half the window.

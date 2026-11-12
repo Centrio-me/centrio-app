@@ -65,6 +65,24 @@ function createAllInboxAccess({ store, tGet, hasEffectivePro, showUpgradeModal }
         group.append(row)
         if (!pro()) group.append(el('div', 'settings-hint ai-settings-pro', t('settingsPro', '')))
 
+        // filters by kind (3.8.3): some people sort chats into their own folders and do not need them
+        const afRow = el('div', 'settings-row')
+        const afLabel = el('div', 'settings-label')
+        afLabel.append(el('span', '', t('autoFilters', 'Автофильтры')), el('span', 'settings-hint', t('autoFiltersHint', 'Личные, Группы и Каналы в колонке папок. Выключите, если раскладываете чаты по своим папкам.')))
+        const afToggle = el('label', 'toggle')
+        const afInput = el('input')
+        afInput.type = 'checkbox'
+        const savedRoot = store.get(STORE_KEY, null)
+        afInput.checked = !(savedRoot && typeof savedRoot === 'object' && savedRoot.autoFilters === false)
+        afInput.addEventListener('change', () => {
+            const saved = store.get(STORE_KEY, null)
+            store.set(STORE_KEY, { ...(saved && typeof saved === 'object' ? saved : {}), autoFilters: afInput.checked })
+            document.dispatchEvent(new CustomEvent('all-inbox-autofilters'))
+        })
+        afToggle.append(afInput, el('span', 'toggle-slider'))
+        afRow.append(afLabel, afToggle)
+        group.append(afRow)
+
         // feedback: the same new support topic as the «α» note of the list
         const fbRow = el('div', 'settings-row')
         const fbLabel = el('div', 'settings-label')

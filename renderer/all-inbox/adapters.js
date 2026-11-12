@@ -15,7 +15,10 @@ const { maxTitleOf } = require('./max-title')
 
 const MAX_CHATS = 60
 // Telegram gives its whole dialog list; the freshest ones are enough for one screen of history
+// Telegram (3.8.3): every chat of the store is listed, so search finds any of them (Oleg has more than a hundred channels
+// and could not find his chats); only the freshest get avatars, «в сети» and «печатает» — the rest are a name and a line
 const TELEGRAM_CHATS = 150
+const TELEGRAM_ALL_CHATS = 1500
 // MAX: how many chats are remembered, and how its list is walked through while the tab is not on screen
 const MAX_ALL_CHATS = 200
 const MAX_WALK_STEPS = 25
@@ -192,7 +195,9 @@ const telegram = {
         // a tab that has not been opened yet keeps its store asleep and the call hangs: one waiting call is enough
         if (window.__ciTgWaiting) return fromDom();
         window.__ciTgWaiting = true;
-        var asked = Promise.resolve(m.dialogsStorage.getFolderDialogs(0));
+        // the main list and the archive
+        var asked = Promise.all([m.dialogsStorage.getFolderDialogs(0), Promise.resolve(m.dialogsStorage.getFolderDialogs(1)).catch(function () { return []; })])
+            .then(function (both) { return (both[0] || []).concat(both[1] || []); });
         asked.then(function () { window.__ciTgWaiting = false; }, function () { window.__ciTgWaiting = false; });
         return asked.then(function (dialogs) {
             if (!dialogs || !dialogs.length) return fromDom();
@@ -201,7 +206,7 @@ const telegram = {
             var now = Date.now();
             var top = dialogs.filter(function (x) { return x && x.peerId; })
                 .sort(function (a, b) { return ((b.topMessage && b.topMessage.date) || 0) - ((a.topMessage && a.topMessage.date) || 0); })
-                .slice(0, ${TELEGRAM_CHATS});
+                .slice(0, ${TELEGRAM_ALL_CHATS});
             // «Избранное» is always there, however old: it is where people send things to themselves
             if (!top.some(function (x) { return x.peerId === rs.myId; })) { var saved = dialogs.filter(function (x) { return x && x.peerId === rs.myId; })[0]; if (saved) top.push(saved); }
             // titles come from the page's worker; the first read waits a moment for them, later reads are cached
@@ -239,7 +244,7 @@ const telegram = {
             var wait = new Promise(function (r) { setTimeout(r, 1500); });
             return Promise.race([named, wait]).then(function () {
                 var out = [];
-                top.forEach(function (x) {
+                top.forEach(function (x, place) {
                     var key = String(x.peerId), seen = dom[key];
                     var title = titles[x.peerId] || (seen && seen.title) || '';
                     if (!title) return;
@@ -256,7 +261,7 @@ const telegram = {
                         time: seen ? seen.time : '',
                         unread: x.unread_count || 0,
                         muted: !!(ns.mute_until && ns.mute_until * 1000 > now) || (seen ? seen.muted : false),
-                        avatar: (seen && seen.avatar) || (x.peerId === rs.myId ? '' : avatarOf(x.peerId)),
+                        avatar: (seen && seen.avatar) || (x.peerId === rs.myId || place >= ${TELEGRAM_CHATS} ? '' : avatarOf(x.peerId)),
                         icon: x.peerId === rs.myId ? 'saved' : '',
                         kind: kindOf(x.peerId),
                         pinned: !!(x.pFlags && x.pFlags.pinned),
