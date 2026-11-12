@@ -356,7 +356,11 @@ function renderMessage(m, ctx) {
     if (jumbo) b.dataset.count = String(jumbo)
     if (m.authorColor) b.style.setProperty('--name', m.authorColor)
 
-    if (m.author && !m.out && m.groupStart && ctx.isGroup && !jumbo && !sticker) b.append(el('div', 'aic-author', m.author))
+    if (m.author && !m.out && m.groupStart && ctx.isGroup && !jumbo && !sticker) {
+        const name = el('div', 'aic-author', m.author)
+        if (m.authorBadge) { const st = el('img', 'aic-author-status'); st.src = m.authorBadge; st.alt = ''; name.append(st) }
+        b.append(name)
+    }
     if (m.forwarded) b.append(el('div', 'aic-fwd', `Переслано от ${m.forwarded}`))
     if (m.reply) {
         const quote = el('div', 'aic-quote')

@@ -125,6 +125,8 @@ function buildTimeline(raw, now) {
             read: m.read === true,
             kind,
             author: String(m.author || ''),
+            // the author's emoji status (Telegram): a small picture, as a data address only
+            authorBadge: typeof m.authorBadge === 'string' && m.authorBadge.length < 40000 && /^data:image\/(png|jpeg|webp);base64,/.test(m.authorBadge) ? m.authorBadge : '',
             forwarded: String(m.forwarded || ''),
             reply: String(m.reply || ''),
             text,
@@ -250,7 +252,7 @@ function signature(rows) {
         const album = r.album ? r.album.map((a) => print(a.src)).join(',') : ''
         const reacts = (r.reactions || []).map((x) => (x.e || (x.img ? 'p' + x.img.length : '')) + x.n + (x.mine ? '*' : '')).join(',')
         return [r.id, r.read ? 1 : 0, r.kind, r.text || '', print(r.media), print(r.avatar), album, reacts, r.pending || '',
-            r.name || '', r.size || '', r.duration || '', r.author || '', r.reply || '', r.forwarded || '', r.phone || '',
+            r.name || '', r.size || '', r.duration || '', r.author || '', print(r.authorBadge), r.reply || '', r.forwarded || '', r.phone || '',
             r.webpage ? print(r.webpage.image) + (r.webpage.title || '') : '', (r.wave || []).length, r.poll ? JSON.stringify(r.poll) : ''].join('|')
     }).join(';')
 }

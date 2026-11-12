@@ -98,7 +98,9 @@ const telegram = {
         var titles = chat.querySelectorAll('.chat-info .peer-title');
         var bubbles = chat.querySelectorAll('.bubbles-inner .bubble[data-mid]');
         // the message's own picture, not the small one of the message it replies to
-        function own(b, sel) { var all = b.querySelectorAll(sel); for (var o = 0; o < all.length; o++) if (!all[o].closest('.reply, .webpage')) return all[o]; return null; }
+        // what belongs to the message itself: not the quote, the link preview, nor the animated emoji status next to the
+        // author's name or an animated emoji in the text (Telegram draws those as video; 3.8.3, owner: «он её картинкой вставляет»)
+        function own(b, sel) { var all = b.querySelectorAll(sel); for (var o = 0; o < all.length; o++) if (!all[o].closest('.reply, .webpage, .emoji-status, .custom-emoji, custom-emoji-element, custom-emoji-renderer-element, .name, .peer-title')) return all[o]; return null; }
         // a link preview: the site, the title, a little text and its picture, as Telegram shows it under the text
         function webpageOf(b, mid) {
             var w = b.querySelector('.webpage');
@@ -262,7 +264,7 @@ const telegram = {
             else if (b.querySelector('poll-element, .poll')) kind = 'poll';
             else if (/ voice-message /.test(cls) || b.querySelector('.audio.is-voice, .voice')) kind = 'voice';
             else if (/ sticker /.test(cls) || /emoji-big/.test(cls)) kind = 'sticker';
-            else if (/ video /.test(cls) || b.querySelector('video')) kind = 'video';
+            else if (/ video /.test(cls) || own(b, 'video')) kind = 'video';
             // a picture sent as a file is a file (with its small preview), like Telegram shows it
             else if (b.querySelector('.document-name')) kind = 'file';
             // a shared contact: Telegram draws its name and number in a card
@@ -281,6 +283,11 @@ const telegram = {
                 read: / is-read /.test(cls),
                 kind: album ? 'photo' : kind,
                 author: nameEl ? __ciText(nameEl).split('\\n')[0].trim() : '',
+                // the author's emoji status next to the name (3.8.3): its first frame as a small picture, one per author
+                authorBadge: (function () {
+                    var st = nameEl && b.querySelector('.name .emoji-status video, .name .emoji-status img, .colored-name .emoji-status video, .colored-name .emoji-status img');
+                    return st ? __ciPicture('tgst' + __ciText(nameEl).split('\\n')[0].trim(), st) : '';
+                })(),
                 // Telegram's own colour of this person's name, and the group's avatar, exactly as Telegram draws them
                 authorColor: group.color || '',
                 avatar: / is-out /.test(cls) ? '' : group.avatar || '',
