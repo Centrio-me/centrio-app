@@ -206,6 +206,14 @@ function whatsappChat({ AVATAR_HELPER, IMAGE_HELPER }) {
                     var imgs = row.querySelectorAll('img');
                     for (var k = 0; k < imgs.length; k++) if (imgs[k].naturalWidth > 40 && !/avatar|emoji/i.test(imgs[k].className)) { pic = imgs[k]; break; }
                 }
+                // no picture on the page (WhatsApp draws older ones only when scrolled to): the downloaded file from its
+                // store, or else the little preview it keeps — an old photo it no longer has shows just that (3.8.3)
+                var stored = '';
+                if (!pic && m && (kind === 'photo' || kind === 'video' || kind === 'sticker')) {
+                    var file = m.mediaData && (m.mediaData.renderableUrl || m.mediaData.staticUrl);
+                    if (file && /^(blob:|https:)/.test(file)) { __ciFetchPicture('wa' + id, file); stored = __ciImg['wa' + id] && __ciImg['wa' + id].data || ''; }
+                    if (!stored && kind !== 'sticker' && /^\\/9j\\//.test(String(m.body || ''))) stored = 'data:image/jpeg;base64,' + m.body;
+                }
                 if (kind === 'text' && !text) continue;
                 var fromMe = m ? !!m.id.fromMe : !!row.querySelector('[data-icon="tail-out"], [aria-label="Вы:"]');
                 var quoted = m && m.quotedMsg;
@@ -223,7 +231,7 @@ function whatsappChat({ AVATAR_HELPER, IMAGE_HELPER }) {
                     reply: quoted ? String(quoted.caption || quoted.body || __waLine(quoted)).slice(0, 140) : '',
                     replyTitle: quoted ? (quoted.id && quoted.id.fromMe ? 'Вы' : __waName(C, quoted.author || quoted.from)) : '',
                     forwarded: m && m.isForwarded ? 'пересланное' : '',
-                    media: pic ? __ciPicture('wa' + id, pic) : '',
+                    media: pic ? __ciPicture('wa' + id, pic) : stored,
                     mediaW: m && m.width || (pic ? pic.naturalWidth : 0),
                     mediaH: m && m.height || (pic ? pic.naturalHeight : 0),
                     picture: pic && kind === 'photo' ? 'wa' + id : '',
