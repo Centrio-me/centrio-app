@@ -8,6 +8,13 @@ The format is based on Keep a Changelog. This project does not currently follow 
 
 ## [Unreleased]
 
+_No unreleased changes yet — add entries here as they land, then move them under a new version heading at release time._
+
+## [3.8.1] - 2026-11-12
+
+### Added
+- Бета-тестирование: постоянные клиенты из списка владельца (`data/beta-testers.json` на сервере, поле `betaTester` в `/api/auth/me`) читают канал `beta*.yml` и получают тестовые версии раньше всех. Тег `v*-beta.*` выкладывает только `beta*.yml`; обычный выпуск копируется и в `beta*.yml`, если он новее того, что у тестировщиков.
+
 ### Fixed
 - «Все мессенджеры»: каналы MAX показываются со своими названиями, а не цифрами, и открываются по клику.
 - «Все мессенджеры»: у чатов MAX видно последнее сообщение, если это фото, файл или стикер.

@@ -48,6 +48,7 @@ jobs:
             dist/*.exe
             dist/*.exe.blockmap
             dist/latest.yml
+            dist/beta.yml
           if-no-files-found: error
 
   # ─── macOS ─────────────────────────────────────────────────────────────────
@@ -93,6 +94,7 @@ jobs:
             dist/*.dmg
             dist/*.dmg.blockmap
             dist/latest-mac.yml
+            dist/beta-mac.yml
           if-no-files-found: error
 
   # ─── Linux ─────────────────────────────────────────────────────────────────
@@ -146,6 +148,7 @@ jobs:
             dist/*.AppImage
             dist/*.deb
             dist/latest-linux.yml
+            dist/beta-linux.yml
           if-no-files-found: error
 
   # ─── Deploy ────────────────────────────────────────────────────────────────
@@ -153,6 +156,8 @@ jobs:
     needs: [build-win, build-mac, build-linux]
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
@@ -168,27 +173,47 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
 
-      - name: Upload Windows
+      # Beta testers (since 3.8.1). A tag like v3.8.2-beta.1 builds beta*.yml only: it reaches just the testers (the
+      # owner's list on the server, their Centrio reads beta*.yml). An ordinary tag publishes latest*.yml for everyone and
+      # copies it to beta*.yml, so testers get ordinary releases too — unless the testers already have a newer test version.
+      - name: Upload installers and update files
+        env:
+          TAG: ${{ github.ref_name }}
+          DEST: ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}
         run: |
-          scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
-            artifacts/win-artifacts/*.exe \
-            artifacts/win-artifacts/*.exe.blockmap \
-            artifacts/win-artifacts/latest.yml \
-            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/var/www/centrio-downloads/
+          set -euo pipefail
+          SSH="ssh -i $HOME/.ssh/deploy_key -o StrictHostKeyChecking=no"
+          SCP="scp -i $HOME/.ssh/deploy_key -o StrictHostKeyChecking=no"
+          ROOT=/var/www/centrio-downloads
+          case "$TAG" in *-beta*) BETA=1 ;; *) BETA=0 ;; esac
+          echo "tag $TAG beta=$BETA"
 
-      - name: Upload macOS
-        run: |
-          scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
-            artifacts/mac-artifacts/*.dmg \
-            artifacts/mac-artifacts/latest-mac.yml \
-            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/var/www/centrio-downloads/mac/
+          $SCP artifacts/win-artifacts/*.exe artifacts/win-artifacts/*.exe.blockmap "$DEST:$ROOT/"
+          $SCP artifacts/mac-artifacts/*.dmg "$DEST:$ROOT/mac/"
+          $SCP artifacts/linux-artifacts/*.AppImage artifacts/linux-artifacts/*.deb "$DEST:$ROOT/linux/"
 
-      - name: Upload Linux
-        run: |
-          scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
-            artifacts/linux-artifacts/*.AppImage \
-            artifacts/linux-artifacts/*.deb \
-            artifacts/linux-artifacts/latest-linux.yml \
-            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/var/www/centrio-downloads/linux/
+          # newer A B: succeeds when version A is newer than B (a release is newer than its own betas)
+          newer() { node scripts/version-newer.js "$1" "$2"; }
+
+          publish() { # <artifact dir> <server dir> <suffix: "" | -mac | -linux>
+            local dir="$1" to="$2" sfx="$3" mine theirs
+            if [ "$BETA" = 1 ]; then
+              $SCP "$dir/beta$sfx.yml" "$DEST:$to/beta$sfx.yml"
+              echo "beta$sfx.yml -> $TAG"
+              return
+            fi
+            $SCP "$dir/latest$sfx.yml" "$DEST:$to/latest$sfx.yml"
+            mine=$(grep -m1 '^version:' "$dir/latest$sfx.yml" | awk '{print $2}')
+            theirs=$($SSH "$DEST" "grep -m1 '^version:' $to/beta$sfx.yml 2>/dev/null" | awk '{print $2}' || true)
+            if [ -z "$theirs" ] || newer "$mine" "$theirs"; then
+              $SCP "$dir/latest$sfx.yml" "$DEST:$to/beta$sfx.yml"
+              echo "beta$sfx.yml -> $mine"
+            else
+              echo "beta$sfx.yml stays $theirs (newer than $mine)"
+            fi
+          }
+          publish artifacts/win-artifacts "$ROOT" ""
+          publish artifacts/mac-artifacts "$ROOT/mac" "-mac"
+          publish artifacts/linux-artifacts "$ROOT/linux" "-linux"
 
       - run: echo "✅ All builds deployed"

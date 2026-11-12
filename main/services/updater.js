@@ -3,6 +3,7 @@ const { safeSendToWindow } = require('../utils/window')
 const { IPC_CHANNELS } = require('../config/constants')
 const { t } = require('./i18n')
 const store = require('./store')
+const { updateChannelFor } = require('./update-channel')
 
 let autoUpdater = null
 let log = null
@@ -200,6 +201,18 @@ function initUpdater(getMainWindow) {
     })
 }
 
+// Beta testers (since 3.8.1): the account (/api/auth/me, kept by main in cloud.user) says whether this person is on
+// the owner's list of testers; see update-channel.js. Setting the channel also lets electron-updater go down a version,
+// which is how a tester taken off the list returns from a test version to the ordinary release.
+function applyUpdateChannel() {
+    const user = store.get('cloud.user')
+    const betaTester = user && typeof user === 'object' && typeof user.betaTester === 'boolean' ? user.betaTester : undefined
+    const channel = updateChannelFor({ betaTester, version: app.getVersion() })
+    if (!channel || autoUpdater.channel === channel) return
+    autoUpdater.channel = channel
+    writeLog('update channel:', channel)
+}
+
 async function checkForUpdates() {
     if (!autoUpdater) {
         writeError('checkForUpdates aborted: autoUpdater is not available')
@@ -214,6 +227,7 @@ async function checkForUpdates() {
     try {
         writeLog('checkForUpdates called')
         writeLog('Current version:', app.getVersion())
+        applyUpdateChannel()
 
         const result = await autoUpdater.checkForUpdates()
 
