@@ -2,6 +2,18 @@
 // a missing string falls back to English, then Russian (renderer/i18n.js).
 module.exports = {
     ru: {
+        // «Друг Centrio» — beta testers (3.8.2)
+        friend: {
+            title: "Бета-тестирование",
+            label: "Участвовать в тестировании",
+            hint: "Обновления приходят чаще: новые функции вы увидите первым. В тестовых версиях могут быть ошибки — напишите о них в поддержку, такие сообщения мы чиним в первую очередь.",
+            needsAccount: "Войдите в аккаунт, чтобы участвовать в тестировании.",
+            badge: "Друг Centrio",
+            badgeTitle: "Вы помогаете тестировать новые версии Centrio",
+            joined: "Спасибо! Теперь вы Друг Centrio — новые версии придут к вам первым.",
+            left: "Готово. Следующее обновление будет обычной версией.",
+            failed: "Не удалось сохранить. Проверьте интернет и попробуйте ещё раз."
+        },
         weather: {
             city: "Город для погоды",
             cityHint: "Погода на экране блокировки. С включённым VPN город по сети может определяться неверно — укажите свой.",
@@ -44,6 +56,18 @@ module.exports = {
         }
     },
     en: {
+        // «Друг Centrio» — beta testers (3.8.2)
+        friend: {
+            title: "Beta testing",
+            label: "Take part in testing",
+            hint: "Updates come more often and you see new features first. Test versions may have bugs — tell us in support, we fix those reports first.",
+            needsAccount: "Sign in to take part in testing.",
+            badge: "Friend of Centrio",
+            badgeTitle: "You help test new versions of Centrio",
+            joined: "Thank you! You are a Friend of Centrio now — new versions reach you first.",
+            left: "Done. The next update will be an ordinary version.",
+            failed: "Could not save. Check the connection and try again."
+        },
         weather: {
             city: "Weather city",
             cityHint: "Weather on the lock screen. With a VPN on, the city from your network may be wrong — set your own.",
@@ -86,6 +110,18 @@ module.exports = {
         }
     },
     de: {
+        // «Друг Centrio» — beta testers (3.8.2)
+        friend: {
+            title: "Beta-Test",
+            label: "Am Test teilnehmen",
+            hint: "Updates kommen öfter und du siehst neue Funktionen als Erster. Testversionen können Fehler haben — melde sie im Support, solche Meldungen beheben wir zuerst.",
+            needsAccount: "Melde dich an, um am Test teilzunehmen.",
+            badge: "Freund von Centrio",
+            badgeTitle: "Du hilfst, neue Versionen von Centrio zu testen",
+            joined: "Danke! Du bist jetzt ein Freund von Centrio — neue Versionen kommen zuerst zu dir.",
+            left: "Fertig. Das nächste Update ist eine normale Version.",
+            failed: "Speichern fehlgeschlagen. Prüfe die Verbindung und versuche es erneut."
+        },
         weather: {
             city: "Stadt für das Wetter",
             cityHint: "Wetter auf dem Sperrbildschirm. Mit aktivem VPN kann die Stadt falsch erkannt werden — legen Sie Ihre fest.",
@@ -128,6 +164,18 @@ module.exports = {
         }
     },
     es: {
+        // «Друг Centrio» — beta testers (3.8.2)
+        friend: {
+            title: "Pruebas beta",
+            label: "Participar en las pruebas",
+            hint: "Las actualizaciones llegan más a menudo y ves las novedades primero. Las versiones de prueba pueden tener errores: cuéntanoslos en soporte, los arreglamos primero.",
+            needsAccount: "Inicia sesión para participar en las pruebas.",
+            badge: "Amigo de Centrio",
+            badgeTitle: "Ayudas a probar las nuevas versiones de Centrio",
+            joined: "¡Gracias! Ahora eres Amigo de Centrio: las nuevas versiones te llegan primero.",
+            left: "Listo. La próxima actualización será una versión normal.",
+            failed: "No se pudo guardar. Revisa la conexión e inténtalo de nuevo."
+        },
         weather: {
             city: "Ciudad para el tiempo",
             cityHint: "El tiempo en la pantalla de bloqueo. Con una VPN activa, la ciudad puede detectarse mal: indica la tuya.",
@@ -170,6 +218,18 @@ module.exports = {
         }
     },
     fr: {
+        // «Друг Centrio» — beta testers (3.8.2)
+        friend: {
+            title: "Tests bêta",
+            label: "Participer aux tests",
+            hint: "Les mises à jour arrivent plus souvent et vous voyez les nouveautés en premier. Les versions de test peuvent contenir des erreurs — signalez-les au support, nous les corrigeons en priorité.",
+            needsAccount: "Connectez-vous pour participer aux tests.",
+            badge: "Ami de Centrio",
+            badgeTitle: "Vous aidez à tester les nouvelles versions de Centrio",
+            joined: "Merci ! Vous êtes maintenant Ami de Centrio — les nouvelles versions arrivent chez vous en premier.",
+            left: "C’est fait. La prochaine mise à jour sera une version normale.",
+            failed: "Impossible d’enregistrer. Vérifiez la connexion et réessayez."
+        },
         weather: {
             city: "Ville pour la météo",
             cityHint: "La météo de l’écran de verrouillage. Avec un VPN actif, la ville peut être mal détectée — indiquez la vôtre.",
@@ -212,6 +272,18 @@ module.exports = {
         }
     },
     it: {
+        // «Друг Centrio» — beta testers (3.8.2)
+        friend: {
+            title: "Beta test",
+            label: "Partecipa ai test",
+            hint: "Gli aggiornamenti arrivano più spesso e vedi per primo le novità. Le versioni di prova possono avere errori: segnalali al supporto, li correggiamo per primi.",
+            needsAccount: "Accedi per partecipare ai test.",
+            badge: "Amico di Centrio",
+            badgeTitle: "Aiuti a testare le nuove versioni di Centrio",
+            joined: "Grazie! Ora sei Amico di Centrio: le nuove versioni arrivano prima a te.",
+            left: "Fatto. Il prossimo aggiornamento sarà una versione normale.",
+            failed: "Salvataggio non riuscito. Controlla la connessione e riprova."
+        },
         weather: {
             city: "Città per il meteo",
             cityHint: "Il meteo nella schermata di blocco. Con una VPN attiva la città può essere sbagliata: indica la tua.",
@@ -254,6 +326,18 @@ module.exports = {
         }
     },
     zh: {
+        // «Друг Centrio» — beta testers (3.8.2)
+        friend: {
+            title: "Beta 测试",
+            label: "参与测试",
+            hint: "更新更频繁，您将率先体验新功能。测试版本可能存在问题——请告诉支持团队，我们会优先修复。",
+            needsAccount: "登录后即可参与测试。",
+            badge: "Centrio 之友",
+            badgeTitle: "您正在帮助测试 Centrio 的新版本",
+            joined: "谢谢！您现在是 Centrio 之友——新版本会最先送到您这里。",
+            left: "已完成。下一次更新将是正式版本。",
+            failed: "保存失败。请检查网络后重试。"
+        },
         weather: {
             city: "天气城市",
             cityHint: "锁屏上的天气。开启 VPN 时，按网络判断的城市可能不对——请设置您的城市。",

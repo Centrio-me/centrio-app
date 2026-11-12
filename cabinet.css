@@ -394,3 +394,27 @@ body:has(.first-steps.is-collapsed) .app-hint-stack { bottom: 100px; }
 .ach-copy small { color: var(--text-secondary); font-size: 11.5px; line-height: 1.35; }
 .ach-bar { height: 4px; margin-top: 5px; border-radius: 2px; background: var(--border); overflow: hidden; }
 .ach-bar i { display: block; height: 100%; background: var(--accent); transform-origin: left; }
+
+/* «Друг Centrio» (3.8.2): a beta tester — an aurora pill next to the plan (renderer/beta-program.js) */
+.lk-friend {
+    display: inline-flex; align-items: center; gap: 5px; margin: 6px 0 0 6px; padding: 3px 10px 3px 7px; border: 1px solid transparent;
+    border-radius: 20px; vertical-align: top; font-size: 10.5px; font-weight: 700; letter-spacing: .02em; color: var(--text-primary);
+    background:
+        linear-gradient(var(--lk-card, var(--bg-secondary)), var(--lk-card, var(--bg-secondary))) padding-box,
+        linear-gradient(110deg, #7cc4ff, #a78bfa 50%, #f0abfc) border-box;
+    box-shadow: 0 0 14px -4px rgba(167, 139, 250, .55); cursor: default; position: relative; overflow: hidden;
+}
+.lk-friend[hidden] { display: none; }
+.lk-friend svg { width: 13px; height: 13px; flex: none; color: #c4b5fd; }
+.lk-friend::after {
+    content: ''; position: absolute; inset: 0; pointer-events: none; transform: translateX(-120%);
+    background: linear-gradient(100deg, transparent 30%, rgba(255, 255, 255, .22) 50%, transparent 70%);
+}
+.lk-friend:hover::after { transform: translateX(120%); transition: transform .8s ease; }
+@media (prefers-reduced-motion: reduce) { .lk-friend:hover::after { transition: none; } }
+
+/* Settings → Система → «Бета-тестирование» */
+.beta-title { display: flex; align-items: center; gap: 7px; }
+.beta-title svg { width: 15px; height: 15px; color: #a78bfa; }
+.beta-status:empty { display: none; }
+.beta-status { margin-top: 6px; }

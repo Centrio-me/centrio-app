@@ -4145,6 +4145,8 @@ function applyTabZoom(level) {
     window.__centrioSleepTab = sleepTab
     // 3.8: «Все мессенджеры» — one list of the chats of every tab, a click opens the chat in its tab
     // PRO only (alpha testing), on by default, switched off in Settings → Все мессенджеры (renderer/all-inbox/access.js)
+    // «Друг Centrio» (3.8.2): beta testing in Settings → Система and the badge in the profile
+    require('./renderer/beta-program').createBetaProgram({ cloudApi, cloudStore, tGet })
     const allInboxAccess = createAllInboxAccess({ store, tGet, hasEffectivePro, showUpgradeModal })
     window.__centrioAllInbox = createAllInbox({ state, switchTab, tGet, ipcRenderer, canOpen: allInboxAccess.canOpen })
     if (window.__centrioAllInbox) allInboxAccess.attach(window.__centrioAllInbox)

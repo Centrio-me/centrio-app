@@ -351,12 +351,18 @@ module.exports = {
         return request('GET', '/api/stats/summary', null, token)
     },
 
+    // ?with= names the newer badges this app can draw (3.8.2: «Друг Centrio»); older apps never get them
     getAchievements(token) {
-        return request('GET', '/api/achievements', null, token)
+        return request('GET', '/api/achievements?with=beta_friend', null, token)
     },
 
     reportAchievements(token, body) {
-        return request('POST', '/api/achievements/report', body, token)
+        return request('POST', '/api/achievements/report?with=beta_friend', body, token)
+    },
+
+    // «Участвовать в тестировании» (3.8.2): becomes a «Друг Centrio» and reads the beta update channel, or leaves it
+    setBetaTester(token, enabled) {
+        return request('POST', '/api/user/beta', { enabled: enabled === true }, token)
     },
 
     claimAchievementReward(token) {

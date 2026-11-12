@@ -1067,7 +1067,9 @@ module.exports = {
         invite_5: "推广大使",
         invite_5Desc: "5 位好友已购买 Pro",
         telegram: "Telegram 常客",
-        telegramDesc: "Telegram 已绑定账户"
+        telegramDesc: "Telegram 已绑定账户",
+        beta_friend: "Centrio 之友",
+        beta_friendDesc: "帮助测试新版本"
     },
 
     onb: {

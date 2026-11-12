@@ -1083,6 +1083,8 @@ module.exports = {
         invite_5Desc: "5 друзей оплатили ПРО",
         telegram: "Свой в Telegram",
         telegramDesc: "Telegram привязан к аккаунту",
+        beta_friend: "Друг Centrio",
+        beta_friendDesc: "Помогает тестировать новые версии",
         summaryTitle: "Мы посчитали ваши достижения",
         summaryText: "Уже открыто {n} из {total}. Посмотрите в личном кабинете."
     },

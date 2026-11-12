@@ -8,7 +8,8 @@ The format is based on Keep a Changelog. This project does not currently follow 
 
 ## [Unreleased]
 
-_No unreleased changes yet — add entries here as they land, then move them under a new version heading at release time._
+### Added
+- «Друг Centrio»: в Настройки → Система галочка «Участвовать в тестировании» — обновления чаще, новые функции первым, в тестовых версиях возможны ошибки. Тестировщики (отметились сами или добавлены владельцем) видят в профиле значок «Друг Centrio» и получают одноимённую ачивку.
 
 ## [3.8.1] - 2026-11-12
 

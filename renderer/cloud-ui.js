@@ -651,6 +651,8 @@ function createCloudUiApi({
         _applyPlanBadge(plan, isTeamPro)
         _applyProRing(isPro, isTeamPro)
         updateAvatarInModal(user?.avatar || null)
+        // «Друг Centrio» badge (renderer/beta-program.js)
+        document.dispatchEvent(new CustomEvent('cloud-profile-shown', { detail: { user } }))
 
         document.getElementById('cloudEditNameWrap').style.display = 'none'
         document.getElementById('cloudEditNameBtn').style.display  = 'flex'

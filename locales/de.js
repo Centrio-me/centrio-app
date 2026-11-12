@@ -1067,7 +1067,9 @@ module.exports = {
         invite_5: "Botschafter",
         invite_5Desc: "5 Freunde haben Pro bezahlt",
         telegram: "Zu Hause in Telegram",
-        telegramDesc: "Telegram mit dem Konto verknüpft"
+        telegramDesc: "Telegram mit dem Konto verknüpft",
+        beta_friend: "Freund von Centrio",
+        beta_friendDesc: "Hilft, neue Versionen zu testen"
     },
 
     onb: {

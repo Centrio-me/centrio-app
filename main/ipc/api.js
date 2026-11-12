@@ -149,6 +149,17 @@ function registerApiIpc() {
         return result
     })
 
+    // «Участвовать в тестировании» (3.8.2). The account is fetched again here so cloud.user (read by the updater for its
+    // channel) changes at once; joining also checks for an update, so a test version that is already out comes now.
+    ipcMain.handle('api-beta-set', async (event, token, enabled) => {
+        if (typeof enabled !== 'boolean') return { success: false, error: 'enabled must be a boolean' }
+        const result = await wrapApi(() => api.setBetaTester(token, enabled))
+        if (!result.success) return result
+        const me = await wrapApiAndPersistUser(() => api.me(token))
+        if (enabled) require('../services/updater').checkForUpdates().catch(() => {})
+        return { success: true, data: { betaTester: result.data?.betaTester === true, user: me.data?.user || null } }
+    })
+
     ipcMain.handle('api-refresh', async (event, refreshToken) => {
         return wrapApiAndPersistUser(() => api.refresh(refreshToken))
     })
