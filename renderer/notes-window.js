@@ -184,23 +184,54 @@ function createNotesWindow({ tGet, authorizedInvoke, getNotesApi }) {
         render()
     }
 
-    function open() {
+    // docked: a column at the right of the content area, beside the «Все мессенджеры» chat, which narrows to make room
+    let dockWatch = null
+    function placeDock() {
+        const area = document.getElementById('contentArea')
+        if (!area) return
+        const r = area.getBoundingClientRect()
+        const w = Math.round(Math.max(420, Math.min(760, r.width * 0.46)))
+        overlay.style.setProperty('--dock-top', `${r.top}px`)
+        overlay.style.setProperty('--dock-left', `${r.right - w}px`)
+        overlay.style.setProperty('--dock-h', `${r.height}px`)
+        overlay.style.setProperty('--dock-w', `${w}px`)
+        document.body.style.setProperty('--notes-dock-w', `${w + 8}px`)
+    }
+    function undock() {
+        overlay.classList.remove('is-docked')
+        document.body.classList.remove('notes-docked')
+        dockWatch?.disconnect(); dockWatch = null
+    }
+    function open({ docked = false } = {}) {
         const panel = document.getElementById('notesPanel')
         if (panel && panel.parentElement !== main) main.append(panel)
         panel?.classList.add('active')
         overlay.hidden = false
         document.body.classList.add('notes-window-open')
+        if (docked) {
+            overlay.classList.add('is-docked')
+            document.body.classList.add('notes-docked')
+            placeDock()
+            dockWatch?.disconnect()
+            dockWatch = new ResizeObserver(placeDock)
+            const area = document.getElementById('contentArea')
+            if (area) dockWatch.observe(area)
+            // the chat closed: the notes beside it close with it
+            const bodyWatch = new MutationObserver(() => { if (!document.body.classList.contains('all-inbox-chat-open')) { bodyWatch.disconnect(); hide() } })
+            bodyWatch.observe(document.body, { attributes: true, attributeFilter: ['class'] })
+        } else undock()
         loadFolders()
     }
 
     function hide() {
+        undock()
         overlay.hidden = true
         document.body.classList.remove('notes-window-open')
         document.getElementById('notesPanel')?.classList.remove('active')
     }
 
     close.addEventListener('click', hide)
-    overlay.addEventListener('mousedown', (e) => { if (e.target === overlay) hide() })
+    overlay.addEventListener('mousedown', (e) => { if (e.target === overlay && !overlay.classList.contains('is-docked')) hide() })
     document.addEventListener('keydown', (e) => {
         if (e.key !== 'Escape' || overlay.hidden) return
         if (document.querySelector('.notes-image-viewer:not([hidden])')) return

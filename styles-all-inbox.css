@@ -1128,3 +1128,16 @@ html[data-theme="light"] .aic-meta.is-floating .aic-check { color: #fff; }
 .aic-photo.is-empty.is-openable:hover { background: color-mix(in srgb, currentColor 13%, transparent); }
 /* a line between groups of a menu (the field's marks) */
 .aic-menu-sep { height: 1px; margin: 4px 8px; background: var(--border); }
+
+/* a round video message whose frame MAX has not drawn yet: a circle with the play mark, as the message looks in MAX */
+.aic-card.is-round {
+    width: 200px; height: 200px; min-width: 0; margin: 2px auto 4px; border-radius: 50%; justify-content: center;
+    background: color-mix(in srgb, currentColor 10%, transparent);
+}
+.aic-card.is-round .aic-card-info { position: absolute; left: 0; right: 0; bottom: 18px; align-items: center; }
+.aic-card.is-round .aic-card-name { display: none; }
+.aic-card.is-round { position: relative; }
+.aic-card.is-round .aic-card-icon { width: 56px; height: 56px; flex-basis: 56px; }
+.aic-card.is-round:hover { background: color-mix(in srgb, currentColor 16%, transparent); }
+.aic-card.is-round.is-loading .aic-card-icon { animation: aic-pulse 1s ease-in-out infinite; }
+@keyframes aic-pulse { 50% { opacity: .5; } }

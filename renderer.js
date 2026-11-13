@@ -4238,28 +4238,16 @@ function applyTabZoom(level) {
         const ok = await ipcRenderer.invoke('all-inbox:save-picture', { src, name }).catch(() => false)
         if (typeof done === 'function' && ok) done('Картинка сохранена')
     })
-    let notesDocked = false
     notesUiApiRef = bindNotesUi({
         store,
         tGet,
         authorizedInvoke,
         invokeIpc,
-        // beside an open «Все мессенджеры» chat the notes stand in the right panel, next to the conversation, instead of a
-        // window over it (owner 2026-11-13: «заметки/задачи рядом с чатом — места на экране стало больше»); tasks are there already
-        openRightPanel: () => {
-            if (document.body.classList.contains('all-inbox-chat-open')) {
-                const notesPanel = document.getElementById('notesPanel')
-                const home = document.getElementById('todosPanel')?.parentElement
-                if (notesPanel && home && notesPanel.parentElement !== home) home.append(notesPanel)
-                notesDocked = true
-                notesWindow.close()
-                openRightPanel('notes')
-                return
-            }
-            if (notesDocked) { notesDocked = false; closeRightPanel() }
-            notesWindow.open()
-        },
-        closeRightPanel: () => { if (notesDocked) { notesDocked = false; closeRightPanel() } else notesWindow.close() },
+        // beside an open «Все мессенджеры» chat the whole notes window (folders, list, editor) stands as a column next to
+        // the conversation instead of over it (Oleg, 2026-11-13: «универсальный чат + полноценное дерево заметок»); tasks
+        // open in the right panel beside them
+        openRightPanel: () => notesWindow.open({ docked: document.body.classList.contains('all-inbox-chat-open') }),
+        closeRightPanel: () => notesWindow.close(),
         onNotesChange: (list) => notesWindow.notesChanged(list),
         getUserIsPro: hasEffectivePro,
         requirePro

@@ -155,6 +155,9 @@ function createFolderBar({ panel, store, isOn, onSelect, onChange }) {
             const f = folders.find((x) => x.id === String(filter).slice(FOLDER_PREFIX.length))
             return f ? new Set(f.chats) : null
         },
+        // every chat in any own folder: the rest are «Неотсортированные»
+        sortedIds() { const ids = new Set(); for (const f of folders) for (const id of f.chats) ids.add(id); return ids },
+        hasFolders: () => folders.length > 0,
         exists: (filter) => String(filter).startsWith(FOLDER_PREFIX) && folders.some((f) => FOLDER_PREFIX + f.id === filter)
     }
 }

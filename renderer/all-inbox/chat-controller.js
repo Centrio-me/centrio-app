@@ -10,7 +10,7 @@ const { createChatView } = require('./chat-view')
 const { sameChat } = require('./same-chat')
 const { createPending, withPending } = require('./pending')
 const { isAway, isHidden, onAttentionChange } = require('../window-attention')
-const { toMessenger, runsOf } = require('./text-format')
+const { toMessenger, runsOf, entitiesOf } = require('./text-format')
 
 const CHAT_POLL_MS = 1500
 // a chat not shown by then is said to have not opened, with the way to the messenger itself
@@ -401,12 +401,15 @@ function createChatController({ state, webviewOf, host, ipcRenderer, onSubtitle 
         const cur = current
         if (!w || !cur || !m || !text) return false
         typingFor = cur.service
-        if (!KEYED_FORMATTING.has(cur.service) || typeof cur.adapter.EDIT === 'function') text = toMessenger(text, cur.service)
+        // Telegram edits through its own call: plain words and their marks as its entities; MAX types them with its keys
+        let entities = []
+        if (cur.service === 'telegram') ({ text, entities } = entitiesOf(text))
+        else if (!KEYED_FORMATTING.has(cur.service)) text = toMessenger(text, cur.service)
         if (!(await stillHere(w, cur))) return false
         const id = String(m.id).split('+')[0]
         let ok = false
         if (typeof cur.adapter.EDIT === 'function') {
-            ok = await run(w, cur.adapter.EDIT(id, text)) === true
+            ok = await run(w, cur.adapter.EDIT(id, text, entities)) === true
         } else if (cur.adapter.contextEdit) {
             if (await openMessageMenu(w, id) && await run(w, cur.adapter.MENU_ITEM('Редактировать'))) {
                 await wait(FOCUS_SETTLE_MS * 3)
@@ -482,7 +485,9 @@ function createChatController({ state, webviewOf, host, ipcRenderer, onSubtitle 
         typingFor = cur.service
         const out = KEYED_FORMATTING.has(cur.service) ? text : toMessenger(text, cur.service)
         const knownIds = lastRows.filter((r) => r.type === 'msg' && r.out).map((r) => r.id)
-        const pid = pending.add({ text: cur.service === 'whatsapp' ? out : toMessenger(text, ''), files, knownIds })
+        // matched by its plain words: the conversation shows WhatsApp's marks as formatting too (they doubled — the
+        // message waited for a text with asterisks that never came, Oleg 2026-11-13)
+        const pid = pending.add({ text: toMessenger(text, ''), files, knownIds })
         redraw()
         const ok = await deliver(w, out, files, reply, asFile, cur)
         if (!ok) pending.drop(pid)

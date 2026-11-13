@@ -409,14 +409,15 @@ const telegram = {
         try { input.initMessageReply({ replyToMsgId: mid }); return true; } catch (e) { return false; }
     })()`,
     // edit an own message (3.8.3) through Telegram's own edit; Telegram itself refuses what may not be edited
-    EDIT: (id, text) => `(function () {
-        var mid = Number(${JSON.stringify(String(id))}), text = ${JSON.stringify(String(text))};
+    EDIT: (id, text, entities = []) => `(function () {
+        var mid = Number(${JSON.stringify(String(id))}), text = ${JSON.stringify(String(text))}, entities = ${JSON.stringify(entities)};
         var c = window.appImManager && appImManager.chat;
         if (!mid || !c || !text) return false;
         var M = rootScope.managers;
         return M.appMessagesManager.getMessageByPeer(c.peerId, mid).then(function (m) {
             if (!m || m._ !== 'message') return false;
-            return Promise.resolve(M.appMessagesManager.editMessage(m, text)).then(function () { return true; });
+            // the formatting goes as Telegram's own entities (bold, italic, underline, strikethrough)
+            return Promise.resolve(M.appMessagesManager.editMessage(m, text, entities.length ? { entities: entities } : {})).then(function () { return true; });
         }).catch(function () { return false; });
     })()`,
     // a reaction (3.8.3) through Telegram's own; the same reaction again takes it off
@@ -637,7 +638,9 @@ const max = {
                     // card that plays in our window; a poster of its player, if there is one, is the picture instead
                     try {
                         var rv = roundCanvas.closest('div.videoMessage').querySelector('video');
-                        if (rv && rv.poster) roundPic = __ciPicture('mxr' + id, { src: rv.poster, complete: false, naturalWidth: 0, tagName: 'IMG' });
+                        var kept = (window.__ciMxRoundPic || {})[id];
+                        if (kept) roundPic = kept;
+                        else if (rv && rv.poster) roundPic = __ciPicture('mxr' + id, { src: rv.poster, complete: false, naturalWidth: 0, tagName: 'IMG' });
                         else if (roundCanvas.width) {
                             var probe = document.createElement('canvas'); probe.width = 8; probe.height = 8;
                             var pc = probe.getContext('2d'); pc.drawImage(roundCanvas, 0, 0, 8, 8);
@@ -923,14 +926,29 @@ const max = {
         var round = !vd && w && w.querySelector('div.videoMessage');
         if (round) {
             return new Promise(function (resolve) {
-                var rv0 = round.querySelector('video');
-                var addr = function () { var v = round.querySelector('video'); var a = v && (v.currentSrc || v.src || ''); return /^https:/i.test(a) ? { v: v, a: a } : null; };
-                if (!addr()) { if (rv0) rv0.muted = true; (round.querySelector('button') || round).click(); }
+                // MAX plays it aloud in the hidden tab once pressed (Oleg heard only its sound, 2026-11-13): every player in
+                // it is kept silent and paused; a blob: address of the page is taken too
+                var hush = function () { var vs = round.querySelectorAll('video, audio'); for (var h = 0; h < vs.length; h++) { vs[h].muted = true; } };
+                var addr = function () { var v = round.querySelector('video'); var a = v && (v.currentSrc || v.src || ''); return /^(https:|blob:)/i.test(a) ? { v: v, a: a } : null; };
+                hush();
+                if (!addr()) (round.querySelector('button') || round).click();
                 var started = Date.now();
                 (function wait() {
+                    hush();
                     var got = addr();
-                    if (!got) { if (Date.now() - started > 6000) return resolve(null); return setTimeout(wait, 150); }
+                    if (!got) { if (Date.now() - started > 6000) return resolve(null); return setTimeout(wait, 100); }
                     try { got.v.pause(); } catch (e) {}
+                    // its frame from now on stands for the round message (MAX draws none until it plays)
+                    try {
+                        var shot = function () {
+                            if (!got.v.videoWidth) return;
+                            var c = document.createElement('canvas'); c.width = 240; c.height = 240;
+                            var side = Math.min(got.v.videoWidth, got.v.videoHeight);
+                            c.getContext('2d').drawImage(got.v, (got.v.videoWidth - side) / 2, (got.v.videoHeight - side) / 2, side, side, 0, 0, 240, 240);
+                            (window.__ciMxRoundPic || (window.__ciMxRoundPic = {}))[${JSON.stringify(String(id))}] = c.toDataURL('image/jpeg', 0.82);
+                        };
+                        if (got.v.readyState >= 2) shot(); else got.v.addEventListener('loadeddata', shot, { once: true });
+                    } catch (e) {}
                     fetch(got.a, { credentials: 'omit' }).then(function (r) { return r.ok ? r.blob() : null; }).then(function (blob) {
                         if (!blob || !blob.size || blob.size > ${MEDIA_MAX_BYTES}) return resolve(null);
                         if (blob.type.indexOf('video/') !== 0) blob = new Blob([blob], { type: 'video/mp4' });

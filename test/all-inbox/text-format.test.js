@@ -66,3 +66,16 @@ test('a marked text whose words differ from the plain text is not trusted', () =
     assert.equal(markedFor('**а ** б', 'а б'), '')
     assert.equal(markedFor('а б', 'а б'), '')
 })
+
+test('a marked text becomes Telegram\'s plain text with its entities', () => {
+    const { entitiesOf } = require('../../renderer/all-inbox/text-format')
+    assert.deepEqual(entitiesOf('a **b __c__** ++d++'), {
+        text: 'a b c d',
+        entities: [
+            { _: 'messageEntityBold', offset: 2, length: 3 },
+            { _: 'messageEntityItalic', offset: 4, length: 1 },
+            { _: 'messageEntityUnderline', offset: 6, length: 1 }
+        ]
+    })
+    assert.deepEqual(entitiesOf('просто'), { text: 'просто', entities: [] })
+})

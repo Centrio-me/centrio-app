@@ -93,7 +93,9 @@ function createComposer({ root, onSend, onEdit = null, onPickFiles, onDescribeFi
         replying.style.removeProperty('--quote')
         q('.aic-replying-title').textContent = 'Редактирование'
         q('.aic-replying-text').textContent = m.text
-        input.value = m.text
+        // a formatted message is edited with its marks, so its bold and the rest stay (Oleg, 2026-11-13: the formatting
+        // was lost on editing)
+        input.value = m.marked || m.text
         autosize(); refreshSend()
         input.focus()
         input.setSelectionRange(input.value.length, input.value.length)
@@ -206,7 +208,7 @@ function createComposer({ root, onSend, onEdit = null, onPickFiles, onDescribeFi
     async function saveEdit() {
         const m = editing
         const text = input.value.trim()
-        if (!text || text === String(m.text || '').trim()) { endEdit(); return }
+        if (!text || text === String(m.marked || m.text || '').trim()) { endEdit(); return }
         sending = true
         form.classList.add('is-sending')
         const ok = await onEdit(m, text).catch(() => false)

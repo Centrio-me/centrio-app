@@ -50,6 +50,8 @@ module.exports = {
             search: 'Поиск по чатам',
             all: 'Все',
             unread: 'Непро­читанные',
+            // chats in no folder of the person's own (Oleg, 2026-11-13: «очень помогает в упорядочивании»)
+            unsorted: 'Неотсор­тированные',
             close: 'Закрыть',
             empty: 'Здесь пока пусто',
             noSources: 'Откройте Telegram, WhatsApp, MAX или ВКонтакте: их чаты появятся здесь',
@@ -114,6 +116,7 @@ module.exports = {
             search: 'Search chats',
             all: 'All',
             unread: 'Unread',
+            unsorted: 'Unsorted',
             close: 'Close',
             empty: 'Nothing here yet',
             noSources: 'Open Telegram, WhatsApp, MAX or VK: their chats appear here',

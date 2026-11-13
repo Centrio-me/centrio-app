@@ -390,7 +390,11 @@ function createAllInbox({ state, switchTab, tGet, ipcRenderer, canOpen, store = 
         const known = withChannelKinds(sources, channelMemory)
         const all = mergeInbox(known, Date.now())
         const chatIds = folderBar ? folderBar.chatsOf(filter) : null
-        const list = filterInbox(all, { unreadOnly: filter === 'unread', kind: chatIds ? '' : filter, chatIds, query, messengerId: source })
+        // «Неотсортированные»: the chats in none of the person's folders
+        const sorted = folderBar ? folderBar.sortedIds() : new Set()
+        const unsorted = filter === 'unsorted'
+        const list = filterInbox(all, { unreadOnly: filter === 'unread', kind: chatIds || unsorted ? '' : filter, chatIds, query, messengerId: source })
+            .filter((c) => !unsorted || !sorted.has(c.id))
         if (clearEl) clearEl.hidden = !query
         renderSources(all)
         const unreadChats = all.filter((c) => c.unread > 0 && !c.muted).length
@@ -409,9 +413,14 @@ function createAllInbox({ state, switchTab, tGet, ipcRenderer, canOpen, store = 
                 else if (c.kind === 'group') byKind.groups++
                 else if (c.kind === 'channel') byKind.channels++
             }
+            let unsortedUnread = 0
+            for (const id of unreadIds) if (!sorted.has(id)) unsortedUnread++
             for (const b of filterButtons) {
                 const f = b.dataset.aiFilter
-                rail.setCount(b, f === 'all' || f === 'unread' ? unreadChats : (byKind[f] || 0))
+                // «Все» showed the same count as «Непрочитанные» right under it (Oleg, 2026-11-13): only the latter has it
+                rail.setCount(b, f === 'all' ? 0 : f === 'unread' ? unreadChats : f === 'unsorted' ? unsortedUnread : (byKind[f] || 0))
+                // «Неотсортированные» means something only once there are own folders
+                if (f === 'unsorted') b.hidden = !(folderBar && folderBar.hasFolders())
             }
             if (folderBar) folderBar.setCounts((ids) => { let n = 0; for (const id of ids) if (unreadIds.has(id)) n++; return n })
         }

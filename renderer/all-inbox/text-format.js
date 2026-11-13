@@ -96,4 +96,25 @@ function markedFor(marked, plain) {
     return runs.map((r) => r.text).join('') === plain ? marked : ''
 }
 
-module.exports = { FORMATS, toMessenger, wrapSelection, runsOf, fromWhatsApp, markedFor }
+const ENTITY = { bold: 'messageEntityBold', italic: 'messageEntityItalic', underline: 'messageEntityUnderline', strike: 'messageEntityStrike' }
+/**
+ * Telegram's own form of a formatted text: the plain words and where each mark lies (in UTF-16 units, as Telegram
+ * counts) — an edit keeps the formatting this way, as Telegram's own editing does.
+ */
+function entitiesOf(marked) {
+    const runs = runsOf(marked)
+    let text = ''
+    const open = {}
+    const entities = []
+    const close = (name) => { if (open[name] === undefined) return; entities.push({ _: ENTITY[name], offset: open[name], length: text.length - open[name] }); delete open[name] }
+    for (const run of runs) {
+        for (const name of Object.keys(open)) if (!run.marks.includes(name)) close(name)
+        for (const name of run.marks) if (open[name] === undefined) open[name] = text.length
+        text += run.text
+    }
+    for (const name of Object.keys(open)) close(name)
+    entities.sort((a, b) => a.offset - b.offset)
+    return { text, entities }
+}
+
+module.exports = { FORMATS, toMessenger, wrapSelection, runsOf, fromWhatsApp, markedFor, entitiesOf }

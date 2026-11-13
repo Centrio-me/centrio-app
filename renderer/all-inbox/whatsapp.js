@@ -37,23 +37,48 @@ function __waMsg(C, id) {
 function __waFile(m, waitMs) {
     if (!m || !m.mediaData) return Promise.resolve(null);
     var md = m.mediaData;
-    function blobNow() {
-        var url = md.renderableUrl || md.staticUrl;
-        if (md.mediaStage !== 'RESOLVED' || !url) return null;
+    var type = String(m.mimetype || '').split(';')[0].trim();
+    function asBlob(x) { return x instanceof Blob ? x : (x ? new Blob([x], { type: type }) : null); }
+    // the file WhatsApp already holds: its own blob (voice messages have no address, they waited for one in vain and
+    // only turned, Oleg 2026-11-13), or the address it draws from
+    function held() {
+        var ob = md.mediaBlob;
+        try {
+            if (ob instanceof Blob) return Promise.resolve(ob);
+            if (ob && ob._blob instanceof Blob) return Promise.resolve(ob._blob);
+            if (ob && typeof ob.forceToBlob === 'function') return Promise.resolve(ob.forceToBlob()).then(asBlob).catch(function () { return null; });
+        } catch (e) {}
+        var url = md.renderableUrl || md.staticUrl || (ob && typeof ob.url === 'function' ? ob.url() : '');
+        if (!url) return null;
         return fetch(url).then(function (r) { return r.ok ? r.blob() : null; }).catch(function () { return null; });
     }
-    var ready = blobNow();
-    if (ready) return ready;
-    try { if (md.mediaStage === 'NEED_POKE' && typeof m.resumeRemoteUpload === 'function') Promise.resolve(m.resumeRemoteUpload()).catch(function () {}); } catch (e) {}
-    try { if (typeof m.downloadMedia === 'function') Promise.resolve(m.downloadMedia({ downloadEvenIfExpensive: true, rmrReason: 1, isUserInitiated: true })).catch(function () {}); } catch (e) {}
-    var until = Date.now() + (waitMs || 20000);
-    return new Promise(function (resolve) {
-        (function wait() {
-            var b = blobNow();
-            if (b) { b.then(resolve); return; }
-            if (Date.now() > until) { resolve(null); return; }
-            setTimeout(wait, 400);
-        })();
+    // downloaded and decrypted the way WhatsApp itself does, straight from its server
+    function fetched() {
+        try {
+            var DM = window.require('WAWebDownloadManager').downloadManager;
+            var quiet = new Proxy({}, { get: function () { return function () {}; } });
+            return Promise.resolve(DM.downloadAndMaybeDecrypt({ directPath: m.directPath, encFilehash: m.encFilehash, filehash: m.filehash,
+                mediaKey: m.mediaKey, mediaKeyTimestamp: m.mediaKeyTimestamp, type: m.type, signal: new AbortController().signal, downloadQpl: quiet, qpl: quiet }))
+                .then(asBlob).catch(function () { return null; });
+        } catch (e) { return Promise.resolve(null); }
+    }
+    return Promise.resolve(held()).then(function (b) {
+        if (b && b.size) return b;
+        return fetched().then(function (f) {
+            if (f && f.size) return f;
+            // gone from WhatsApp's server: the phone is asked to send it again — what WhatsApp itself does on a click
+            try { if (md.mediaStage === 'NEED_POKE' && typeof m.resumeRemoteUpload === 'function') Promise.resolve(m.resumeRemoteUpload()).catch(function () {}); } catch (e) {}
+            try { if (typeof m.downloadMedia === 'function') Promise.resolve(m.downloadMedia({ downloadEvenIfExpensive: true, rmrReason: 1, isUserInitiated: true })).catch(function () {}); } catch (e) {}
+            var until = Date.now() + (waitMs || 20000);
+            return new Promise(function (resolve) {
+                (function wait() {
+                    var h = md.mediaStage === 'RESOLVED' ? held() : null;
+                    if (h) { Promise.resolve(h).then(function (x) { if (x && x.size) resolve(x); else if (Date.now() > until) resolve(null); else setTimeout(wait, 600); }); return; }
+                    if (Date.now() > until) { resolve(null); return; }
+                    setTimeout(wait, 400);
+                })();
+            });
+        });
     });
 }
 // the reactions of a message from WhatsApp's own store: emoji, how many, yours (3.8.3)
@@ -239,6 +264,17 @@ function whatsappChat({ AVATAR_HELPER, IMAGE_HELPER }) {
                 if (!pic && m && (kind === 'photo' || kind === 'video' || kind === 'sticker')) {
                     var file = m.mediaData && (m.mediaData.renderableUrl || m.mediaData.staticUrl);
                     if (file && /^(blob:|https:)/.test(file)) { __ciFetchPicture('wa' + id, file); stored = __ciImg['wa' + id] && __ciImg['wa' + id].data || ''; }
+                    // no address: the real photo is taken once, in the background, from WhatsApp's store or its server — older photos
+                    // stayed blurred little previews (Oleg, 2026-11-13); the next read shows it
+                    if (!stored && kind === 'photo') {
+                        var full = window.__ciWaFull || (window.__ciWaFull = {});
+                        if (full[id] && full[id] !== 1) { __ciFetchPicture('wa' + id, full[id]); stored = __ciImg['wa' + id] && __ciImg['wa' + id].data || ''; }
+                        else if (!full[id] && (window.__ciWaFullBusy || 0) < 3) {
+                            full[id] = 1;
+                            window.__ciWaFullBusy = (window.__ciWaFullBusy || 0) + 1;
+                            __waFile(m, 15000).then(function (k) { return function (blob) { window.__ciWaFullBusy--; if (blob && blob.size) window.__ciWaFull[k] = URL.createObjectURL(blob); }; }(id));
+                        }
+                    }
                     if (!stored && kind !== 'sticker' && /^\\/9j\\//.test(String(m.body || ''))) stored = 'data:image/jpeg;base64,' + m.body;
                 }
                 if (kind === 'text' && !text) continue;
