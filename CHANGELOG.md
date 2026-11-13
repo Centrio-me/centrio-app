@@ -10,6 +10,18 @@ The format is based on Keep a Changelog. This project does not currently follow 
 
 _No unreleased changes yet — add entries here as they land, then move them under a new version heading at release time._
 
+## [3.8.3-beta.8] - 2026-11-13 (тестовая, только «Друзья Centrio»)
+
+### Fixed
+- Тройной сплит: switchTab в сплите клал мессенджер в зону и не менял activeTabId — окно чата сразу закрывалось (MAX, WhatsApp). В сплите вкладка держится невидимо под окном (inbox-chat-host), окно закрывается по centrio-switch-request.
+- Во вкладке не тот чат: автоповтор открытия до 3 раз (второй — без запомненного адреса).
+- WhatsApp: полная картинка и голосовые/видео из хранилища WhatsApp (__waFile: resumeRemoteUpload для NEED_POKE + downloadMedia).
+- MAX: кружки — пустой canvas не даёт чёрный овал, проигрывание в окне (нажатие videoMessage, currentSrc).
+
+### Added
+- Форматирование: поле (Ctrl+B/I/U, Ctrl+Shift+X, меню), отправка — TG и MAX набором с клавишами (зачёркнутый в TG — набранным «~~»), WA — *_~; входящее форматирование (__ciMarked, fromWhatsApp).
+- Заметка из сообщения с картинками; заметки в правой панели рядом с открытым чатом.
+
 ## [3.8.3-beta.7] - 2026-11-13 (тестовая, только «Друзья Centrio»)
 
 Две проверки тестировщиками (дизайн, работоспособность, скорость; затем удобство, внешний вид, баги режима).
