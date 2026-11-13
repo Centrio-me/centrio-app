@@ -1141,3 +1141,6 @@ html[data-theme="light"] .aic-meta.is-floating .aic-check { color: #fff; }
 .aic-card.is-round:hover { background: color-mix(in srgb, currentColor 16%, transparent); }
 .aic-card.is-round.is-loading .aic-card-icon { animation: aic-pulse 1s ease-in-out infinite; }
 @keyframes aic-pulse { 50% { opacity: .5; } }
+
+/* the name of a topic of a group with topics, where the topic changes (like Telegram's separator) */
+.aic-note.is-topic > span { background: color-mix(in srgb, var(--accent, #766ac8) 38%, rgba(0, 0, 0, .35)); font-weight: 650; padding: 4px 14px; }

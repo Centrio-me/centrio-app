@@ -476,7 +476,7 @@ function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab
             rows.forEach((r, i) => {
                 if (r.type === 'day') { dayLabel = r.label; const day = el('div', 'aic-day'); day.append(el('span', '', r.label)); frag.append(day); return }
                 // an event in the chat: a small note in the middle, like Telegram's service messages
-                if (r.type === 'note') { const note = el('div', 'aic-note'); note.append(el('span', '', r.text)); frag.append(note); return }
+                if (r.type === 'note') { const note = el('div', r.topic ? 'aic-note is-topic' : 'aic-note'); note.append(el('span', '', r.text)); frag.append(note); return }
                 const node = renderMessage(r, ctx)
                 if (startId && r.id === startId) {
                     startBar = el('div', 'aic-unread-bar')

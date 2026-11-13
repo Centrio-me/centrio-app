@@ -119,3 +119,15 @@ test('a reaction given as a picture (MAX) is kept, other pictures are not (3.8.3
     const m = rows.find((r) => r.type === 'msg')
     assert.deepStrictEqual(m.reactions, [{ e: '', img, n: '2', mine: true }])
 })
+
+test('the topic of a group with topics stands as a pill after the day mark', () => {
+    const NOW = Date.UTC(2026, 10, 13, 12, 0, 0)
+    const rows = buildTimeline([
+        { id: '1', kind: 'text', text: 'вчера', at: NOW - 86400000 },
+        { id: '2', kind: 'text', text: 'привет', at: NOW - 60000, topic: '📆 Расписание' },
+        { id: '3', kind: 'text', text: 'ещё', at: NOW - 30000 }
+    ], NOW)
+    const shape = rows.map((r) => r.type + (r.topic ? ':topic' : ''))
+    assert.deepEqual(shape, ['day', 'msg', 'day', 'note:topic', 'msg', 'msg'])
+    assert.equal(rows[3].text, '📆 Расписание')
+})

@@ -105,7 +105,7 @@ function buildTimeline(raw, now) {
             if (!text) continue
             // an event in the chat (someone joined, a gift, a pinned message) is a small note; a date divides the days
             // the lines of a note (a stranger's card) stay lines
-            if (m.note === true) { rows.push({ type: 'note', text: text.slice(0, 400), id: String(m.id) }); continue }
+            if (m.note === true) { rows.push({ type: 'note', text: text.slice(0, 400), id: String(m.id), topic: m.topic === true }); continue }
             rows.push({ type: 'day', label: text, id: m.id })
             lastDay = text
             continue
@@ -125,6 +125,8 @@ function buildTimeline(raw, now) {
         if (!text && kind === 'text' && !cleanWebpage(m.webpage)) continue
         const poll = kind === 'poll' ? cleanPoll(m.poll) : null
         if (kind === 'poll' && !poll) continue
+        // the topic of a group with topics, where it changes (Telegram's separator): a pill after the day's mark
+        if (typeof m.topic === 'string' && m.topic) rows.push({ type: 'note', text: m.topic.slice(0, 120), id: `th${m.id}`, topic: true })
         rows.push({
             type: 'msg',
             id: String(m.id),

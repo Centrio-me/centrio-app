@@ -314,6 +314,14 @@ const telegram = {
                 out.push({ id: 's' + mid, kind: 'service', note: true, text: String(noteEl.innerText || '').split('\\n').map(function (x) { return x.trim(); }).filter(Boolean).join(' · ').slice(0, 300), at: at });
                 continue;
             }
+            // a group with topics (a forum): Telegram marks the place where the topic changes with a separator holding its
+            // name; it stands here as a pill with that name — all topics ran together into one feed (owner, 2026-11-13)
+            // (carried by the message, so the timeline puts it after the day's mark, as Telegram does)
+            var threadSep = b.querySelector('chat-thread-separator'), topic = '';
+            if (threadSep) {
+                var topicName = __ciText(threadSep.querySelector('.peer-title-inner')), topicIcon = threadSep.querySelector('[data-sticker-emoji]');
+                if (topicName) topic = (topicIcon ? topicIcon.getAttribute('data-sticker-emoji') + ' ' : '') + topicName;
+            }
             var kind = 'text';
             // a message of one to three emoji: Telegram draws them as big animated stickers and keeps no text — the emoji
             // are on the stickers (data-sticker-emoji); it is a text, drawn big by our window (owner, 2026-11-12: «пустое место»)
@@ -321,7 +329,9 @@ const telegram = {
             // a round video message carries a sound element too: it is a video
             if (bigEmoji) kind = 'text';
             else if (/ round /.test(cls)) kind = 'video';
-            else if (b.querySelector('poll-element, .poll')) kind = 'poll';
+            // a poll: the old elements, or the newer layout (class poll-message on the bubble; the poll came out as plain text
+            // glued together — owner, 2026-11-13)
+            else if (/ poll-message /.test(cls) || b.querySelector('poll-element, .poll, .poll-message-content')) kind = 'poll';
             else if (/ voice-message /.test(cls) || b.querySelector('.audio.is-voice, .voice')) kind = 'voice';
             else if (/ sticker /.test(cls) || /emoji-big/.test(cls)) kind = 'sticker';
             else if (/ video /.test(cls) || own(b, 'video')) kind = 'video';
@@ -338,6 +348,7 @@ const telegram = {
             var size = img ? img.getBoundingClientRect() : null;
             var msg = {
                 id: mid,
+                topic: topic,
                 at: at,
                 out: / is-out /.test(cls),
                 read: / is-read /.test(cls),
@@ -387,6 +398,7 @@ const telegram = {
                     var part = {};
                     for (var key in msg) part[key] = msg[key];
                     part.id = dmid;
+                    part.topic = di === 0 ? msg.topic : '';
                     part.name = __ciText(dc.querySelector('.document-name'));
                     part.size = __ciText(dc.querySelector('.document-size'));
                     part.media = thumb && thumb.tagName === 'IMG' ? __ciPicture('tg' + dmid, thumb) : '';
