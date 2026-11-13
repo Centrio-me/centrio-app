@@ -10,6 +10,22 @@ The format is based on Keep a Changelog. This project does not currently follow 
 
 _No unreleased changes yet — add entries here as they land, then move them under a new version heading at release time._
 
+## [3.8.3-beta.9] - 2026-11-13 (тестовая, только «Друзья Centrio»)
+
+### Fixed
+- WhatsApp: форматированные сообщения задваивались — отправляемое сверяется по простому тексту.
+- Правка сохраняет форматирование: поле получает текст с метками; Telegram — editMessage с entities, MAX — набор клавишами.
+- WhatsApp: файл — mediaBlob, затем downloadAndMaybeDecrypt (как сам WhatsApp), затем просьба телефону; старые фото докачиваются в фоне.
+- MAX: кружки — плеер вкладки заглушён и на паузе, берётся и blob:, кадр запоминается; кружок рисуется кругом.
+- Вложения — рядами (flex-wrap), а не одной строкой с прокруткой.
+
+### Added
+- Фильтр «Неотсортированные» (чаты вне своих папок).
+- Окно заметок колонкой рядом с открытым чатом (.notes-window.is-docked).
+
+### Changed
+- Счётчик у «Все» убран (дублировал «Непрочитанные»).
+
 ## [3.8.3-beta.8] - 2026-11-13 (тестовая, только «Друзья Centrio»)
 
 ### Fixed
