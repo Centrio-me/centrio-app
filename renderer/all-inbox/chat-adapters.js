@@ -101,6 +101,24 @@ function __ciCleanText(el, drop) {
     __ciEmojiText(clone);
     return String(clone.innerText || clone.textContent || '').replace(/\\n{3,}/g, '\\n\\n').trim();
 }
+// the same text with our marks around its bold, italic, underlined and struck-through parts (Telegram's and MAX's own
+// tags), or '' when it has none; our window checks its words against the plain text before using it (3.8.3)
+function __ciMarked(el, drop) {
+    if (!el || !el.querySelector('strong, em, u, del, s, strike, .bold, .italic, .underline, .strikethrough')) return '';
+    var clone = el.cloneNode(true);
+    if (drop) { var gone = clone.querySelectorAll(drop); for (var i = 0; i < gone.length; i++) gone[i].remove(); }
+    __ciEmojiText(clone);
+    var marks = [['strong, .bold', '**'], ['em, .italic', '__'], ['u, .underline', '++'], ['del, s, strike, .strikethrough', '~~']];
+    for (var k = 0; k < marks.length; k++) {
+        var nodes = clone.querySelectorAll(marks[k][0]);
+        for (var j = 0; j < nodes.length; j++) {
+            if (!String(nodes[j].textContent || '').trim()) continue;
+            nodes[j].insertBefore(document.createTextNode(marks[k][1]), nodes[j].firstChild);
+            nodes[j].appendChild(document.createTextNode(marks[k][1]));
+        }
+    }
+    return String(clone.innerText || clone.textContent || '').replace(/\\n{3,}/g, '\\n\\n').trim();
+}
 `
 
 const telegram = {
@@ -315,6 +333,7 @@ const telegram = {
                 replyTitle: replyEl ? __ciText(replyEl.querySelector('.reply-title')).slice(0, 80) : '',
                 replyColor: replyEl ? __ciRgb(getComputedStyle(replyEl).backgroundColor) : '',
                 text: bigEmoji || __ciCleanText(b.querySelector('.message'), '.time, .reply, .reactions, .name, .bubble-name-forwarded, .document, .audio, .webpage, .webpage-preview'),
+                marked: bigEmoji ? '' : __ciMarked(b.querySelector('.message'), '.time, .reply, .reactions, .name, .bubble-name-forwarded, .document, .audio, .webpage, .webpage-preview'),
                 name: kind === 'contact' ? __ciText(b.querySelector('.contact-name, .contact .name')) || 'Контакт' : __ciText(b.querySelector('.document-name')),
                 phone: kind === 'contact' ? __ciText(b.querySelector('.contact-number, .contact .number')) : '',
                 size: __ciText(b.querySelector('.document-size')),
@@ -612,7 +631,22 @@ const max = {
                 var videoEl = !album && tiles.length === 1 ? tiles[0].querySelector('video') : null;
                 var roundCanvas = !contactBox && !album && !gridPic ? w.querySelector('div.videoMessage canvas') : null;
                 var roundPic = '';
-                if (roundCanvas) { try { roundPic = roundCanvas.width ? roundCanvas.toDataURL('image/jpeg', 0.82) : ''; } catch (e) { roundPic = ''; } }
+                if (roundCanvas) {
+                    // MAX draws the frame of a round message only once it plays: before that the canvas is empty and its
+                    // copy was a black oval (owner 2026-11-13) — an empty one gives no picture, the message shows as a video
+                    // card that plays in our window; a poster of its player, if there is one, is the picture instead
+                    try {
+                        var rv = roundCanvas.closest('div.videoMessage').querySelector('video');
+                        if (rv && rv.poster) roundPic = __ciPicture('mxr' + id, { src: rv.poster, complete: false, naturalWidth: 0, tagName: 'IMG' });
+                        else if (roundCanvas.width) {
+                            var probe = document.createElement('canvas'); probe.width = 8; probe.height = 8;
+                            var pc = probe.getContext('2d'); pc.drawImage(roundCanvas, 0, 0, 8, 8);
+                            var px = pc.getImageData(0, 0, 8, 8).data, lit = 0;
+                            for (var q = 0; q < px.length; q += 4) if (px[q] + px[q + 1] + px[q + 2] > 30) lit++;
+                            roundPic = lit > 4 ? roundCanvas.toDataURL('image/jpeg', 0.82) : '';
+                        }
+                    } catch (e) { roundPic = ''; }
+                }
                 if (videoEl || roundCanvas) kind = 'video';
                 var videoLen = (function () {
                     var label = w.querySelector('[class*=duration], [class*=Duration]');
@@ -641,6 +675,7 @@ const max = {
                         return '';
                     })(),
                     text: text,
+                    marked: textEl ? __ciMarked(textEl, '') : '',
                     // the message this one answers (3.8.3): MAX draws it as a button with the author and a line of text
                     reply: (function () {
                         var mark = w.querySelector('.bubbleContent .link > .mark');
@@ -884,6 +919,29 @@ const max = {
         // a video: MAX's player in the message already holds the file's address (3.8.3)
         var vd = w && w.querySelector('[class*=grid] video, div.video video');
         var vsrc = vd && (vd.currentSrc || (vd.querySelector('source') || {}).src || vd.src || '');
+        // a round video message: its player gets the file once pressed — pressed silently, the address taken, paused
+        var round = !vd && w && w.querySelector('div.videoMessage');
+        if (round) {
+            return new Promise(function (resolve) {
+                var rv0 = round.querySelector('video');
+                var addr = function () { var v = round.querySelector('video'); var a = v && (v.currentSrc || v.src || ''); return /^https:/i.test(a) ? { v: v, a: a } : null; };
+                if (!addr()) { if (rv0) rv0.muted = true; (round.querySelector('button') || round).click(); }
+                var started = Date.now();
+                (function wait() {
+                    var got = addr();
+                    if (!got) { if (Date.now() - started > 6000) return resolve(null); return setTimeout(wait, 150); }
+                    try { got.v.pause(); } catch (e) {}
+                    fetch(got.a, { credentials: 'omit' }).then(function (r) { return r.ok ? r.blob() : null; }).then(function (blob) {
+                        if (!blob || !blob.size || blob.size > ${MEDIA_MAX_BYTES}) return resolve(null);
+                        if (blob.type.indexOf('video/') !== 0) blob = new Blob([blob], { type: 'video/mp4' });
+                        var fr = new FileReader();
+                        fr.onload = function () { resolve({ data: String(fr.result), mime: blob.type }); };
+                        fr.onerror = function () { resolve(null); };
+                        fr.readAsDataURL(blob);
+                    }).catch(function () { resolve(null); });
+                })();
+            });
+        }
         if (vd && /^https:/i.test(vsrc)) {
             return fetch(vsrc, { credentials: 'omit' }).then(function (r) { return r.ok ? r.blob() : null; }).then(function (blob) {
                 if (!blob || !blob.size || blob.size > ${MEDIA_MAX_BYTES}) return null;

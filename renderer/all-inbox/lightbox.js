@@ -22,7 +22,8 @@ function galleryOf(rows) {
         if (r.type !== 'msg') continue
         const who = { author: r.out ? '' : r.author, time: r.time, out: r.out }
         if (r.album) for (const a of r.album) { if (a.src) out.push({ src: a.src, picture: a.picture || '', ...who }) }
-        else if (r.kind === 'photo' && r.media) out.push({ src: r.media, picture: r.picture || '', ...who })
+        // a WhatsApp photo the page never drew has no small copy, only its key: it is shown once the full one comes
+        else if (r.kind === 'photo' && (r.media || r.picture)) out.push({ src: r.media || '', picture: r.picture || '', ...who })
     }
     return out
 }
@@ -97,7 +98,8 @@ function createLightbox({ root, onPicture }) {
         dropVideo()
         img.hidden = false
         resetZoom()
-        img.src = item.src
+        if (item.src) img.src = item.src
+        else img.removeAttribute('src')
         who.textContent = [item.out ? 'Вы' : (item.author || fallbackName), item.time].filter(Boolean).join(' · ')
         counter.textContent = items.length > 1 ? `${at + 1} из ${items.length}` : ''
         prev.hidden = next.hidden = items.length < 2
@@ -107,10 +109,10 @@ function createLightbox({ root, onPicture }) {
     }
 
     /** @param {string} [name] who the photos are from when a message names no author (a private chat, a channel) */
-    function open(gallery, src, name = '') {
+    function open(gallery, src, name = '', picture = '') {
         fallbackName = name
-        items = gallery.length ? gallery : [{ src, picture: '', author: '', time: '', out: false }]
-        const start = Math.max(0, items.findIndex((g) => g.src === src))
+        items = gallery.length ? gallery : [{ src, picture, author: '', time: '', out: false }]
+        const start = Math.max(0, items.findIndex((g) => (picture && g.picture === picture) || (src && g.src === src)))
         box.hidden = false
         box.focus()
         show(start)

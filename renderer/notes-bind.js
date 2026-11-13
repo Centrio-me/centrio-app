@@ -878,6 +878,18 @@ function bindNotesUi({ store, tGet, authorizedInvoke, invokeIpc, openRightPanel,
         moveToFolder(id, folderId) { return patchNoteById(id, { folderId: folderId || null }) },
         getNotes: () => notes,
         // a note made of a message in «Все мессенджеры» (3.8.3)
+        // pictures given as data URLs (a message's photos) are added to the note open now; returns how many were added
+        async addPictures(dataUrls) {
+            if (!activeNote || !invokeIpc) return 0
+            const noteId = activeNote.id
+            let added = 0
+            for (const dataUrl of dataUrls || []) {
+                if (typeof dataUrl !== 'string' || !dataUrl.startsWith('data:image/')) continue
+                const saved = await invokeIpc('notes-images:save', noteId, dataUrl).catch(() => null)
+                if (saved && saved.success) { added++; if (imagesFor === noteId) addThumb(saved) }
+            }
+            return added
+        },
         createFromText: (title, body) => createNote('NOTE', { title: String(title || '').slice(0, 120), body: String(body || '') }),
         reload: () => loadNotes(),
         // Вызывается после логина/логаута/синка — сбрасываем кэш, чтобы

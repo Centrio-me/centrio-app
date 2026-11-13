@@ -31,6 +31,31 @@ function __waMsg(C, id) {
     }
     return null;
 }
+// The file of a message from WhatsApp's own store (3.8.3, owner 2026-11-13: pictures opened as little previews, voice
+// messages sent to the web page). A file WhatsApp no longer has on its server (NEED_POKE) is asked from the phone
+// first — what WhatsApp itself does on a click — then downloaded; resolves to a Blob, or null.
+function __waFile(m, waitMs) {
+    if (!m || !m.mediaData) return Promise.resolve(null);
+    var md = m.mediaData;
+    function blobNow() {
+        var url = md.renderableUrl || md.staticUrl;
+        if (md.mediaStage !== 'RESOLVED' || !url) return null;
+        return fetch(url).then(function (r) { return r.ok ? r.blob() : null; }).catch(function () { return null; });
+    }
+    var ready = blobNow();
+    if (ready) return ready;
+    try { if (md.mediaStage === 'NEED_POKE' && typeof m.resumeRemoteUpload === 'function') Promise.resolve(m.resumeRemoteUpload()).catch(function () {}); } catch (e) {}
+    try { if (typeof m.downloadMedia === 'function') Promise.resolve(m.downloadMedia({ downloadEvenIfExpensive: true, rmrReason: 1, isUserInitiated: true })).catch(function () {}); } catch (e) {}
+    var until = Date.now() + (waitMs || 20000);
+    return new Promise(function (resolve) {
+        (function wait() {
+            var b = blobNow();
+            if (b) { b.then(resolve); return; }
+            if (Date.now() > until) { resolve(null); return; }
+            setTimeout(wait, 400);
+        })();
+    });
+}
 // the reactions of a message from WhatsApp's own store: emoji, how many, yours (3.8.3)
 function __waReactions(C, m) {
     try {
@@ -198,6 +223,8 @@ function whatsappChat({ AVATAR_HELPER, IMAGE_HELPER }) {
                     var md = m.mediaData, asked = window.__ciWaAsked || (window.__ciWaAsked = {});
                     if (md && md.mediaStage && md.mediaStage !== 'RESOLVED' && md.mediaStage !== 'FETCHING' && !asked[id]) {
                         asked[id] = 1;
+                        // gone from WhatsApp's server: the phone is asked to send it again, as WhatsApp does on a click
+                        try { if (md.mediaStage === 'NEED_POKE' && typeof m.resumeRemoteUpload === 'function') Promise.resolve(m.resumeRemoteUpload()).catch(function () {}); } catch (e) {}
                         try { Promise.resolve(m.downloadMedia({ downloadEvenIfExpensive: true, rmrReason: 1, isUserInitiated: true })).catch(function () {}); } catch (e) {}
                     }
                 }
@@ -224,6 +251,10 @@ function whatsappChat({ AVATAR_HELPER, IMAGE_HELPER }) {
                     kind: kind,
                     author: !fromMe && __waGroup(active) && m ? __waName(C, m.author) || m.notifyName || '' : '',
                     text: kind === 'contact' ? '' : text,
+                    // formatting: drawn as tags on the page, or kept as marks in the stored text (*bold* _italic_ ~strike~,
+                    // read in timeline.js) when the page has not drawn the message
+                    marked: textEl ? __ciMarked(textEl, '') : '',
+                    fmt: textEl ? '' : 'wa',
                     name: kind === 'file' ? (m && m.filename) || 'Файл' : (kind === 'contact' ? (m && m.vcardFormattedName) || 'Контакт' : ''),
                     phone: kind === 'contact' && m ? phoneOf(m.body) : '',
                     size: kind === 'file' && m ? size(m.size) : '',
@@ -234,7 +265,8 @@ function whatsappChat({ AVATAR_HELPER, IMAGE_HELPER }) {
                     media: pic ? __ciPicture('wa' + id, pic) : stored,
                     mediaW: m && m.width || (pic ? pic.naturalWidth : 0),
                     mediaH: m && m.height || (pic ? pic.naturalHeight : 0),
-                    picture: pic && kind === 'photo' ? 'wa' + id : '',
+                    // the full picture comes from WhatsApp's store on a click (FULL_PICTURE), whether or not the page drew it
+                    picture: m && kind === 'photo' ? 'wa:' + id : (pic && kind === 'photo' ? 'wa' + id : ''),
                     reactions: m ? __waReactions(C, m) : [],
                     at: m && m.t ? m.t * 1000 : 0,
                     time: m && m.t ? clock(m.t) : ''
@@ -278,6 +310,33 @@ function whatsappChat({ AVATAR_HELPER, IMAGE_HELPER }) {
         // ── reactions, editing, deleting, a file as a document (3.8.3) — through WhatsApp's own actions ──────────
         // the reaction picker of WhatsApp
         REACTIONS: ['👍', '❤️', '😂', '😮', '😢', '🙏'],
+        // a voice message or a video, played in our window (it went to the web page)
+        MEDIA: (id) => `(function () {${WA_STORE}
+            var C = __waStore(), m = __waMsg(C, ${JSON.stringify(String(id))});
+            return __waFile(m, 30000).then(function (blob) {
+                if (!blob || blob.size > ${100 * 1024 * 1024}) return null;
+                // «audio/ogg; codecs=opus» — the space in it is not part of a data URL type
+                var type = String((m && m.mimetype) || blob.type || '').split(';')[0].trim() || (m && m.type === 'video' ? 'video/mp4' : 'audio/ogg');
+                var b = new Blob([blob], { type: type });
+                return new Promise(function (resolve) {
+                    var r = new FileReader();
+                    r.onload = function () { resolve({ data: String(r.result || '') }); };
+                    r.onerror = function () { resolve(null); };
+                    r.readAsDataURL(b);
+                });
+            });
+        })()`,
+        // a photo at full size for the viewer, from the store (the page holds only a preview or nothing)
+        FULL_PICTURE: (id) => `(function () {${WA_STORE}
+            var C = __waStore(), m = __waMsg(C, ${JSON.stringify(String(id))});
+            return __waFile(m, 20000).then(function (blob) { return blob ? createImageBitmap(blob) : null; }).then(function (bmp) {
+                if (!bmp) return '';
+                var k = Math.min(1, 1600 / Math.max(bmp.width, bmp.height));
+                var c = document.createElement('canvas'); c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
+                c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
+                return c.toDataURL('image/jpeg', 0.9);
+            }).catch(function () { return ''; });
+        })()`,
         // the same reaction again takes it off (WhatsApp keeps one reaction per person)
         REACT: (id, emoji) => `(function () {${WA_STORE}
             var C = __waStore(), m = __waMsg(C, ${JSON.stringify(String(id))}), emoji = ${JSON.stringify(String(emoji))};

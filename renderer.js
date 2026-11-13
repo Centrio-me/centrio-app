@@ -1697,6 +1697,9 @@ function applyTeamStrictMode(strict) {
 }
 
 function switchTab(id) {
+    // told first, before any split routing: the «Все мессенджеры» chat window steps aside when the person picks another
+    // messenger (renderer/all-inbox/chat-controller.js)
+    document.dispatchEvent(new CustomEvent('centrio-switch-request', { detail: { id } }))
     if (state.orgStrict && !String(id).startsWith('org:') && state.activeMessengers.some(m => m.id === id && !m.orgAssigned)) return
     if (state.sleepingTabs.has(id) && typeof wakeTabRef === 'function') wakeTabRef(id)
     // A messenger in its own window: the tab shows a placeholder, and the window itself comes to the front.
@@ -4209,9 +4212,9 @@ function applyTabZoom(level) {
     const notesWindow = createNotesWindow({ tGet, authorizedInvoke, getNotesApi: () => notesUiApiRef })
     // «Все мессенджеры» (3.8.3): a task or a note made of a message, a picture saved from the conversation
     document.addEventListener('all-inbox-make', async (e) => {
-        const { kind, text, from, done } = e.detail || {}
+        const { kind, text, from, done, pictures } = e.detail || {}
         const body = String(text || '').trim()
-        if (!body) return
+        if (!body && kind !== 'note') return
         const say = typeof done === 'function' ? done : () => {}
         if (kind === 'task') {
             // for today: a task with no date shows in none of the panel's tabs (Сегодня, Предстоящие, Важное)
@@ -4223,7 +4226,10 @@ function applyTabZoom(level) {
             try {
                 notesWindow.open()
                 await notesUiApiRef?.createFromText?.(from ? `Из чата «${from}»` : '', body)
-                say('Заметка создана')
+                // the message's pictures go into the note as its pictures
+                const pics = await Promise.resolve(pictures).catch(() => [])
+                const added = Array.isArray(pics) && pics.length ? await notesUiApiRef?.addPictures?.(pics) : 0
+                say(added ? `Заметка создана, картинок: ${added}` : 'Заметка создана')
             } catch { say('Не удалось создать заметку') }
         }
     })
@@ -4232,13 +4238,28 @@ function applyTabZoom(level) {
         const ok = await ipcRenderer.invoke('all-inbox:save-picture', { src, name }).catch(() => false)
         if (typeof done === 'function' && ok) done('Картинка сохранена')
     })
+    let notesDocked = false
     notesUiApiRef = bindNotesUi({
         store,
         tGet,
         authorizedInvoke,
         invokeIpc,
-        openRightPanel: () => notesWindow.open(),
-        closeRightPanel: () => notesWindow.close(),
+        // beside an open «Все мессенджеры» chat the notes stand in the right panel, next to the conversation, instead of a
+        // window over it (owner 2026-11-13: «заметки/задачи рядом с чатом — места на экране стало больше»); tasks are there already
+        openRightPanel: () => {
+            if (document.body.classList.contains('all-inbox-chat-open')) {
+                const notesPanel = document.getElementById('notesPanel')
+                const home = document.getElementById('todosPanel')?.parentElement
+                if (notesPanel && home && notesPanel.parentElement !== home) home.append(notesPanel)
+                notesDocked = true
+                notesWindow.close()
+                openRightPanel('notes')
+                return
+            }
+            if (notesDocked) { notesDocked = false; closeRightPanel() }
+            notesWindow.open()
+        },
+        closeRightPanel: () => { if (notesDocked) { notesDocked = false; closeRightPanel() } else notesWindow.close() },
         onNotesChange: (list) => notesWindow.notesChanged(list),
         getUserIsPro: hasEffectivePro,
         requirePro

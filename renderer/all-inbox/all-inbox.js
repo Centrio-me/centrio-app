@@ -179,7 +179,12 @@ function createAllInbox({ state, switchTab, tGet, ipcRenderer, canOpen, store = 
         lastListSig = ''
         render()
     }
-    const chats = contentArea ? createChatController({ state, webviewOf: (id) => document.getElementById(`webview-${id}`), host: contentArea, ipcRenderer, onSubtitle, onClosed: () => { openToken++ }, onHidden: () => { activeId = ''; listEl.querySelectorAll('.ai-row.is-active').forEach((r) => r.classList.remove('is-active')) } }) : null
+    const chats = contentArea ? createChatController({ state, webviewOf: (id) => document.getElementById(`webview-${id}`), host: contentArea, ipcRenderer, onSubtitle, onClosed: () => { openToken++ },
+        // the right chat not in the tab: it is opened again (chat-controller.js); the second time not by a remembered address
+        onReopen: (chat, attempt) => bringTabToChat(chat, { forget: attempt > 1 }),
+        // «Открыть в мессенджере» from a split: the messenger comes into the focused pane
+        onOpenTab: (chat) => { if (state.splitMode) switchTab(chat.messengerId) },
+        onHidden: () => { unhostTabs(); activeId = ''; listEl.querySelectorAll('.ai-row.is-active').forEach((r) => r.classList.remove('is-active')) } }) : null
 
     function webviewOf(messengerId) {
         return document.getElementById(`webview-${messengerId}`)
@@ -468,25 +473,63 @@ function createAllInbox({ state, switchTab, tGet, ipcRenderer, canOpen, store = 
         }
     }
 
+    // The tab under our window holds the chat being read. In a split the person's panes stay as they are: the messenger is
+    // not put into a pane (that moved it there and our window closed at once — MAX and WhatsApp did not open from a
+    // triple split, owner 2026-11-13); its page is kept laid out, unseen, under our window instead.
+    const HOST_CLASS = 'inbox-chat-host'
+    function hostTab(id) {
+        document.querySelectorAll(`webview.${HOST_CLASS}`).forEach((v) => { if (v.id !== `webview-${id}`) v.classList.remove(HOST_CLASS) })
+        webviewOf(id)?.classList.add(HOST_CLASS)
+    }
+    const unhostTabs = () => document.querySelectorAll(`webview.${HOST_CLASS}`).forEach((v) => v.classList.remove(HOST_CLASS))
+
+    // Brings the tab to the chat: Telegram by its id, MAX by the address it had before, otherwise a real click on the
+    // chat in the messenger's own list. «forget» drops a remembered address that led elsewhere.
+    async function bringTabToChat(chat, { stale = () => false, forget = false } = {}) {
+        const view = webviewOf(chat.messengerId)
+        if (!view) return false
+        let adapter = null
+        try { adapter = adapterFor(view.getURL()) } catch {}
+        if (!adapter) return false
+        const run = (code, ms = READ_TIMEOUT_MS) => withTimeout(view.executeJavaScript(code).catch(() => null), ms)
+        if (forget && paths[chat.id]) { delete paths[chat.id]; writeStorage(PATHS_KEY, JSON.stringify(paths)) }
+        const knownPath = paths[chat.id]
+        let opened = false
+        if (typeof adapter.open === 'function') {
+            // Telegram opens a chat by its id itself: nothing is clicked
+            opened = (await run(adapter.open(chat.key))) === true
+        } else if (knownPath && typeof adapter.navigate === 'function') {
+            // MAX: a chat opened before is opened again by its address
+            opened = (await run(adapter.navigate(knownPath))) === true
+        }
+        if (stale()) return false
+        if (opened) return true
+        // the first time: a real click on the chat in the messenger's own list (the pages ignore synthetic ones)
+        const point = await run(adapter.locate(chat.key), LOCATE_TIMEOUT_MS)
+        if (stale() || !point || typeof point.x !== 'number') return false
+        clickAt(view, point)
+        return true
+    }
+
     async function openChat(chat) {
         const token = ++openToken
+        const inSplit = !!state.splitMode
         // stale: a later click, the panel closed, or the person went to another tab themselves meanwhile
         let tabAtStart = null
         const stale = () => token !== openToken || !open || (tabAtStart !== null && state.activeTabId !== tabAtStart)
+        if (inSplit) hostTab(chat.messengerId)
+        else { unhostTabs(); switchTab(chat.messengerId); tabAtStart = state.activeTabId }
         activeId = chat.id
         listEl.querySelectorAll('.ai-row.is-active').forEach((r) => r.classList.remove('is-active'))
         listEl.querySelector(`.ai-row[data-id="${CSS.escape(chat.id)}"]`)?.classList.add('is-active')
-        switchTab(chat.messengerId)
-        tabAtStart = state.activeTabId
         const view = webviewOf(chat.messengerId)
         if (!view) return
         let adapter = null
         try { adapter = adapterFor(view.getURL()) } catch {}
         if (!adapter) return
         const run = (code, ms = READ_TIMEOUT_MS) => withTimeout(view.executeJavaScript(code).catch(() => null), ms)
-        // our conversation window comes at once with «Открываю чат…» (it came half a second after the click with nothing
-        // happening meanwhile, 3.8.3 check); the tab behind it is brought to the chat meanwhile. Once the right chat is
-        // confirmed open, its address is remembered for next time
+        // our conversation window comes at once with «Открываю чат…»; the tab behind it is brought to the chat meanwhile.
+        // Once the right chat is confirmed open, its address is remembered for next time
         chats?.open(chat, adapter.id, async () => {
             if (!adapter.PATH) return
             const path = await run(adapter.PATH)
@@ -494,24 +537,9 @@ function createAllInbox({ state, switchTab, tGet, ipcRenderer, canOpen, store = 
         })
         await new Promise((r) => setTimeout(r, TAB_SETTLE_MS))
         if (stale()) return
-        const knownPath = paths[chat.id]
-        let opened = false
-        if (typeof adapter.open === 'function') {
-            // Telegram opens a chat by its id itself: nothing is clicked
-            opened = (await run(adapter.open(chat.key))) === true
-            if (stale()) return
-        } else if (knownPath && typeof adapter.navigate === 'function') {
-            // MAX: a chat opened before is opened again by its address
-            opened = (await run(adapter.navigate(knownPath))) === true
-            if (stale()) return
-        }
-        if (!opened) {
-            // the first time: a real click on the chat in the messenger's own list (the pages ignore synthetic ones)
-            const point = await run(adapter.locate(chat.key), LOCATE_TIMEOUT_MS)
-            if (stale()) return
-            if (!point || typeof point.x !== 'number') { chats?.close(); return }
-            clickAt(view, point)
-        }
+        const brought = await bringTabToChat(chat, { stale })
+        if (stale()) return
+        if (!brought) { chats?.close(); return }
         setTimeout(readAll, 900)
     }
 

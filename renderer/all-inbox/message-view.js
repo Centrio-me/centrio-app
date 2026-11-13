@@ -1,4 +1,5 @@
 'use strict'
+const { runsOf } = require('./text-format')
 // «Все мессенджеры»: one message drawn the way Telegram draws it — the group avatar, the coloured name, the quote with
 // its colour bar, photos edge to edge with the time over them, albums laid out as Telegram lays them out, the time and
 // ticks at the end of the text line, reactions, large lonely emoji, and the tail on the last bubble of a group.
@@ -72,16 +73,31 @@ function meta(m, floating) {
     return box
 }
 
-function textBlock(m, onLink, withMeta = true) {
-    const node = el('div', 'aic-text')
-    for (const part of linkParts(m.text)) {
-        if (!part.url) { node.append(emojiNodes(part.text)); continue }
+// bold, italic, underline, strikethrough as the messenger shows them (3.8.3)
+const MARK_TAGS = { bold: 'strong', italic: 'em', underline: 'u', strike: 's' }
+
+function textParts(text, onLink) {
+    const frag = document.createDocumentFragment()
+    for (const part of linkParts(text)) {
+        if (!part.url) { frag.append(emojiNodes(part.text)); continue }
         const a = el('a', 'aic-link', part.text)
         a.href = part.url
         a.title = part.url
         a.addEventListener('click', (e) => { e.preventDefault(); onLink(part.url) })
-        node.append(a)
+        frag.append(a)
     }
+    return frag
+}
+
+function textBlock(m, onLink, withMeta = true) {
+    const node = el('div', 'aic-text')
+    if (m.marked) {
+        for (const run of runsOf(m.marked)) {
+            let into = node
+            for (const mark of run.marks) { const tag = el(MARK_TAGS[mark] || 'span'); into.append(tag); into = tag }
+            into.append(textParts(run.text, onLink))
+        }
+    } else node.append(textParts(m.text, onLink))
     if (withMeta) node.append(meta(m, false))
     return node
 }
@@ -289,10 +305,12 @@ function contactCard(m, onOpenInTab) {
     return wrap
 }
 
-function card(m, onOpenInTab) {
-    const box = el('button', `aic-card kind-${m.kind}`)
+function card(m, onOpenInTab, onPlay = null) {
+    const box = el('button', `aic-card kind-${m.kind}${m.round ? ' is-round' : ''}`)
     box.type = 'button'
-    box.title = 'Открыть в мессенджере'
+    // a video with no picture of its own (a round message whose frame MAX has not drawn) plays here too, it does not
+    // send the person to the web page (owner 2026-11-13)
+    box.title = onPlay ? 'Воспроизвести' : 'Открыть в мессенджере'
     const icon = el('span', 'aic-card-icon')
     icon.innerHTML = m.kind === 'voice' || m.kind === 'video' ? ICON_PLAY : ICON_FILE
     // a picture sent as a file shows its small preview in place of the icon
@@ -301,12 +319,12 @@ function card(m, onOpenInTab) {
         icon.classList.add('has-thumb')
     }
     const info = el('span', 'aic-card-info')
-    info.append(el('span', 'aic-card-name', m.name || KIND_LABEL[m.kind] || ''))
+    info.append(el('span', 'aic-card-name', m.name || (m.round ? 'Видеосообщение' : KIND_LABEL[m.kind]) || ''))
     const sub = [m.duration, m.size].filter(Boolean).join(' · ')
     if (m.kind === 'voice') info.append(Object.assign(el('span', 'aic-wave'), { innerHTML: '<i></i>'.repeat(28) }))
     if (sub) info.append(el('span', 'aic-card-sub', sub))
     box.append(icon, info)
-    box.addEventListener('click', onOpenInTab)
+    box.addEventListener('click', () => (onPlay ? onPlay(m, box) : onOpenInTab()))
     return box
 }
 
@@ -382,7 +400,7 @@ function renderMessage(m, ctx) {
     } else if (m.kind === 'contact') { b.classList.add('has-contact'); b.append(contactCard(m, ctx.onOpenInTab)) }
     else if (m.kind === 'poll' && m.poll) { b.classList.add('has-poll'); b.append(pollCard(m, ctx)) }
     else if (m.kind === 'voice' && ctx.onVoice) { b.classList.add('has-voice'); b.append(voice(m, ctx)) }
-    else if (m.kind !== 'text' && m.kind !== 'photo') b.append(card(m, ctx.onOpenInTab))
+    else if (m.kind !== 'text' && m.kind !== 'photo') b.append(card(m, ctx.onOpenInTab, m.kind === 'video' && ctx.onVideo ? ctx.onVideo : null))
     // a photo whose picture has not come (not loaded yet in the tab, or forwarded): its place, not a bubble of a lone
     // time sticking out of it (3.8.3 check)
     const emptyPhoto = m.kind === 'photo' && !hasMedia && !m.album
@@ -390,7 +408,9 @@ function renderMessage(m, ctx) {
         b.classList.add('has-empty-photo')
         const ph = el('div', 'aic-photo is-empty')
         ph.innerHTML = '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2.5"/><circle cx="9" cy="10" r="1.8"/><path d="M21 16l-5-5-8 8"/></svg>'
-        ph.append(el('span', '', 'Фото загружается в мессенджере'))
+        ph.append(el('span', '', m.picture ? 'Нажмите, чтобы открыть фото' : 'Фото загружается в мессенджере'))
+        // WhatsApp keeps the photo in its store: a click brings it in full size
+        if (m.picture && ctx.onZoom) { ph.classList.add('is-openable'); ph.addEventListener('click', () => ctx.onZoom(m, '', m.picture)) }
         b.append(ph)
     }
 

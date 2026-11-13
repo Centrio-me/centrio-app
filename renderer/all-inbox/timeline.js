@@ -7,6 +7,7 @@ const MONTHS_RU = ['января', 'февраля', 'марта', 'апреля
 const KINDS = new Set(['text', 'photo', 'video', 'voice', 'sticker', 'file', 'contact', 'poll', 'service'])
 
 const { decodeWave } = require('./media-player')
+const { fromWhatsApp, runsOf, markedFor } = require('./text-format')
 
 const RGB = /^rgb\(\d{1,3}, \d{1,3}, \d{1,3}\)$/
 const PICTURE = /^(data:image\/|https:)/
@@ -113,7 +114,13 @@ function buildTimeline(raw, now) {
             if (label !== lastDay) { rows.push({ type: 'day', label, id: `d${label}` }); lastDay = label }
         }
         // a poll's own words are in its card, not in the text (the page glues them together)
-        const text = kind === 'poll' ? '' : String(m.text || '').trim()
+        let text = kind === 'poll' ? '' : String(m.text || '').trim()
+        // bold, italic, underline, strikethrough (3.8.3): the messenger's own marks, shown as such
+        let marked = ''
+        if (m.fmt === 'wa' && text) {
+            const ours = fromWhatsApp(text)
+            if (ours !== text) { marked = ours; text = runsOf(ours).map((r) => r.text).join('') }
+        } else marked = markedFor(m.marked, text)
         if (!text && kind === 'text' && !cleanWebpage(m.webpage)) continue
         const poll = kind === 'poll' ? cleanPoll(m.poll) : null
         if (kind === 'poll' && !poll) continue
@@ -130,6 +137,7 @@ function buildTimeline(raw, now) {
             forwarded: String(m.forwarded || ''),
             reply: String(m.reply || ''),
             text,
+            marked,
             name: String(m.name || '').slice(0, 120),
             // a shared contact: its number, or the messenger's note under the name («Новый контакт»)
             phone: String(m.phone || '').slice(0, 40),
@@ -252,7 +260,7 @@ function signature(rows) {
         const album = r.album ? r.album.map((a) => print(a.src)).join(',') : ''
         const reacts = (r.reactions || []).map((x) => (x.e || (x.img ? 'p' + x.img.length : '')) + x.n + (x.mine ? '*' : '')).join(',')
         return [r.id, r.read ? 1 : 0, r.kind, r.text || '', print(r.media), print(r.avatar), album, reacts, r.pending || '',
-            r.name || '', r.size || '', r.duration || '', r.author || '', print(r.authorBadge), r.reply || '', r.forwarded || '', r.phone || '',
+            r.name || '', r.size || '', r.duration || '', r.author || '', print(r.authorBadge), r.reply || '', r.forwarded || '', r.phone || '', r.marked || '',
             r.webpage ? print(r.webpage.image) + (r.webpage.title || '') : '', (r.wave || []).length, r.poll ? JSON.stringify(r.poll) : ''].join('|')
     }).join(';')
 }

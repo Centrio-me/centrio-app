@@ -1119,3 +1119,12 @@ html[data-theme="light"] .aic[data-bg="plain"] .aic-stuck-text { color: var(--te
 html[data-theme="light"] .aic-meta.is-floating .aic-check { color: #fff; }
 /* no sideways scroll in a narrow window */
 .aic-scroll { overflow-x: hidden; }
+
+/* the messenger under the «Все мессенджеры» chat window in a split: laid out and alive, unseen (all-inbox.js hostTab) */
+.content-area .tabs-content webview.inbox-chat-host:not(.active):not(.split-secondary):not(.split-grid-tile) {
+    display: flex !important; opacity: 0; pointer-events: none; z-index: -1;
+}
+.aic-photo.is-empty.is-openable { cursor: pointer; }
+.aic-photo.is-empty.is-openable:hover { background: color-mix(in srgb, currentColor 13%, transparent); }
+/* a line between groups of a menu (the field's marks) */
+.aic-menu-sep { height: 1px; margin: 4px 8px; background: var(--border); }

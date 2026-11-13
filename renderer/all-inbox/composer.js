@@ -1,4 +1,5 @@
 'use strict'
+const { FORMATS, wrapSelection } = require('./text-format')
 // «Все мессенджеры»: the message field of our conversation window — text, emoji and files. Files come from the
 // paper clip, from Explorer (dragged onto the window or copied) and from a pasted picture; they wait here as
 // previews until «Отправить», then go to the messenger tab with the text as their caption.
@@ -253,7 +254,20 @@ function createComposer({ root, onSend, onEdit = null, onPickFiles, onDescribeFi
     }
 
     form.addEventListener('submit', (e) => { e.preventDefault(); submit() })
+    // bold, italic, underline, strikethrough (owner 2026-11-13): the selection gets the mark, the messenger gets its own
+    // marks on sending (text-format.js); the same keys as in Telegram
+    function format(mark) {
+        const r = wrapSelection(input.value, input.selectionStart, input.selectionEnd, mark)
+        input.value = r.text
+        input.setSelectionRange(r.start, r.end)
+        autosize(); refreshSend(); if (!editing) onDraft(input.value)
+    }
+    const FORMAT_KEYS = { KeyB: FORMATS.bold, KeyI: FORMATS.italic, KeyU: FORMATS.underline }
     input.addEventListener('keydown', (e) => {
+        if ((e.ctrlKey || e.metaKey) && !e.altKey) {
+            const mark = e.shiftKey ? (e.code === 'KeyX' ? FORMATS.strike : null) : FORMAT_KEYS[e.code]
+            if (mark) { e.preventDefault(); format(mark); return }
+        }
         if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); submit() }
         if (e.key === 'Escape' && picker.isOpen()) { e.preventDefault(); picker.toggle(false) } else if (e.key === 'Escape' && editing) { e.preventDefault(); endEdit() } else if (e.key === 'Escape' && reply) { e.preventDefault(); showReply(null) }
     })
@@ -280,6 +294,12 @@ function createComposer({ root, onSend, onEdit = null, onPickFiles, onDescribeFi
         fieldItem('Копировать', chosen, () => document.execCommand('copy'))
         fieldItem('Вставить', true, () => document.execCommand('paste'))
         fieldItem('Выделить всё', !!input.value, () => input.select())
+        // the marks of the selection, as in Telegram's own menu
+        fieldMenu.append(el('div', 'aic-menu-sep'))
+        fieldItem('Жирный · Ctrl+B', chosen, () => format(FORMATS.bold))
+        fieldItem('Курсив · Ctrl+I', chosen, () => format(FORMATS.italic))
+        fieldItem('Подчёркнутый · Ctrl+U', chosen, () => format(FORMATS.underline))
+        fieldItem('Зачёркнутый · Ctrl+Shift+X', chosen, () => format(FORMATS.strike))
         fieldMenu.hidden = false
         const box = root.getBoundingClientRect()
         fieldMenu.style.left = `${Math.max(8, Math.min(e.clientX - box.left, box.width - fieldMenu.offsetWidth - 8))}px`

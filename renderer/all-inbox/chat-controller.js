@@ -10,10 +10,14 @@ const { createChatView } = require('./chat-view')
 const { sameChat } = require('./same-chat')
 const { createPending, withPending } = require('./pending')
 const { isAway, isHidden, onAttentionChange } = require('../window-attention')
+const { toMessenger, runsOf } = require('./text-format')
 
 const CHAT_POLL_MS = 1500
 // a chat not shown by then is said to have not opened, with the way to the messenger itself
 const STUCK_AFTER_MS = 10000
+// a tab found on another chat is brought back to the right one this many times, this far apart
+const REOPEN_TRIES = 3
+const REOPEN_AFTER_MS = 2500
 // the open chat is read this seldom while another window is in front; not at all while Centrio is hidden
 const AWAY_POLL_MS = 6000
 const READ_TIMEOUT_MS = 2500
@@ -22,6 +26,8 @@ const FOCUS_SETTLE_MS = 120
 const TYPE_SETTLE_MS = 80
 const AFTER_SEND_MS = 600
 const PICTURE_TIMEOUT_MS = 6000
+// a WhatsApp photo may first be asked from the phone
+const STORE_PICTURE_TIMEOUT_MS = 25000
 const HOVER_SETTLE_MS = 250
 const POPUP_WAIT_MS = 5000
 // the zones of a drag show up within a few frames
@@ -36,6 +42,10 @@ const MARK_READ_EVERY_MS = 2000
 const VOTE_TIMEOUT_MS = 8000
 // WhatsApp uploads documents itself before it answers
 const DOCUMENTS_TIMEOUT_MS = 120000
+// the messengers whose message field takes bold, italic, underline and strikethrough from keys (checked live)
+const KEYED_FORMATTING = new Set(['telegram', 'max'])
+const FORMAT_KEYS = { bold: ['B', ['control']], italic: ['I', ['control']], underline: ['U', ['control']], strike: ['X', ['control', 'shift']] }
+const FORMAT_SETTLE_MS = 60
 const AFTER_VOTE_MS = 400
 const MEDIA_DATA = /^data:(audio|video)\/[\w.+-]+(;[\w=.+-]+)*;base64,/
 
@@ -67,7 +77,8 @@ function clickAt(view, point) {
  * @param {{ state: object, webviewOf: (id: string) => any, host: HTMLElement,
  *   ipcRenderer: { send: Function, invoke: Function } }} deps — the IPC shim of renderer.js (the page has no Node)
  */
-function createChatController({ state, webviewOf, host, ipcRenderer, onSubtitle = () => {}, onClosed = () => {}, onHidden = () => {} }) {
+function createChatController({ state, webviewOf, host, ipcRenderer, onSubtitle = () => {}, onClosed = () => {}, onHidden = () => {},
+    onReopen = () => Promise.resolve(false), onOpenTab = () => {} }) {
     let current = null // { chat, adapter }
     let timer = null
     let lastOlder = 0
@@ -86,7 +97,7 @@ function createChatController({ state, webviewOf, host, ipcRenderer, onSubtitle 
         host,
         onSend: send,
         // closed by the person: a chat still on its way to open must not come back (all-inbox.js openChat)
-        onOpenInTab: () => { close(); onClosed() },
+        onOpenInTab: () => { const chat = current && current.chat; close(); onClosed(); if (chat) onOpenTab(chat) },
         onClose: () => { close(); onClosed() },
         onDismissPending: (id) => { pending.drop(id); redraw() },
         onOlder: older,
@@ -127,7 +138,10 @@ function createChatController({ state, webviewOf, host, ipcRenderer, onSubtitle 
         onPicture: async (key) => {
             const w = tab()
             if (!w) return ''
-            const data = await withTimeout(w.executeJavaScript(fullPicture(key)).catch(() => ''), PICTURE_TIMEOUT_MS)
+            // WhatsApp: the photo from its own store (asked from the phone if the server no longer has it)
+            const fromStore = typeof current.adapter.FULL_PICTURE === 'function' && String(key).startsWith('wa:')
+            const code = fromStore ? current.adapter.FULL_PICTURE(String(key).slice(3)) : fullPicture(key)
+            const data = await withTimeout(w.executeJavaScript(code).catch(() => ''), fromStore ? STORE_PICTURE_TIMEOUT_MS : PICTURE_TIMEOUT_MS)
             return typeof data === 'string' && data.startsWith('data:image/') ? data : ''
         }
     })
@@ -137,17 +151,27 @@ function createChatController({ state, webviewOf, host, ipcRenderer, onSubtitle 
 
     const newSession = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`
 
+    // a messenger chosen by the person (sidebar, split pane) while our window is open: the window steps aside; our own
+    // switch to the chat's messenger is not that (renderer.js switchTab sends centrio-switch-request first)
+    document.addEventListener('centrio-switch-request', (e) => {
+        const id = e && e.detail && e.detail.id
+        if (current && id && id !== current.chat.messengerId) close()
+    })
+
     function tab() {
         return current ? webviewOf(current.chat.messengerId) : null
     }
 
     let lastPollAt = 0
+    // the messenger being typed into: Telegram and MAX take formatting from their own keys
+    let typingFor = ''
     async function poll() {
         if (!current || reading) return
         if (current.confirmed && (isHidden() || (isAway() && Date.now() - lastPollAt < AWAY_POLL_MS))) return
         lastPollAt = Date.now()
-        // the person switched to a messenger themselves: our window steps aside
-        if (state.activeTabId !== current.chat.messengerId) { close(); return }
+        // the person switched to a messenger themselves: our window steps aside. In a split the messenger is kept under
+        // our window without being the active tab (all-inbox.js hostTab) — there a click on a messenger says it instead
+        if (!state.splitMode && state.activeTabId !== current.chat.messengerId) { close(); return }
         const w = tab()
         if (!w) return
         reading = true
@@ -164,10 +188,23 @@ function createChatController({ state, webviewOf, host, ipcRenderer, onSubtitle 
             // a chat already shown is not wiped by one read with an empty or flickering title (the conversation turned into
             // the opening mark and the place in the history was lost, 3.8.3 check): two misses in a row say it really moved
             if (!current.match && cur.confirmed && cur.misses < 2) return
+            // the tab is on another chat: the right one is opened again (up to three times), instead of telling the person
+            // «another chat is open» (owner 2026-11-13: «ты всегда должен открывать правильный чат в скрытом окне»)
+            if (!current.match && (cur.confirmed || Date.now() - cur.openedAt > REOPEN_AFTER_MS) && (cur.reopens || 0) < REOPEN_TRIES) {
+                if (Date.now() - (cur.reopenedAt || 0) > REOPEN_AFTER_MS) {
+                    cur.reopens = (cur.reopens || 0) + 1
+                    cur.reopenedAt = Date.now()
+                    cur.misses = 0
+                    Promise.resolve(onReopen(cur.chat, cur.reopens)).catch(() => {})
+                }
+                // meanwhile the conversation already shown stays (sending is checked against the tab anyway)
+                return
+            }
             // until the chat is first seen, the tab is still on its way to it: the opening mark, not «another chat is open»
             view.setMismatch(!current.match, cur.confirmed ? data.title : '')
             if (!current.match) return
             if (!current.confirmed) { current.confirmed = true; if (typeof current.onConfirmed === 'function') current.onConfirmed() }
+            cur.reopens = 0
             // a picture whose answer was lost: a new session, so the next read brings every picture again
             if (missingImages(data.messages, cur.images)) cur.script = withImageMemo(cur.adapter.CHAT, newSession())
             lastRows = buildTimeline(resolveImages(data.messages, current.images), Date.now())
@@ -213,9 +250,40 @@ function createChatController({ state, webviewOf, host, ipcRenderer, onSubtitle 
         await wait(FOCUS_SETTLE_MS)
         selectAll(w)
         await wait(TYPE_SETTLE_MS)
+        const runs = KEYED_FORMATTING.has(typingFor) && text ? runsOf(text) : null
+        if (runs && runs.some((r) => r.marks.length)) return typeRuns(w, runs)
         try {
             if (text) w.insertText(text)
             else { w.sendInputEvent({ type: 'keyDown', keyCode: 'Backspace' }); w.sendInputEvent({ type: 'keyUp', keyCode: 'Backspace' }) }
+        } catch { return false }
+        await wait(TYPE_SETTLE_MS)
+        return true
+    }
+
+    // Telegram and MAX: bold, italic, underline and strikethrough typed with the messenger's own keys, run by run — the
+    // mark is turned on before its words and off after them (both fields keep it for what is typed next)
+    async function typeRuns(w, runs) {
+        try {
+            w.sendInputEvent({ type: 'keyDown', keyCode: 'Backspace' }); w.sendInputEvent({ type: 'keyUp', keyCode: 'Backspace' })
+            await wait(TYPE_SETTLE_MS)
+            const on = new Set()
+            const press = (name) => { const [code, mods] = FORMAT_KEYS[name]; w.sendInputEvent({ type: 'keyDown', keyCode: code, modifiers: mods }); w.sendInputEvent({ type: 'keyUp', keyCode: code, modifiers: mods }) }
+            // Telegram's field has no key for strikethrough: it turns «~~words~~» typed by hand into it (checked live)
+            const strikeByHand = typingFor === 'telegram'
+            const typeChars = async (chars) => { for (const ch of chars) { w.sendInputEvent({ type: 'char', keyCode: ch }); await wait(25) } }
+            for (const run of runs) {
+                for (const name of Object.keys(FORMAT_KEYS)) {
+                    if (strikeByHand && name === 'strike') continue
+                    if (on.has(name) !== run.marks.includes(name)) { press(name); if (on.has(name)) on.delete(name); else on.add(name) }
+                }
+                await wait(FORMAT_SETTLE_MS)
+                const struck = strikeByHand && run.marks.includes('strike')
+                if (struck) await typeChars('~~')
+                w.insertText(run.text)
+                if (struck) await typeChars('~~')
+                await wait(FORMAT_SETTLE_MS)
+            }
+            for (const name of [...on]) press(name)
         } catch { return false }
         await wait(TYPE_SETTLE_MS)
         return true
@@ -332,6 +400,8 @@ function createChatController({ state, webviewOf, host, ipcRenderer, onSubtitle 
         const w = tab()
         const cur = current
         if (!w || !cur || !m || !text) return false
+        typingFor = cur.service
+        if (!KEYED_FORMATTING.has(cur.service) || typeof cur.adapter.EDIT === 'function') text = toMessenger(text, cur.service)
         if (!(await stillHere(w, cur))) return false
         const id = String(m.id).split('+')[0]
         let ok = false
@@ -407,10 +477,14 @@ function createChatController({ state, webviewOf, host, ipcRenderer, onSubtitle 
         // check again right before typing: the tab may have moved to another chat since the last read, and our window
         // to another chat while this was checked (the text then went to the new one, 3.8.3 check)
         if (!(await stillHere(w, cur))) return false
+        // the field's marks become the messenger's own (bold, italic…, text-format.js); the message waiting with its
+        // clock shows as the messenger will show it
+        typingFor = cur.service
+        const out = KEYED_FORMATTING.has(cur.service) ? text : toMessenger(text, cur.service)
         const knownIds = lastRows.filter((r) => r.type === 'msg' && r.out).map((r) => r.id)
-        const pid = pending.add({ text, files, knownIds })
+        const pid = pending.add({ text: cur.service === 'whatsapp' ? out : toMessenger(text, ''), files, knownIds })
         redraw()
-        const ok = await deliver(w, text, files, reply, asFile, cur)
+        const ok = await deliver(w, out, files, reply, asFile, cur)
         if (!ok) pending.drop(pid)
         await wait(AFTER_SEND_MS)
         poll()
@@ -459,7 +533,7 @@ function createChatController({ state, webviewOf, host, ipcRenderer, onSubtitle 
         if (!adapter) { close(); return false }
         // pictures cross from the tab once per opened chat (chat-adapters.js withImageMemo)
         const session = newSession()
-        current = { chat, adapter, match: false, onConfirmed, confirmed: false, openedAt: Date.now(), script: withImageMemo(adapter.CHAT, session), images: new Map() }
+        current = { chat, adapter, service: adapterId, match: false, onConfirmed, confirmed: false, openedAt: Date.now(), script: withImageMemo(adapter.CHAT, session), images: new Map() }
         loadReactions(adapter)
         pending.clear()
         pressed.clear()

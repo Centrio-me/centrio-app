@@ -275,9 +275,12 @@ function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab
         }
         // a task or a note made of the message (3.8.3): the main window makes them (renderer.js, «all-inbox-make»)
         const what = selected || m.text || m.name || ''
-        if (what) {
-            item('Создать задачу', ICON_TASK, () => document.dispatchEvent(new CustomEvent('all-inbox-make', { detail: { kind: 'task', text: what, from: q('.aic-title').textContent, done: flash } })))
-            item('Создать заметку', ICON_NOTE, () => document.dispatchEvent(new CustomEvent('all-inbox-make', { detail: { kind: 'note', text: what, from: q('.aic-title').textContent, done: flash } })))
+        const hasPictures = !selected && !!(m.album || (m.kind === 'photo' && (m.media || m.picture)) || (m.kind === 'sticker' && m.media))
+        if (what) item('Создать задачу', ICON_TASK, () => document.dispatchEvent(new CustomEvent('all-inbox-make', { detail: { kind: 'task', text: what, from: q('.aic-title').textContent, done: flash } })))
+        // a note keeps the message's pictures too, at full size (owner 2026-11-13: only the text went)
+        if (what || hasPictures) {
+            item('Создать заметку', ICON_NOTE, () => document.dispatchEvent(new CustomEvent('all-inbox-make', { detail: { kind: 'note', text: what, from: q('.aic-title').textContent, done: flash,
+                pictures: hasPictures ? picturesOf(m) : Promise.resolve([]) } })))
         }
         item('Открыть в мессенджере', ICON_OPEN, onOpenInTab)
         if (onDelete && canDelete(m)) item('Удалить', ICON_DELETE, () => askDelete(m), true)
@@ -289,6 +292,16 @@ function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab
         menu.style.top = `${Math.max(8, y)}px`
     })
     // ── pictures: the full size from the tab, copied as PNG or saved through the main process (3.8.3) ──────────
+    // every picture of a message at full size: each photo of an album, or the one photo
+    async function picturesOf(m) {
+        const list = m.album ? m.album.map((a) => ({ picture: a.picture, media: a.src })) : [m]
+        const out = []
+        for (const p of list) {
+            const src = await fullPictureOf(p).catch(() => '')
+            if (typeof src === 'string' && src.startsWith('data:image/')) out.push(src)
+        }
+        return out
+    }
     async function fullPictureOf(m) {
         const full = m.picture ? await onPicture(m.picture).catch(() => '') : ''
         return full || m.media
@@ -380,7 +393,7 @@ function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab
     keepBottom.observe(scroll)
 
     // a photo opens on the whole window, with every photo of the chat to go through
-    function zoom(m, src) { lightbox.open(galleryOf(lastRows), src, q('.aic-title').textContent) }
+    function zoom(m, src, picture = '') { lightbox.open(galleryOf(lastRows), src, q('.aic-title').textContent, picture) }
     function closeZoom() { lightbox.hide() }
 
     return {
