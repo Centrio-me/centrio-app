@@ -96,7 +96,7 @@ function __ciVisible(root, sel) {
 function __ciCleanText(el, drop) {
     if (!el) return '';
     var clone = el.cloneNode(true);
-    var gone = clone.querySelectorAll(drop);
+    var gone = drop ? clone.querySelectorAll(drop) : [];
     for (var i = 0; i < gone.length; i++) gone[i].remove();
     __ciEmojiText(clone);
     return String(clone.innerText || clone.textContent || '').replace(/\\n{3,}/g, '\\n\\n').trim();
@@ -283,6 +283,33 @@ const telegram = {
             // Telegram's date bubbles are drawn by us from the exact times; its other service bubbles are events (a note)
             if (/ service /.test(cls)) {
                 if (/ is-date /.test(cls)) continue;
+                // the card of a stranger at the top of a chat (name, «Не в контактах», country, registration, «Не официальный
+                // аккаунт», and «Пользователь обновил фотографию…» under it): its lines stay lines — they were glued into one
+                // row with dots (owner, 2026-11-13). The class names carry a build hash: matched by their stem
+                var infoTable = b.querySelector('[class*=_table_]');
+                if (infoTable) {
+                    var lines = [];
+                    var headEl = b.querySelector('[class*=_head_]');
+                    if (headEl) {
+                        var who = __ciCleanText(headEl.querySelector('.peer-title'), ''), flag = __ciCleanText(headEl.querySelector('.i18n'), '');
+                        lines.push([who, flag].filter(Boolean).join(' · '));
+                    }
+                    var labels = infoTable.querySelectorAll('[class*=_tableLeft_] > span'), rightEl = infoTable.querySelector('[class*=_tableRight_]'), values = [];
+                    if (rightEl) {
+                        var country = rightEl.querySelector('[class*=_phoneCountry_]');
+                        if (country) values.push(__ciCleanText(country, ''));
+                        for (var rn = 0; rn < rightEl.childNodes.length; rn++) { var node = rightEl.childNodes[rn]; if (node.nodeType === 3 && node.textContent.trim()) values.push(node.textContent.trim()); }
+                    }
+                    for (var li = 0; li < labels.length; li++) lines.push(__ciText(labels[li]) + (values[li] ? ': ' + values[li] : ''));
+                    var footEl = b.querySelector('[class*=_footer_]');
+                    // only its words: the «i» before them is a glyph of Telegram's own icon font (it showed as an empty box)
+                    if (footEl) lines.push(__ciText(footEl.querySelector('.i18n') || footEl).replace(/[-]/g, '').trim());
+                    out.push({ id: 's' + mid + 'c', kind: 'service', note: true, text: lines.filter(Boolean).join('\\n'), at: at });
+                    var tails = b.querySelectorAll('[class*=_text_]'), tailEl = tails.length ? tails[tails.length - 1] : null;
+                    var tail = tailEl ? __ciCleanText(tailEl, '') : '';
+                    if (tail) out.push({ id: 's' + mid + 't', kind: 'service', note: true, text: tail, at: at });
+                    continue;
+                }
                 var noteEl = b.querySelector('.service-msg') || b;
                 out.push({ id: 's' + mid, kind: 'service', note: true, text: String(noteEl.innerText || '').split('\\n').map(function (x) { return x.trim(); }).filter(Boolean).join(' · ').slice(0, 300), at: at });
                 continue;
@@ -309,7 +336,7 @@ const telegram = {
             var replyEl = b.querySelector('.reply');
             var album = albumOf(b, mid);
             var size = img ? img.getBoundingClientRect() : null;
-            out.push({
+            var msg = {
                 id: mid,
                 at: at,
                 out: / is-out /.test(cls),
@@ -349,7 +376,33 @@ const telegram = {
                 reactions: reactsOf(mid, b),
                 webpage: webpageOf(b, mid),
                 time: __ciText(b.querySelector('.time .time-inner, .time')).replace(/[^0-9:]/g, '').slice(-5)
-            });
+            };
+            // several files sent together are ONE bubble with a container for each file; each is a message of its own (own
+            // number, name, size and little preview) — only the first was read, the rest vanished (owner, 2026-11-13)
+            var docBoxes = kind === 'file' ? b.querySelectorAll('.document-container') : [];
+            if (docBoxes.length > 1) {
+                for (var di = 0; di < docBoxes.length; di++) {
+                    var dc = docBoxes[di], dmid = dc.getAttribute('data-mid') || mid, last = di === docBoxes.length - 1;
+                    var thumb = dc.querySelector('img.document-thumb, .document img.media-photo');
+                    var part = {};
+                    for (var key in msg) part[key] = msg[key];
+                    part.id = dmid;
+                    part.name = __ciText(dc.querySelector('.document-name'));
+                    part.size = __ciText(dc.querySelector('.document-size'));
+                    part.media = thumb && thumb.tagName === 'IMG' ? __ciPicture('tg' + dmid, thumb) : '';
+                    part.picture = '';
+                    // the words and the reactions of the group stand with its last file
+                    part.text = last ? msg.text : '';
+                    part.marked = last ? msg.marked : '';
+                    part.reactions = last ? msg.reactions : [];
+                    part.reply = di === 0 ? msg.reply : '';
+                    part.replyTitle = di === 0 ? msg.replyTitle : '';
+                    part.forwarded = di === 0 ? msg.forwarded : '';
+                    out.push(part);
+                }
+                continue;
+            }
+            out.push(msg);
         }
         return {
             title: titles[0] ? __ciText(titles[0]) : '',

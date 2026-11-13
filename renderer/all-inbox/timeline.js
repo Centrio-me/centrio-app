@@ -104,7 +104,8 @@ function buildTimeline(raw, now) {
             const text = String(m.text || '').trim()
             if (!text) continue
             // an event in the chat (someone joined, a gift, a pinned message) is a small note; a date divides the days
-            if (m.note === true) { rows.push({ type: 'note', text: text.slice(0, 300), id: String(m.id) }); continue }
+            // the lines of a note (a stranger's card) stay lines
+            if (m.note === true) { rows.push({ type: 'note', text: text.slice(0, 400), id: String(m.id) }); continue }
             rows.push({ type: 'day', label: text, id: m.id })
             lastDay = text
             continue

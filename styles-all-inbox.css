@@ -586,7 +586,7 @@ html[data-fx] .aic-line .aic-bar { background: rgba(22, 25, 38, .92); backdrop-f
 .aic-note { display: flex; justify-content: center; margin: 8px 0; }
 .aic-note > span {
     max-width: min(80%, 460px); padding: 5px 12px; border-radius: 14px; background: rgba(0, 0, 0, .3); color: #fff;
-    font-size: 13px; font-weight: 500; line-height: 1.35; text-align: center; backdrop-filter: blur(10px);
+    font-size: 13px; font-weight: 500; line-height: 1.35; text-align: center; white-space: pre-line; /* the lines of a card stay lines */ backdrop-filter: blur(10px);
 }
 html[data-mode="light"] .aic-note > span, html[data-theme="light"] .aic-note > span { background: rgba(0, 0, 0, .22); }
 
