@@ -204,7 +204,7 @@ html[data-fx] .aic-head { border-bottom-color: rgba(255, 255, 255, .06); }
 @keyframes aic-pulse { 50% { transform: scale(.92); } }
 
 /* files waiting to be sent */
-.aic-tray { display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 4px; }
+.aic-tray { display: flex; flex-wrap: wrap; gap: 8px; max-height: 156px; overflow-y: auto; padding: 2px 2px 4px; } /* several files stand in rows by the window's width, not in one scrolled line (Oleg, 2026-11-13) */
 .aic-tray[hidden] { display: none; }
 .aic-chip { position: relative; flex: none; display: flex; align-items: center; gap: 10px; max-width: 240px; padding: 6px 30px 6px 6px; border-radius: 14px; background: var(--bg-secondary); box-shadow: 0 0 0 1px var(--border); animation: aic-fade .15s ease-out; }
 .aic-chip-pic { flex: none; width: 44px; height: 44px; border-radius: 10px; overflow: hidden; display: grid; place-items: center; background: var(--accent-dim); color: var(--accent); }
