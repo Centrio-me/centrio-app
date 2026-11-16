@@ -2012,8 +2012,9 @@ body.startup-locked #contentArea {
    CONFIRM MODAL — THEMED PREMIUM
    ========================================================= */
 
+/* above the notes window (100001), so its delete question is not hidden behind it (Oleg, 2026-11-13) */
 .confirm-modal {
-    z-index: 100000 !important;
+    z-index: 100010 !important;
 }
 
 .confirm-modal.show {
