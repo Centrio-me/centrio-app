@@ -30,3 +30,12 @@ test('the conversation always keeps room: the column cannot be wider than the ar
 test('in a small area the smallest column wins over the chat\'s room', () => {
     assert.equal(dockWidth(900, 500), MIN_DOCK)
 })
+
+test('beside a chat only where the chat keeps its room', () => {
+    const { canDock, MIN_DOCK, MIN_CHAT } = require('../renderer/notes-dock-width')
+    assert.equal(canDock(MIN_DOCK + MIN_CHAT), true)
+    assert.equal(canDock(MIN_DOCK + MIN_CHAT - 1), false)
+    assert.equal(canDock(488), false)
+    assert.equal(canDock(1400), true)
+    assert.equal(canDock(undefined), false)
+})

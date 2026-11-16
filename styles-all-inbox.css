@@ -1163,3 +1163,26 @@ html[data-theme="light"] .aic-meta.is-floating .aic-check { color: #fff; }
 
 /* the name of a topic of a group with topics, where the topic changes (like Telegram's separator) */
 .aic-note.is-topic > span { background: color-mix(in srgb, var(--accent, #766ac8) 38%, rgba(0, 0, 0, .35)); font-weight: 650; padding: 4px 14px; }
+
+/* ═══ 3.8.7: the design check (light theme, the line under the name, keyboard) ═══ */
+/* the default wallpaper is a dark slab; on the light theme it draws as the light WhatsApp one (the other wallpapers are the person's choice) */
+html[data-theme="light"] .aic[data-bg="whatsapp"] { background: var(--aic-doodles-dark), #efeae2; background-size: 360px 360px, auto; }
+html[data-theme="light"] .aic[data-bg="whatsapp"] .aic-day > span { background: rgba(255, 255, 255, .62); color: #2f3a2a; }
+html[data-theme="light"] .aic[data-bg="whatsapp"] :is(.aic-loading, .aic-opening-text) { color: #3d4636; text-shadow: none; }
+/* a header with something solid under it, so the words in it can be read */
+html[data-theme="light"] .aic-head { background: rgba(255, 255, 255, .94); }
+html[data-theme="light"] .aic-head .aic-btn.aic-icon { color: #3f3f46; }
+/* the grey lines (the name's second line, the counts, the times) follow the text colour, so they hold in every theme */
+.aic-sub, .ai-count, .ai-time { color: color-mix(in srgb, var(--text-primary) 66%, transparent); }
+html[data-theme="light"] { --aic-danger: #dc2626; }
+html[data-theme="light"] .aic-menu-item.is-danger, html[data-theme="light"] .aic-menu-item.is-danger svg,
+html[data-theme="light"] .aic-ask-btn.is-danger, html[data-theme="light"] .ai-fmenu-item.is-danger { color: var(--aic-danger); }
+html[data-theme="light"] .aic { --in-meta: rgba(0, 0, 0, .56); }
+html[data-theme="light"] .aic-bubble { box-shadow: 0 1px 1px rgba(0, 0, 0, .12); }
+/* the open row: the accent a little darker, so white words on it hold */
+html[data-theme="light"] .ai-row.is-active { background: color-mix(in srgb, var(--accent) 86%, #000); }
+html[data-theme="light"] #allInboxPanel { border-right: 1px solid rgba(0, 0, 0, .08); }
+/* a long word or link does not push the bubble wider than the window */
+.aic-bubble, .aic-text { overflow-wrap: anywhere; }
+/* one ring for every button of the conversation (the browser's yellow one stood on some) */
+.aic :focus-visible, .ai-sources-arrow:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }

@@ -22,8 +22,13 @@ function dockWidth(saved, areaWidth) {
     return Math.round(Math.max(MIN_DOCK, Math.min(most, wanted)))
 }
 
+/** Whether the column may stand beside the chat in an area this wide: otherwise the notes open as a window. */
+function canDock(areaWidth) {
+    return Number(areaWidth) >= MIN_DOCK + MIN_CHAT
+}
+
 function readSaved() { try { return localStorage.getItem(KEY) } catch { return null } }
 function saveWidth(w) { try { localStorage.setItem(KEY, String(w)) } catch {} }
 function forgetWidth() { try { localStorage.removeItem(KEY) } catch {} }
 
-module.exports = { dockWidth, readSaved, saveWidth, forgetWidth, MIN_DOCK, MIN_CHAT }
+module.exports = { dockWidth, canDock, readSaved, saveWidth, forgetWidth, MIN_DOCK, MIN_CHAT }

@@ -426,6 +426,7 @@ function renderMessage(m, ctx) {
     // answer this message: the round arrow next to it on hover, or a double click on it
     if (ctx.onReply) {
         const answer = el('button', 'aic-answer')
+        answer.tabIndex = -1
         answer.type = 'button'
         answer.title = 'Ответить'
         answer.setAttribute('aria-label', 'Ответить')

@@ -386,8 +386,12 @@ function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab
         card.append(open, el('div', 'aic-info-hint', 'Отписаться или изменить настройки можно в самом мессенджере'))
         infoBox.replaceChildren(card)
         infoBox.hidden = false
+        // the focus goes into the card: Esc closes it (and not the whole chat), and the keyboard starts from it
+        card.tabIndex = -1
+        card.focus()
     }
     infoBox.addEventListener('mousedown', (e) => { if (e.target === infoBox) closeInfo() })
+    infoBox.addEventListener('keydown', (e) => { if (e.key === 'Escape') { e.stopPropagation(); closeInfo(); q('.aic-who')?.focus?.() } })
     root.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !infoBox.hidden) { e.stopPropagation(); closeInfo() } })
     q('.aic-who').addEventListener('click', toggleInfo)
 

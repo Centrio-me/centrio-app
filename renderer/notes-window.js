@@ -19,7 +19,7 @@ function el(tag, cls, html) {
 /**
  * @param {{ tGet: Function, authorizedInvoke: Function, getNotesApi: () => any }} deps
  */
-const { dockWidth, readSaved, saveWidth, forgetWidth } = require('./notes-dock-width')
+const { dockWidth, canDock, readSaved, saveWidth, forgetWidth } = require('./notes-dock-width')
 
 function createNotesWindow({ tGet, authorizedInvoke, getNotesApi }) {
     const say = (key, fallback) => tGet(`notes.${key}`) || fallback
@@ -228,7 +228,8 @@ function createNotesWindow({ tGet, authorizedInvoke, getNotesApi }) {
         overlay.style.setProperty('--dock-left', `${r.right - w}px`)
         overlay.style.setProperty('--dock-h', `${r.height}px`)
         overlay.style.setProperty('--dock-w', `${w}px`)
-        document.body.style.setProperty('--notes-dock-w', `${w + 8}px`)
+        // the chat ends where the column begins (the column's own 8 px edge is painted, no gap shows the tab behind)
+        document.body.style.setProperty('--notes-dock-w', `${w}px`)
     }
     function undock() {
         overlay.classList.remove('is-docked')
@@ -236,6 +237,8 @@ function createNotesWindow({ tGet, authorizedInvoke, getNotesApi }) {
         dockWatch?.disconnect(); dockWatch = null
     }
     function open({ docked = false } = {}) {
+        // beside a chat only where the chat keeps its room; in a narrow window the notes open over it, as a window
+        if (docked) { const area = document.getElementById('contentArea'); if (!area || !canDock(area.getBoundingClientRect().width)) docked = false }
         const panel = document.getElementById('notesPanel')
         if (panel && panel.parentElement !== main) main.append(panel)
         panel?.classList.add('active')
