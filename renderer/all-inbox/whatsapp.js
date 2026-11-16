@@ -362,6 +362,22 @@ function whatsappChat({ AVATAR_HELPER, IMAGE_HELPER }) {
                 });
             });
         })()`,
+        // a document of a message, from the store (asked from the phone if the server no longer has it), with its name (3.8.7)
+        FILE: (id) => `(function () {${WA_STORE}
+            var C = __waStore(), m = __waMsg(C, ${JSON.stringify(String(id))});
+            if (!m || m.type !== 'document') return null;
+            return __waFile(m, 60000).then(function (blob) {
+                if (!blob || !blob.size || blob.size > ${100 * 1024 * 1024}) return null;
+                var type = String(m.mimetype || blob.type || '').split(';')[0].trim() || 'application/octet-stream';
+                var b = new Blob([blob], { type: type });
+                return new Promise(function (resolve) {
+                    var r = new FileReader();
+                    r.onload = function () { resolve({ data: String(r.result || ''), mime: type, name: String(m.filename || '') }); };
+                    r.onerror = function () { resolve(null); };
+                    r.readAsDataURL(b);
+                });
+            }).catch(function () { return null; });
+        })()`,
         // a photo at full size for the viewer, from the store (the page holds only a preview or nothing)
         FULL_PICTURE: (id) => `(function () {${WA_STORE}
             var C = __waStore(), m = __waMsg(C, ${JSON.stringify(String(id))});

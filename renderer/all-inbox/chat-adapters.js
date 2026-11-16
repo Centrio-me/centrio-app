@@ -1089,6 +1089,34 @@ const max = {
         window.__ciMxMedia = next.then(function () {}, function () {});
         return next;
     })()`,
+    // a file (document) of a message: MAX's own «Скачать» is pressed and the address it is about to download is taken
+    // instead of the download itself (an anchor with a download name); the file is then asked for as a plain request (3.8.7)
+    FILE: (id) => `(function () {${AVATAR_HELPER}${MAX_ID_HELPER}
+        var w = __mxFind(${JSON.stringify(String(id))});
+        var button = w && w.querySelector('.attaches button.container, .attaches button[aria-label]');
+        if (!button) return null;
+        return new Promise(function (resolve) {
+            var original = HTMLAnchorElement.prototype.click;
+            var taken = false;
+            function restore() { HTMLAnchorElement.prototype.click = original; }
+            HTMLAnchorElement.prototype.click = function () {
+                var href = String(this.href || '');
+                if (taken || !/^https:/i.test(href)) return original.apply(this, arguments);
+                taken = true;
+                restore();
+                var name = String(this.download || '');
+                fetch(href, { credentials: 'omit' }).then(function (r) { return r.ok ? r.blob() : null; }).then(function (blob) {
+                    if (!blob || !blob.size || blob.size > ${MEDIA_MAX_BYTES}) return resolve(null);
+                    var fr = new FileReader();
+                    fr.onload = function () { resolve({ data: String(fr.result), mime: blob.type, name: name }); };
+                    fr.onerror = function () { resolve(null); };
+                    fr.readAsDataURL(blob);
+                }).catch(function () { resolve(null); });
+            };
+            button.click();
+            setTimeout(function () { if (!taken) { restore(); resolve(null); } }, 8000);
+        });
+    })()`,
     // MAX loads earlier messages once its list is at its very top (the first message put at the top was not always
     // the top — a date line or a channel's header lies above it, and nothing loaded)
     OLDER: `(function () {${LIMIT_HELPER}
