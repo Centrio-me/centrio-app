@@ -20,6 +20,8 @@
 
 const { getVisibleMessengerIds } = require('./focused-messenger')
 const { paintTitlebar } = require('./titlebar-tabs')
+const Tree = require('./split-tree')
+const { tGet } = require('./i18n')
 
 // Раскладки-сетки (доп. к классическому 2col выше) — прямоугольники в % от
 // #contentArea. Зона 0 всегда зеркалит activeTabId (та же конвенция, что и
@@ -165,6 +167,7 @@ function createSplitApi ({
         const colB = _prefPct('gridColBPref', DEFAULT_COL_B)
         state.gridColA = _validCols(colA, colB) ? colA : DEFAULT_COL_A
         state.gridColB = _validCols(colA, colB) ? colB : DEFAULT_COL_B
+        state.splitTree = Tree.normalizeTree(store?.get?.('customTreePref', null))
     }
 
     function _openPreset () {
@@ -192,6 +195,7 @@ function createSplitApi ({
             p.sidePct = state.gridSidePct || 50
             p.colA    = state.gridColA || DEFAULT_COL_A
             p.colB    = state.gridColB || DEFAULT_COL_B
+            if (state.splitLayout === 'custom' && state.splitTree) p.tree = JSON.parse(JSON.stringify(state.splitTree))
         })
     }
 
@@ -212,6 +216,7 @@ function createSplitApi ({
         const colsOk = _validCols(preset.colA, preset.colB)
         state.gridColA = colsOk ? preset.colA : _prefPct('gridColAPref', DEFAULT_COL_A)
         state.gridColB = colsOk ? preset.colB : _prefPct('gridColBPref', DEFAULT_COL_B)
+        if (preset.layout === 'custom') state.splitTree = Tree.normalizeTree(preset.tree) || Tree.defaultTree()
     }
 
     function _applyPresetZooms (preset) {
@@ -237,6 +242,7 @@ function createSplitApi ({
     }
 
     function getGridLayout (layout) {
+        if (layout === 'custom') return state.splitTree ? Tree.treeRects(state.splitTree) : null
         return computeRowLayout(layout, state.gridRowPct || 50, state.gridSidePct || 50, state.gridColA || DEFAULT_COL_A, state.gridColB || DEFAULT_COL_B) || GRID_LAYOUTS[layout]
     }
 
@@ -256,6 +262,7 @@ function createSplitApi ({
     // этого state.splitLeftPct всегда стартовал бы с дефолта 50 из state.js
     // при каждом свежем запуске приложения, даже если пользователь всегда
     // подгоняет разделитель под себя.
+    state.splitTree = Tree.normalizeTree(store?.get?.('customTreePref', null))
     const _savedPct = store?.get?.('splitLeftPctPref', null)
     if (typeof _savedPct === 'number' && _savedPct >= 15 && _savedPct <= 85) {
         state.splitLeftPct = _savedPct
@@ -428,11 +435,79 @@ function createSplitApi ({
     // У всех сеток границы двигаются: 2top1bottom/1top2bottom (строка + граница внутри
     // ряда), 2x2 (крест: одна вертикальная и одна горизонтальная), 3col (две вертикальные).
     function _isGridLayout (layout) {
-        return layout === '2top1bottom' || layout === '1top2bottom' || layout === '2x2' || layout === '3col' || layout === '3colsplit'
+        return layout === '2top1bottom' || layout === '1top2bottom' || layout === '2x2' || layout === '3col' || layout === '3colsplit' || layout === 'custom'
     }
 
     function _hideGridHandles () {
         ;[gridRowHandle, gridSideHandle, gridSide2Handle].forEach(el => { if (el) el.style.display = 'none' })
+        _clearCustomHandles()
+    }
+
+    // ── Free layout: a divider for every cut of the tree (same look as the other dividers, see .split-handle) ──
+    const _customHandles = new Map() // path in the tree → element
+    let _customDrag = null           // { path, dir, region } while a divider of the free layout is being dragged
+
+    function _clearCustomHandles () {
+        _customHandles.forEach(el => el.remove())
+        _customHandles.clear()
+    }
+
+    function _makeCustomHandle (path) {
+        const el = document.createElement('div')
+        el.style.position = 'fixed'
+        el.style.zIndex   = '99998'
+        el.addEventListener('mousedown', e => {
+            const d = Tree.treeDividers(state.splitTree).find(x => x.path === path)
+            if (!d) return
+            _customDrag = { path, dir: d.dir, region: d.region }
+            el.classList.add('dragging')
+            document.body.style.cursor     = d.dir === 'v' ? 'col-resize' : 'row-resize'
+            document.body.style.userSelect = 'none'
+            _disableWebviewPointerEvents()
+            e.preventDefault()
+            e.stopPropagation()
+        })
+        // A double click puts this divider back in the middle of its area.
+        el.addEventListener('dblclick', e => {
+            e.preventDefault()
+            e.stopPropagation()
+            state.splitTree = Tree.setRatio(state.splitTree, path, 50)
+            _reapplyGridLayout()
+            _persistCustomTree()
+        })
+        document.body.appendChild(el)
+        return el
+    }
+
+    function _placeCustomHandles (rect) {
+        const dividers = Tree.treeDividers(state.splitTree)
+        const live = new Set(dividers.map(d => d.path))
+        _customHandles.forEach((el, path) => { if (!live.has(path)) { el.remove(); _customHandles.delete(path) } })
+        dividers.forEach(({ path, dir, ratio, region }) => {
+            let el = _customHandles.get(path)
+            if (!el) { el = _makeCustomHandle(path); _customHandles.set(path, el) }
+            el.className = 'split-handle ' + (dir === 'v' ? 'split-handle-side' : 'split-handle-row') + (_customDrag?.path === path ? ' dragging' : '')
+            el.style.display = 'block'
+            el.style.right = el.style.bottom = 'auto'
+            if (dir === 'v') {
+                el.style.left   = (rect.left + rect.width * ((region.left + region.width * ratio / 100) / 100) - 3) + 'px'
+                el.style.top    = (rect.top + rect.height * (region.top / 100)) + 'px'
+                el.style.width  = '6px'
+                el.style.height = (rect.height * (region.height / 100)) + 'px'
+            } else {
+                el.style.left   = (rect.left + rect.width * (region.left / 100)) + 'px'
+                el.style.top    = (rect.top + rect.height * ((region.top + region.height * ratio / 100) / 100) - 3) + 'px'
+                el.style.width  = (rect.width * (region.width / 100)) + 'px'
+                el.style.height = '6px'
+            }
+        })
+    }
+
+    // The free layout is remembered for the next manual split, or inside the preset that is open.
+    function _persistCustomTree () {
+        if (!state.splitTree) return
+        if (!_savePresetDividers()) store?.set?.('customTreePref', state.splitTree)
+        _persistGridSplit()
     }
 
     function _placeVertical (el, rect, pct, topPct, heightPct) {
@@ -466,6 +541,12 @@ function createSplitApi ({
         }
 
         const rect = contentArea.getBoundingClientRect()
+        if (state.splitLayout === 'custom') {
+            ;[gridRowHandle, gridSideHandle, gridSide2Handle].forEach(el => { if (el) el.style.display = 'none' })
+            if (state.splitTree) _placeCustomHandles(rect)
+            return
+        }
+        _clearCustomHandles()
         if (state.splitLayout === '3col') {
             if (gridRowHandle) gridRowHandle.style.display = 'none'
             _placeVertical(gridSideHandle,  rect, state.gridColA || DEFAULT_COL_A, 0, 100)
@@ -650,6 +731,7 @@ function createSplitApi ({
             layout: state.splitLayout,
             zoneIds: state.splitZoneIds,
             splitLeftPct: state.splitLeftPct || 50,
+            tree: state.splitLayout === 'custom' ? state.splitTree : null,
             presetId: state.splitPresetId || null
         })
     }
@@ -805,6 +887,7 @@ function createSplitApi ({
         optionBtn.addEventListener('click', () => {
             const layout = optionBtn.dataset.layout
             hideLayoutPicker()
+            if (layout === 'custom') { openLayoutEditor(); return }
             // Уже в сплите — перестраиваем раскладку на месте, перенося
             // текущие назначения (см. switchSplitLayout), вместо того чтобы
             // требовать сначала выйти из сплита целиком.
@@ -826,9 +909,10 @@ function createSplitApi ({
     // layout's zone count; zone 0 always ends up as the current active tab,
     // matching the "left pane mirrors activeTabId" convention used
     // everywhere else in this file.
-    function enterGridSplitMode (layout, presetZoneIds) {
-        const zones = GRID_LAYOUTS[layout] // validity check only — uses the static table
-        if (!zones) return false           // on purpose, layout names never vary by pct
+    function enterGridSplitMode (layout, presetZoneIds, tree) {
+        if (layout === 'custom') state.splitTree = Tree.normalizeTree(tree) || state.splitTree || Tree.defaultTree()
+        const zones = layout === 'custom' ? Tree.treeRects(state.splitTree) : GRID_LAYOUTS[layout] // static table: validity check only
+        if (!zones) return false
         if (state.activeMessengers.length < 2) {
             if (splitBtn) {
                 const orig = splitBtn.title
@@ -1119,6 +1203,7 @@ function createSplitApi ({
             hidePicker()
         } else {
             _clearGridWebviewStyles()
+            _clearCustomHandles()
             hideZonePicker()
             if (splitZones) {
                 splitZones.innerHTML = ''
@@ -1164,6 +1249,7 @@ function createSplitApi ({
         if (gridRowHandle)  gridRowHandle.style.display  = 'none'
         if (gridSideHandle) gridSideHandle.style.display = 'none'
         if (gridSide2Handle) gridSide2Handle.style.display = 'none'
+        _clearCustomHandles()
         hideLayoutPicker()
 
         // Сбрасываем сохранённое состояние
@@ -1177,7 +1263,7 @@ function createSplitApi ({
     // из старых назначений, лишние отбрасываются, недостающие остаются
     // пустыми). Если сплит ещё не активен — просто входит в раскладку
     // (эквивалент enterGridSplitMode/enterSplitMode).
-    function switchSplitLayout (layout) {
+    function switchSplitLayout (layout, tree) {
         state.splitPresetId = null
         const assignedIds = _currentAssignedIds()
 
@@ -1186,7 +1272,7 @@ function createSplitApi ({
         if (layout === '2col') {
             return enterSplitMode(assignedIds.find(id => id !== state.activeTabId))
         }
-        return enterGridSplitMode(layout, assignedIds)
+        return enterGridSplitMode(layout, assignedIds, tree)
     }
 
     // ── Пресеты сплит-режима ─────────────────────────────────────────────────
@@ -1233,6 +1319,7 @@ function createSplitApi ({
             entry.sidePct = state.gridSidePct || 50
             entry.colA    = state.gridColA || DEFAULT_COL_A
             entry.colB    = state.gridColB || DEFAULT_COL_B
+            if (state.splitLayout === 'custom' && state.splitTree) entry.tree = JSON.parse(JSON.stringify(state.splitTree))
             const zooms = {}
             memberIds.forEach(id => {
                 const z = state.activeMessengers.find(m => m.id === id)?.zoomLevel
@@ -1815,6 +1902,26 @@ function createSplitApi ({
         _persistGridDividers()
     })
 
+    document.addEventListener('mousemove', e => {
+        if (!_customDrag || !state.splitTree) return
+        const box = contentArea.getBoundingClientRect()
+        const { dir, region, path } = _customDrag
+        const pos = dir === 'v'
+            ? ((e.clientX - box.left) / box.width * 100 - region.left) / region.width * 100
+            : ((e.clientY - box.top) / box.height * 100 - region.top) / region.height * 100
+        state.splitTree = Tree.setRatio(state.splitTree, path, pos)
+        _reapplyGridLayout()
+    })
+    document.addEventListener('mouseup', () => {
+        if (!_customDrag) return
+        _customDrag = null
+        _customHandles.forEach(el => el.classList.remove('dragging'))
+        document.body.style.cursor     = ''
+        document.body.style.userSelect = ''
+        _restoreWebviewPointerEvents()
+        _persistCustomTree()
+    })
+
     // Double click on a divider puts that divider back to its default place.
     function _resetGridDivider (which) {
         if (which === 'row') state.gridRowPct = 50
@@ -1832,6 +1939,97 @@ function createSplitApi ({
             _resetGridDivider(which)
         })
     })
+
+    // ── Free layout editor: cut blocks in two, remove blocks, then apply ──────
+    const ICON_RIGHT = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M12 4v16"/></svg>'
+    const ICON_DOWN  = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 12h18"/></svg>'
+    const ICON_CLOSE = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>'
+    const tr = (key) => tGet('v380.customSplit.' + key)
+
+    function openLayoutEditor () {
+        if (document.getElementById('splitEditor')) return
+        document.dispatchEvent(new CustomEvent('close-all-popups'))
+        let draft = Tree.normalizeTree(state.splitTree) || Tree.defaultTree()
+
+        const overlay = document.createElement('div')
+        overlay.id = 'splitEditor'
+        overlay.className = 'split-editor-overlay'
+        overlay.innerHTML =
+            '<div class="split-editor" role="dialog" aria-modal="true" aria-labelledby="splitEditorTitle">' +
+              '<div class="split-editor-head"><b id="splitEditorTitle"></b><span></span></div>' +
+              '<div class="split-editor-stage"></div>' +
+              '<div class="split-editor-foot"><span class="split-editor-count"></span>' +
+                '<button type="button" class="split-editor-cancel"></button>' +
+                '<button type="button" class="split-editor-apply"></button></div>' +
+            '</div>'
+        const stage = overlay.querySelector('.split-editor-stage')
+        overlay.querySelector('#splitEditorTitle').textContent = tr('title')
+        overlay.querySelector('.split-editor-head span').textContent = tr('hint')
+        overlay.querySelector('.split-editor-cancel').textContent = tr('cancel')
+        overlay.querySelector('.split-editor-apply').textContent = tr('apply')
+
+        const button = (cls, title, icon, onClick, disabled) => {
+            const b = document.createElement('button')
+            b.type = 'button'
+            b.className = 'split-editor-btn ' + cls
+            b.title = title
+            b.setAttribute('aria-label', title)
+            b.innerHTML = icon
+            b.disabled = !!disabled
+            b.addEventListener('click', onClick)
+            return b
+        }
+
+        function draw () {
+            stage.innerHTML = ''
+            const rects = Tree.treeRects(draft)
+            const full = !Tree.canSplit(draft)
+            rects.forEach((r, i) => {
+                const cell = document.createElement('div')
+                cell.className = 'split-editor-cell'
+                cell.style.left   = `calc(${r.left}% + 3px)`
+                cell.style.top    = `calc(${r.top}% + 3px)`
+                cell.style.width  = `calc(${r.width}% - 6px)`
+                cell.style.height = `calc(${r.height}% - 6px)`
+                const num = document.createElement('span')
+                num.className = 'split-editor-num'
+                num.textContent = String(i + 1)
+                const tools = document.createElement('div')
+                tools.className = 'split-editor-tools'
+                tools.appendChild(button('right', full ? tr('max') : tr('splitRight'), ICON_RIGHT, () => { draft = Tree.splitLeaf(draft, i, 'v'); draw() }, full))
+                tools.appendChild(button('down', full ? tr('max') : tr('splitDown'), ICON_DOWN, () => { draft = Tree.splitLeaf(draft, i, 'h'); draw() }, full))
+                tools.appendChild(button('remove', tr('remove'), ICON_CLOSE, () => { draft = Tree.removeLeaf(draft, i); draw() }, rects.length < 2))
+                cell.append(num, tools)
+                stage.appendChild(cell)
+            })
+            overlay.querySelector('.split-editor-count').textContent =
+                tr('count').replace('{n}', String(rects.length)).replace('{max}', String(Tree.MAX_LEAVES))
+        }
+
+        function close () {
+            document.removeEventListener('keydown', onKey, true)
+            overlay.remove()
+        }
+        function apply () {
+            const tree = draft
+            close()
+            store?.set?.('customTreePref', tree)
+            if (state.splitMode) switchSplitLayout('custom', tree)
+            else enterGridSplitMode('custom', undefined, tree)
+        }
+        function onKey (e) {
+            if (e.key === 'Escape') { e.stopPropagation(); close() }
+            else if (e.key === 'Enter' && document.activeElement?.tagName !== 'BUTTON') { e.stopPropagation(); apply() }
+        }
+
+        overlay.querySelector('.split-editor-cancel').addEventListener('click', close)
+        overlay.querySelector('.split-editor-apply').addEventListener('click', apply)
+        overlay.addEventListener('mousedown', e => { if (e.target === overlay) close() })
+        document.addEventListener('keydown', onKey, true)
+        document.body.appendChild(overlay)
+        draw()
+        overlay.querySelector('.split-editor-apply').focus()
+    }
 
     // ── Button wiring ─────────────────────────────────────────────────────────
 
@@ -1883,6 +2081,7 @@ function createSplitApi ({
     return {
         enterSplitMode,
         enterGridSplitMode,
+        openLayoutEditor,
         exitSplitMode,
         switchSplitLayout,
         switchSplitTab,

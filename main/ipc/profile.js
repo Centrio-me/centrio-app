@@ -18,7 +18,7 @@ const PROFILE_KEYS = [
     'sidebarOrder', 'sidebarBarExpanded', 'menuCollapsed', 'dividers', 'rightbarLayout',
     'foldersEnabled', 'foldersStyle', 'folderColors', 'orgAssignedFolders', 'filesInWindows',
     'appZoomLevel', 'tabZoomLevel', 'extensionsState',
-    'split', 'splitPresets', 'splitLeftPctPref', 'gridRowPctPref', 'gridSidePctPref', 'gridColAPref', 'gridColBPref',
+    'split', 'splitPresets', 'splitLeftPctPref', 'gridRowPctPref', 'gridSidePctPref', 'gridColAPref', 'gridColBPref', 'customTreePref',
     'mutedMessengers', 'globalMuteAll', 'dndUntil', 'dndLastHours',
     'quickReplies', 'todos', 'pmVault', 'assistant', 'messengerNotifHistory', 'downloadsHistory',
     'milestones', 'firstStepsActive', 'firstStepsCollapsed', 'hintsSeen',

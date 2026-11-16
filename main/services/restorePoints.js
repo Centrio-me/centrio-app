@@ -12,7 +12,7 @@ const RESTORE_KEYS = [
     'sidebarOrder', 'sidebarBarExpanded', 'menuCollapsed', 'dividers', 'rightbarLayout',
     'foldersEnabled', 'foldersStyle', 'folderColors', 'orgAssignedFolders', 'filesInWindows',
     'appZoomLevel', 'tabZoomLevel', 'extensionsState',
-    'split', 'splitPresets', 'splitLeftPctPref', 'gridRowPctPref', 'gridSidePctPref', 'gridColAPref', 'gridColBPref',
+    'split', 'splitPresets', 'splitLeftPctPref', 'gridRowPctPref', 'gridSidePctPref', 'gridColAPref', 'gridColBPref', 'customTreePref',
     'mutedMessengers', 'globalMuteAll', 'quickReplies', 'todos', 'hibernate', 'workHours'
 ]
 const REASONS = new Set(['daily', 'manual', 'before-restore'])

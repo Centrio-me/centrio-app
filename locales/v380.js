@@ -2,6 +2,19 @@
 // a missing string falls back to English, then Russian (renderer/i18n.js).
 module.exports = {
     ru: {
+        // «Своя раскладка» сплита (3.8.3)
+        customSplit: {
+            tile: "Своя раскладка",
+            title: "Своя раскладка",
+            hint: "Режьте блоки пополам вправо или вниз, пока окно не станет таким, как нужно. Границы потом двигаются мышью.",
+            splitRight: "Разделить вправо",
+            splitDown: "Разделить вниз",
+            remove: "Убрать блок",
+            count: "Блоков: {n} из {max}",
+            max: "Больше блоков не поместится",
+            apply: "Применить",
+            cancel: "Отмена"
+        },
         // the morning summary (3.8.2): wider, «Чего хотят клиенты»
         ms: {
             wants: "Чего хотят клиенты",
@@ -68,6 +81,19 @@ module.exports = {
         }
     },
     en: {
+        // «Своя раскладка» сплита (3.8.3)
+        customSplit: {
+            tile: "Custom layout",
+            title: "Custom layout",
+            hint: "Cut a block in two, to the right or downward, until the window looks the way you want. Dividers can be dragged afterwards.",
+            splitRight: "Split to the right",
+            splitDown: "Split downward",
+            remove: "Remove block",
+            count: "Blocks: {n} of {max}",
+            max: "No room for more blocks",
+            apply: "Apply",
+            cancel: "Cancel"
+        },
         // the morning summary (3.8.2): wider, «Чего хотят клиенты»
         ms: {
             wants: "What people want",
@@ -133,6 +159,19 @@ module.exports = {
         }
     },
     de: {
+        // «Своя раскладка» сплита (3.8.3)
+        customSplit: {
+            tile: "Eigenes Layout",
+            title: "Eigenes Layout",
+            hint: "Teilen Sie Blöcke nach rechts oder unten, bis das Fenster so aussieht, wie Sie es brauchen. Die Trennlinien lassen sich danach ziehen.",
+            splitRight: "Nach rechts teilen",
+            splitDown: "Nach unten teilen",
+            remove: "Block entfernen",
+            count: "Blöcke: {n} von {max}",
+            max: "Mehr Blöcke passen nicht",
+            apply: "Anwenden",
+            cancel: "Abbrechen"
+        },
         // the morning summary (3.8.2): wider, «Чего хотят клиенты»
         ms: {
             wants: "Was die Leute wollen",
@@ -196,6 +235,19 @@ module.exports = {
         }
     },
     es: {
+        // «Своя раскладка» сплита (3.8.3)
+        customSplit: {
+            tile: "Diseño propio",
+            title: "Diseño propio",
+            hint: "Divide los bloques a la derecha o hacia abajo hasta que la ventana quede como la necesitas. Después puedes arrastrar los divisores.",
+            splitRight: "Dividir a la derecha",
+            splitDown: "Dividir hacia abajo",
+            remove: "Quitar bloque",
+            count: "Bloques: {n} de {max}",
+            max: "No caben más bloques",
+            apply: "Aplicar",
+            cancel: "Cancelar"
+        },
         // the morning summary (3.8.2): wider, «Чего хотят клиенты»
         ms: {
             wants: "Qué quieren los clientes",
@@ -259,6 +311,19 @@ module.exports = {
         }
     },
     fr: {
+        // «Своя раскладка» сплита (3.8.3)
+        customSplit: {
+            tile: "Disposition libre",
+            title: "Disposition libre",
+            hint: "Coupez les blocs en deux, vers la droite ou vers le bas, jusqu’à obtenir la fenêtre voulue. Les séparateurs se déplacent ensuite à la souris.",
+            splitRight: "Couper vers la droite",
+            splitDown: "Couper vers le bas",
+            remove: "Supprimer le bloc",
+            count: "Blocs : {n} sur {max}",
+            max: "Plus de place pour d’autres blocs",
+            apply: "Appliquer",
+            cancel: "Annuler"
+        },
         // the morning summary (3.8.2): wider, «Чего хотят клиенты»
         ms: {
             wants: "Ce que veulent les clients",
@@ -322,6 +387,19 @@ module.exports = {
         }
     },
     it: {
+        // «Своя раскладка» сплита (3.8.3)
+        customSplit: {
+            tile: "Layout personale",
+            title: "Layout personale",
+            hint: "Dividi i blocchi a destra o verso il basso finché la finestra non è come la vuoi. I separatori si spostano poi con il mouse.",
+            splitRight: "Dividi a destra",
+            splitDown: "Dividi in basso",
+            remove: "Rimuovi blocco",
+            count: "Blocchi: {n} di {max}",
+            max: "Non c’è spazio per altri blocchi",
+            apply: "Applica",
+            cancel: "Annulla"
+        },
         // the morning summary (3.8.2): wider, «Чего хотят клиенты»
         ms: {
             wants: "Cosa vogliono i clienti",
@@ -385,6 +463,19 @@ module.exports = {
         }
     },
     zh: {
+        // «Своя раскладка» сплита (3.8.3)
+        customSplit: {
+            tile: "自定义布局",
+            title: "自定义布局",
+            hint: "把区块向右或向下一分为二，直到窗口符合你的需要。之后可以用鼠标拖动分隔线。",
+            splitRight: "向右拆分",
+            splitDown: "向下拆分",
+            remove: "移除区块",
+            count: "区块：{n} / {max}",
+            max: "放不下更多区块",
+            apply: "应用",
+            cancel: "取消"
+        },
         // the morning summary (3.8.2): wider, «Чего хотят клиенты»
         ms: {
             wants: "客户想要什么",

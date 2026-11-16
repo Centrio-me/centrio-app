@@ -56,122 +56,124 @@
 /* position:fixed + z-index заданы JS (вынесен в document.body, тот же приём,
    что у #splitPicker/#splitHandle — см. комментарий в начале split.js) */
 .split-layout-picker {
+    width:         404px;
+    max-width:     calc(100vw - 20px);
     background:    var(--bg-secondary);
     border:        1px solid var(--border-light);
-    border-radius: 14px;
+    border-radius: 16px;
     box-shadow:    var(--shadow-lg);
     padding:       16px;
-    transform-origin: top left;
+    transform-origin: top right;
     animation:     scaleIn 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .split-layout-picker-title {
-    font-size:   13px;
+    font-size:   15px;
     font-weight: 600;
     color:       var(--text-bright);
-    margin-bottom: 12px;
-    text-align:  center;
+    margin:      0 2px 14px;
+    text-align:  left;
 }
 
 .split-layout-options {
-    display: flex;
-    gap:     10px;
+    display:               grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap:                   8px;
 }
 
 .split-layout-option {
+    position:       relative;
     display:        flex;
     flex-direction: column;
-    align-items:    center;
-    gap:            8px;
-    padding:        12px 14px;
-    border-radius:  10px;
-    background:     transparent;
-    border:         1.5px solid transparent;
+    align-items:    stretch;
+    gap:            9px;
+    padding:        10px 10px 9px;
+    border-radius:  12px;
+    background:     var(--bg-hover, rgba(255, 255, 255, 0.03));
+    border:         1px solid var(--border-light);
     cursor:         pointer;
     color:          var(--text-secondary);
-    transition:     background 0.14s, border-color 0.14s, transform 0.14s;
+    text-align:     left;
+    transition:     background 0.15s, border-color 0.15s, transform 0.15s;
 }
 
 .split-layout-option:hover {
     background:   var(--bg-active);
-    border-color: var(--accent);
+    border-color: var(--border);
     color:        var(--text-bright);
-    transform:    translateY(-2px);
+    transform:    translateY(-1px);
+}
+
+.split-layout-option:focus-visible {
+    outline:        2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+.split-layout-option.is-current {
+    border-color: var(--accent);
+    background:   color-mix(in srgb, var(--accent) 10%, transparent);
+    color:        var(--text-bright);
+    outline:      none;
+}
+
+/* The number of blocks, in the corner of the tile (a digit, so it needs no translation). */
+.split-layout-option::after {
+    content:     attr(data-count);
+    position:    absolute;
+    right:       10px;
+    bottom:      8px;
+    font-size:   12px;
+    color:       var(--text-secondary);
 }
 
 .split-layout-option-label {
-    font-size: 11px;
-    white-space: nowrap;
+    font-size:     12px;
+    line-height:   1.25;
+    font-weight:   500;
+    color:         inherit;
+    padding-right: 14px;
 }
 
 .split-layout-preview {
     display: flex;
     gap:     3px;
-    width:   52px;
-    height:  36px;
+    width:   100%;
+    height:  52px;
 }
 
 .split-layout-preview i {
     display:       block;
     flex:          1;
     background:    var(--text-secondary);
-    opacity:       0.35;
-    border-radius: 3px;
+    opacity:       0.3;
+    border-radius: 4px;
     font-style:    normal;
+    transition:    background 0.15s, opacity 0.15s;
 }
 
-.split-layout-option:hover .split-layout-preview i {
-    background: var(--accent);
-    opacity:    0.7;
-}
+.split-layout-option:hover .split-layout-preview i { opacity: 0.5; }
 
-.split-layout-option.is-current {
-    outline: 1.5px solid var(--accent);
-    border-radius: 8px;
-}
+.split-layout-option.is-current .split-layout-preview i { background: var(--accent); opacity: 0.35; }
+.split-layout-option.is-current .split-layout-preview i:first-child { opacity: 1; }
 
-.split-layout-option.is-current .split-layout-preview i {
-    background: var(--accent);
-    opacity: 0.7;
-}
+.split-layout-preview-2x2 { flex-wrap: wrap; }
+.split-layout-preview-2x2 i { flex: 0 0 calc(50% - 1.5px); height: calc(50% - 1.5px); }
 
-.split-layout-preview-2x2 {
-    flex-wrap: wrap;
-}
-
-.split-layout-preview-2x2 i {
-    flex:  0 0 calc(50% - 1.5px);
-    height: calc(50% - 1.5px);
-}
-
-.split-layout-preview-2top1bottom,
-.split-layout-preview-1top2bottom {
-    flex-wrap: wrap;
-}
-
+.split-layout-preview-2top1bottom { flex-wrap: wrap; }
 .split-layout-preview-2top1bottom i:nth-child(1),
-.split-layout-preview-2top1bottom i:nth-child(2) {
-    flex: 0 0 calc(50% - 1.5px);
-    height: calc(50% - 1.5px);
-}
-.split-layout-preview-2top1bottom i:nth-child(3) {
-    flex: 0 0 100%;
-    height: calc(50% - 1.5px);
-}
+.split-layout-preview-2top1bottom i:nth-child(2) { flex: 0 0 calc(50% - 1.5px); height: calc(50% - 1.5px); }
+.split-layout-preview-2top1bottom i:nth-child(3) { flex: 0 0 100%; height: calc(50% - 1.5px); }
 
-.split-layout-preview-1top2bottom i:nth-child(1) {
-    flex: 0 0 100%;
-    height: calc(50% - 1.5px);
-}
+/* Old saved presets can still use this layout; it just has no tile of its own any more. */
+.split-layout-preview-1top2bottom { flex-wrap: wrap; }
+.split-layout-preview-1top2bottom i:nth-child(1) { flex: 0 0 100%; height: calc(50% - 1.5px); }
 .split-layout-preview-1top2bottom i:nth-child(2),
-.split-layout-preview-1top2bottom i:nth-child(3) {
-    flex: 0 0 calc(50% - 1.5px);
-    height: calc(50% - 1.5px);
-}
+.split-layout-preview-1top2bottom i:nth-child(3) { flex: 0 0 calc(50% - 1.5px); height: calc(50% - 1.5px); }
 
+/* Two big columns and a narrow one cut in half. */
 .split-layout-preview-3colsplit {
     display: grid;
-    grid-template-columns: 1fr 1fr 0.62fr;
+    grid-template-columns: 1.4fr 1.4fr 1fr;
     grid-template-rows: 1fr 1fr;
 }
 .split-layout-preview-3colsplit i { flex: none; }
@@ -179,6 +181,102 @@
 .split-layout-preview-3colsplit i:nth-child(2) { grid-column: 2; grid-row: 1 / 3; }
 .split-layout-preview-3colsplit i:nth-child(3) { grid-column: 3; grid-row: 1; }
 .split-layout-preview-3colsplit i:nth-child(4) { grid-column: 3; grid-row: 2; }
+
+/* «Своя раскладка»: dashed blocks, so it reads as «draw it yourself». */
+.split-layout-preview-custom {
+    display: grid;
+    grid-template-columns: 1.3fr 1fr;
+    grid-template-rows: 1fr 1fr;
+}
+.split-layout-preview-custom i {
+    flex: none;
+    background: transparent;
+    opacity: 0.55;
+    border: 1.5px dashed var(--text-secondary);
+}
+.split-layout-preview-custom i:nth-child(1) { grid-row: 1 / 3; }
+.split-layout-option.is-current .split-layout-preview-custom i { background: transparent; border-color: var(--accent); opacity: 1; }
+.split-layout-option:hover .split-layout-preview-custom i { background: transparent; border-color: var(--accent); }
+
+/* ── Редактор своей раскладки ──────────────────────────────────── */
+.split-editor-overlay {
+    position:        fixed;
+    inset:           0;
+    z-index:         100002;
+    display:         flex;
+    align-items:     center;
+    justify-content: center;
+    background:      rgba(0, 0, 0, 0.55);
+    padding:         20px;
+}
+.split-editor {
+    width:         min(560px, 100%);
+    background:    var(--bg-secondary);
+    border:        1px solid var(--border-light);
+    border-radius: 18px;
+    box-shadow:    var(--shadow-lg);
+    padding:       20px;
+    color:         var(--text-bright);
+}
+.split-editor-head { display: flex; flex-direction: column; gap: 4px; margin: 0 2px 14px; }
+.split-editor-head b { font-size: 16px; font-weight: 600; }
+.split-editor-head span { font-size: 12.5px; color: var(--text-secondary); line-height: 1.4; }
+.split-editor-stage {
+    position:      relative;
+    width:         100%;
+    aspect-ratio:  16 / 10;
+    border-radius: 12px;
+    background:    var(--bg);
+    border:        1px solid var(--border-light);
+}
+.split-editor-cell {
+    position:        absolute;
+    display:         flex;
+    flex-direction:  column;
+    align-items:     center;
+    justify-content: center;
+    gap:             8px;
+    border-radius:   9px;
+    background:      color-mix(in srgb, var(--accent) 14%, transparent);
+    border:          1.5px solid color-mix(in srgb, var(--accent) 55%, transparent);
+    overflow:        hidden;
+    transition:      background 0.15s;
+}
+.split-editor-cell:hover { background: color-mix(in srgb, var(--accent) 24%, transparent); }
+.split-editor-num { font-size: 22px; font-weight: 600; color: var(--accent); line-height: 1; }
+.split-editor-tools { display: flex; gap: 6px; }
+.split-editor-btn {
+    display:         inline-flex;
+    align-items:     center;
+    justify-content: center;
+    width:           30px;
+    height:          30px;
+    border-radius:   8px;
+    border:          1px solid var(--border-light);
+    background:      var(--bg-secondary);
+    color:           var(--text-bright);
+    cursor:          pointer;
+    transition:      background 0.14s, border-color 0.14s;
+}
+.split-editor-btn:hover:not(:disabled) { border-color: var(--accent); background: var(--bg-active); }
+.split-editor-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.split-editor-btn:disabled { opacity: 0.35; cursor: default; }
+.split-editor-btn.remove:hover:not(:disabled) { border-color: var(--danger, #ff6b6b); color: var(--danger, #ff6b6b); }
+.split-editor-foot { display: flex; align-items: center; gap: 8px; margin-top: 16px; }
+.split-editor-count { flex: 1; font-size: 12.5px; color: var(--text-secondary); }
+.split-editor-cancel, .split-editor-apply {
+    font-size:     13px;
+    padding:       8px 16px;
+    border-radius: 10px;
+    cursor:        pointer;
+    border:        1px solid var(--border-light);
+    background:    transparent;
+    color:         var(--text-bright);
+}
+.split-editor-cancel:hover { background: var(--bg-active); }
+.split-editor-apply { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 500; }
+.split-editor-apply:hover { filter: brightness(1.1); }
+.split-editor-cancel:focus-visible, .split-editor-apply:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 /* ── Пресеты сплит-режима ──────────────────────────────────────── */
 .split-presets-title {

@@ -599,6 +599,7 @@ async function bootstrap() {
         ['gridRowPctPref', 50],
         ['gridSidePctPref', 50],
         ['gridColAPref', 33.34],
+        ['customTreePref', null],
         ['gridColBPref', 66.67],
         // BUGFIX ("выбранный мессенджер не восстанавливался"): last-active
         // tab id, written by switchTab() on every tab switch.
@@ -4481,7 +4482,7 @@ function applyTabZoom(level) {
     // ── Восстанавливаем сплит-режим если был открыт при закрытии ──
     const _savedSplit = store.get('split.saved', null)
     if (_savedSplit?.layout && _savedSplit.layout !== '2col' && state.activeMessengers.length >= 2) {
-        if (splitApi.enterGridSplitMode(_savedSplit.layout)) {
+        if (splitApi.enterGridSplitMode(_savedSplit.layout, undefined, _savedSplit.tree)) {
             const zoneIds = Array.isArray(_savedSplit.zoneIds) ? _savedSplit.zoneIds : []
             zoneIds.forEach((zid, i) => {
                 if (i === 0 || !zid) return

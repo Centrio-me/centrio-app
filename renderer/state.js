@@ -52,7 +52,7 @@ const state = {
     // Сетка-раскладки (3 колонки / 2×2) — независимы от 2col-полей выше,
     // чтобы не трогать уже работающий 2col-код. Зона 0 всегда зеркалит
     // activeTabId, как и в 2col (та же конвенция "первая зона = основная вкладка").
-    splitLayout:    '2col', // '2col' | '3col' | '3colsplit' | '2x2' | '2top1bottom' | '1top2bottom'
+    splitLayout:    '2col', // '2col' | '3col' | '3colsplit' | '2x2' | '2top1bottom' | '1top2bottom' | 'custom'
     splitZoneIds:   [],     // messenger id по зонам, только для '3col'/'2x2'/'2top1bottom'/'1top2bottom'
     splitZoneFocus: 0,      // индекс зоны, получающей переключение вкладок
     // Двигаемые границы для '2top1bottom'/'1top2bottom' (в %, независимо от
@@ -62,7 +62,9 @@ const state = {
     gridSidePct: 50,
     // Границы раскладки "3 колонки": правый край первой и второго столбца, в % ширины.
     gridColA:    33.34,
-    gridColB:    66.67
+    gridColB:    66.67,
+    // Своя раскладка ('custom'): дерево разрезов из renderer/split-tree.js; null, пока она не выбрана.
+    splitTree:   null
 }
 
 module.exports = state
