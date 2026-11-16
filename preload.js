@@ -211,6 +211,8 @@ const validInvokeChannels = new Set([
     'pm:discard-remote',
     'tabs:metrics',
     'visitor:track',
+    'announcements:active',
+    'announcements:event',
     'pm:import-pick',
     'pm:import-commit',
     'pm:import-cancel',

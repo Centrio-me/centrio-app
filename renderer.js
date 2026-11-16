@@ -4154,6 +4154,23 @@ function applyTabZoom(level) {
     // PRO only (alpha testing), on by default, switched off in Settings → Все мессенджеры (renderer/all-inbox/access.js)
     // «Друг Centrio» (3.8.2): beta testing in Settings → Система and the badge in the profile
     require('./renderer/beta-program').createBetaProgram({ cloudApi, cloudStore, tGet })
+    // 3.8.7: windows from the owner (admin → «Окна в приложении»), the Santa hat on the logo during a promotion
+    {
+        const isShown = (node) => {
+            if (!node) return false
+            const css = getComputedStyle(node)
+            return css.display !== 'none' && css.visibility !== 'hidden' && css.opacity !== '0'
+        }
+        const BUSY = ['#startupSplash', '#lockScreen', '#onboardingTour', '.onb-screen', '.modal.show', '.ann-overlay']
+        window.__centrioAnnouncements = require('./renderer/announcements').createAnnouncements({
+            store,
+            invokeIpc,
+            openExternal: (url) => window.electronAPI?.openExternal?.(url),
+            openPricing: () => showUpgradeModal(),
+            canShowNow: () => !BUSY.some((selector) => [...document.querySelectorAll(selector)].some(isShown))
+        })
+        window.__centrioAnnouncements.start()
+    }
     const allInboxAccess = createAllInboxAccess({ store, tGet, hasEffectivePro, showUpgradeModal })
     window.__centrioAllInbox = createAllInbox({ state, switchTab, tGet, ipcRenderer, canOpen: allInboxAccess.canOpen, store })
     if (window.__centrioAllInbox) allInboxAccess.attach(window.__centrioAllInbox)

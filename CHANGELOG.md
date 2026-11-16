@@ -9,6 +9,7 @@ The format is based on Keep a Changelog. This project does not currently follow 
 ## [Unreleased]
 
 ### Added
+- Windows from the owner inside the app (admin → «Окна в приложении»): title, text, picture, button (link or the plans window), promo code, themes; for everyone, people without an account, with an account, FREE, PRO, TEAM, testers or named people; schedule; numbers (seen, clicked, closed, reopened). Shown once until closed; during a promotion the logo wears a Santa hat and a click on it brings the window back.
 - Notes: bold, italic, underline and strikethrough in the text of a note (buttons and Ctrl+B, Ctrl+I, Ctrl+U, Ctrl+Shift+X); kept as plain marks (**bold**, *italic*, ++underline++, ~~strike~~) and shown formatted when the field is not being typed.
 - Notes: «Отправить в чат» — the words and all the pictures of a note go into the message field of the chat picked next in «Все мессенджеры».
 - Notes: a note that could not be made says so on the screen.
