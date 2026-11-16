@@ -5,6 +5,8 @@
 const GIVE_UP_MS = 45 * 1000
 
 const norm = (s) => String(s || '').replace(/\s+/g, ' ').trim()
+// Telegram turns `code` and ``` blocks into monospace as it is typed: the message that comes back has no backticks
+const withoutTicks = (s) => norm(String(s || '').replace(/`/g, ''))
 
 function createPending() {
     let items = []
@@ -29,7 +31,7 @@ const FILE_KINDS = new Set(['file', 'photo', 'video', 'voice', 'audio'])
 
 // the real message that a message being sent became: the same text, or a new file / photo (by name when known)
 function settles(p, r) {
-    if (!p.files.length) return norm(r.text) === p.text
+    if (!p.files.length) return norm(r.text) === p.text || (p.text.includes('`') && withoutTicks(r.text) === withoutTicks(p.text))
     if (!FILE_KINDS.has(r.kind) && !r.album) return false
     return !r.name || p.files.includes(r.name)
 }

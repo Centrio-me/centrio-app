@@ -20,6 +20,10 @@ The format is based on Keep a Changelog. This project does not currently follow 
 - «Все мессенджеры»: the notes column beside a chat has a draggable edge; the width is kept, a double click brings back the usual one.
 
 ### Fixed
+- «Все мессенджеры»: a search that finds nothing says so (it raised an error and left the list empty).
+- «Все мессенджеры» / MAX: groups are in «Группы», not in «Личные», and their line in the list shows the author and the words.
+- «Все мессенджеры» / Telegram: a message with a `code` fragment no longer stays as «не отправлено» next to the delivered one.
+- «Все мессенджеры»: the light theme (the wallpaper, the header, the grey lines), the keyboard ring, Esc on the channel card, no gap beside the notes column, notes open as a window in a narrow window.
 - Notes: the question about deleting a note and the right-click menu opened behind the notes window; they are above it now (Oleg, 2026-11-13).
 - «Все мессенджеры» / Telegram: earlier messages load again when the conversation is scrolled up (the newer Telegram page keeps its message list in a block of another name).
 - «Все мессенджеры» / Telegram: a photo the page still holds as a small preview (blurred when stretched, seen in channels) is asked from Telegram at its largest size.

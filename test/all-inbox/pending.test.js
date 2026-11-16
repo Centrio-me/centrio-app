@@ -85,3 +85,26 @@ test('of two files sent one after another, each waits for its own name', () => {
     assert.deepEqual(p.list().map((x) => x.files[0]), ['a.pdf'])
     assert.equal(rows.length, 2)
 })
+
+test('a message typed with backticks settles with the real one Telegram draws without them', () => {
+    const p = createPending()
+    p.add({ text: 'смотри `код` тут', files: [], knownIds: ['1'], now: NOW })
+    const rows = withPending([out('1', 'старое'), out('2', 'смотри код тут')], p, NOW + 900)
+    assert.deepEqual(rows.map((r) => r.id), ['1', '2'])
+    assert.equal(p.size(), 0)
+})
+
+test('a block of code settles too', () => {
+    const p = createPending()
+    p.add({ text: '```\nlet a = 1\n```', files: [], knownIds: [], now: NOW })
+    const rows = withPending([out('7', 'let a = 1')], p, NOW + 900)
+    assert.equal(p.size(), 0)
+    assert.equal(rows.length, 1)
+})
+
+test('a different text does not settle it', () => {
+    const p = createPending()
+    p.add({ text: 'смотри `код`', files: [], knownIds: [], now: NOW })
+    withPending([out('9', 'совсем другое')], p, NOW + 900)
+    assert.equal(p.size(), 1)
+})

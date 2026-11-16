@@ -99,7 +99,13 @@ function el(tag, cls, text) {
  * canOpen: the PRO and on/off check of access.js; quiet = no upgrade window (opening by itself at start-up)
  */
 function createAllInbox({ state, switchTab, tGet, ipcRenderer, canOpen, store = null }) {
-    const t = (key, fallback) => (typeof tGet === 'function' ? tGet(`v380.allInbox.${key}`, fallback) : fallback)
+    // a word the language has not got shows as its fallback (tGet gives the key back for a missing one)
+    const t = (key, fallback) => {
+        if (typeof tGet !== 'function') return fallback
+        const full = `v380.allInbox.${key}`
+        const got = tGet(full)
+        return typeof got === 'string' && got && got !== full ? got : fallback
+    }
     const button = document.getElementById('allInboxBtn')
     const panel = document.getElementById('allInboxPanel')
     if (!button || !panel) return null

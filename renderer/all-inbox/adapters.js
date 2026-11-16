@@ -317,7 +317,11 @@ const max = {
                     preview.push(text);
                 }
                 if (!title || seen[title]) continue; seen[title] = 1;
-                out.push({ key: title, title: title, preview: preview.join(': '), time: time, unread: unread, kind: c.querySelector('.title use[href*="megaphone"], .title use[href*="channel"]') ? 'channel' : (preview.length > 1 ? 'group' : 'user'), avatar: __ciAvatar('max' + title, c.querySelector('img.avatarImage')) });
+                // in a group MAX writes «Автор: слова» in one text with the author in a span of its own: the words were not
+                // counted (they sit in the text that holds the author), so the group looked private and its line held only the name
+                var authorEl = c.querySelector('.author');
+                if (authorEl && authorEl.parentElement && preview.length <= 1) { var line = __ciText(authorEl.parentElement); if (line) preview = [line]; }
+                out.push({ key: title, title: title, preview: preview.join(': '), time: time, unread: unread, kind: c.querySelector('.title use[href*="megaphone"], .title use[href*="channel"]') ? 'channel' : (preview.length > 1 || authorEl ? 'group' : 'user'), avatar: __ciAvatar('max' + title, c.querySelector('img.avatarImage')) });
             }
             return out;
         }
