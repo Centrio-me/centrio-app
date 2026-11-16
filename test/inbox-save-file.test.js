@@ -59,3 +59,18 @@ test('a picture over 30 MB is refused', () => {
     const big = Buffer.alloc(30 * 1024 * 1024 + 1).toString('base64')
     assert.equal(parsePicturePayload({ src: `data:image/png;base64,${big}` }), null)
 })
+
+test('names Windows reserves are not offered as they are', () => {
+    const { safeName } = require('../main/services/inboxSaveFile')
+    assert.equal(safeName('CON'), '_CON')
+    assert.equal(safeName('nul.txt'), '_nul.txt')
+    assert.equal(safeName('COM1.pdf'), '_COM1.pdf')
+    assert.equal(safeName('LPT9'), '_LPT9')
+    assert.equal(safeName('console.txt'), 'console.txt')
+})
+
+test('a name does not end with a dot or a space', () => {
+    const { safeName } = require('../main/services/inboxSaveFile')
+    assert.equal(safeName('report.pdf. '), 'report.pdf')
+    assert.equal(safeName('a...'), 'a')
+})

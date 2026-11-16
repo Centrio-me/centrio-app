@@ -66,7 +66,20 @@ function guestOf(event, guestId) {
     return wc
 }
 
+// what the temp folder of pasted and sent-on pictures may hold in all (the oldest go after a day, sweepPasted)
+const MAX_TEMP_BYTES = 300 * 1024 * 1024
+function folderBytes(dir) {
+    let total = 0
+    try { for (const name of fs.readdirSync(dir)) { try { total += fs.statSync(path.join(dir, name)).size } catch {} } } catch {}
+    return total
+}
+
 function registerAllInboxIpc({ getMainWindow }) {
+    // only our own window may ask for these (a compromised page elsewhere must not write files)
+    const fromMainWindow = (event) => {
+        const win = getMainWindow()
+        return !!win && !win.isDestroyed() && event.sender === win.webContents
+    }
     ipcMain.handle('all-inbox:pick-files', async () => {
         const win = getMainWindow()
         const r = await dialog.showOpenDialog(win && !win.isDestroyed() ? win : undefined, {
@@ -123,12 +136,14 @@ function registerAllInboxIpc({ getMainWindow }) {
 
     // A picture of a note on its way to a chat (3.8.7, Oleg: «переслать заметку со всеми картинками одним кликом»): put
     // into the app's temp folder like a pasted one, handed back as an attachment of our message field
-    ipcMain.handle('all-inbox:stash-picture', async (_e, payload) => {
+    ipcMain.handle('all-inbox:stash-picture', async (event, payload) => {
+        if (!fromMainWindow(event)) return null
         const pic = parsePicturePayload(payload)
         if (!pic) return null
         sweepPasted()
         const dir = PASTE_DIR()
         fs.mkdirSync(dir, { recursive: true })
+        if (folderBytes(dir) + pic.bytes.length > MAX_TEMP_BYTES) return null
         const file = path.join(dir, `${pic.name}_${Date.now().toString(36)}.${pic.ext}`)
         fs.writeFileSync(file, pic.bytes)
         const [one] = await describe([file])
@@ -138,12 +153,13 @@ function registerAllInboxIpc({ getMainWindow }) {
     // A file of a conversation (3.8.7, Oleg: «клик по файлу не даёт результата»): taken by the messenger's own downloader,
     // handed over as a data address, saved where the person chooses (the Downloads folder is offered)
     ipcMain.handle('all-inbox:save-file', async (event, payload) => {
+        if (!fromMainWindow(event)) return false
         const file = parseFilePayload(payload)
         if (!file) return false
         const win = BrowserWindow.fromWebContents(event.sender)
         const { canceled, filePath } = await dialog.showSaveDialog(win, { defaultPath: path.join(app.getPath('downloads'), file.name) })
         if (canceled || !filePath) return null
-        try { fs.writeFileSync(filePath, file.bytes); return true } catch { return false }
+        try { await fs.promises.writeFile(filePath, file.bytes); return true } catch { return false }
     })
 
     // «Файл» in WhatsApp (3.8.3): its own document sending needs the files' bytes — only files that pass the usual

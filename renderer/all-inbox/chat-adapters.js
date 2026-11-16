@@ -26,6 +26,8 @@ function __ciMore() { window.__ciLimitN = Math.min(${MOST_MESSAGES}, __ciLimit()
 `
 // voice messages, audio and videos up to this size play in our window; bigger ones open in the messenger
 const MEDIA_MAX_BYTES = 100 * 1024 * 1024 // 3.8.3: channel videos are often bigger than 40 MB; bigger ones open in the tab
+// a file travels as text through the page, our window and the main process several times over: bigger ones open the tab
+const FILE_MAX_BYTES = 40 * 1024 * 1024
 // a poll's votes are asked again this often while the chat is open
 const POLL_REFRESH_MS = 5000
 // MAX photos not on the page yet: at most this many messages are warmed up per read, each waited for this long
@@ -609,7 +611,7 @@ const telegram = {
         if (!mid || !chat || !window.appDownloadManager || !window.rootScope) return null;
         return rootScope.managers.appMessagesManager.getMessageByPeer(chat.peerId, mid).then(function (m) {
             var doc = m && m.media && m.media.document;
-            if (!doc || doc.size > ${MEDIA_MAX_BYTES}) return null;
+            if (!doc || doc.size > ${FILE_MAX_BYTES}) return null;
             return Promise.resolve(appDownloadManager.downloadMedia({ media: doc })).then(function (blob) {
                 if (!(blob instanceof Blob) || blob.size < (Number(doc.size) || 0) * 0.95) return null;
                 return new Promise(function (resolve) {
@@ -1137,11 +1139,13 @@ const max = {
     // a file (document) of a message: MAX's own «Скачать» is pressed and the address it is about to download is taken
     // instead of the download itself (an anchor with a download name); the file is then asked for as a plain request (3.8.7)
     FILE: (id) => `(function () {${AVATAR_HELPER}${MAX_ID_HELPER}
+        // one file at a time, and the page's own click is kept in one place, so two quick clicks cannot leave ours in its stead
+        var original = window.__ciAnchorClick || (window.__ciAnchorClick = HTMLAnchorElement.prototype.click);
+        function take() {
         var w = __mxFind(${JSON.stringify(String(id))});
         var button = w && w.querySelector('.attaches button.container, .attaches button[aria-label]');
         if (!button) return null;
         return new Promise(function (resolve) {
-            var original = HTMLAnchorElement.prototype.click;
             var taken = false;
             function restore() { HTMLAnchorElement.prototype.click = original; }
             HTMLAnchorElement.prototype.click = function () {
@@ -1151,7 +1155,7 @@ const max = {
                 restore();
                 var name = String(this.download || '');
                 fetch(href, { credentials: 'omit' }).then(function (r) { return r.ok ? r.blob() : null; }).then(function (blob) {
-                    if (!blob || !blob.size || blob.size > ${MEDIA_MAX_BYTES}) return resolve(null);
+                    if (!blob || !blob.size || blob.size > ${FILE_MAX_BYTES}) return resolve(null);
                     var fr = new FileReader();
                     fr.onload = function () { resolve({ data: String(fr.result), mime: blob.type, name: name }); };
                     fr.onerror = function () { resolve(null); };
@@ -1161,6 +1165,10 @@ const max = {
             button.click();
             setTimeout(function () { if (!taken) { restore(); resolve(null); } }, 8000);
         });
+        }
+        var nextFile = (window.__ciMxFile || Promise.resolve()).then(take, take);
+        window.__ciMxFile = nextFile.then(function () {}, function () {});
+        return nextFile;
     })()`,
     // MAX loads earlier messages once its list is at its very top (the first message put at the top was not always
     // the top — a date line or a channel's header lies above it, and nothing loaded)

@@ -7,13 +7,18 @@ const MAX_FILE_BYTES = 100 * 1024 * 1024
 // what a file name must not hold on Windows, and control characters
 const BAD_NAME_CHARS = /[\\/:*?"<>|\u0000-\u001f]+/g
 
+// names Windows keeps for devices, with or without an extension
+const RESERVED_NAME = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])(\.|$)/i
+
 function safeName(raw) {
-    const cleaned = String(raw || '')
+    let cleaned = String(raw || '')
         .replace(BAD_NAME_CHARS, ' ')
         .replace(/\s+/g, ' ')
         .replace(/^[.\s]+/, '')
         .trim()
         .slice(0, 120)
+        .replace(/[.\s]+$/, '')
+    if (RESERVED_NAME.test(cleaned)) cleaned = `_${cleaned}`
     return cleaned || 'Файл'
 }
 

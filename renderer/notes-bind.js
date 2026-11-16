@@ -101,7 +101,7 @@ function bindNotesUi({ store, tGet, authorizedInvoke, invokeIpc, openRightPanel,
             const done = items.filter(i => i.done).length
             return items.length ? `${done}/${items.length} · ${tGet('notes.newChecklist') || 'Список покупок'}` : (tGet('notes.newChecklist') || 'Список покупок')
         }
-        return stripMarks(note.body || '').slice(0, 80) || ''
+        return stripMarks(String(note.body || '').slice(0, 300)).slice(0, 80) || ''
     }
 
     // Сегодня — только время; в этом году — день+месяц; иначе + год. Тот же
@@ -876,8 +876,9 @@ function bindNotesUi({ store, tGet, authorizedInvoke, invokeIpc, openRightPanel,
     bodyTextarea?.addEventListener('blur', () => setTimeout(() => { if (document.activeElement !== bodyTextarea) showPreviewIfFormatted() }, 0))
     bodyTextarea?.addEventListener('keydown', (e) => {
         if (!(e.ctrlKey || e.metaKey) || e.altKey) return
-        const key = e.key.toLowerCase()
-        const kind = key === 'b' ? 'bold' : key === 'i' ? 'italic' : key === 'u' ? 'underline' : (e.shiftKey && key === 'x') ? 'strike' : ''
+        // by the physical key (e.code): on the Russian layout e.key is «и», «ш», «г», «ч»
+        const code = e.code
+        const kind = code === 'KeyB' ? 'bold' : code === 'KeyI' ? 'italic' : code === 'KeyU' ? 'underline' : (e.shiftKey && code === 'KeyX') ? 'strike' : ''
         if (!kind) return
         e.preventDefault()
         formatSelection(kind)

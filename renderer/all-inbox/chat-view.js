@@ -341,9 +341,13 @@ function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab
     }
     // a document: taken by the messenger's own downloader and saved where the person chooses; when that is not possible
     // the card opens the messenger tab as before
+    const downloading = new Set()
     async function saveFile(m) {
+        // a second click on a file that is already on its way changes nothing
+        if (downloading.has(m.id)) return
+        downloading.add(m.id)
         flash('Скачиваю…')
-        const got = await Promise.resolve(onFile(m.id)).catch(() => null)
+        const got = await Promise.resolve(onFile(m.id)).catch(() => null).finally(() => downloading.delete(m.id))
         if (!got) { flash('Не получилось скачать здесь, открываю в мессенджере'); onOpenInTab(); return }
         document.dispatchEvent(new CustomEvent('all-inbox-save-file', { detail: { data: got.data, name: got.name || m.name || 'Файл', done: flash } }))
     }
@@ -357,8 +361,10 @@ function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab
     infoBox.hidden = true
     root.append(infoBox)
     const closeInfo = () => { infoBox.hidden = true }
+    // only a channel or a group has a card; a private chat's header does nothing
+    let hasCard = false
     async function toggleInfo() {
-        if (!onInfo || !canInfo()) return
+        if (!onInfo || !canInfo() || !hasCard) return
         if (!infoBox.hidden) { closeInfo(); return }
         const d = describeInfo(await Promise.resolve(onInfo()).catch(() => null))
         if (!d.title) { flash('Об этом чате нечего показать, откройте его в мессенджере'); return }
@@ -384,7 +390,6 @@ function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab
     infoBox.addEventListener('mousedown', (e) => { if (e.target === infoBox) closeInfo() })
     root.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !infoBox.hidden) { e.stopPropagation(); closeInfo() } })
     q('.aic-who').addEventListener('click', toggleInfo)
-    q('.aic-who').classList.toggle('is-clickable', !!onInfo)
 
     // ── deleting (3.8.3): asked first; the message leaves our window only when it is gone in the messenger ──────
     const askBox = el('div', 'aic-ask')
@@ -478,6 +483,10 @@ function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab
             askBox.hidden = true
             composer.reset(drafts.take(chat.id))
             composer.setVisible(false)
+            // the card of the previous chat must not stay over this one
+            closeInfo()
+            hasCard = !!(onInfo && canInfo() && (chat.kind === 'group' || chat.kind === 'channel'))
+            q('.aic-who').classList.toggle('is-clickable', hasCard)
             shownOnce = false
         },
         // «печатает…» in the header in the accent colour, with its dots, like in Telegram
@@ -591,7 +600,7 @@ function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab
         prefill: (p) => composer.prefill(p && p.text, p && p.files),
         // a pressed reaction: only that message's reactions change, at once
         showReactions(id, items) { return patchReactions(list, id, items) },
-        hide() { player.reset(); videoToken++; closeZoom(); closeMenu(); askBox.hidden = true; bgMenu.toggle(false); root.hidden = true; document.body.classList.remove('all-inbox-chat-open') },
+        hide() { player.reset(); videoToken++; closeZoom(); closeMenu(); closeInfo(); askBox.hidden = true; bgMenu.toggle(false); root.hidden = true; document.body.classList.remove('all-inbox-chat-open') },
         isShown: () => !root.hidden,
         // the person really sees the newest messages: our window on screen, Centrio in focus, the conversation at its end
         isReading: () => !root.hidden && !lightbox.isOpen() && document.visibilityState === 'visible' && document.hasFocus() && atBottom()

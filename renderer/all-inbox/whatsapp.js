@@ -367,7 +367,7 @@ function whatsappChat({ AVATAR_HELPER, IMAGE_HELPER }) {
             var C = __waStore(), m = __waMsg(C, ${JSON.stringify(String(id))});
             if (!m || m.type !== 'document') return null;
             return __waFile(m, 60000).then(function (blob) {
-                if (!blob || !blob.size || blob.size > ${100 * 1024 * 1024}) return null;
+                if (!blob || !blob.size || blob.size > ${40 * 1024 * 1024}) return null;
                 var type = String(m.mimetype || blob.type || '').split(';')[0].trim() || 'application/octet-stream';
                 var b = new Blob([blob], { type: type });
                 return new Promise(function (resolve) {

@@ -570,6 +570,7 @@ function createAllInbox({ state, switchTab, tGet, ipcRenderer, canOpen, store = 
         if (open) { place(); resize.placeEdge() }
         else { chats?.close(); document.querySelectorAll(`webview.${WARM_CLASS}`).forEach((v) => v.classList.remove(WARM_CLASS)) }
         document.body.classList.toggle('all-inbox-open', open)
+        if (!open) document.dispatchEvent(new CustomEvent('all-inbox-closed'))
         button.classList.toggle('active', open)
         panel.hidden = !open
         writeStorage(OPEN_KEY, open ? '1' : '')

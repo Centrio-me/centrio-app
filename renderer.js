@@ -4252,13 +4252,25 @@ function applyTabZoom(level) {
     let sendHintEl = null
     function clearSendHint() { sendHintEl?.remove(); sendHintEl = null }
     document.addEventListener('all-inbox-note-delivered', clearSendHint)
+    // closed without picking a chat: the note does not wait to turn up in whichever chat is opened next time
+    document.addEventListener('all-inbox-closed', () => { if (window.__centrioPendingNote) window.__centrioPendingNote = null; clearSendHint() })
     async function sendNoteToChat({ text, pictures }) {
         const files = []
         for (let i = 0; i < pictures.length; i += 1) {
             const one = await ipcRenderer.invoke('all-inbox:stash-picture', { src: pictures[i], name: `Заметка ${i + 1}` }).catch(() => null)
             if (one) files.push(one)
         }
-        if (!String(text || '').trim() && !files.length) return
+        const skipped = pictures.length - files.length
+        if (!String(text || '').trim() && !files.length) {
+            clearSendHint()
+            sendHintEl = document.createElement('div')
+            sendHintEl.className = 'ai-send-hint'
+            sendHintEl.setAttribute('role', 'status')
+            sendHintEl.textContent = 'Не удалось подготовить заметку к отправке'
+            document.body.append(sendHintEl)
+            setTimeout(clearSendHint, 4000)
+            return
+        }
         window.__centrioPendingNote = { text, files }
         notesWindow.close()
         window.__centrioAllInbox?.setOpen?.(true)
@@ -4267,7 +4279,9 @@ function applyTabZoom(level) {
         sendHintEl.className = 'ai-send-hint'
         sendHintEl.setAttribute('role', 'status')
         const words = document.createElement('span')
-        words.textContent = 'Выберите чат: заметка появится в его поле ввода'
+        words.textContent = skipped > 0
+            ? `Выберите чат: заметка появится в его поле ввода (картинок не удалось приложить: ${skipped})`
+            : 'Выберите чат: заметка появится в его поле ввода'
         const cancel = document.createElement('button')
         cancel.type = 'button'
         cancel.textContent = 'Отмена'
