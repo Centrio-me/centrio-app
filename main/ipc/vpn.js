@@ -9,6 +9,7 @@ const { ipcMain, session } = require('electron')
 const fs   = require('fs')
 const { applyProxyToSession } = require('../services/proxy')
 const store = require('../services/store')
+const orgAssignedPartitions = require('../services/orgAssignedPartitions')
 const { encryptValue, decryptValue } = require('../services/secureStore')
 
 // Ленивая загрузка vpn-manager (находится в корне проекта)
@@ -110,8 +111,14 @@ async function applyVpnToEnabledSessions (proxySettings) {
     try {
         const messengers = store.get('messengers', [])
         await applyProxyToSession(session.defaultSession, proxySettings)
-        const tasks = (messengers || [])
-            .filter(m => m && m.id && modes[m.id] !== false)
+        // Team-assigned messengers are never in the personal list (see orgAssignedPartitions.js), yet their
+        // sessions need the same proxy — otherwise a Telegram added by hand works through the VPN and the
+        // one assigned by the owner does not (2026-11-16).
+        const own = (messengers || []).filter(m => m && m.id)
+        const ownIds = new Set(own.map(m => m.id))
+        const everyone = own.concat(orgAssignedPartitions.list().filter(id => !ownIds.has(id)).map(id => ({ id })))
+        const tasks = everyone
+            .filter(m => modes[m.id] !== false)
             .map(m => {
                 affected.push(m.id)
                 try {
