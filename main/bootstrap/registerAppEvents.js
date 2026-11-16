@@ -240,11 +240,22 @@ function detectLoginStateInPage() {
         if (host.indexOf('e.') === 0) return has('[class*="letter-list" i], [class*="dataset__items" i], [data-qa-id]') ? 'in' : 'unknown'
         return 'unknown'
     }
+    // Gmail без входа показывает рекламную страницу «Создать аккаунт» без поля пароля — это не вход (2026-11-16)
+    if (host === 'workspace.google.com' || (host.indexOf('google.') !== -1 && host.indexOf('mail.google.') === -1 && path.indexOf('/gmail') === 0)) return 'out'
+    if (host.indexOf('accounts.google.') === 0) return 'out'
     // Остальные сайты (кабинеты, CRM, почта): страница входа / видимое поле пароля
     var loginRoute = /(^|[/#])(login|log-in|signin|sign-in|logon|auth|authorize|passport|sso|enter)([/?#.]|$)/i.test(route)
     var passwordVisible = hasVisible('input[type="password"]')
     if (passwordVisible && (loginRoute || document.querySelectorAll('input').length <= 6)) return 'out'
     if (loginRoute) return 'out'
+    // На странице есть заметная кнопка/ссылка «Войти» — это страница без входа
+    try {
+        var entries = document.querySelectorAll('a, button')
+        for (var k = 0; k < entries.length && k < 300; k++) {
+            var label = (entries[k].textContent || '').trim().toLowerCase()
+            if ((label === 'войти' || label === 'вход' || label === 'sign in' || label === 'log in' || label === 'login') && visible(entries[k])) return 'out'
+        }
+    } catch (e) { /* ignore */ }
     var textLength = document.body && document.body.innerText ? document.body.innerText.trim().length : 0
     if (document.readyState !== 'complete' || textLength < 40) return 'unknown'
     return 'in'

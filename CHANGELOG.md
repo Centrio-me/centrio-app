@@ -7,6 +7,11 @@ This is a **technical companion to the in-app changelog** shown in the "Исто
 The format is based on Keep a Changelog. This project does not currently follow strict Semantic Versioning (patch numbers are sometimes skipped or reused across build attempts), so version numbers should be read as chronological release identifiers rather than strict semver.
 
 ## [Unreleased]
+## [3.8.5] - 2026-11-16
+
+### Fixed
+- A team administrator now receives the workspaces and folders the owner arranged for them (the structure sync used to skip owners and admins alike), so assigned messengers land in their folders.
+- Gmail and other sites that show an advertising/landing page with a visible «Войти» button are no longer reported as signed in.
 
 _No unreleased changes yet — add entries here as they land, then move them under a new version heading at release time._
 
