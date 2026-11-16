@@ -138,6 +138,13 @@ function createChatController({ state, webviewOf, host, ipcRenderer, onSubtitle 
             // only a sound or a video, in the type the data itself declares
             return got && typeof got.data === 'string' && MEDIA_DATA.test(got.data) ? { data: got.data, mime: got.data.slice(5, got.data.indexOf(';')) } : null
         },
+        // the card of the open channel or group (Telegram): what it is, its people, its description, its link
+        canInfo: () => !!(current && typeof current.adapter.INFO === 'string'),
+        onInfo: async () => {
+            const w = tab()
+            if (!w || !current || typeof current.adapter.INFO !== 'string') return null
+            return withTimeout(w.executeJavaScript(current.adapter.INFO).catch(() => null), READ_TIMEOUT_MS * 2)
+        },
         // a document of a message, taken from the tab by the messenger's own downloader (Telegram); other messengers
         // have no way yet and the card opens the tab as before
         canFile: () => !!(current && typeof current.adapter.FILE === 'function'),

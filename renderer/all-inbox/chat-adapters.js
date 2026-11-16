@@ -559,6 +559,18 @@ const telegram = {
             });
         }).catch(function () { return null; });
     })()`,
+    // what the open channel or group says about itself: its name, address, people and description (3.8.7); a private chat has no card
+    INFO: `(function () {
+        var chat = window.appImManager && appImManager.chat;
+        if (!chat || !window.rootScope || !(Number(chat.peerId) < 0)) return null;
+        var id = -Number(chat.peerId), m = rootScope.managers;
+        return Promise.all([m.appChatsManager.getChat(id), m.appProfileManager.getChatFull(id)]).then(function (r) {
+            var c = r[0], f = r[1] || {};
+            if (!c) return null;
+            var name = c.username || (c.usernames && c.usernames[0] && c.usernames[0].username) || '';
+            return { kind: c.pFlags && c.pFlags.broadcast ? 'channel' : 'group', title: String(c.title || ''), username: String(name), members: Number(c.participants_count || f.participants_count || 0), about: String(f.about || '') };
+        }).catch(function () { return null; });
+    })()`,
     // a document (any file) of the open chat, taken through Telegram's own downloader, with its name (3.8.7)
     FILE: (id) => `(function () {
         var mid = Number(${JSON.stringify(String(id))});

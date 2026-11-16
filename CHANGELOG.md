@@ -11,6 +11,7 @@ The format is based on Keep a Changelog. This project does not currently follow 
 ### Changed
 - «Все мессенджеры»: a web link in a conversation opens in a window of Centrio (the messenger's own session) instead of the browser; mail, phone and any failure still go the old way (Oleg, 2026-11-15).
 - «Все мессенджеры»: a click on a file in a conversation downloads it through the messenger's own downloader (Telegram, MAX, WhatsApp) and offers to save it; when that is not possible the tab opens as before.
+- «Все мессенджеры»: a click on the header of a Telegram channel or group opens its card: what it is, how many people, its description and public link, with a way to open it in the messenger.
 - «Все мессенджеры»: the notes column beside a chat has a draggable edge; the width is kept, a double click brings back the usual one.
 
 ### Fixed

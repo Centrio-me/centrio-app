@@ -11,6 +11,7 @@ const { readBackground, saveBackground, createBackgroundMenu } = require('./chat
 const { createLightbox, galleryOf } = require('./lightbox')
 const { createFloatingDay } = require('./floating-day')
 const { createChatSearch } = require('./chat-search')
+const { describeInfo } = require('./info-card')
 
 const NEAR_BOTTOM_PX = 120
 const TOP_LOAD_PX = 40
@@ -60,7 +61,7 @@ function openingMark() {
     return box
 }
 
-function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab, onClose, onOlder, onLink, onPicture, onPickFiles, onDescribeFiles, onPasteImage, canReply = () => false, onEdit = null, canEdit = () => false, onReact = null, reactionsFor = () => [], onDelete = null, canDelete = () => false, onMedia = () => Promise.resolve(null), canPlay = () => false, onFile = null, canFile = () => false, onVote = null, canVote = () => false }) {
+function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab, onClose, onOlder, onLink, onPicture, onPickFiles, onDescribeFiles, onPasteImage, canReply = () => false, onEdit = null, canEdit = () => false, onReact = null, reactionsFor = () => [], onDelete = null, canDelete = () => false, onMedia = () => Promise.resolve(null), canPlay = () => false, onFile = null, canFile = () => false, onInfo = null, canInfo = () => false, onVote = null, canVote = () => false }) {
     const root = el('section', 'aic')
     root.hidden = true
     root.dataset.bg = readBackground()
@@ -350,6 +351,40 @@ function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab
         const name = String(m.name || '').trim() || `Изображение_${new Date().toISOString().slice(0, 19).replace(/[-:T]/g, '')}`
         document.dispatchEvent(new CustomEvent('all-inbox-save-picture', { detail: { src, name, done: flash } }))
     }
+
+    // ── the card of a channel or group, opened from the header ──────────────────────────────────────────────────
+    const infoBox = el('div', 'aic-info')
+    infoBox.hidden = true
+    root.append(infoBox)
+    const closeInfo = () => { infoBox.hidden = true }
+    async function toggleInfo() {
+        if (!onInfo || !canInfo()) return
+        if (!infoBox.hidden) { closeInfo(); return }
+        const d = describeInfo(await Promise.resolve(onInfo()).catch(() => null))
+        if (!d.title) { flash('Об этом чате нечего показать, откройте его в мессенджере'); return }
+        const card = el('div', 'aic-info-card')
+        card.append(el('div', 'aic-info-title', d.title), el('div', 'aic-info-sub', d.subtitle))
+        if (d.about) card.append(el('div', 'aic-info-about', d.about))
+        if (d.link) {
+            const row = el('div', 'aic-info-link')
+            row.append(el('span', '', d.link))
+            const copy = el('button', 'aic-info-btn', 'Копировать')
+            copy.type = 'button'
+            copy.addEventListener('click', () => navigator.clipboard.writeText(d.link).then(() => flash('Ссылка скопирована')).catch(() => {}))
+            row.append(copy)
+            card.append(row)
+        }
+        const open = el('button', 'aic-info-open', 'Открыть в мессенджере')
+        open.type = 'button'
+        open.addEventListener('click', () => { closeInfo(); onOpenInTab() })
+        card.append(open, el('div', 'aic-info-hint', 'Отписаться или изменить настройки можно в самом мессенджере'))
+        infoBox.replaceChildren(card)
+        infoBox.hidden = false
+    }
+    infoBox.addEventListener('mousedown', (e) => { if (e.target === infoBox) closeInfo() })
+    root.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !infoBox.hidden) { e.stopPropagation(); closeInfo() } })
+    q('.aic-who').addEventListener('click', toggleInfo)
+    q('.aic-who').classList.toggle('is-clickable', !!onInfo)
 
     // ── deleting (3.8.3): asked first; the message leaves our window only when it is gone in the messenger ──────
     const askBox = el('div', 'aic-ask')
