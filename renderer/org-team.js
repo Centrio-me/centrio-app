@@ -100,7 +100,8 @@ function createOrgTeamApi({
     // Workspaces and folders the owner built for THIS employee. Managers see
     // every assignment but arrange them themselves, so they skip this.
     async function syncStructure(orgId) {
-        if (isOrgManager()) return
+        // The owner arranges his own app; an admin is arranged by the owner like any employee (the structure is per person).
+        if (cloudStore.getUser()?.orgSummary?.orgRole === 'OWNER') return
         try {
             const raw = await authorizedInvoke('api-org-get-my-structure', orgId)
             if (isMembershipLost(raw)) return // handled by syncAssignments right after, which refreshes the account
