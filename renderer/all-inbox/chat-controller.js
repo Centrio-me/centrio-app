@@ -11,6 +11,7 @@ const { sameChat } = require('./same-chat')
 const { createPending, withPending } = require('./pending')
 const { isAway, isHidden, onAttentionChange } = require('../window-attention')
 const { toMessenger, runsOf, entitiesOf } = require('./text-format')
+const { openLink } = require('./open-link')
 
 const CHAT_POLL_MS = 1500
 // a chat not shown by then is said to have not opened, with the way to the messenger itself
@@ -111,8 +112,9 @@ function createChatController({ state, webviewOf, host, ipcRenderer, onSubtitle 
         // delete an own message (3.8.3); it leaves our window when the messenger has removed it
         onDelete: (m, forAll) => removeMessage(m, forAll),
         canDelete: (m) => !!(m && m.out && current && (typeof current.adapter.DELETE === 'function' || current.adapter.DELETE_CONFIRM)),
-        // links open in the browser through the main process's usual scheme check
-        onLink: (url) => ipcRenderer.send('open-url', url),
+        // a web link opens in a window of Centrio (the messenger's own session); anything else, or a failure, in the browser
+        // through the main process's usual scheme check
+        onLink: (url) => { openLink({ url, messenger: current ? state.activeMessengers.find((m) => m.id === current.chat.messengerId) : null, ipcRenderer }) },
         onPickFiles: () => ipcRenderer.invoke('all-inbox:pick-files').catch(() => []),
         onDescribeFiles: (paths) => ipcRenderer.invoke('all-inbox:describe-files', paths).catch(() => []),
         onPasteImage: () => ipcRenderer.invoke('all-inbox:paste-image').catch(() => null),

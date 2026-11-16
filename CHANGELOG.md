@@ -8,7 +8,8 @@ The format is based on Keep a Changelog. This project does not currently follow 
 
 ## [Unreleased]
 
-_No unreleased changes yet — add entries here as they land, then move them under a new version heading at release time._
+### Changed
+- «Все мессенджеры»: a web link in a conversation opens in a window of Centrio (the messenger's own session) instead of the browser; mail, phone and any failure still go the old way (Oleg, 2026-11-15).
 
 ## [3.8.6] - 2026-11-16
 
