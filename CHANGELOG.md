@@ -10,6 +10,11 @@ The format is based on Keep a Changelog. This project does not currently follow 
 
 _No unreleased changes yet — add entries here as they land, then move them under a new version heading at release time._
 
+## [3.8.6] - 2026-11-16
+
+### Fixed
+- The shared VPN proxy is now applied to messengers assigned by the team owner as well, not only to the ones added by hand.
+
 ## [3.8.5] - 2026-11-16
 
 ### Fixed
