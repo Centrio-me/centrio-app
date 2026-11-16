@@ -87,6 +87,35 @@ function __ciFetchPicture(key, src) {
         if (bmp.close) bmp.close();
     }).catch(function () { var cur = __ciImg[key]; if (cur && cur.src === src) cur.busy = false; });
 }
+// Telegram draws a photo as a small preview (320 px) until it is looked at, and our window showed that preview stretched:
+// blurred (Oleg, channels, 2026-11-15). A photo that is still small is asked from Telegram's own downloader at its largest
+// size; the picture of the message is swapped for it once it comes (3.8.7).
+function __ciTgUpgrade(mid, key) {
+    var cur = __ciImg[key];
+    if (!cur || cur.big || cur.upgrading || (cur.upTries || 0) > 1) return;
+    var chat = window.appImManager && appImManager.chat;
+    if (!chat || !window.appDownloadManager || !window.rootScope) return;
+    cur.upgrading = true;
+    cur.upTries = (cur.upTries || 0) + 1;
+    rootScope.managers.appMessagesManager.getMessageByPeer(chat.peerId, Number(mid)).then(function (m) {
+        var photo = m && m.media && m.media.photo;
+        var best = photo && (photo.sizes || []).filter(function (s) { return s.w; }).sort(function (a, b) { return b.w - a.w; })[0];
+        return best ? appDownloadManager.downloadMedia({ media: photo, thumb: best }) : null;
+    }).then(function (blob) {
+        return blob instanceof Blob ? createImageBitmap(blob) : null;
+    }).then(function (bmp) {
+        var now = __ciImg[key];
+        if (!now) return;
+        now.upgrading = false;
+        if (!bmp) return;
+        var k = Math.min(1, 800 / Math.max(bmp.width, bmp.height));
+        var c = document.createElement('canvas'); c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
+        c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
+        now.data = c.toDataURL('image/jpeg', 0.86);
+        now.big = true;
+        if (bmp.close) bmp.close();
+    }).catch(function () { var now = __ciImg[key]; if (now) now.upgrading = false; });
+}
 // The first of these elements that is really on screen (a channel keeps a hidden message field)
 function __ciVisible(root, sel) {
     var all = root ? root.querySelectorAll(sel) : [];
@@ -346,6 +375,8 @@ const telegram = {
             var replyEl = b.querySelector('.reply');
             var album = albumOf(b, mid);
             var size = img ? img.getBoundingClientRect() : null;
+            // a photo the page still holds as a small preview: its large one is asked for (it replaces the picture when it comes)
+            if (kind === 'photo' && img && img.tagName === 'IMG' && img.naturalWidth > 0 && img.naturalWidth < 400) { __ciPicture('tg' + mid, img); __ciTgUpgrade(mid, 'tg' + mid); }
             var msg = {
                 id: mid,
                 topic: topic,
@@ -592,8 +623,10 @@ const telegram = {
     })()`,
     OLDER: `(function () {${LIMIT_HELPER}
         var chat = document.querySelector('.chats-container > .chat.active, #column-center .chat.active');
-        var s = chat && chat.querySelector('.bubbles .scrollable-y, .bubbles-inner');
-        var box = s && (s.classList.contains('scrollable-y') ? s : s.closest('.scrollable-y'));
+        // the list of messages is a block of its own in the newer page (bubbles-scrollable), not inside .bubbles (3.8.7:
+        // earlier messages stopped loading, Oleg 2026-11-15)
+        var box = chat && chat.querySelector('.scrollable-y.bubbles-scrollable');
+        if (!box) { var s = chat && chat.querySelector('.bubbles .scrollable-y, .bubbles-inner'); box = s && (s.classList.contains('scrollable-y') ? s : s.closest('.scrollable-y')); }
         if (box) box.scrollTop = 0;
         __ciMore();
         return !!box;

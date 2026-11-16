@@ -15,6 +15,8 @@ The format is based on Keep a Changelog. This project does not currently follow 
 - «Все мессенджеры»: the notes column beside a chat has a draggable edge; the width is kept, a double click brings back the usual one.
 
 ### Fixed
+- «Все мессенджеры» / Telegram: earlier messages load again when the conversation is scrolled up (the newer Telegram page keeps its message list in a block of another name).
+- «Все мессенджеры» / Telegram: a photo the page still holds as a small preview (blurred when stretched, seen in channels) is asked from Telegram at its largest size.
 - «Все мессенджеры» / MAX: a message edited once could not be edited again, and «Изменить» disappeared: MAX writes «ред. 22:17» under an edited message and the time was read as empty.
 
 ## [3.8.6] - 2026-11-16
