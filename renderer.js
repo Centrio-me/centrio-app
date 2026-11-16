@@ -4247,11 +4247,40 @@ function applyTabZoom(level) {
         const ok = await ipcRenderer.invoke('all-inbox:save-picture', { src, name }).catch(() => false)
         if (typeof done === 'function' && ok) done('Картинка сохранена')
     })
+    // a note sent on to a chat (3.8.7): its pictures wait in the temp folder, its words and pictures go into the message
+    // field of the chat the person opens next in «Все мессенджеры»
+    let sendHintEl = null
+    function clearSendHint() { sendHintEl?.remove(); sendHintEl = null }
+    document.addEventListener('all-inbox-note-delivered', clearSendHint)
+    async function sendNoteToChat({ text, pictures }) {
+        const files = []
+        for (let i = 0; i < pictures.length; i += 1) {
+            const one = await ipcRenderer.invoke('all-inbox:stash-picture', { src: pictures[i], name: `Заметка ${i + 1}` }).catch(() => null)
+            if (one) files.push(one)
+        }
+        if (!String(text || '').trim() && !files.length) return
+        window.__centrioPendingNote = { text, files }
+        notesWindow.close()
+        window.__centrioAllInbox?.setOpen?.(true)
+        clearSendHint()
+        sendHintEl = document.createElement('div')
+        sendHintEl.className = 'ai-send-hint'
+        sendHintEl.setAttribute('role', 'status')
+        const words = document.createElement('span')
+        words.textContent = 'Выберите чат: заметка появится в его поле ввода'
+        const cancel = document.createElement('button')
+        cancel.type = 'button'
+        cancel.textContent = 'Отмена'
+        cancel.addEventListener('click', () => { window.__centrioPendingNote = null; clearSendHint() })
+        sendHintEl.append(words, cancel)
+        document.body.append(sendHintEl)
+    }
     notesUiApiRef = bindNotesUi({
         store,
         tGet,
         authorizedInvoke,
         invokeIpc,
+        onSendToChat: sendNoteToChat,
         // beside an open «Все мессенджеры» chat the whole notes window (folders, list, editor) stands as a column next to
         // the conversation instead of over it (Oleg, 2026-11-13: «универсальный чат + полноценное дерево заметок»); tasks
         // open in the right panel beside them

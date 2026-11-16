@@ -35,3 +35,27 @@ test('an empty file and a file over the limit are refused', () => {
     const big = Buffer.alloc(MAX_FILE_BYTES + 1).toString('base64')
     assert.equal(parseFilePayload({ data: `data:application/zip;base64,${big}`, name: 'big.zip' }), null)
 })
+
+const { parsePicturePayload } = require('../main/services/inboxSaveFile')
+
+test('a picture of a note is accepted as png, jpeg, webp or gif with its extension', () => {
+    const r = parsePicturePayload({ src: `data:image/jpeg;base64,${b64('jpgbytes')}`, name: 'Заметка 1' })
+    assert.equal(r.ext, 'jpg')
+    assert.equal(r.bytes.toString(), 'jpgbytes')
+    assert.equal(r.name, 'Заметка 1')
+    assert.equal(parsePicturePayload({ src: `data:image/png;base64,${b64('x')}` }).ext, 'png')
+    assert.equal(parsePicturePayload({ src: `data:image/webp;base64,${b64('x')}` }).ext, 'webp')
+    assert.equal(parsePicturePayload({ src: `data:image/gif;base64,${b64('x')}` }).ext, 'gif')
+})
+
+test('anything that is not a picture data address is refused', () => {
+    assert.equal(parsePicturePayload({ src: `data:text/html;base64,${b64('<script>')}` }), null)
+    assert.equal(parsePicturePayload({ src: `data:image/svg+xml;base64,${b64('<svg/>')}` }), null)
+    assert.equal(parsePicturePayload({ src: 'https://example.com/a.png' }), null)
+    assert.equal(parsePicturePayload(null), null)
+})
+
+test('a picture over 30 MB is refused', () => {
+    const big = Buffer.alloc(30 * 1024 * 1024 + 1).toString('base64')
+    assert.equal(parsePicturePayload({ src: `data:image/png;base64,${big}` }), null)
+})

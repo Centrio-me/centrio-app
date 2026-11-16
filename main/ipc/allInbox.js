@@ -5,7 +5,7 @@ const { ipcMain, dialog, clipboard, nativeImage, webContents, app, BrowserWindow
 const fs = require('fs')
 const path = require('path')
 const { checkFiles, dropFiles, startDrag, finishDrag } = require('../services/inboxFiles')
-const { parseFilePayload } = require('../services/inboxSaveFile')
+const { parseFilePayload, parsePicturePayload } = require('../services/inboxSaveFile')
 
 const THUMB_PX = 96
 const IMAGE_EXT = /\.(png|jpe?g|gif|webp|bmp|heic)$/i
@@ -119,6 +119,20 @@ function registerAllInboxIpc({ getMainWindow }) {
         })
         if (canceled || !filePath) return false
         try { fs.writeFileSync(filePath, bytes); return true } catch { return false }
+    })
+
+    // A picture of a note on its way to a chat (3.8.7, Oleg: «переслать заметку со всеми картинками одним кликом»): put
+    // into the app's temp folder like a pasted one, handed back as an attachment of our message field
+    ipcMain.handle('all-inbox:stash-picture', async (_e, payload) => {
+        const pic = parsePicturePayload(payload)
+        if (!pic) return null
+        sweepPasted()
+        const dir = PASTE_DIR()
+        fs.mkdirSync(dir, { recursive: true })
+        const file = path.join(dir, `${pic.name}_${Date.now().toString(36)}.${pic.ext}`)
+        fs.writeFileSync(file, pic.bytes)
+        const [one] = await describe([file])
+        return one || null
     })
 
     // A file of a conversation (3.8.7, Oleg: «клик по файлу не даёт результата»): taken by the messenger's own downloader,

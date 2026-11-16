@@ -29,4 +29,17 @@ function parseFilePayload(payload) {
     return { bytes, name: safeName(payload.name) }
 }
 
-module.exports = { parseFilePayload, safeName, MAX_FILE_BYTES }
+const PICTURE_DATA = /^data:image\/(png|jpeg|webp|gif);base64,([A-Za-z0-9+/=]+)$/
+const MAX_PICTURE_BYTES = 30 * 1024 * 1024
+
+/** A picture taken out of a note to be sent on: only a plain picture type, within a sane size. */
+function parsePicturePayload(payload) {
+    const m = PICTURE_DATA.exec(String((payload && payload.src) || ''))
+    if (!m) return null
+    if (Math.floor((m[2].length * 3) / 4) > MAX_PICTURE_BYTES) return null
+    const bytes = Buffer.from(m[2], 'base64')
+    if (!bytes.length || bytes.length > MAX_PICTURE_BYTES) return null
+    return { bytes, ext: m[1] === 'jpeg' ? 'jpg' : m[1], name: safeName(payload.name) }
+}
+
+module.exports = { parseFilePayload, parsePicturePayload, safeName, MAX_FILE_BYTES }

@@ -73,6 +73,18 @@
     color: var(--text-muted);
 }
 
+.notes-notice { margin: 8px 12px 0; padding: 9px 12px; border: 1px solid var(--border-light); border-radius: 10px; background: var(--bg-hover); color: var(--text-primary); font-size: 12.5px; line-height: 1.4; }
+
+/* formatting of a note's text: a small bar above the field, the formatted text when it is not being typed */
+.notes-fmt-bar { display: flex; gap: 4px; padding: 6px 12px 0; }
+.notes-fmt-bar[hidden] { display: none; }
+.notes-fmt-btn { width: 28px; height: 26px; display: inline-flex; align-items: center; justify-content: center; padding: 0; border: 1px solid var(--border-light); border-radius: 7px; background: transparent; color: var(--text-secondary); font-size: 13px; cursor: pointer; transition: background .15s, color .15s, border-color .15s; }
+.notes-fmt-btn:hover { background: var(--bg-hover); color: var(--text-primary); border-color: var(--border); }
+.notes-fmt-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.notes-edit-preview { flex: 1; min-height: 0; overflow-y: auto; padding: 12px; box-sizing: border-box; color: var(--text-primary); font-size: 13px; line-height: 1.6; white-space: normal; overflow-wrap: anywhere; cursor: text; outline: none; }
+.notes-edit-preview[hidden] { display: none; }
+.notes-window .notes-edit-preview { font-size: 14.5px; }
+
 .notes-edit-checklist {
     display: flex;
     flex-direction: column;

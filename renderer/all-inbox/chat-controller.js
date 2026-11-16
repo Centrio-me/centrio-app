@@ -564,6 +564,9 @@ function createChatController({ state, webviewOf, host, ipcRenderer, onSubtitle 
         lastRows = []
         setEmojiSet(adapterId)
         view.show(chat)
+        // a note waiting to be sent on goes into the field of the chat that was chosen
+        const waiting = window.__centrioPendingNote
+        if (waiting) { window.__centrioPendingNote = null; view.prefill(waiting); document.dispatchEvent(new CustomEvent('all-inbox-note-delivered')) }
         view.setMismatch(true, '')
         clearInterval(timer)
         timer = setInterval(poll, CHAT_POLL_MS)

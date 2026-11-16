@@ -177,6 +177,9 @@ html[data-fx] .aic-head { border-bottom-color: rgba(255, 255, 255, .06); }
 .aic-ava { position: relative; flex: 0 0 40px; width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: var(--bg-tertiary); color: var(--text-secondary); font-weight: 700; }
 .aic-ava > img:not(.ai-service) { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
 .aic-who { flex: 1; min-width: 0; }
+.ai-send-hint { position: fixed; top: 56px; left: 50%; transform: translateX(-50%); z-index: 100003; display: flex; align-items: center; gap: 14px; padding: 10px 14px 10px 18px; border: 1px solid var(--border-light); border-radius: 12px; background: var(--bg-secondary); color: var(--text-primary); font-size: 13px; box-shadow: var(--shadow-lg); }
+.ai-send-hint button { padding: 5px 12px; border: 1px solid var(--border-light); border-radius: 8px; background: var(--bg-hover); color: var(--text-primary); font: inherit; cursor: pointer; }
+.ai-send-hint button:hover { border-color: var(--accent); }
 .aic-who.is-clickable { cursor: pointer; border-radius: 10px; margin: -4px -8px; padding: 4px 8px; transition: background .15s; }
 .aic-who.is-clickable:hover { background: var(--bg-hover); }
 .aic-info { position: absolute; inset: 0; z-index: 30; display: flex; justify-content: center; align-items: flex-start; padding: 64px 16px 16px; background: rgba(0, 0, 0, .35); }

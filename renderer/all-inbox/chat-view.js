@@ -587,6 +587,8 @@ function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab
                 if (!a || a === document.body || a.closest?.('.ai-row, .aic')) composer.focus()
             }
         },
+        // words and pictures put into the message field (a note sent on from the notes window)
+        prefill: (p) => composer.prefill(p && p.text, p && p.files),
         // a pressed reaction: only that message's reactions change, at once
         showReactions(id, items) { return patchReactions(list, id, items) },
         hide() { player.reset(); videoToken++; closeZoom(); closeMenu(); askBox.hidden = true; bgMenu.toggle(false); root.hidden = true; document.body.classList.remove('all-inbox-chat-open') },

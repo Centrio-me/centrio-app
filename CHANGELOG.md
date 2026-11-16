@@ -8,6 +8,11 @@ The format is based on Keep a Changelog. This project does not currently follow 
 
 ## [Unreleased]
 
+### Added
+- Notes: bold, italic, underline and strikethrough in the text of a note (buttons and Ctrl+B, Ctrl+I, Ctrl+U, Ctrl+Shift+X); kept as plain marks (**bold**, *italic*, ++underline++, ~~strike~~) and shown formatted when the field is not being typed.
+- Notes: «Отправить в чат» — the words and all the pictures of a note go into the message field of the chat picked next in «Все мессенджеры».
+- Notes: a note that could not be made says so on the screen.
+
 ### Changed
 - «Все мессенджеры»: a web link in a conversation opens in a window of Centrio (the messenger's own session) instead of the browser; mail, phone and any failure still go the old way (Oleg, 2026-11-15).
 - «Все мессенджеры»: a click on a file in a conversation downloads it through the messenger's own downloader (Telegram, MAX, WhatsApp) and offers to save it; when that is not possible the tab opens as before.

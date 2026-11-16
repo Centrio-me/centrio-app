@@ -366,6 +366,13 @@ function createComposer({ root, onSend, onEdit = null, onPickFiles, onDescribeFi
             // another chat: its field is not «sending» because of the previous one
             form.classList.remove('is-sending')
         },
+        // a note sent on from the notes window: its words and pictures are put in the field, to be looked at and sent (3.8.7)
+        prefill(text, incoming) {
+            const t = String(text || '').trim()
+            if (t) { input.value = input.value.trim() ? input.value.replace(/\s+$/, '') + '\n' + t : t; autosize() }
+            if (Array.isArray(incoming) && incoming.length) stage(incoming)
+            else { refreshSend(); input.focus() }
+        },
         hasPopup: () => hasPopup(),
         closePopups() { closeFieldMenu(); picker.toggle(false); emojiBtn.classList.remove('is-on') },
         focus() { input.focus(); input.setSelectionRange(input.value.length, input.value.length) },

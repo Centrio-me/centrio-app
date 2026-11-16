@@ -12,8 +12,9 @@
 // Ассистента/Задач/Уведомлений), этот модуль отвечает за содержимое.
 
 const { createSaveQueue } = require('./notes-save-queue')
+const { applyFormat, toHtml, stripMarks, noteToText } = require('./notes-format')
 
-function bindNotesUi({ store, tGet, authorizedInvoke, invokeIpc, openRightPanel, closeRightPanel, getUserIsPro, requirePro, onNotesChange }) {
+function bindNotesUi({ store, tGet, authorizedInvoke, invokeIpc, openRightPanel, closeRightPanel, getUserIsPro, requirePro, onNotesChange, onSendToChat = null }) {
     const btn = document.getElementById('notesBtn')
     const panel = document.getElementById('notesPanel')
     const listView = document.getElementById('notesListView')
@@ -100,7 +101,7 @@ function bindNotesUi({ store, tGet, authorizedInvoke, invokeIpc, openRightPanel,
             const done = items.filter(i => i.done).length
             return items.length ? `${done}/${items.length} · ${tGet('notes.newChecklist') || 'Список покупок'}` : (tGet('notes.newChecklist') || 'Список покупок')
         }
-        return (note.body || '').slice(0, 80) || ''
+        return stripMarks(note.body || '').slice(0, 80) || ''
     }
 
     // Сегодня — только время; в этом году — день+месяц; иначе + год. Тот же
@@ -232,12 +233,16 @@ function bindNotesUi({ store, tGet, authorizedInvoke, invokeIpc, openRightPanel,
 
         if (note.type === 'CHECKLIST') {
             bodyTextarea.style.display = 'none'
+            fmtBar.hidden = true
+            preview.hidden = true
             checklistWrap.style.display = ''
             renderChecklistItems()
         } else {
             bodyTextarea.style.display = ''
+            fmtBar.hidden = false
             checklistWrap.style.display = 'none'
             bodyTextarea.value = note.body || ''
+            showPreviewIfFormatted()
         }
         saveIndicator.textContent = ''
         updateCharCount()
@@ -469,11 +474,30 @@ function bindNotesUi({ store, tGet, authorizedInvoke, invokeIpc, openRightPanel,
         renderList()
     }
 
+    // a short message above the list: a note that could not be made must not leave the person guessing
+    // (Oleg, 2026-11-13: «создаю заметку — ничего не происходит»)
+    let noticeTimer = null
+    function showNotice(text) {
+        let box = listEl.parentNode && listEl.parentNode.querySelector('.notes-notice')
+        if (!box) {
+            box = document.createElement('div')
+            box.className = 'notes-notice'
+            box.setAttribute('role', 'alert')
+            listEl.parentNode.insertBefore(box, listEl)
+        }
+        box.textContent = text
+        clearTimeout(noticeTimer)
+        noticeTimer = setTimeout(() => box.remove(), 6000)
+    }
+
     async function createNote(type, seed = {}) {
         // a note made while a folder is open goes into that folder
         const inFolder = folderFilter !== 'all' && !seed.folderId ? { folderId: folderFilter } : {}
         const result = await authorizedInvoke('api-notes-create', { type, title: '', position: notes.length, ...inFolder, ...seed })
-        if (!result?.success) { await handleAuthError(result); return }
+        if (!result?.success) {
+            if (!(await handleAuthError(result))) showNotice('Не удалось создать заметку. Проверьте соединение и попробуйте ещё раз.')
+            return
+        }
         notes = [result.data.note, ...notes]
         showEdit(result.data.note)
         requestAnimationFrame(() => titleInput.focus())
@@ -762,6 +786,101 @@ function bindNotesUi({ store, tGet, authorizedInvoke, invokeIpc, openRightPanel,
     bodyTextarea?.addEventListener('input', () => {
         patchActiveNote({ body: bodyTextarea.value })
         updateCharCount()
+    })
+
+    // ── «Отправить в чат»: the note's words and every picture of it go into the field of the chat the person picks ──
+    const dupBtn = document.getElementById('notesDuplicateBtn')
+    if (onSendToChat && dupBtn && dupBtn.parentNode) {
+        const sendBtn = document.createElement('button')
+        sendBtn.type = 'button'
+        sendBtn.id = 'notesSendToChatBtn'
+        sendBtn.className = 'app-notif-mute-btn'
+        sendBtn.title = 'Отправить в чат'
+        sendBtn.setAttribute('aria-label', 'Отправить в чат')
+        sendBtn.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4z"/></svg>'
+        dupBtn.parentNode.insertBefore(sendBtn, dupBtn)
+        sendBtn.addEventListener('click', async () => {
+            if (!activeNote) return
+            sendBtn.disabled = true
+            try {
+                const pictures = []
+                const list = invokeIpc ? await invokeIpc('notes-images:list', activeNote.id).catch(() => []) : []
+                for (const img of Array.isArray(list) ? list : []) {
+                    const full = await invokeIpc('notes-images:full', activeNote.id, img.id).catch(() => '')
+                    if (full) pictures.push(full)
+                }
+                await onSendToChat({ text: noteToText(activeNote), pictures })
+            } finally { sendBtn.disabled = false }
+        })
+    }
+
+    // ── Formatting of the text of a note (Oleg, 2026-11-13): bold, italic, underline, strikethrough ──────────────
+    // kept as plain marks in the text (renderer/notes-format.js); the text shows formatted when it is not being typed
+    const fmtBar = document.createElement('div')
+    fmtBar.className = 'notes-fmt-bar'
+    const FORMATS = [
+        ['bold', 'B', 'Жирный (Ctrl+B)', 'b'],
+        ['italic', 'I', 'Курсив (Ctrl+I)', 'i'],
+        ['underline', 'U', 'Подчёркнутый (Ctrl+U)', 'u'],
+        ['strike', 'S', 'Зачёркнутый (Ctrl+Shift+X)', 's']
+    ]
+    for (const [kind, label, title, tag] of FORMATS) {
+        const btn = document.createElement('button')
+        btn.type = 'button'
+        btn.className = 'notes-fmt-btn'
+        btn.title = title
+        btn.setAttribute('aria-label', title)
+        const face = document.createElement(tag)
+        face.textContent = label
+        btn.append(face)
+        // the mouse must not take the selection out of the field
+        btn.addEventListener('mousedown', (e) => e.preventDefault())
+        btn.addEventListener('click', () => formatSelection(kind))
+        fmtBar.append(btn)
+    }
+    const preview = document.createElement('div')
+    preview.className = 'notes-edit-preview'
+    preview.hidden = true
+    preview.tabIndex = 0
+    preview.title = 'Нажмите, чтобы изменить'
+    if (bodyTextarea && bodyTextarea.parentNode) {
+        bodyTextarea.parentNode.insertBefore(fmtBar, bodyTextarea)
+        bodyTextarea.parentNode.insertBefore(preview, bodyTextarea.nextSibling)
+    }
+    function formatSelection(kind) {
+        if (!bodyTextarea) return
+        bodyTextarea.focus()
+        const r = applyFormat(bodyTextarea.value, bodyTextarea.selectionStart, bodyTextarea.selectionEnd, kind)
+        bodyTextarea.value = r.text
+        bodyTextarea.setSelectionRange(r.start, r.end)
+        bodyTextarea.dispatchEvent(new Event('input', { bubbles: true }))
+    }
+    function showPreviewIfFormatted() {
+        if (!bodyTextarea || !activeNote || activeNote.type === 'CHECKLIST') { preview.hidden = true; return }
+        const html = toHtml(bodyTextarea.value)
+        // only a text that has formatting in it is shown formatted; a plain one stays the field itself
+        if (!/<(b|i|u|s)>/.test(html)) { preview.hidden = true; bodyTextarea.style.display = ''; return }
+        preview.innerHTML = html
+        preview.hidden = false
+        bodyTextarea.style.display = 'none'
+    }
+    function editFromPreview() {
+        preview.hidden = true
+        bodyTextarea.style.display = ''
+        bodyTextarea.focus()
+        const end = bodyTextarea.value.length
+        bodyTextarea.setSelectionRange(end, end)
+    }
+    preview.addEventListener('click', editFromPreview)
+    preview.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); editFromPreview() } })
+    bodyTextarea?.addEventListener('blur', () => setTimeout(() => { if (document.activeElement !== bodyTextarea) showPreviewIfFormatted() }, 0))
+    bodyTextarea?.addEventListener('keydown', (e) => {
+        if (!(e.ctrlKey || e.metaKey) || e.altKey) return
+        const key = e.key.toLowerCase()
+        const kind = key === 'b' ? 'bold' : key === 'i' ? 'italic' : key === 'u' ? 'underline' : (e.shiftKey && key === 'x') ? 'strike' : ''
+        if (!kind) return
+        e.preventDefault()
+        formatSelection(kind)
     })
 
     searchInput?.addEventListener('input', () => {
