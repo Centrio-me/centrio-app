@@ -49,6 +49,7 @@ const FORMAT_KEYS = { bold: ['B', ['control']], italic: ['I', ['control']], unde
 const FORMAT_SETTLE_MS = 60
 const AFTER_VOTE_MS = 400
 const MEDIA_DATA = /^data:(audio|video)\/[\w.+-]+(;[\w=.+-]+)*;base64,/
+const FILE_DATA = /^data:[\w.+/-]+(;[\w=.+-]+)*;base64,/
 
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms))
@@ -136,6 +137,15 @@ function createChatController({ state, webviewOf, host, ipcRenderer, onSubtitle 
             const got = await withTimeout(w.executeJavaScript(current.adapter.MEDIA(String(id).split('+')[0])).catch(() => null), MEDIA_TIMEOUT_MS)
             // only a sound or a video, in the type the data itself declares
             return got && typeof got.data === 'string' && MEDIA_DATA.test(got.data) ? { data: got.data, mime: got.data.slice(5, got.data.indexOf(';')) } : null
+        },
+        // a document of a message, taken from the tab by the messenger's own downloader (Telegram); other messengers
+        // have no way yet and the card opens the tab as before
+        canFile: () => !!(current && typeof current.adapter.FILE === 'function'),
+        onFile: async (id) => {
+            const w = tab()
+            if (!w || !current || typeof current.adapter.FILE !== 'function') return null
+            const got = await withTimeout(w.executeJavaScript(current.adapter.FILE(String(id).split('+')[0])).catch(() => null), MEDIA_TIMEOUT_MS)
+            return got && typeof got.data === 'string' && FILE_DATA.test(got.data) ? { data: got.data, name: String(got.name || '') } : null
         },
         onPicture: async (key) => {
             const w = tab()

@@ -5,6 +5,7 @@ const { ipcMain, dialog, clipboard, nativeImage, webContents, app, BrowserWindow
 const fs = require('fs')
 const path = require('path')
 const { checkFiles, dropFiles, startDrag, finishDrag } = require('../services/inboxFiles')
+const { parseFilePayload } = require('../services/inboxSaveFile')
 
 const THUMB_PX = 96
 const IMAGE_EXT = /\.(png|jpe?g|gif|webp|bmp|heic)$/i
@@ -118,6 +119,17 @@ function registerAllInboxIpc({ getMainWindow }) {
         })
         if (canceled || !filePath) return false
         try { fs.writeFileSync(filePath, bytes); return true } catch { return false }
+    })
+
+    // A file of a conversation (3.8.7, Oleg: «клик по файлу не даёт результата»): taken by the messenger's own downloader,
+    // handed over as a data address, saved where the person chooses (the Downloads folder is offered)
+    ipcMain.handle('all-inbox:save-file', async (event, payload) => {
+        const file = parseFilePayload(payload)
+        if (!file) return false
+        const win = BrowserWindow.fromWebContents(event.sender)
+        const { canceled, filePath } = await dialog.showSaveDialog(win, { defaultPath: path.join(app.getPath('downloads'), file.name) })
+        if (canceled || !filePath) return null
+        try { fs.writeFileSync(filePath, file.bytes); return true } catch { return false }
     })
 
     // «Файл» in WhatsApp (3.8.3): its own document sending needs the files' bytes — only files that pass the usual

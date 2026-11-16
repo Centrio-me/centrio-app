@@ -559,6 +559,25 @@ const telegram = {
             });
         }).catch(function () { return null; });
     })()`,
+    // a document (any file) of the open chat, taken through Telegram's own downloader, with its name (3.8.7)
+    FILE: (id) => `(function () {
+        var mid = Number(${JSON.stringify(String(id))});
+        var chat = window.appImManager && appImManager.chat;
+        if (!mid || !chat || !window.appDownloadManager || !window.rootScope) return null;
+        return rootScope.managers.appMessagesManager.getMessageByPeer(chat.peerId, mid).then(function (m) {
+            var doc = m && m.media && m.media.document;
+            if (!doc || doc.size > ${MEDIA_MAX_BYTES}) return null;
+            return Promise.resolve(appDownloadManager.downloadMedia({ media: doc })).then(function (blob) {
+                if (!(blob instanceof Blob) || blob.size < (Number(doc.size) || 0) * 0.95) return null;
+                return new Promise(function (resolve) {
+                    var fr = new FileReader();
+                    fr.onload = function () { resolve({ data: String(fr.result), mime: blob.type || doc.mime_type, name: String(doc.file_name || '') }); };
+                    fr.onerror = function () { resolve(null); };
+                    fr.readAsDataURL(blob);
+                });
+            });
+        }).catch(function () { return null; });
+    })()`,
     OLDER: `(function () {${LIMIT_HELPER}
         var chat = document.querySelector('.chats-container > .chat.active, #column-center .chat.active');
         var s = chat && chat.querySelector('.bubbles .scrollable-y, .bubbles-inner');
@@ -576,7 +595,7 @@ const telegram = {
 const MAX_ID_HELPER = `
 function __mxTime(w) {
     var times = w.querySelectorAll('.text, .time');
-    for (var t = times.length - 1; t >= 0; t--) { var v = __ciText(times[t]); if (/^\\d{1,2}:\\d{2}$/.test(v)) return v; }
+    for (var t = times.length - 1; t >= 0; t--) { var v = __ciText(times[t]); var tm = /^(?:ред\\.\\s*)?(\\d{1,2}:\\d{2})$/.exec(v); if (tm) return tm[1]; }
     return '';
 }
 function __mxKey(w) {
@@ -635,7 +654,7 @@ const max = {
                 var textEl = w.querySelector('span.text[data-message-markup]');
                 var times = w.querySelectorAll('.text, .time');
                 var time = '';
-                for (var t = times.length - 1; t >= 0; t--) { var v = __ciText(times[t]); if (/^\\d{1,2}:\\d{2}$/.test(v)) { time = v; break; } }
+                for (var t = times.length - 1; t >= 0; t--) { var v = __ciText(times[t]); var tm = /^(?:ред\\.\\s*)?(\\d{1,2}:\\d{2})$/.exec(v); if (tm) { time = tm[1]; break; } }
                 // a shared contact: its picture, the name and «Новый контакт» in the attachment block
                 var attach = w.querySelector('.attaches');
                 var contactBox = attach && !attach.querySelector('[class*=fileIcon]') && attach.querySelector('[class*=avatar]') ? attach : null;

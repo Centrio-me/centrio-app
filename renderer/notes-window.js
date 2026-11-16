@@ -19,6 +19,8 @@ function el(tag, cls, html) {
 /**
  * @param {{ tGet: Function, authorizedInvoke: Function, getNotesApi: () => any }} deps
  */
+const { dockWidth, readSaved, saveWidth, forgetWidth } = require('./notes-dock-width')
+
 function createNotesWindow({ tGet, authorizedInvoke, getNotesApi }) {
     const say = (key, fallback) => tGet(`notes.${key}`) || fallback
     const overlay = el('div', 'notes-window')
@@ -184,13 +186,44 @@ function createNotesWindow({ tGet, authorizedInvoke, getNotesApi }) {
         render()
     }
 
-    // docked: a column at the right of the content area, beside the «Все мессенджеры» chat, which narrows to make room
+    // docked: a column at the right of the content area, beside the «Все мессенджеры» chat, which narrows to make room.
+    // Its left edge is dragged to make it wider or narrower, the width is kept; a double click brings back the usual one.
     let dockWatch = null
+    const grip = el('div', 'notes-dock-grip')
+    grip.setAttribute('role', 'separator')
+    grip.setAttribute('aria-orientation', 'vertical')
+    grip.setAttribute('aria-label', 'Ширина заметок')
+    grip.title = 'Потяните, чтобы изменить ширину; двойной щелчок — как было'
+    overlay.append(grip)
+    grip.addEventListener('pointerdown', (e) => {
+        if (e.button !== 0) return
+        e.preventDefault()
+        const area = document.getElementById('contentArea')
+        if (!area) return
+        const areaWidth = area.getBoundingClientRect().width
+        const startX = e.clientX
+        const startW = parseFloat(getComputedStyle(overlay).getPropertyValue('--dock-w')) || dockWidth(readSaved(), areaWidth)
+        let width = startW
+        grip.setPointerCapture(e.pointerId)
+        document.body.classList.add('notes-dock-resizing')
+        const move = (ev) => { width = dockWidth(startW + (startX - ev.clientX), areaWidth); saveWidth(width); placeDock() }
+        const up = () => {
+            grip.removeEventListener('pointermove', move)
+            grip.removeEventListener('pointerup', up)
+            grip.removeEventListener('pointercancel', up)
+            document.body.classList.remove('notes-dock-resizing')
+            saveWidth(width)
+        }
+        grip.addEventListener('pointermove', move)
+        grip.addEventListener('pointerup', up)
+        grip.addEventListener('pointercancel', up)
+    })
+    grip.addEventListener('dblclick', () => { forgetWidth(); placeDock() })
     function placeDock() {
         const area = document.getElementById('contentArea')
         if (!area) return
         const r = area.getBoundingClientRect()
-        const w = Math.round(Math.max(420, Math.min(760, r.width * 0.46)))
+        const w = dockWidth(readSaved(), r.width)
         overlay.style.setProperty('--dock-top', `${r.top}px`)
         overlay.style.setProperty('--dock-left', `${r.right - w}px`)
         overlay.style.setProperty('--dock-h', `${r.height}px`)

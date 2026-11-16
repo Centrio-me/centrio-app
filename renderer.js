@@ -4234,6 +4234,14 @@ function applyTabZoom(level) {
             } catch { say('Не удалось создать заметку') }
         }
     })
+    document.addEventListener('all-inbox-save-file', async (e) => {
+        const { data, name, done } = e.detail || {}
+        const ok = await ipcRenderer.invoke('all-inbox:save-file', { data, name }).catch(() => false)
+        if (typeof done === 'function') {
+            if (ok === true) done('Файл сохранён')
+            else if (ok === false) done('Не удалось сохранить файл')
+        }
+    })
     document.addEventListener('all-inbox-save-picture', async (e) => {
         const { src, name, done } = e.detail || {}
         const ok = await ipcRenderer.invoke('all-inbox:save-picture', { src, name }).catch(() => false)

@@ -119,3 +119,10 @@ html[data-fx] .notes-window-dialog { background: var(--fx-panel-solid, #0d1120);
 }
 .notes-window.is-docked .notes-window-dialog { width: 100%; height: 100%; grid-template-columns: 184px 1fr; border-radius: 16px; }
 body.notes-docked .aic { right: var(--notes-dock-w, 0px); }
+/* the edge next to the chat: dragged to change the column's width */
+.notes-dock-grip { display: none; }
+.notes-window.is-docked .notes-dock-grip { display: block; position: absolute; left: -3px; top: 0; bottom: 0; width: 14px; z-index: 3; cursor: col-resize; touch-action: none; }
+.notes-window.is-docked .notes-dock-grip::after { content: ''; position: absolute; left: 6px; top: 50%; width: 3px; height: 44px; margin-top: -22px; border-radius: 2px; background: currentColor; opacity: .25; transition: opacity .15s, height .15s, margin-top .15s; }
+.notes-window.is-docked .notes-dock-grip:hover::after, body.notes-dock-resizing .notes-dock-grip::after { opacity: .7; height: 72px; margin-top: -36px; }
+body.notes-dock-resizing { cursor: col-resize; user-select: none; }
+body.notes-dock-resizing webview, body.notes-dock-resizing .aic { pointer-events: none; }

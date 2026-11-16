@@ -305,12 +305,12 @@ function contactCard(m, onOpenInTab) {
     return wrap
 }
 
-function card(m, onOpenInTab, onPlay = null) {
+function card(m, onOpenInTab, onPlay = null, hint = '') {
     const box = el('button', `aic-card kind-${m.kind}${m.round ? ' is-round' : ''}`)
     box.type = 'button'
     // a video with no picture of its own (a round message whose frame MAX has not drawn) plays here too, it does not
     // send the person to the web page (owner 2026-11-13)
-    box.title = onPlay ? 'Воспроизвести' : 'Открыть в мессенджере'
+    box.title = hint || (onPlay ? 'Воспроизвести' : 'Открыть в мессенджере')
     const icon = el('span', 'aic-card-icon')
     icon.innerHTML = m.kind === 'voice' || m.kind === 'video' ? ICON_PLAY : ICON_FILE
     // a picture sent as a file shows its small preview in place of the icon
@@ -400,7 +400,7 @@ function renderMessage(m, ctx) {
     } else if (m.kind === 'contact') { b.classList.add('has-contact'); b.append(contactCard(m, ctx.onOpenInTab)) }
     else if (m.kind === 'poll' && m.poll) { b.classList.add('has-poll'); b.append(pollCard(m, ctx)) }
     else if (m.kind === 'voice' && ctx.onVoice) { b.classList.add('has-voice'); b.append(voice(m, ctx)) }
-    else if (m.kind !== 'text' && m.kind !== 'photo') b.append(card(m, ctx.onOpenInTab, m.kind === 'video' && ctx.onVideo ? ctx.onVideo : null))
+    else if (m.kind !== 'text' && m.kind !== 'photo') b.append(card(m, ctx.onOpenInTab, m.kind === 'video' && ctx.onVideo ? ctx.onVideo : m.kind === 'file' && ctx.onFile ? ctx.onFile : null, m.kind === 'file' && ctx.onFile ? 'Скачать файл' : ''))
     // a photo whose picture has not come (not loaded yet in the tab, or forwarded): its place, not a bubble of a lone
     // time sticking out of it (3.8.3 check)
     const emptyPhoto = m.kind === 'photo' && !hasMedia && !m.album

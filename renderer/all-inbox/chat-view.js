@@ -60,7 +60,7 @@ function openingMark() {
     return box
 }
 
-function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab, onClose, onOlder, onLink, onPicture, onPickFiles, onDescribeFiles, onPasteImage, canReply = () => false, onEdit = null, canEdit = () => false, onReact = null, reactionsFor = () => [], onDelete = null, canDelete = () => false, onMedia = () => Promise.resolve(null), canPlay = () => false, onVote = null, canVote = () => false }) {
+function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab, onClose, onOlder, onLink, onPicture, onPickFiles, onDescribeFiles, onPasteImage, canReply = () => false, onEdit = null, canEdit = () => false, onReact = null, reactionsFor = () => [], onDelete = null, canDelete = () => false, onMedia = () => Promise.resolve(null), canPlay = () => false, onFile = null, canFile = () => false, onVote = null, canVote = () => false }) {
     const root = el('section', 'aic')
     root.hidden = true
     root.dataset.bg = readBackground()
@@ -338,6 +338,14 @@ function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab
         clearTimeout(toastTimer)
         toastTimer = setTimeout(() => { toast.hidden = true }, Math.max(2200, text.length * 55)) // a longer word stays longer
     }
+    // a document: taken by the messenger's own downloader and saved where the person chooses; when that is not possible
+    // the card opens the messenger tab as before
+    async function saveFile(m) {
+        flash('Скачиваю…')
+        const got = await Promise.resolve(onFile(m.id)).catch(() => null)
+        if (!got) { flash('Не получилось скачать здесь, открываю в мессенджере'); onOpenInTab(); return }
+        document.dispatchEvent(new CustomEvent('all-inbox-save-file', { detail: { data: got.data, name: got.name || m.name || 'Файл', done: flash } }))
+    }
     function savePicture(src, m) {
         const name = String(m.name || '').trim() || `Изображение_${new Date().toISOString().slice(0, 19).replace(/[-:T]/g, '')}`
         document.dispatchEvent(new CustomEvent('all-inbox-save-picture', { detail: { src, name, done: flash } }))
@@ -459,6 +467,7 @@ function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab
             const playable = canPlay()
             const ctx = { isGroup, onLink, onZoom: zoom, onOpenInTab, onReply: canReply() ? (m) => composer.replyTo(m) : null,
                 onVoice: playable ? onVoice : null, onSeek: (m, part) => player.seek(m.id, part), onVideo: playable ? onVideo : null, playerState: player.state,
+                onFile: onFile && canFile() ? saveFile : null,
                 onVote: onVote && canVote() ? vote : null, isVoting: (id) => voting.has(id) }
             byId = new Map()
             dayOf = new Map()
