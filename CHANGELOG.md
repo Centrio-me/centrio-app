@@ -8,6 +8,9 @@ The format is based on Keep a Changelog. This project does not currently follow 
 
 ## [Unreleased]
 
+### Fixed
+- The cabinet (account window) no longer opens a second time by itself when it is closed while the account data is being refreshed: the refresh opened it again when the answer came (cloud-bind.js: the profile is drawn again only if it is still open). The version history window has the same dimming as the cabinet.
+
 ### Added
 - The «История изменений» window is new: the versions with their dates on the left, the chosen version on the right with its highlights (optional, `data-hl` on a version in index.html), the chips «Новое» / «Исправлено» and the list. It is built from the lists already in index.html (a line's group is told by its first word), icons are one colour, coloured emoji are taken out of the text, the text is white (renderer/changelog-parse.js, changelog-window.js, styles-changelog.css).
 - «Все мессенджеры» / Telegram: a group with topics has a bar of topics under the header («Все» and each topic with its unread count); a topic opens on its own and the message field writes into it. The list is read from the topics panel of the tab (opened for a moment and closed), a topic is opened by its id (Oleg: «каналы с темами не поддерживаются»).

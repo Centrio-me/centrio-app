@@ -17,10 +17,14 @@ function bindCloudUi({
     // FEATURE (2026-09-21, one-click renew, approved for 2.9): () => Promise<{success, data|error}>
     renewNow = async () => ({ success: false })
 }) {
+    const cabinetIsOpen = () => document.getElementById('cloudModal')?.classList.contains('show') === true
+
     document.getElementById('cloudBtn').addEventListener('click', async () => {
         if (cloudStore.isLoggedIn()) {
             openCloudProfile()                                    // сразу из кэша
-            cloudApi.refreshUser().then(() => openCloudProfile()) // обновить план с сервера
+            // the plan is refreshed from the server; if the cabinet was closed meanwhile it is not opened again
+            // (it came back on its own after being closed while the answer was on its way)
+            cloudApi.refreshUser().then(() => { if (cabinetIsOpen()) openCloudProfile() })
         } else {
             openCloudLogin()
         }
@@ -401,7 +405,7 @@ function bindCloudUi({
 
         if (result?.success && !result.data?.pending) {
             btn.textContent = tGet('cloud.renewed')
-            cloudApi.refreshUser().then(() => openCloudProfile())
+            cloudApi.refreshUser().then(() => { if (cabinetIsOpen()) openCloudProfile() })
             setTimeout(() => { btn.disabled = false }, 1500)
         } else if (result?.success && result.data?.pending) {
             btn.textContent = tGet('cloud.renewPending')

@@ -1216,3 +1216,6 @@ html[data-theme="light"] #allInboxPanel { border-right: 1px solid rgba(0, 0, 0, 
 .aic-voice-words { flex: 1 0 100%; margin-top: 2px; font-size: 13px; line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere; user-select: text; }
 @keyframes aic-tr-pulse { 50% { opacity: .35; } }
 @media (prefers-reduced-motion: reduce) { .aic-voice-tr.is-busy { animation: none; } }
+
+/* the message field shows focus with the glow of its rounded bar (.aic-bar:focus-within), not with a square ring of its own inside it */
+.aic .aic-input:focus, .aic .aic-input:focus-visible { outline: none; }

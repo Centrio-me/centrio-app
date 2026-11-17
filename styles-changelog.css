@@ -1,6 +1,7 @@
 /* ── История изменений: окно с версиями слева (renderer/changelog-window.js). Иконки одного цвета, без эмодзи. ── */
 
-.changelog-backdrop { position: fixed; inset: 0; z-index: 9998; background: rgba(0, 0, 0, 0.5); -webkit-app-region: no-drag; }
+/* the same dimming as the cabinet and the other windows (.modal) */
+.changelog-backdrop { position: fixed; inset: 0; z-index: 9998; background: rgba(0, 0, 0, 0.7); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); -webkit-app-region: no-drag; animation: fadeIn 0.2s ease; }
 
 .changelog-popup {
     position: fixed; inset: 0; margin: auto;
