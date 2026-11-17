@@ -110,6 +110,16 @@ function createContextMenusApi({
         document.dispatchEvent(new CustomEvent('close-all-popups'))
         state.contextTargetFolderId = folderId
 
+        // A folder of the team owner cannot be renamed, re-iconed or deleted by the employee (or an administrator), but the
+        // notifications of the folder and its colour are theirs: only those two items are shown (Maria, 2026-11-17)
+        const managed = !!state.folders.find((f) => f.id === folderId)?.orgManaged
+        ;['ctxFolderEdit', 'ctxFolderChangeIcon', 'ctxFolderRemove'].forEach((itemId) => {
+            const item = document.getElementById(itemId)
+            if (item) item.style.display = managed ? 'none' : ''
+        })
+        const divider = folderContextMenu.querySelector('.context-divider')
+        if (divider) divider.style.display = managed ? 'none' : ''
+
         folderContextMenu.style.left = `${e.clientX}px`
         folderContextMenu.style.top = `${e.clientY}px`
         folderContextMenu.classList.add('show')

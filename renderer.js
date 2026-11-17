@@ -1552,7 +1552,8 @@ async function bootstrap() {
         header.addEventListener('contextmenu', (e) => {
             e.preventDefault()
             e.stopPropagation()
-            if (folder.orgManaged) return
+            // the owner's folder: the menu has the mute and the colour only, and in the strict mode nothing is the employee's
+            if (folder.orgManaged && state.orgStrict) return
             state.contextTargetFolderId = folder.id
             showFolderContextMenu(e, folder.id)
         })
