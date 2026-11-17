@@ -22,6 +22,7 @@ The format is based on Keep a Changelog. This project does not currently follow 
 - «Все мессенджеры»: the notes column beside a chat has a draggable edge; the width is kept, a double click brings back the usual one.
 
 ### Fixed
+- Cloud sync: a tab that this computer already has (same address and name) keeps its own id when the cloud copy is applied, so a messenger is not signed out everywhere when the other computer made its tabs on its own (a TEAM administrator, 2026-11-17).
 - «Все мессенджеры»: a file from a conversation goes to the folder of Settings → Downloads when one is chosen and «ask where to save» is off (it always asked; Oleg, 2026-11-17).
 - Notes: a note sent to a chat keeps bold, italic and strikethrough in Telegram and WhatsApp (marks are rewritten for the chat chosen; other messengers get the words alone; underline has no mark in either).
 - Notes: the «Заметки» button on the right bar closes the notes window when pressed again.

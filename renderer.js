@@ -66,6 +66,7 @@ const { createWebviewTabsApi } = require('./renderer/webview-tabs-bind')
 const { createMediaPlayerUiApi } = require('./renderer/media-player-ui')
 const { createSplitApi } = require('./renderer/split')
 const { createOnboardingTourApi } = require('./renderer/onboarding-tour')
+const { keepLocalIds } = require('./renderer/cloud-id-map')
 
 const { bindSettingsUi } = require('./renderer/settings-bind')
 const { bindLockUi } = require('./renderer/lock-bind')
@@ -936,7 +937,8 @@ async function bootstrap() {
 
             reapplySoundLocks()
 
-            const cloudData = await cloudSyncPull()
+            // a tab this computer already has keeps its id: the sign-in of the messenger lives in the session named after it
+            const cloudData = keepLocalIds(await cloudSyncPull(), store.get('messengers', []))
             // The cloud copy may be the old one restored after the servers were rebuilt: keep this computer's data then.
             const cloudRolledBack = cloudCopyIsRolledBack(cloudData, store.get('messengers', []))
             if (cloudRolledBack) console.warn('[cloud] The cloud copy is older than the rebuild — keeping local data and sending it up')
@@ -3292,8 +3294,10 @@ function applyTabZoom(level) {
         })
     }
 
-    function applyCloudBootData(cloudData) {
-        if (!(cloudData?.messengers?.length > 0)) return
+    function applyCloudBootData(rawCloudData) {
+        if (!(rawCloudData?.messengers?.length > 0)) return
+        // a tab this computer already has keeps its id: the sign-in of the messenger lives in the session named after it
+        const cloudData = keepLocalIds(rawCloudData, store.get('messengers', []))
 
         // The cloud copy written before the servers were rebuilt is older than this computer's data: never apply it,
         // send the local state up instead (the same way as for unconfirmed local changes below).
