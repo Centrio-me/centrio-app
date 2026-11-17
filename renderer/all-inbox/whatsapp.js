@@ -58,7 +58,9 @@ function __waFile(m, waitMs) {
             var DM = window.require('WAWebDownloadManager').downloadManager;
             var quiet = new Proxy({}, { get: function () { return function () {}; } });
             return Promise.resolve(DM.downloadAndMaybeDecrypt({ directPath: m.directPath, encFilehash: m.encFilehash, filehash: m.filehash,
-                mediaKey: m.mediaKey, mediaKeyTimestamp: m.mediaKeyTimestamp, type: m.type, signal: new AbortController().signal, downloadQpl: quiet, qpl: quiet }))
+                // the file type is given: WhatsApp's newer download manager checks the decrypted file against it and refused
+                // every voice message and picture as «application/octet-stream» without it (Oleg, 2026-11-17)
+                mediaKey: m.mediaKey, mediaKeyTimestamp: m.mediaKeyTimestamp, type: m.type, mimetype: m.mimetype, signal: new AbortController().signal, downloadQpl: quiet, qpl: quiet }))
                 .then(asBlob).catch(function () { return null; });
         } catch (e) { return Promise.resolve(null); }
     }
@@ -216,20 +218,31 @@ function whatsappChat({ AVATAR_HELPER, IMAGE_HELPER }) {
             function size(n) { if (!(n > 0)) return ''; if (n < 1024) return n + ' Б'; if (n < 1048576) return Math.round(n / 1024) + ' КБ'; return (n / 1048576).toFixed(1).replace('.', ',') + ' МБ'; }
             function dur(s) { s = Math.round(s || 0); return s ? Math.floor(s / 60) + ':' + ('0' + (s % 60)).slice(-2) : ''; }
             function phoneOf(vcard) { var m = /TEL[^:]*:([^\\n\\r]+)/i.exec(String(vcard || '')); return m ? m[1].trim() : ''; }
-            var KIND = { chat: 'text', image: 'photo', video: 'video', ptt: 'voice', audio: 'voice', document: 'file', sticker: 'sticker', vcard: 'contact', multi_vcard: 'contact' };
+            var KIND = { chat: 'text', image: 'photo', video: 'video', ptv: 'video', ptt: 'voice', audio: 'voice', document: 'file', sticker: 'sticker', vcard: 'contact', multi_vcard: 'contact' };
             var rows = main.querySelectorAll('[role=row]');
             var out = [];
-            for (var i = Math.max(0, rows.length - ${WA_MESSAGES}); i < rows.length; i++) {
-                var row = rows[i];
-                var idEl = row.querySelector('[data-id]');
+            // pictures sent together are one «album» message in WhatsApp's store, with no file of its own: the pictures are its
+            // children, and each is taken on its own (Oleg, 2026-11-17: «картинки в вацапе не работают»)
+            var entries = [];
+            for (var r0 = Math.max(0, rows.length - ${WA_MESSAGES}); r0 < rows.length; r0++) {
+                var rw = rows[r0], rid = rw.querySelector('[data-id]'), aid = rid && rid.getAttribute('data-id'), am = aid && byId[aid];
+                if (am && am.type === 'album' && active && active.msgs) {
+                    var kids = active.msgs.getModelsArray().filter(function (k) { return k.type !== 'album' && k.parentMsgKey && k.parentMsgKey.id === aid; });
+                    if (kids.length) { kids.forEach(function (k) { entries.push({ row: rw, idEl: rid, id: k.id.id, m: k, kid: true }); }); continue; }
+                }
+                entries.push({ row: rw, idEl: rid });
+            }
+            for (var i = 0; i < entries.length; i++) {
+                var row = entries[i].row;
+                var idEl = entries[i].idEl;
                 if (!idEl) {
                     // a day or an event of the chat
                     var note = __ciText(row);
                     if (note && note.length < 120) out.push({ id: 's' + i + note, kind: 'service', text: note, note: !/^(сегодня|вчера|\\d{1,2}[.\\/]\\d{1,2}[.\\/]\\d{2,4}|понедельник|вторник|среда|четверг|пятница|суббота|воскресенье|\\d{1,2} [а-я]+)$/i.test(note) });
                     continue;
                 }
-                var id = idEl.getAttribute('data-id');
-                var m = byId[id];
+                var id = entries[i].id || idEl.getAttribute('data-id');
+                var m = entries[i].m || byId[id];
                 var type = m ? m.type : '';
                 if (type === 'e2e_notification' || type === 'gp2' || type === 'notification_template' && !m.body || type === 'call_log') {
                     var ev = type === 'call_log' ? (m.id.fromMe ? 'Исходящий звонок' : 'Входящий звонок') : __ciText(row);
@@ -239,6 +252,8 @@ function whatsappChat({ AVATAR_HELPER, IMAGE_HELPER }) {
                 var kind = KIND[type] || (row.querySelector('img[src^="blob:"]') ? 'photo' : 'text');
                 var textEl = row.querySelector('span.selectable-text');
                 var text = textEl ? __ciText(textEl) : (m && type === 'chat' ? String(m.body || '') : '');
+                // the caption of an album belongs to its last picture
+                if (entries[i].kid && entries[i + 1] && entries[i + 1].row === row) { textEl = null; text = ''; }
                 if (type === 'revoked') { kind = 'text'; text = 'Сообщение удалено'; }
                 if (type === 'location' || type === 'liveLocation') { kind = 'text'; text = '📍 Геопозиция' + (m.loc ? ': ' + m.loc : ''); }
                 // a photo or video WhatsApp has not downloaded yet (its tab is not on screen, so it waits) shows only a
@@ -254,7 +269,7 @@ function whatsappChat({ AVATAR_HELPER, IMAGE_HELPER }) {
                     }
                 }
                 var pic = null;
-                if (kind === 'photo' || kind === 'video' || kind === 'sticker') {
+                if ((kind === 'photo' || kind === 'video' || kind === 'sticker') && !entries[i].kid) {
                     var imgs = row.querySelectorAll('img');
                     for (var k = 0; k < imgs.length; k++) if (imgs[k].naturalWidth > 40 && !/avatar|emoji/i.test(imgs[k].className)) { pic = imgs[k]; break; }
                 }
@@ -298,6 +313,8 @@ function whatsappChat({ AVATAR_HELPER, IMAGE_HELPER }) {
                     reply: quoted ? String(quoted.caption || quoted.body || __waLine(quoted)).slice(0, 140) : '',
                     replyTitle: quoted ? (quoted.id && quoted.id.fromMe ? 'Вы' : __waName(C, quoted.author || quoted.from)) : '',
                     forwarded: m && m.isForwarded ? 'пересланное' : '',
+                    // a video note (the round one) is drawn round
+                    round: type === 'ptv',
                     media: pic ? __ciPicture('wa' + id, pic) : stored,
                     mediaW: m && m.width || (pic ? pic.naturalWidth : 0),
                     mediaH: m && m.height || (pic ? pic.naturalHeight : 0),
