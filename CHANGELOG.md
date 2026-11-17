@@ -8,6 +8,8 @@ The format is based on Keep a Changelog. This project does not currently follow 
 
 ## [Unreleased]
 
+## [3.8.8] - 2026-11-17
+
 ### Fixed
 - The version history window closed at once on a click on a version or a filter: it redraws its buttons, so the clicked one was already out of the page when the «click outside closes» check ran; the check now uses the path of the event (renderer.js).
 
