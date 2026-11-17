@@ -8,6 +8,9 @@ The format is based on Keep a Changelog. This project does not currently follow 
 
 ## [Unreleased]
 
+### Fixed
+- The version history window closed at once on a click on a version or a filter: it redraws its buttons, so the clicked one was already out of the page when the «click outside closes» check ran; the check now uses the path of the event (renderer.js).
+
 ### Changed
 - The row of topics of a Telegram group («Все мессенджеры») has no scroll bar any more: it moves with the wheel or a drag, and the faded edge shows that there is more on that side; the chosen topic is brought into view (chat-view.js, styles-all-inbox.css).
 - The update strip («Centrio X готова» / «Перезапустить») is a floating glass pill of the theme with an accent button instead of a flat band with a white button (styles-cloud.css).

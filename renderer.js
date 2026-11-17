@@ -4706,7 +4706,10 @@ function applyTabZoom(level) {
         }
 
         document.addEventListener('click', (e) => {
-            if (isVisible() && !popup.contains(e.target) && e.target !== versionBtn) {
+            // the window redraws its own buttons on a click (a version, a filter), so the clicked button is already out of the
+            // page when this runs: the path of the event, taken at the click, tells if the click was inside the window
+            const inside = e.composedPath().includes(popup)
+            if (isVisible() && !inside && e.target !== versionBtn) {
                 hidePopup()
             }
         })
