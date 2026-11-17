@@ -4720,6 +4720,7 @@ function applyTabZoom(level) {
         if (!button || !statusEl || !window.electronAPI?.checkForUpdates) return
         button.addEventListener('click', async () => {
             statusEl.textContent = tGet('settings.statusChecking')
+            statusEl.dataset.state = 'checking'
             button.disabled = true
 
             try {
@@ -4729,10 +4730,12 @@ function applyTabZoom(level) {
                     // said plainly: a newer version is found (and is being downloaded) or there is none
                     const found = result.updateInfo && result.updateInfo.version
                     const current = await Promise.resolve(window.electronAPI.getAppVersion?.()).catch(() => '') || ''
+                    statusEl.dataset.state = result.available ? 'found' : 'none'
                     statusEl.textContent = result.available
                         ? tGet('settings.statusAvailable').replace('{v}', found || '')
                         : tGet('settings.statusUpToDate').replace('{v}', current || found || '')
                 } else {
+                    statusEl.dataset.state = 'error'
                     statusEl.textContent = tGet('settings.statusError')
                     console.error('Update check error:', result?.error)
                 }

@@ -10,7 +10,14 @@
 }
 .changelog-popup-header { padding: 14px 18px 12px; flex-wrap: nowrap; row-gap: 0; gap: 12px; }
 .changelog-popup-title { order: 1; flex: 1 1 auto; font-size: 14px; }
-.changelog-popup-update-status { order: 2; flex: 0 1 auto; max-width: 360px; text-align: right; }
+/* one line: a small coloured dot tells the answer before it is read (green: no update, accent: found, red: failed) */
+.changelog-popup-update-status { order: 2; flex: 0 1 auto; min-width: 0; max-width: 420px; text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.changelog-popup-update-status[data-state]::before { content: ''; display: inline-block; width: 7px; height: 7px; margin-right: 8px; border-radius: 50%; vertical-align: 1px; background: var(--text-secondary); }
+.changelog-popup-update-status[data-state='none']::before { background: #3fb97c; box-shadow: 0 0 8px rgba(63, 185, 124, .55); }
+.changelog-popup-update-status[data-state='found']::before { background: var(--accent); box-shadow: 0 0 8px var(--accent-glow, transparent); }
+.changelog-popup-update-status[data-state='error']::before { background: #e5484d; }
+.changelog-popup-update-status[data-state='checking']::before { animation: clPulse 1s ease-in-out infinite; }
+@keyframes clPulse { 50% { opacity: .25; } }
 .changelog-popup-update { order: 3; margin: 0; }
 .changelog-popup-close { order: 4; }
 .changelog-popup-source, .changelog-source { display: none !important; }
