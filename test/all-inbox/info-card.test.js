@@ -41,3 +41,21 @@ test('missing or broken input gives an empty card, not an error', () => {
     assert.deepEqual(describeInfo(null), { title: '', subtitle: '', about: '', link: '' })
     assert.deepEqual(describeInfo('x'), { title: '', subtitle: '', about: '', link: '' })
 })
+
+test('a person has a card too: their name, their address, what they wrote about themselves', () => {
+    const d = describeInfo({ kind: 'user', title: 'Иван Петров', username: 'ivan_p', phone: '79001234567', about: 'Печать на кружках' })
+    assert.equal(d.title, 'Иван Петров')
+    assert.equal(d.subtitle, 'Контакт · +7 900 123-45-67')
+    assert.equal(d.about, 'Печать на кружках')
+    assert.equal(d.link, 'https://t.me/ivan_p')
+})
+
+test('a person without a number shows the address, and a bot says it is a bot', () => {
+    assert.equal(describeInfo({ kind: 'user', title: 'Ян', username: 'yan_k' }).subtitle, 'Контакт · @yan_k')
+    assert.equal(describeInfo({ kind: 'bot', title: 'Помощник', username: 'help_bot' }).subtitle, 'Бот · @help_bot')
+    assert.equal(describeInfo({ kind: 'user', title: 'Без ничего' }).subtitle, 'Контакт')
+})
+
+test('a number that is not a number is not shown', () => {
+    assert.equal(describeInfo({ kind: 'user', title: 'X', phone: 'abc<script>' }).subtitle, 'Контакт')
+})

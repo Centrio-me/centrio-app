@@ -12,7 +12,7 @@
 // Ассистента/Задач/Уведомлений), этот модуль отвечает за содержимое.
 
 const { createSaveQueue } = require('./notes-save-queue')
-const { applyFormat, toHtml, stripMarks, noteToText } = require('./notes-format')
+const { applyFormat, toHtml, stripMarks, noteToMarkedText } = require('./notes-format')
 
 function bindNotesUi({ store, tGet, authorizedInvoke, invokeIpc, openRightPanel, closeRightPanel, getUserIsPro, requirePro, onNotesChange, onSendToChat = null }) {
     const btn = document.getElementById('notesBtn')
@@ -809,7 +809,7 @@ function bindNotesUi({ store, tGet, authorizedInvoke, invokeIpc, openRightPanel,
                     const full = await invokeIpc('notes-images:full', activeNote.id, img.id).catch(() => '')
                     if (full) pictures.push(full)
                 }
-                await onSendToChat({ text: noteToText(activeNote), pictures })
+                await onSendToChat({ text: noteToMarkedText(activeNote), pictures })
             } finally { sendBtn.disabled = false }
         })
     }
@@ -985,6 +985,8 @@ function bindNotesUi({ store, tGet, authorizedInvoke, invokeIpc, openRightPanel,
             requirePro?.('notes')
             return
         }
+        // the button is a switch: beside a chat the column stands next to it and the button is still in reach (Oleg: «открыть можно, закрыть нельзя»)
+        if (document.body.classList.contains('notes-window-open')) { closeRightPanel?.(); return }
         openPanel()
     })
 

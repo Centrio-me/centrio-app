@@ -12,6 +12,7 @@ const { createPending, withPending } = require('./pending')
 const { isAway, isHidden, onAttentionChange } = require('../window-attention')
 const { toMessenger, runsOf, entitiesOf } = require('./text-format')
 const { openLink } = require('./open-link')
+const { marksForService } = require('../notes-format')
 
 const CHAT_POLL_MS = 1500
 // a chat not shown by then is said to have not opened, with the way to the messenger itself
@@ -566,7 +567,7 @@ function createChatController({ state, webviewOf, host, ipcRenderer, onSubtitle 
         view.show(chat)
         // a note waiting to be sent on goes into the field of the chat that was chosen
         const waiting = window.__centrioPendingNote
-        if (waiting) { window.__centrioPendingNote = null; view.prefill(waiting); document.dispatchEvent(new CustomEvent('all-inbox-note-delivered')) }
+        if (waiting) { window.__centrioPendingNote = null; view.prefill({ ...waiting, text: marksForService(waiting.text, adapterId) }); document.dispatchEvent(new CustomEvent('all-inbox-note-delivered')) }
         view.setMismatch(true, '')
         clearInterval(timer)
         timer = setInterval(poll, CHAT_POLL_MS)

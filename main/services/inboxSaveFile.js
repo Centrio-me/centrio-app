@@ -47,4 +47,19 @@ function parsePicturePayload(payload) {
     return { bytes, ext: m[1] === 'jpeg' ? 'jpg' : m[1], name: safeName(payload.name) }
 }
 
-module.exports = { parseFilePayload, parsePicturePayload, safeName, MAX_FILE_BYTES }
+/**
+ * Where a file goes without asking: the folder of Settings → Downloads when «ask where to save» is off, with a number
+ * added when the name is taken. null means the person is to be asked (Oleg, 2026-11-17: the setting was ignored).
+ * @returns {string | null}
+ */
+function autoSavePath({ askDownload, downloadDir, name, exists }) {
+    if (askDownload !== false || !downloadDir) return null
+    const path = require('path')
+    const ext = path.extname(name)
+    const base = name.slice(0, name.length - ext.length)
+    let candidate = path.join(downloadDir, name)
+    for (let n = 1; exists(candidate) && n < 1000; n += 1) candidate = path.join(downloadDir, `${base} (${n})${ext}`)
+    return candidate
+}
+
+module.exports = { parseFilePayload, parsePicturePayload, safeName, autoSavePath, MAX_FILE_BYTES }

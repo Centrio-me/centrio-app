@@ -70,8 +70,8 @@ function applyFormat(text, start, end, kind) {
     return { text: text.slice(0, from) + m + selected + m + text.slice(to), start: from + m.length, end: to + m.length }
 }
 
-/** A note as the text of a message: its title, then its words without marks, or the items of a list with their ticks. */
-function noteToText(note) {
+/** A note as the text of a message: its title, then its words (with our marks or without), or the items of a list with their ticks. */
+function noteText(note, keepMarks) {
     if (!note) return ''
     const title = String(note.title || '').trim()
     let body = ''
@@ -79,9 +79,35 @@ function noteToText(note) {
         const items = Array.isArray(note.items) ? note.items : []
         body = items.map((i) => `${i && i.done ? '☑' : '☐'} ${String((i && i.text) || '').trim()}`).filter((l) => l.length > 2).join('\n')
     } else {
-        body = stripMarks(String(note.body || '')).trim()
+        body = (keepMarks ? String(note.body || '') : stripMarks(String(note.body || ''))).trim()
     }
     return [title, body].filter(Boolean).join('\n\n')
 }
 
-module.exports = { applyFormat, toHtml, stripMarks, noteToText, MARKS }
+const noteToText = (note) => noteText(note, false)
+/** The same with our marks kept: the chat is chosen later and marksForService() writes them the way that chat reads them. */
+const noteToMarkedText = (note) => noteText(note, true)
+
+// how each service reads formatting typed as marks (Oleg, 2026-11-17: «при пересылке заметки форматирование не сохраняется»);
+// a service not listed, and a kind with no mark of its own (underline), gets the words alone
+const SERVICE_MARKS = {
+    telegram: { bold: ['**', '**'], italic: ['__', '__'], strike: ['~~', '~~'] },
+    whatsapp: { bold: ['*', '*'], italic: ['_', '_'], strike: ['~', '~'] }
+}
+const OPEN = ''
+const CLOSE = ''
+const MARKER = new RegExp(`${OPEN}(/?)(\\w+)${CLOSE}`, 'g')
+
+/** Our marks rewritten for the service that will receive the message. */
+function marksForService(text, service) {
+    const own = SERVICE_MARKS[service] || {}
+    let out = String(text)
+    // every pair is first replaced by a neutral marker, so that a mark written for the service is never read again as ours
+    for (const [kind, re] of PAIRS) out = out.replace(re, (_, inner) => `${OPEN}${kind}${CLOSE}${inner}${OPEN}/${kind}${CLOSE}`)
+    return out.replace(MARKER, (_, closing, kind) => {
+        const marks = own[kind]
+        return marks ? marks[closing ? 1 : 0] : ''
+    })
+}
+
+module.exports = { applyFormat, toHtml, stripMarks, noteToText, noteToMarkedText, marksForService, MARKS }

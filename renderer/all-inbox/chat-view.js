@@ -361,7 +361,7 @@ function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab
     infoBox.hidden = true
     root.append(infoBox)
     const closeInfo = () => { infoBox.hidden = true }
-    // only a channel or a group has a card; a private chat's header does nothing
+    // a channel, a group, a person or a bot has a card; the chat with oneself does not
     let hasCard = false
     async function toggleInfo() {
         if (!onInfo || !canInfo() || !hasCard) return
@@ -383,7 +383,7 @@ function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab
         const open = el('button', 'aic-info-open', 'Открыть в мессенджере')
         open.type = 'button'
         open.addEventListener('click', () => { closeInfo(); onOpenInTab() })
-        card.append(open, el('div', 'aic-info-hint', 'Отписаться или изменить настройки можно в самом мессенджере'))
+        card.append(open, el('div', 'aic-info-hint', 'Остальные действия (отписаться, заблокировать, настройки) — в самом мессенджере'))
         infoBox.replaceChildren(card)
         infoBox.hidden = false
         // the focus goes into the card: Esc closes it (and not the whole chat), and the keyboard starts from it
@@ -489,7 +489,7 @@ function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab
             composer.setVisible(false)
             // the card of the previous chat must not stay over this one
             closeInfo()
-            hasCard = !!(onInfo && canInfo() && (chat.kind === 'group' || chat.kind === 'channel'))
+            hasCard = !!(onInfo && canInfo() && (chat.kind === 'group' || chat.kind === 'channel' || chat.kind === 'user' || chat.kind === 'bot'))
             q('.aic-who').classList.toggle('is-clickable', hasCard)
             shownOnce = false
         },

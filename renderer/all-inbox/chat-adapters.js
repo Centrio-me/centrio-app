@@ -592,11 +592,23 @@ const telegram = {
             });
         }).catch(function () { return null; });
     })()`,
-    // what the open channel or group says about itself: its name, address, people and description (3.8.7); a private chat has no card
+    // what the open channel, group or person says about itself: its name, address, people or number and description (3.8.7)
     INFO: `(function () {
         var chat = window.appImManager && appImManager.chat;
-        if (!chat || !window.rootScope || !(Number(chat.peerId) < 0)) return null;
-        var id = -Number(chat.peerId), m = rootScope.managers;
+        if (!chat || !window.rootScope) return null;
+        var pid = Number(chat.peerId), m = rootScope.managers;
+        if (pid > 0) {
+            if (pid === Number(rootScope.myId)) return null;
+            return Promise.all([m.appUsersManager.getUser(pid), Promise.resolve(m.appProfileManager.getProfile(pid)).catch(function () { return null; })]).then(function (r) {
+                var u = r[0], f = r[1] || {};
+                if (!u) return null;
+                var uname = u.username || (u.usernames && u.usernames[0] && u.usernames[0].username) || '';
+                var name = [u.first_name, u.last_name].filter(Boolean).join(' ');
+                return { kind: u.pFlags && u.pFlags.bot ? 'bot' : 'user', title: String(name), username: String(uname), phone: String(u.phone || ''), about: String(f.about || '') };
+            }).catch(function () { return null; });
+        }
+        if (!(pid < 0)) return null;
+        var id = -pid;
         return Promise.all([m.appChatsManager.getChat(id), m.appProfileManager.getChatFull(id)]).then(function (r) {
             var c = r[0], f = r[1] || {};
             if (!c) return null;

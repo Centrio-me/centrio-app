@@ -84,3 +84,32 @@ test('nothing in, nothing out', () => {
     assert.equal(noteToText(null), '')
     assert.equal(noteToText({ type: 'TEXT', title: '', body: '' }), '')
 })
+
+const { noteToMarkedText, marksForService } = require('../renderer/notes-format')
+
+test('a note sent on keeps its marks until the chat is known', () => {
+    assert.equal(noteToMarkedText({ type: 'TEXT', title: 'План', body: 'Купить **хлеб** и *молоко*' }), 'План\n\nКупить **хлеб** и *молоко*')
+})
+
+test('Telegram gets its own marks: bold, italic with two underscores, strikethrough; underline has none', () => {
+    const t = marksForService('**жирный** *курсив* ++подчёркнутый++ ~~зачёркнутый~~', 'telegram')
+    assert.equal(t, '**жирный** __курсив__ подчёркнутый ~~зачёркнутый~~')
+})
+
+test('WhatsApp gets its own marks: one star, underscore, tilde', () => {
+    const t = marksForService('**жирный** *курсив* ++подчёркнутый++ ~~зачёркнутый~~', 'whatsapp')
+    assert.equal(t, '*жирный* _курсив_ подчёркнутый ~зачёркнутый~')
+})
+
+test('a service that does not read marks gets the words without them', () => {
+    for (const service of ['max', 'vk', 'instagram', 'unknown']) assert.equal(marksForService('**жирный** *курсив*', service), 'жирный курсив')
+})
+
+test('text that only looks like marks is left alone', () => {
+    assert.equal(marksForService('5 * 3 * 2 и C++ and C++', 'telegram'), '5 * 3 * 2 и C++ and C++')
+})
+
+test('a checklist and an empty note are the same as before', () => {
+    assert.equal(noteToMarkedText({ type: 'CHECKLIST', title: 'М', items: [{ text: 'Хлеб', done: true }] }), 'М\n\n☑ Хлеб')
+    assert.equal(noteToMarkedText(null), '')
+})

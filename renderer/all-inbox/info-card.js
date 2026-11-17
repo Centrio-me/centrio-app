@@ -7,7 +7,7 @@ const FORMS = {
     channel: ['подписчик', 'подписчика', 'подписчиков'],
     group: ['участник', 'участника', 'участников']
 }
-const KIND_LABEL = { channel: 'Канал', group: 'Группа' }
+const KIND_LABEL = { channel: 'Канал', group: 'Группа', user: 'Контакт', bot: 'Бот' }
 
 /** The Russian form of a word for a number: 1 подписчик, 2 подписчика, 5 подписчиков. */
 function plural(n, forms) {
@@ -20,6 +20,14 @@ function plural(n, forms) {
     return forms[2]
 }
 
+/** A telephone number as people write it: +7 900 123-45-67; anything that is not digits gives nothing. */
+function phoneText(raw) {
+    const digits = String(raw || '').replace(/[\s+()-]/g, '')
+    if (!/^\d{7,15}$/.test(digits)) return ''
+    const ru = /^7(\d{3})(\d{3})(\d{2})(\d{2})$/.exec(digits)
+    return ru ? `+7 ${ru[1]} ${ru[2]}-${ru[3]}-${ru[4]}` : `+${digits}`
+}
+
 function grouped(n) {
     return String(Math.trunc(Number(n) || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ')
 }
@@ -30,8 +38,13 @@ function describeInfo(info) {
     const kind = KIND_LABEL[info.kind] ? info.kind : 'group'
     const members = Number(info.members) || 0
     const label = KIND_LABEL[kind]
-    const subtitle = members > 0 ? `${label} · ${grouped(members)} ${plural(members, FORMS[kind])}` : label
     const username = String(info.username || '')
+    // a person or a bot: the number, or else the address; a channel or a group: the people
+    let subtitle = members > 0 ? `${label} · ${grouped(members)} ${plural(members, FORMS[kind] || FORMS.group)}` : label
+    if (kind === 'user' || kind === 'bot') {
+        const how = phoneText(info.phone) || (USERNAME.test(username) ? `@${username}` : '')
+        subtitle = how ? `${label} · ${how}` : label
+    }
     return {
         title: String(info.title || ''),
         subtitle,

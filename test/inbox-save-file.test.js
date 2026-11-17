@@ -74,3 +74,22 @@ test('a name does not end with a dot or a space', () => {
     assert.equal(safeName('report.pdf. '), 'report.pdf')
     assert.equal(safeName('a...'), 'a')
 })
+
+const { autoSavePath } = require('../main/services/inboxSaveFile')
+
+test('with a folder chosen and «ask» off, the file goes straight there', () => {
+    const p = autoSavePath({ askDownload: false, downloadDir: 'C:\Загрузки', name: 'Счёт.pdf', exists: () => false })
+    assert.equal(p, require('path').join('C:\Загрузки', 'Счёт.pdf'))
+})
+
+test('when «ask» is on or no folder is chosen, the person is asked (no automatic path)', () => {
+    assert.equal(autoSavePath({ askDownload: true, downloadDir: 'C:\Загрузки', name: 'a.pdf', exists: () => false }), null)
+    assert.equal(autoSavePath({ askDownload: false, downloadDir: '', name: 'a.pdf', exists: () => false }), null)
+    assert.equal(autoSavePath({ askDownload: undefined, downloadDir: 'C:/x', name: 'a.pdf', exists: () => false }), null)
+})
+
+test('a file that is already there is not overwritten: a number is added', () => {
+    const taken = new Set([require('path').join('D', 'a.pdf'), require('path').join('D', 'a (1).pdf')])
+    const p = autoSavePath({ askDownload: false, downloadDir: 'D', name: 'a.pdf', exists: (f) => taken.has(f) })
+    assert.equal(p, require('path').join('D', 'a (2).pdf'))
+})

@@ -9,6 +9,7 @@ The format is based on Keep a Changelog. This project does not currently follow 
 ## [Unreleased]
 
 ### Added
+- «Все мессенджеры»: a Telegram person or bot has a card on a click on the header, like a channel: name, number or address, what they wrote about themselves, link.
 - Windows from the owner inside the app (admin → «Окна в приложении»): title, text, picture, button (link or the plans window), promo code, themes; for everyone, people without an account, with an account, FREE, PRO, TEAM, testers or named people; schedule; numbers (seen, clicked, closed, reopened). Shown once until closed; during a promotion the logo wears a Santa hat and a click on it brings the window back.
 - Notes: bold, italic, underline and strikethrough in the text of a note (buttons and Ctrl+B, Ctrl+I, Ctrl+U, Ctrl+Shift+X); kept as plain marks (**bold**, *italic*, ++underline++, ~~strike~~) and shown formatted when the field is not being typed.
 - Notes: «Отправить в чат» — the words and all the pictures of a note go into the message field of the chat picked next in «Все мессенджеры».
@@ -21,6 +22,9 @@ The format is based on Keep a Changelog. This project does not currently follow 
 - «Все мессенджеры»: the notes column beside a chat has a draggable edge; the width is kept, a double click brings back the usual one.
 
 ### Fixed
+- «Все мессенджеры»: a file from a conversation goes to the folder of Settings → Downloads when one is chosen and «ask where to save» is off (it always asked; Oleg, 2026-11-17).
+- Notes: a note sent to a chat keeps bold, italic and strikethrough in Telegram and WhatsApp (marks are rewritten for the chat chosen; other messengers get the words alone; underline has no mark in either).
+- Notes: the «Заметки» button on the right bar closes the notes window when pressed again.
 - Folders made by the team owner: the right-click menu (and «⋯» in the folder card) now offers mute and colour for the employee or administrator; rename, icon and delete stay owner-only; in the strict mode the menu stays closed.
 - «Все мессенджеры»: a search that finds nothing says so (it raised an error and left the list empty).
 - «Все мессенджеры» / MAX: groups are in «Группы», not in «Личные», and their line in the list shows the author and the words.

@@ -5,7 +5,8 @@ const { ipcMain, dialog, clipboard, nativeImage, webContents, app, BrowserWindow
 const fs = require('fs')
 const path = require('path')
 const { checkFiles, dropFiles, startDrag, finishDrag } = require('../services/inboxFiles')
-const { parseFilePayload, parsePicturePayload } = require('../services/inboxSaveFile')
+const { parseFilePayload, parsePicturePayload, autoSavePath } = require('../services/inboxSaveFile')
+const store = require('../services/store')
 
 const THUMB_PX = 96
 const IMAGE_EXT = /\.(png|jpe?g|gif|webp|bmp|heic)$/i
@@ -156,9 +157,16 @@ function registerAllInboxIpc({ getMainWindow }) {
         if (!fromMainWindow(event)) return false
         const file = parseFilePayload(payload)
         if (!file) return false
-        const win = BrowserWindow.fromWebContents(event.sender)
-        const { canceled, filePath } = await dialog.showSaveDialog(win, { defaultPath: path.join(app.getPath('downloads'), file.name) })
-        if (canceled || !filePath) return null
+        // the setting of Settings → Downloads decides: a chosen folder with «ask» off takes the file without a question
+        const folder = store.get('settings.downloadDir', '')
+        const auto = autoSavePath({ askDownload: store.get('settings.askDownload', true), downloadDir: folder, name: file.name, exists: (p) => fs.existsSync(p) })
+        let filePath = auto
+        if (!filePath) {
+            const win = BrowserWindow.fromWebContents(event.sender)
+            const picked = await dialog.showSaveDialog(win, { defaultPath: path.join(folder || app.getPath('downloads'), file.name) })
+            if (picked.canceled || !picked.filePath) return null
+            filePath = picked.filePath
+        }
         try { await fs.promises.writeFile(filePath, file.bytes); return true } catch { return false }
     })
 
