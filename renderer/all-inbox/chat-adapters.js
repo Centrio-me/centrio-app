@@ -403,8 +403,8 @@ const telegram = {
                 reply: __ciText(b.querySelector('.reply .reply-subtitle')).slice(0, 140),
                 replyTitle: replyEl ? __ciText(replyEl.querySelector('.reply-title')).slice(0, 80) : '',
                 replyColor: replyEl ? __ciRgb(getComputedStyle(replyEl).backgroundColor) : '',
-                text: bigEmoji || __ciCleanText(b.querySelector('.message'), '.time, .reply, .reactions, .name, .bubble-name-forwarded, .document, .audio, .webpage, .webpage-preview'),
-                marked: bigEmoji ? '' : __ciMarked(b.querySelector('.message'), '.time, .reply, .reactions, .name, .bubble-name-forwarded, .document, .audio, .webpage, .webpage-preview'),
+                text: bigEmoji || __ciCleanText(b.querySelector('.message'), '.time, .reply, .reactions, .name, .bubble-name-forwarded, .document, .audio, .webpage, .webpage-preview, .audio-transcribed-text, .audio-transcribing-dots'),
+                marked: bigEmoji ? '' : __ciMarked(b.querySelector('.message'), '.time, .reply, .reactions, .name, .bubble-name-forwarded, .document, .audio, .webpage, .webpage-preview, .audio-transcribed-text, .audio-transcribing-dots'),
                 name: kind === 'contact' ? __ciText(b.querySelector('.contact-name, .contact .name')) || 'Контакт' : __ciText(b.querySelector('.document-name')),
                 phone: kind === 'contact' ? __ciText(b.querySelector('.contact-number, .contact .number')) : '',
                 size: __ciText(b.querySelector('.document-size')),
@@ -449,8 +449,14 @@ const telegram = {
             }
             out.push(msg);
         }
+        // a group with topics: inside a topic the header names the topic first and the group after it («В <группа>»); the
+        // chat is known by the group's name, and the topic is told apart (3.8.8, Oleg: «каналы с темами не поддерживаются»)
+        var tgChat = window.appImManager && appImManager.chat;
+        var inTopic = !!(tgChat && tgChat.isForumTopic && titles.length > 1);
         return {
-            title: titles[0] ? __ciText(titles[0]) : '',
+            title: inTopic ? __ciText(titles[titles.length - 1]) : (titles[0] ? __ciText(titles[0]) : ''),
+            forum: !!(tgChat && (tgChat.isForum || tgChat.isForumTopic)),
+            topic: inTopic ? __ciText(titles[0]) : '',
             subtitle: __ciText(chat.querySelector('.chat-info .info')),
             // channels and chats where writing is closed have no message field on screen
             canWrite: !!__ciVisible(chat, '.input-message-input[contenteditable="true"]'),
@@ -615,6 +621,53 @@ const telegram = {
             var name = c.username || (c.usernames && c.usernames[0] && c.usernames[0].username) || '';
             return { kind: c.pFlags && c.pFlags.broadcast ? 'channel' : 'group', title: String(c.title || ''), username: String(name), members: Number(c.participants_count || f.participants_count || 0), about: String(f.about || '') };
         }).catch(function () { return null; });
+    })()`,
+    // the topics of the open group with topics: their names and unread counts, read from the list Telegram draws for them
+    // in the tab (it is opened for a moment and closed again)
+    TOPICS: `(function () {
+        var chat = window.appImManager && appImManager.chat, d = window.appDialogsManager;
+        if (!chat || !d || !(chat.isForum || chat.isForumTopic) || typeof d.toggleForumTabByPeerId !== 'function') return null;
+        var peerId = chat.peerId;
+        return Promise.resolve(d.toggleForumTabByPeerId(peerId, true)).then(function () {
+            return new Promise(function (resolve) { setTimeout(resolve, 1200); });
+        }).then(function () {
+            var ft = d.forumTab, out = [];
+            var rows = ft && ft.content ? ft.content.querySelectorAll('a.row[data-thread-id]') : [];
+            for (var i = 0; i < rows.length; i++) {
+                var lines = String(rows[i].innerText || '').split(String.fromCharCode(10)).map(function (x) { return x.trim(); }).filter(Boolean);
+                if (!lines.length) continue;
+                var last = lines[lines.length - 1];
+                out.push({ id: String(rows[i].getAttribute('data-thread-id')), title: lines[0].slice(0, 60), unread: lines.length > 3 && /^[0-9]+$/.test(last) ? Number(last) : 0 });
+            }
+            return Promise.resolve(d.toggleForumTabByPeerId(peerId, false)).catch(function () {}).then(function () { return out; });
+        }).catch(function () { return null; });
+    })()`,
+    // the words of a voice message, taken from Telegram itself: its own «Расшифровать звук» button is pressed in the tab and
+    // the text it brings is read (3.8.8, owner's idea). null when Telegram does not give one (not for every account).
+    TRANSCRIBE: (id) => `(function () {
+        var mid = ${JSON.stringify(String(id || '').replace(/[^0-9]/g, ''))};
+        var chat = document.querySelector('.chats-container > .chat.active, #column-center .chat.active');
+        var bubble = chat && mid ? chat.querySelector('.bubble[data-mid="' + mid + '"]') : null;
+        var btn = bubble && bubble.querySelector('.audio-to-text-button');
+        if (!btn) return null;
+        function read() { var t = bubble.querySelector('.audio-transcribed-text'); var s = t ? String(t.innerText || '').trim() : ''; return /^[.…]*$/.test(s) ? '' : s; }
+        if (!read() && btn.getAttribute('aria-busy') !== 'true') btn.click();
+        return new Promise(function (resolve) {
+            var started = Date.now();
+            (function wait() {
+                var s = read();
+                if (s && btn.getAttribute('aria-busy') !== 'true') return resolve(s.slice(0, 4000));
+                if (Date.now() - started > 40000) return resolve(null);
+                setTimeout(wait, 700);
+            })();
+        });
+    })()`,
+    // one topic of the open group with topics, or (no id) all of them together as before
+    OPEN_TOPIC: (thread) => `(function () {
+        var chat = window.appImManager && appImManager.chat;
+        if (!chat || typeof appImManager.setInnerPeer !== 'function') return false;
+        var t = Number(${JSON.stringify(String(thread || ''))});
+        try { appImManager.setInnerPeer(t ? { peerId: chat.peerId, threadId: t } : { peerId: chat.peerId }); return true; } catch (e) { return false; }
     })()`,
     // a document (any file) of the open chat, taken through Telegram's own downloader, with its name (3.8.7)
     FILE: (id) => `(function () {

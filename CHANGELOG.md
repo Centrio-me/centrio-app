@@ -9,6 +9,8 @@ The format is based on Keep a Changelog. This project does not currently follow 
 ## [Unreleased]
 
 ### Added
+- «Все мессенджеры» / Telegram: a group with topics has a bar of topics under the header («Все» and each topic with its unread count); a topic opens on its own and the message field writes into it. The list is read from the topics panel of the tab (opened for a moment and closed), a topic is opened by its id (Oleg: «каналы с темами не поддерживаются»).
+- «Все мессенджеры» / Telegram: a voice message has an «Aa» button: Telegram's own «Расшифровать звук» is pressed in the tab and the text it gives is shown under the voice message (not available for every account); the text is not read a second time as the message's words.
 - «Все мессенджеры»: a Telegram person or bot has a card on a click on the header, like a channel: name, number or address, what they wrote about themselves, link.
 - Windows from the owner inside the app (admin → «Окна в приложении»): title, text, picture, button (link or the plans window), promo code, themes; for everyone, people without an account, with an account, FREE, PRO, TEAM, testers or named people; schedule; numbers (seen, clicked, closed, reopened). Shown once until closed; during a promotion the logo wears a Santa hat and a click on it brings the window back.
 - Notes: bold, italic, underline and strikethrough in the text of a note (buttons and Ctrl+B, Ctrl+I, Ctrl+U, Ctrl+Shift+X); kept as plain marks (**bold**, *italic*, ++underline++, ~~strike~~) and shown formatted when the field is not being typed.

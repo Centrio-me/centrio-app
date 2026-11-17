@@ -1186,3 +1186,33 @@ html[data-theme="light"] #allInboxPanel { border-right: 1px solid rgba(0, 0, 0, 
 .aic-bubble, .aic-text { overflow-wrap: anywhere; }
 /* one ring for every button of the conversation (the browser's yellow one stood on some) */
 .aic :focus-visible, .ai-sources-arrow:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ── 3.8.8: topics of a group (Telegram forum): chips under the header ─────────────────────────────────────────── */
+.aic-topics { display: flex; gap: 6px; padding: 8px 14px; overflow-x: auto; scrollbar-width: thin; border-bottom: 1px solid var(--border); background: var(--bg-secondary); flex: 0 0 auto; }
+.aic-topics[hidden] { display: none; }
+.aic-topic {
+    display: inline-flex; align-items: center; gap: 6px; flex: 0 0 auto; max-width: 220px;
+    padding: 5px 12px; border: 1px solid var(--border); border-radius: 999px;
+    background: var(--bg-tertiary); color: var(--text-primary); font: inherit; font-size: 12.5px; cursor: pointer;
+    transition: background .15s, border-color .15s, color .15s;
+}
+.aic-topic:hover { background: var(--bg-hover); border-color: var(--border-light, var(--border)); }
+.aic-topic:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.aic-topic.is-on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.aic-topic-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.aic-topic-n { min-width: 18px; padding: 1px 6px; border-radius: 9px; background: var(--accent); color: #fff; font-size: 11px; font-weight: 700; text-align: center; }
+.aic-topic.is-on .aic-topic-n { background: rgba(255, 255, 255, .28); }
+
+/* ── 3.8.8: the words of a voice message, asked of Telegram ────────────────────────────────────────────────── */
+.aic-voice { flex-wrap: wrap; }
+.aic-voice-tr {
+    flex: 0 0 auto; min-width: 28px; height: 24px; padding: 0 7px; border: 1px solid currentColor; border-radius: 7px;
+    background: transparent; color: inherit; font: 700 11px/1 inherit; opacity: .6; cursor: pointer;
+    transition: opacity .15s, background .15s;
+}
+.aic-voice-tr:hover, .aic-voice-tr.is-done { opacity: 1; }
+.aic-voice-tr.is-busy { opacity: 1; animation: aic-tr-pulse 1s ease-in-out infinite; cursor: progress; }
+.aic-voice-tr:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.aic-voice-words { flex: 1 0 100%; margin-top: 2px; font-size: 13px; line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere; user-select: text; }
+@keyframes aic-tr-pulse { 50% { opacity: .35; } }
+@media (prefers-reduced-motion: reduce) { .aic-voice-tr.is-busy { animation: none; } }

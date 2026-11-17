@@ -61,7 +61,7 @@ function openingMark() {
     return box
 }
 
-function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab, onClose, onOlder, onLink, onPicture, onPickFiles, onDescribeFiles, onPasteImage, canReply = () => false, onEdit = null, canEdit = () => false, onReact = null, reactionsFor = () => [], onDelete = null, canDelete = () => false, onMedia = () => Promise.resolve(null), canPlay = () => false, onFile = null, canFile = () => false, onInfo = null, canInfo = () => false, onVote = null, canVote = () => false }) {
+function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab, onClose, onOlder, onLink, onPicture, onPickFiles, onDescribeFiles, onPasteImage, canReply = () => false, onEdit = null, canEdit = () => false, onReact = null, reactionsFor = () => [], onDelete = null, canDelete = () => false, onMedia = () => Promise.resolve(null), canPlay = () => false, onFile = null, canFile = () => false, onInfo = null, canInfo = () => false, onVote = null, canVote = () => false, onTopic = null, onTranscribe = null, canTranscribe = () => false }) {
     const root = el('section', 'aic')
     root.hidden = true
     root.dataset.bg = readBackground()
@@ -82,6 +82,7 @@ function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
             </button>
         </header>
+        <div class="aic-topics" role="tablist" aria-label="Темы" hidden></div>
         <div class="aic-warn" hidden></div>
         <div class="aic-scroll"><div class="aic-list"></div></div>
         <button type="button" class="aic-down" hidden aria-label="К новым сообщениям" title="К новым сообщениям">
@@ -93,6 +94,7 @@ function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab
     const q = (s) => root.querySelector(s)
     const scroll = q('.aic-scroll')
     const list = q('.aic-list')
+    const transcripts = new Map() // the words of voice messages already asked for, by message id
     let lastSig = null // null: nothing drawn yet — an empty chat ('' signature) is still drawn once
 
     const drafts = sharedDrafts
@@ -361,6 +363,29 @@ function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab
     infoBox.hidden = true
     root.append(infoBox)
     const closeInfo = () => { infoBox.hidden = true }
+    // a group with topics: the topics are chips under the header; «Все» is the old feed with all of them together
+    const topicsBar = q('.aic-topics')
+    let topicsKey = ''
+    function setTopics(list, activeTitle) {
+        const items = Array.isArray(list) ? list : []
+        const key = JSON.stringify([items.map((t) => [t.id, t.title, t.unread]), activeTitle || ''])
+        if (key === topicsKey) return
+        topicsKey = key
+        topicsBar.hidden = !items.length || !onTopic
+        if (topicsBar.hidden) return
+        const chip = (id, title, unread, on) => {
+            const b = el('button', 'aic-topic' + (on ? ' is-on' : ''))
+            b.type = 'button'
+            b.setAttribute('role', 'tab')
+            b.setAttribute('aria-selected', on ? 'true' : 'false')
+            b.append(el('span', 'aic-topic-name', title))
+            if (unread > 0) b.append(el('span', 'aic-topic-n', unread > 99 ? '99+' : String(unread)))
+            b.addEventListener('click', () => { if (!on) onTopic(id) })
+            return b
+        }
+        const active = String(activeTitle || '')
+        topicsBar.replaceChildren(chip('', 'Все', 0, !active), ...items.map((t) => chip(t.id, t.title, t.unread, !!active && active === t.title)))
+    }
     // a channel, a group, a person or a bot has a card; the chat with oneself does not
     let hasCard = false
     async function toggleInfo() {
@@ -489,6 +514,8 @@ function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab
             composer.setVisible(false)
             // the card of the previous chat must not stay over this one
             closeInfo()
+            topicsKey = ''
+            topicsBar.hidden = true
             hasCard = !!(onInfo && canInfo() && (chat.kind === 'group' || chat.kind === 'channel' || chat.kind === 'user' || chat.kind === 'bot'))
             q('.aic-who').classList.toggle('is-clickable', hasCard)
             shownOnce = false
@@ -516,7 +543,8 @@ function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab
             const ctx = { isGroup, onLink, onZoom: zoom, onOpenInTab, onReply: canReply() ? (m) => composer.replyTo(m) : null,
                 onVoice: playable ? onVoice : null, onSeek: (m, part) => player.seek(m.id, part), onVideo: playable ? onVideo : null, playerState: player.state,
                 onFile: onFile && canFile() ? saveFile : null,
-                onVote: onVote && canVote() ? vote : null, isVoting: (id) => voting.has(id) }
+                onVote: onVote && canVote() ? vote : null, isVoting: (id) => voting.has(id),
+                onTranscribe: onTranscribe && canTranscribe() ? onTranscribe : null, transcripts }
             byId = new Map()
             dayOf = new Map()
             let dayLabel = ''
@@ -605,6 +633,7 @@ function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab
         // a pressed reaction: only that message's reactions change, at once
         showReactions(id, items) { return patchReactions(list, id, items) },
         hide() { player.reset(); videoToken++; closeZoom(); closeMenu(); closeInfo(); askBox.hidden = true; bgMenu.toggle(false); root.hidden = true; document.body.classList.remove('all-inbox-chat-open') },
+        setTopics,
         isShown: () => !root.hidden,
         // the person really sees the newest messages: our window on screen, Centrio in focus, the conversation at its end
         isReading: () => !root.hidden && !lightbox.isOpen() && document.visibilityState === 'visible' && document.hasFocus() && atBottom()

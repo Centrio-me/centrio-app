@@ -137,6 +137,28 @@ function voice(m, ctx) {
     const info = el('div', 'aic-voice-info')
     info.append(wave, el('span', 'aic-voice-time', m.duration || ''))
     box.append(btn, info)
+    // the words of the message, asked of the messenger itself (Telegram): shown under the voice, kept while the chat is open
+    if (ctx.onTranscribe) {
+        const words = el('div', 'aic-voice-words')
+        words.hidden = true
+        const ask = el('button', 'aic-voice-tr', 'Aa')
+        ask.type = 'button'
+        ask.title = 'Расшифровать'
+        ask.setAttribute('aria-label', 'Расшифровать голосовое')
+        const show = (text) => { words.textContent = text; words.hidden = false; ask.classList.add('is-done'); ask.title = 'Показать или скрыть текст' }
+        const kept = ctx.transcripts && ctx.transcripts.get(m.id)
+        if (kept) show(kept)
+        ask.addEventListener('click', async (e) => {
+            e.stopPropagation()
+            if (ask.classList.contains('is-done')) { words.hidden = !words.hidden; return }
+            if (ask.classList.contains('is-busy')) return
+            ask.classList.add('is-busy')
+            const text = await Promise.resolve(ctx.onTranscribe(m.id)).catch(() => null)
+            ask.classList.remove('is-busy')
+            if (text) { ctx.transcripts && ctx.transcripts.set(m.id, text); show(text) } else { words.textContent = 'Telegram не дал расшифровку: она доступна не для всех аккаунтов и не для всех сообщений'; words.hidden = false }
+        })
+        box.append(ask, words)
+    }
     paintVoice(box, ctx.playerState())
     return box
 }

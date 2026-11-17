@@ -23,6 +23,8 @@ const REOPEN_AFTER_MS = 2500
 // the open chat is read this seldom while another window is in front; not at all while Centrio is hidden
 const AWAY_POLL_MS = 6000
 const READ_TIMEOUT_MS = 2500
+// a group with topics: how often the list of topics is asked again (new messages move the unread counts)
+const TOPICS_EVERY_MS = 25 * 1000
 const OLDER_THROTTLE_MS = 1500
 const FOCUS_SETTLE_MS = 120
 const TYPE_SETTLE_MS = 80
@@ -139,6 +141,21 @@ function createChatController({ state, webviewOf, host, ipcRenderer, onSubtitle 
             // only a sound or a video, in the type the data itself declares
             return got && typeof got.data === 'string' && MEDIA_DATA.test(got.data) ? { data: got.data, mime: got.data.slice(5, got.data.indexOf(';')) } : null
         },
+        // the words of a voice message (Telegram): its own button is pressed in the tab, the text it brings is taken
+        canTranscribe: () => !!(current && typeof current.adapter.TRANSCRIBE === 'function'),
+        onTranscribe: async (id) => {
+            const w = tab()
+            if (!w || !current || typeof current.adapter.TRANSCRIBE !== 'function') return null
+            const text = await run(w, current.adapter.TRANSCRIBE(String(id).split('+')[0]), 45000)
+            return typeof text === 'string' && text.trim() ? text.trim() : null
+        },
+        // a group with topics (Telegram): a topic is opened in the tab by its id, and the chips follow what the tab shows
+        onTopic: async (id) => {
+            const w = tab()
+            if (!w || !current || typeof current.adapter.OPEN_TOPIC !== 'function') return
+            const ok = await run(w, current.adapter.OPEN_TOPIC(id))
+            if (ok === true) { current.topicAt = 0; poll() }
+        },
         // the card of the open channel or group (Telegram): what it is, its people, its description, its link
         canInfo: () => !!(current && typeof current.adapter.INFO === 'string'),
         onInfo: async () => {
@@ -229,9 +246,20 @@ function createChatController({ state, webviewOf, host, ipcRenderer, onSubtitle 
             if (missingImages(data.messages, cur.images)) cur.script = withImageMemo(cur.adapter.CHAT, newSession())
             lastRows = buildTimeline(resolveImages(data.messages, current.images), Date.now())
             redraw()
+            // a group with topics: the list of topics is asked now and then, and the chips show which one is open
+            if (data.forum && typeof cur.adapter.TOPICS === 'string') {
+                if (Date.now() - (cur.topicAt || 0) > TOPICS_EVERY_MS && !cur.topicsAsked) {
+                    cur.topicsAsked = true
+                    cur.topicAt = Date.now()
+                    run(w, cur.adapter.TOPICS, READ_TIMEOUT_MS * 3).then((list) => { cur.topicsAsked = false; if (current === cur && Array.isArray(list)) { cur.topics = list; view.setTopics(list, cur.topicNow || '') } })
+                }
+                cur.topicNow = data.topic || ''
+                if (cur.topics) view.setTopics(cur.topics, cur.topicNow)
+            }
             view.setCanWrite(data.canWrite !== false)
             markRead(w)
-            const sub = [data.subtitle, current.chat.messengerName].filter(Boolean).join(' · ')
+            // inside a topic the header says which one («В <группа>» is the group's name, already in the title)
+            const sub = [data.topic ? `Тема: ${data.topic}` : data.subtitle, current.chat.messengerName].filter(Boolean).join(' · ')
             view.setSubtitle(sub)
             onSubtitle(current.chat, data.subtitle)
         } finally {
