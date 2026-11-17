@@ -26,7 +26,9 @@ function registerUpdaterIpc() {
             const result = await checkForUpdates()
             return {
                 success: true,
-                updateInfo: result?.updateInfo || null
+                updateInfo: result?.updateInfo || null,
+                // the answer of the update server is always in updateInfo; whether it is newer is told only by this
+                available: result?.isUpdateAvailable === true
             }
         } catch (error) {
             console.error('check-for-updates error:', error)
@@ -39,7 +41,9 @@ function registerUpdaterIpc() {
             const result = await checkForUpdates()
             return {
                 success: true,
-                updateInfo: result?.updateInfo || null
+                updateInfo: result?.updateInfo || null,
+                // the answer of the update server is always in updateInfo; whether it is newer is told only by this
+                available: result?.isUpdateAvailable === true
             }
         } catch (error) {
             console.error('app:checkForUpdates error:', error)

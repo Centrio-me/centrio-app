@@ -8,6 +8,9 @@ The format is based on Keep a Changelog. This project does not currently follow 
 
 ## [Unreleased]
 
+### Fixed
+- The check for updates (version history window and settings) said «Проверка выполнена» whatever the answer was. Now it says plainly «Обновлений нет, у вас последняя версия X» or «Найдена версия X, скачиваем» (the update server always sends its newest version; only isUpdateAvailable tells if it is newer — main/ipc/updater.js, renderer.js, 7 locales).
+
 ## [3.8.8] - 2026-11-17
 
 ### Fixed

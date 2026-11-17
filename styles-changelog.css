@@ -10,7 +10,7 @@
 }
 .changelog-popup-header { padding: 14px 18px 12px; flex-wrap: nowrap; row-gap: 0; gap: 12px; }
 .changelog-popup-title { order: 1; flex: 1 1 auto; font-size: 14px; }
-.changelog-popup-update-status { order: 2; flex: 0 1 auto; max-width: 260px; text-align: right; }
+.changelog-popup-update-status { order: 2; flex: 0 1 auto; max-width: 360px; text-align: right; }
 .changelog-popup-update { order: 3; margin: 0; }
 .changelog-popup-close { order: 4; }
 .changelog-popup-source, .changelog-source { display: none !important; }

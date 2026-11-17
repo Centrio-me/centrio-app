@@ -4726,7 +4726,12 @@ function applyTabZoom(level) {
                 const result = await window.electronAPI.checkForUpdates()
 
                 if (result?.success) {
-                    statusEl.textContent = result.updateInfo ? tGet('settings.statusDone') : tGet('settings.statusUpToDate')
+                    // said plainly: a newer version is found (and is being downloaded) or there is none
+                    const found = result.updateInfo && result.updateInfo.version
+                    const current = await Promise.resolve(window.electronAPI.getAppVersion?.()).catch(() => '') || ''
+                    statusEl.textContent = result.available
+                        ? tGet('settings.statusAvailable').replace('{v}', found || '')
+                        : tGet('settings.statusUpToDate').replace('{v}', current || found || '')
                 } else {
                     statusEl.textContent = tGet('settings.statusError')
                     console.error('Update check error:', result?.error)
