@@ -1191,7 +1191,13 @@ html[data-theme="light"] #allInboxPanel { border-right: 1px solid rgba(0, 0, 0, 
 .aic :focus-visible, .ai-sources-arrow:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 /* ── 3.8.8: topics of a group (Telegram forum): chips under the header ─────────────────────────────────────────── */
-.aic-topics { display: flex; gap: 6px; padding: 8px 14px; overflow-x: auto; scrollbar-width: thin; border-bottom: 1px solid var(--border); background: var(--bg-secondary); flex: 0 0 auto; }
+/* no scroll bar: the row moves with the wheel or a drag, and the faded edge shows that there is more on that side */
+.aic-topics { display: flex; gap: 6px; padding: 8px 14px; overflow-x: auto; scrollbar-width: none; scroll-behavior: smooth; border-bottom: 1px solid var(--border); background: var(--bg-secondary); flex: 0 0 auto; cursor: grab; }
+.aic-topics::-webkit-scrollbar { display: none; }
+.aic-topics.is-dragging { cursor: grabbing; scroll-behavior: auto; user-select: none; }
+.aic-topics.can-right { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 36px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 36px), transparent); }
+.aic-topics.can-left { -webkit-mask-image: linear-gradient(90deg, transparent, #000 36px); mask-image: linear-gradient(90deg, transparent, #000 36px); }
+.aic-topics.can-left.can-right { -webkit-mask-image: linear-gradient(90deg, transparent, #000 36px, #000 calc(100% - 36px), transparent); mask-image: linear-gradient(90deg, transparent, #000 36px, #000 calc(100% - 36px), transparent); }
 .aic-topics[hidden] { display: none; }
 .aic-topic {
     display: inline-flex; align-items: center; gap: 6px; flex: 0 0 auto; max-width: 220px;

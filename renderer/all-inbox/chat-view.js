@@ -373,6 +373,36 @@ function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab
     // a group with topics: the topics are chips under the header; «Все» is the old feed with all of them together
     const topicsBar = q('.aic-topics')
     let topicsKey = ''
+    // the row of topics: wheel and drag move it sideways, the edges fade where there is more (no scroll bar)
+    const edgeFade = () => {
+        const max = topicsBar.scrollWidth - topicsBar.clientWidth
+        topicsBar.classList.toggle('can-left', topicsBar.scrollLeft > 4)
+        topicsBar.classList.toggle('can-right', topicsBar.scrollLeft < max - 4)
+    }
+    topicsBar.addEventListener('scroll', edgeFade, { passive: true })
+    topicsBar.addEventListener('wheel', (e) => {
+        if (topicsBar.scrollWidth <= topicsBar.clientWidth) return
+        e.preventDefault()
+        topicsBar.scrollLeft += Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY
+    }, { passive: false })
+    let drag = null
+    topicsBar.addEventListener('pointerdown', (e) => { if (e.button === 0) drag = { x: e.clientX, left: topicsBar.scrollLeft, moved: false } })
+    window.addEventListener('pointermove', (e) => {
+        if (!drag) return
+        const dx = e.clientX - drag.x
+        if (!drag.moved && Math.abs(dx) < 5) return
+        drag.moved = true
+        topicsBar.classList.add('is-dragging')
+        topicsBar.scrollLeft = drag.left - dx
+    })
+    window.addEventListener('pointerup', () => {
+        if (!drag) return
+        const moved = drag.moved
+        drag = null
+        topicsBar.classList.remove('is-dragging')
+        // a drag is not a click on the chip under the pointer
+        if (moved) topicsBar.addEventListener('click', (e) => e.stopPropagation(), { capture: true, once: true })
+    })
     function setTopics(list, activeTitle) {
         const items = Array.isArray(list) ? list : []
         const key = JSON.stringify([items.map((t) => [t.id, t.title, t.unread]), activeTitle || ''])
@@ -392,6 +422,12 @@ function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab
         }
         const active = String(activeTitle || '')
         topicsBar.replaceChildren(chip('', 'Все', 0, !active), ...items.map((t) => chip(t.id, t.title, t.unread, !!active && active === t.title)))
+        // the chosen topic is brought into view; the faded edges are set once the row has its width
+        requestAnimationFrame(() => {
+            const on = topicsBar.querySelector('.aic-topic.is-on')
+            if (on) on.scrollIntoView({ inline: 'center', block: 'nearest' })
+            edgeFade()
+        })
     }
     // a channel, a group, a person or a bot has a card; the chat with oneself does not
     let hasCard = false

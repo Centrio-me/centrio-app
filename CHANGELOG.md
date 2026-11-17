@@ -8,6 +8,10 @@ The format is based on Keep a Changelog. This project does not currently follow 
 
 ## [Unreleased]
 
+### Changed
+- The row of topics of a Telegram group («Все мессенджеры») has no scroll bar any more: it moves with the wheel or a drag, and the faded edge shows that there is more on that side; the chosen topic is brought into view (chat-view.js, styles-all-inbox.css).
+- The update strip («Centrio X готова» / «Перезапустить») is a floating glass pill of the theme with an accent button instead of a flat band with a white button (styles-cloud.css).
+
 ### Added
 - «Все мессенджеры»: a click on a reaction under a message (a channel post too) puts the same reaction or takes it off, like in the messenger itself (message-view.js `data-e`, chat-view.js).
 
