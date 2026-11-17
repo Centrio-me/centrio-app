@@ -9,6 +9,7 @@ The format is based on Keep a Changelog. This project does not currently follow 
 ## [Unreleased]
 
 ### Added
+- The «История изменений» window is new: the versions with their dates on the left, the chosen version on the right with its highlights (optional, `data-hl` on a version in index.html), the chips «Новое» / «Исправлено» and the list. It is built from the lists already in index.html (a line's group is told by its first word), icons are one colour, coloured emoji are taken out of the text, the text is white (renderer/changelog-parse.js, changelog-window.js, styles-changelog.css).
 - «Все мессенджеры» / Telegram: a group with topics has a bar of topics under the header («Все» and each topic with its unread count); a topic opens on its own and the message field writes into it. The list is read from the topics panel of the tab (opened for a moment and closed), a topic is opened by its id (Oleg: «каналы с темами не поддерживаются»).
 - «Все мессенджеры» / Telegram: a voice message has an «Aa» button: Telegram's own «Расшифровать звук» is pressed in the tab and the text it gives is shown under the voice message (not available for every account); the text is not read a second time as the message's words.
 - «Все мессенджеры»: a Telegram person or bot has a card on a click on the header, like a channel: name, number or address, what they wrote about themselves, link.

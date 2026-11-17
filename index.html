@@ -47,6 +47,7 @@
     <link rel="stylesheet" href="./styles-all-inbox.css">
     <link rel="stylesheet" href="./styles-notes-window.css">
     <link rel="stylesheet" href="./styles-announcements.css">
+    <link rel="stylesheet" href="./styles-changelog.css">
     <link rel="stylesheet" href="assets/fonts/noto-emoji/emoji.css">
     <link rel="stylesheet" href="./styles-settings-v2.css">
     <link rel="stylesheet" href="assets/fonts/site/fonts.css">
@@ -1219,18 +1220,25 @@
     </div>
 </div>
 
-<!-- Попап с историей изменений версий -->
-<div id="changelogPopup" class="changelog-popup" style="display:none;">
+<!-- Окно с историей изменений версий: слева версии, справа выбранная. Строится из списков ниже (.changelog-source),
+     у версии можно указать дату data-date="2026-11-17" и до трёх карточек data-hl="иконка|Заголовок|Текст;…" (необязательно) -->
+<div id="changelogBackdrop" class="changelog-backdrop" style="display:none;"></div>
+<div id="changelogPopup" class="changelog-popup" style="display:none;" role="dialog" aria-modal="true" aria-label="История изменений">
     <div class="changelog-popup-header">
         <span class="changelog-popup-title" data-i18n="html.k031">История изменений</span>
         <span class="changelog-popup-update-status" id="changelogUpdateStatus" role="status"></span>
         <button class="changelog-popup-update" id="changelogCheckUpdatesBtn" type="button" data-i18n="settings.checkUpdatesBtn">Проверить обновления</button>
-        <button class="changelog-popup-close" id="changelogPopupClose">✕</button>
+        <button class="changelog-popup-close" id="changelogPopupClose" type="button" aria-label="Закрыть">✕</button>
     </div>
-    <div class="changelog-popup-body">
-        <div class="changelog-entry">
+    <div class="cl-body">
+        <nav class="cl-rail" id="clRail" aria-label="Версии"></nav>
+        <section class="cl-main" id="clMain" tabindex="-1"></section>
+    </div>
+    <div class="changelog-popup-body changelog-source" hidden aria-hidden="true">
+        <div class="changelog-entry" data-date="2026-11-17" data-hl="megaphone|Окна от Centrio|Акции и новости прямо в приложении, один раз; messages|Темы в Telegram|Вкладки тем в группах, писать можно в тему; mic|Расшифровка голосовых|Кнопка Aa у голосового Telegram">
             <div class="changelog-version">v3.8.7</div>
             <ul class="changelog-list">
+                <li>Новое: окно «История изменений» переработано: слева версии с датами, справа выбранная версия с главным, фильтрами «Новое» и «Исправлено» и списком.</li>
                 <li>Исправлено: в WhatsApp во «Всех мессенджерах» снова играют голосовые сообщения и открываются картинки; несколько фото, отправленных вместе, показываются альбомом и открываются по одному в полном размере; видеосообщения-кружочки видны и воспроизводятся.</li>
                 <li>Новое: важные новости и акции Centrio могут появляться окном внутри приложения — один раз, пока вы его не закроете. Во время акции на логотипе — шапка Деда Мороза, а клик по логотипу возвращает окно, если вы закрыли его случайно.</li>
                 <li>Новое во «Всех мессенджерах»: ссылка из переписки открывается в окне Centrio, а не в браузере.</li>
@@ -1259,20 +1267,20 @@
                 <li>Исправлено: у папок, которые создал руководитель, в меню правой кнопки (и по «⋯» в карточке папки) есть «Заглушить» и цвет; переименовать и удалить их по-прежнему нельзя.</li>
             </ul>
         </div>
-        <div class="changelog-entry">
+        <div class="changelog-entry" data-date="2026-11-16">
             <div class="changelog-version">v3.8.6</div>
             <ul class="changelog-list">
                 <li>Исправлено в TEAM: общий VPN теперь работает и для мессенджеров, назначенных руководителем, а не только для добавленных вручную.</li>
             </ul>
         </div>
-        <div class="changelog-entry">
+        <div class="changelog-entry" data-date="2026-11-16">
             <div class="changelog-version">v3.8.5</div>
             <ul class="changelog-list">
                 <li>Исправлено в TEAM: администратору приходят пространства и папки, которые руководитель настроил именно для него, — мессенджеры ложатся по папкам после входа.</li>
                 <li>Исправлено: Gmail и другие сайты со страницей «Войти» больше не показываются как «вход выполнен», пока вы не вошли.</li>
             </ul>
         </div>
-        <div class="changelog-entry">
+        <div class="changelog-entry" data-date="2026-11-16">
             <div class="changelog-version">v3.8.4</div>
             <ul class="changelog-list">
                 <li>Новое: «Своя раскладка» в сплите. В окне выбора раскладки — последняя плитка: режьте окно на блоки вправо или вниз (до шести) и расставляйте мессенджеры как удобно — один сверху, большой посередине, ещё один снизу. Границы потом двигаются мышью, двойной щелчок возвращает на середину. Раскладка запоминается и сохраняется в пресете.</li>
@@ -1339,7 +1347,7 @@
                 <li>Новое в заметках: картинку можно скопировать — кнопка на картинке, правая кнопка мыши или Ctrl+C в крупном просмотре.</li>
             </ul>
         </div>
-        <div class="changelog-entry">
+        <div class="changelog-entry" data-date="2026-11-12">
             <div class="changelog-version">v3.8.2</div>
             <ul class="changelog-list">
                 <li>Новое: «Друг Centrio». В Настройки → Система можно отметить «Участвовать в тестировании» — новые версии и функции будут приходить к вам первым. В профиле появится значок «Друг Centrio», а в достижениях — одноимённая награда.</li>
@@ -1359,7 +1367,7 @@
                 <li>Новое: бета-тестирование. Постоянные клиенты, которые помогают находить ошибки, получают новые версии раньше всех.</li>
             </ul>
         </div>
-        <div class="changelog-entry">
+        <div class="changelog-entry" data-date="2026-11-12">
             <div class="changelog-version">v3.8.0</div>
             <ul class="changelog-list">
                 <li>Новое в ПРО, альфа-версия: «Все мессенджеры». Чаты Telegram, WhatsApp, MAX, ВКонтакте и Instagram в одном списке, свежие сверху, и переписка в окне Centrio: читайте, отвечайте, отправляйте файлы и эмодзи, не переключая вкладки. Фильтры «Непрочитанные», «Личные», «Группы», «Каналы», поиск по чатам и по каждому мессенджеру отдельно.</li>
@@ -1377,7 +1385,7 @@
                 <li>Исправлено: в сплите между панелями ровный отступ, рамка фокуса точно по углам.</li>
             </ul>
         </div>
-        <div class="changelog-entry">
+        <div class="changelog-entry" data-date="2026-11-11">
             <div class="changelog-version">v3.7.4</div>
             <ul class="changelog-list">
                 <li>Исправлено: вкладки больше не остаются чёрными после долгой работы в фоне. В сплите уснувшая вкладка сама просыпается, когда показывается во второй половине или в сетке. Раньше, например, утром половина сплита была чёрной и не открывала меню по правой кнопке.</li>
@@ -1389,7 +1397,7 @@
                 <li>Исправлено: редкий сбой при выключении Windows, когда было открыто окно входа.</li>
             </ul>
         </div>
-        <div class="changelog-entry">
+        <div class="changelog-entry" data-date="2026-11-10">
             <div class="changelog-version">v3.7.3</div>
             <ul class="changelog-list">
                 <li>Новое: две темы со своими эффектами. «Аврора» — за окном медленно переливается северное сияние, панели как стекло. «Время суток» — тема сама меняется в течение дня: утро и день светлые, вечер и ночь тёмные, ночью звёзды.</li>

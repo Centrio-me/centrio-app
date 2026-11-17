@@ -4677,9 +4677,21 @@ function applyTabZoom(level) {
         const closeBtn    = document.getElementById('changelogPopupClose')
         if (!versionBtn || !popup) return
 
-        function showPopup () { popup.style.display = 'flex' }
-        function hidePopup () { popup.style.display = 'none' }
+        // the window with the versions on the left (renderer/changelog-window.js); it is built from the lists in index.html each time
+        const backdrop = document.getElementById('changelogBackdrop')
+        const changelogWindow = require('./renderer/changelog-window').createChangelogWindow({ getAppVersion: () => window.electronAPI?.getAppVersion?.() })
+        async function showPopup () {
+            await changelogWindow?.refresh()
+            if (backdrop) backdrop.style.display = 'block'
+            popup.style.display = 'flex'
+            closeBtn?.focus({ preventScroll: true })
+        }
+        function hidePopup () {
+            popup.style.display = 'none'
+            if (backdrop) backdrop.style.display = 'none'
+        }
         function isVisible () { return popup.style.display !== 'none' }
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && isVisible()) { e.stopPropagation(); hidePopup() } }, true)
 
         versionBtn.addEventListener('click', (e) => {
             e.stopPropagation()
