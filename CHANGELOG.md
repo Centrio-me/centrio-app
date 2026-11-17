@@ -8,6 +8,8 @@ The format is based on Keep a Changelog. This project does not currently follow 
 
 ## [Unreleased]
 
+## [3.8.7] - 2026-11-17
+
 ### Fixed
 - The cabinet (account window) no longer opens a second time by itself when it is closed while the account data is being refreshed: the refresh opened it again when the answer came (cloud-bind.js: the profile is drawn again only if it is still open). The version history window has the same dimming as the cabinet.
 
