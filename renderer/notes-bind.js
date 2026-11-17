@@ -171,6 +171,19 @@ function bindNotesUi({ store, tGet, authorizedInvoke, invokeIpc, openRightPanel,
         `).join('')
     }
 
+    // The notes window shows the list beside the open note: what is typed shows in the card at once. Only the card's
+    // words are changed in place, the list is not built again, so a click that is under way is not lost
+    // (Oleg: «клик по другой заметке — ничего не происходит»).
+    function refreshCard(note) {
+        if (!note || !listEl) return
+        const card = [...listEl.querySelectorAll('.note-card')].find((c) => c.dataset.id === note.id)
+        if (!card) return
+        const title = card.querySelector('.note-card-title')
+        if (title) title.innerHTML = escapeHtml(note.title) || `<span style="opacity:.5">${escapeHtml(tGet('notes.titlePlaceholder') || 'Без названия')}</span>`
+        const preview = card.querySelector('.note-card-preview')
+        if (preview) preview.textContent = previewText(note)
+    }
+
     function showList() {
         activeNote = null
         listView.style.display = ''
@@ -499,6 +512,8 @@ function bindNotesUi({ store, tGet, authorizedInvoke, invokeIpc, openRightPanel,
             return
         }
         notes = [result.data.note, ...notes]
+        // the list stands beside the note in the notes window: the new note is in it at once, and the counts follow
+        renderList()
         showEdit(result.data.note)
         requestAnimationFrame(() => titleInput.focus())
     }
@@ -518,6 +533,7 @@ function bindNotesUi({ store, tGet, authorizedInvoke, invokeIpc, openRightPanel,
         if (!activeNote) return
         activeNote = { ...activeNote, ...patch }
         notes = notes.map(n => n.id === activeNote.id ? activeNote : n)
+        refreshCard(activeNote)
 
         // Захватываем id заметки СЕЙЧАС, а не читаем activeNote изнутри run() —
         // иначе к моменту срабатывания debounce/await пользователь мог уже
