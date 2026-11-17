@@ -21,6 +21,7 @@ The format is based on Keep a Changelog. This project does not currently follow 
 - «Все мессенджеры»: the notes column beside a chat has a draggable edge; the width is kept, a double click brings back the usual one.
 
 ### Fixed
+- Folders made by the team owner: the right-click menu (and «⋯» in the folder card) now offers mute and colour for the employee or administrator; rename, icon and delete stay owner-only; in the strict mode the menu stays closed.
 - «Все мессенджеры»: a search that finds nothing says so (it raised an error and left the list empty).
 - «Все мессенджеры» / MAX: groups are in «Группы», not in «Личные», and their line in the list shows the author and the words.
 - «Все мессенджеры» / Telegram: a message with a `code` fragment no longer stays as «не отправлено» next to the delivered one.
