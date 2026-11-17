@@ -8,6 +8,9 @@ The format is based on Keep a Changelog. This project does not currently follow 
 
 ## [Unreleased]
 
+### Added
+- «Все мессенджеры»: a click on a reaction under a message (a channel post too) puts the same reaction or takes it off, like in the messenger itself (message-view.js `data-e`, chat-view.js).
+
 ## [3.8.7] - 2026-11-17
 
 ### Fixed

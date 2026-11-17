@@ -354,6 +354,8 @@ function reactions(m) {
     const row = el('div', 'aic-reactions')
     for (const r of m.reactions) {
         const pill = el('span', `aic-reaction${r.mine ? ' is-mine' : ''}`)
+        // the emoji itself: a click on the reaction puts or takes off the same one (chat-view.js)
+        if (r.e) { pill.dataset.e = String(r.e); pill.setAttribute('role', 'button'); pill.title = String(r.e) }
         // MAX gives the reaction as a picture (taken off its canvas), Telegram as an emoji
         if (r.img && /^data:image\/png;base64,/.test(r.img)) { const pic = el('img', 'aic-reaction-img'); pic.src = r.img; pic.alt = ''; pill.append(pic) }
         else { const e = el('span', 'aic-reaction-e'); e.append(emojiNodes(r.e)); pill.append(e) }

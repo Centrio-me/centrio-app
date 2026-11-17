@@ -246,7 +246,14 @@ function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab
     // a message that did not go: a click on its red mark takes it away
     list.addEventListener('click', (e) => {
         const mark = e.target.closest('[data-dismiss]')
-        if (mark) { e.stopPropagation(); onDismissPending(mark.dataset.dismiss) }
+        if (mark) { e.stopPropagation(); onDismissPending(mark.dataset.dismiss); return }
+        // a click on a reaction under a message puts the same reaction (or takes it off), like in the messenger itself
+        const pill = e.target.closest('.aic-reaction[data-e]')
+        const rowEl = pill && pill.closest('.aic-row')
+        const m = rowEl && byId.get(rowEl.dataset.id)
+        if (!pill || !m || !onReact || m.kind === 'note' || !pill.dataset.e) return
+        e.stopPropagation()
+        said(onReact(m, pill.dataset.e), 'Реакция не поставилась')
     })
     list.addEventListener('contextmenu', (e) => {
         const rowEl = e.target.closest('.aic-row')

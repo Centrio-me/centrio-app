@@ -510,6 +510,9 @@ html[data-mode="light"] .aic-row.is-out .aic-check, html[data-theme="light"] .ai
 .aic-row.is-in .aic-reaction { background: color-mix(in srgb, #3390ec 18%, transparent); color: var(--link-in); }
 .aic-reaction.is-mine { background: #3390ec; color: #fff !important; }
 .aic-row.is-out .aic-reaction.is-mine { background: #fff; color: var(--out-bg) !important; }
+.aic-reaction[data-e] { cursor: pointer; transition: transform .12s ease, filter .12s ease; user-select: none; }
+.aic-reaction[data-e]:hover { filter: brightness(1.18); transform: translateY(-1px); }
+.aic-reaction[data-e]:active { transform: scale(.92); }
 .aic-reaction-e { font-family: 'Centrio Emoji', 'Segoe UI Emoji', sans-serif; font-size: 15px; }
 
 /* new messages slide in */
