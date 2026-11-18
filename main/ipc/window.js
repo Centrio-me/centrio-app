@@ -1328,7 +1328,10 @@ function registerWindowIpc({ getMainWindow, isQuittingRef }) {
         // A link to a PDF opens in Centrio's own reader (settings.pdfViewer) instead of the outside browser.
         try {
             const pdf = require('../services/pdfViewer')
-            if (pdf.isEnabled() && pdf.openUrl(url)) return
+            if (pdf.isEnabled()) {
+                const opened = await pdf.openUrl(url)
+                if (opened) return
+            }
         } catch (error) {
             console.error('pdf viewer error:', error)
         }

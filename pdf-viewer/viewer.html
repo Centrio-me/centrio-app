@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; worker-src 'self' blob:; connect-src 'self'">
+<title>PDF</title>
+<link rel="stylesheet" href="../node_modules/pdfjs-dist/web/pdf_viewer.css">
+<link rel="stylesheet" href="viewer.css">
+</head>
+<body>
+<div id="app">
+  <header class="bar" id="bar">
+    <div class="group">
+      <button class="ib" id="btnSidebar" data-tip="sidebar" aria-pressed="true"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16"/></svg></button>
+      <div class="doc"><span class="doc-mark">PDF</span><span class="doc-name" id="docName">—</span></div>
+    </div>
+    <div class="group center">
+      <button class="ib" id="btnPrev" data-tip="prev"><svg viewBox="0 0 24 24"><path d="M6 14l6-6 6 6"/></svg></button>
+      <label class="pager"><input id="pageInput" type="text" inputmode="numeric" value="1" aria-label="Page"><span id="pageTotal">/ 1</span></label>
+      <button class="ib" id="btnNext" data-tip="next"><svg viewBox="0 0 24 24"><path d="M6 10l6 6 6-6"/></svg></button>
+      <span class="sep"></span>
+      <button class="ib" id="btnZoomOut" data-tip="zoomOut"><svg viewBox="0 0 24 24"><path d="M5 12h14"/></svg></button>
+      <button class="zoom" id="zoomLabel" data-tip="zoomMenu">100%</button>
+      <button class="ib" id="btnZoomIn" data-tip="zoomIn"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+      <button class="ib" id="btnFit" data-tip="fit"><svg viewBox="0 0 24 24"><path d="M4 9V5h4M20 9V5h-4M4 15v4h4M20 15v4h-4"/></svg></button>
+      <button class="ib" id="btnRotate" data-tip="rotate"><svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.5-5.8M20 4v5h-5"/></svg></button>
+    </div>
+    <div class="group right">
+      <button class="ib" id="btnSearch" data-tip="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg></button>
+      <button class="ib" id="btnSign" data-tip="sign"><svg viewBox="0 0 24 24"><path d="M4 19c3 0 3-9 6-9s1 7 4 7 2-4 3-4 1 2 3 2"/><path d="M3 21h18"/></svg></button>
+      <button class="ib" id="btnPrint" data-tip="print"><svg viewBox="0 0 24 24"><path d="M7 9V3h10v6"/><rect x="4" y="9" width="16" height="8" rx="2"/><path d="M7 14h10v7H7z"/></svg></button>
+      <button class="ib" id="btnSave" data-tip="saveAs"><svg viewBox="0 0 24 24"><path d="M12 4v11M7 11l5 5 5-5"/><path d="M5 20h14"/></svg></button>
+      <button class="ib" id="btnOpen" data-tip="open"><svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></button>
+    </div>
+  </header>
+
+  <div class="search" id="searchBar" hidden>
+    <svg viewBox="0 0 24 24" class="search-ico"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>
+    <input id="searchInput" type="text" autocomplete="off" spellcheck="false">
+    <label class="chk"><input id="searchCase" type="checkbox"><span data-t="matchCase"></span></label>
+    <span class="count" id="searchCount"></span>
+    <button class="ib sm" id="searchPrev" data-tip="prevMatch"><svg viewBox="0 0 24 24"><path d="M6 14l6-6 6 6"/></svg></button>
+    <button class="ib sm" id="searchNext" data-tip="nextMatch"><svg viewBox="0 0 24 24"><path d="M6 10l6 6 6-6"/></svg></button>
+    <button class="ib sm" id="searchClose" data-tip="close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+  </div>
+
+  <div class="signbar" id="signBar" hidden>
+    <span id="signHint"></span>
+    <button class="btn" id="signAgain" data-t="signAgain"></button>
+    <button class="btn ghost" id="signClear" data-t="signClear"></button>
+  </div>
+
+  <div class="body">
+    <aside class="side" id="side">
+      <div class="tabs" role="tablist">
+        <button class="tab on" id="tabThumbs" role="tab" data-t="pages"></button>
+        <button class="tab" id="tabOutline" role="tab" data-t="outline"></button>
+      </div>
+      <div class="side-list" id="thumbs"></div>
+      <div class="side-list" id="outline" hidden></div>
+    </aside>
+    <main class="scroller" id="scroller" tabindex="0">
+      <div class="pages" id="pages"></div>
+      <div class="drop" id="drop" hidden><div><svg viewBox="0 0 24 24"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></svg><b data-t="dropTitle"></b></div></div>
+    </main>
+  </div>
+
+  <div class="status" id="status" hidden></div>
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+  <div class="menu" id="zoomMenu" hidden></div>
+
+  <div class="modal" id="pwModal" hidden>
+    <form class="card" id="pwForm">
+      <h2 data-t="pwTitle"></h2>
+      <p id="pwText"></p>
+      <input id="pwInput" type="password" autocomplete="off">
+      <div class="row"><button type="button" class="btn ghost" id="pwCancel" data-t="cancel"></button><button class="btn" data-t="pwOk"></button></div>
+    </form>
+  </div>
+
+  <div class="modal" id="sigModal" hidden>
+    <div class="card wide" role="dialog" aria-labelledby="sigTitle">
+      <h2 id="sigTitle" data-t="sigTitle"></h2>
+      <div class="tabs flat">
+        <button class="tab on" data-sig="draw" data-t="sigDraw"></button>
+        <button class="tab" data-sig="type" data-t="sigType"></button>
+        <button class="tab" data-sig="image" data-t="sigImage"></button>
+      </div>
+      <div class="sig-pane" id="sigDraw"><canvas id="sigCanvas" width="640" height="220"></canvas><button class="btn ghost small" id="sigErase" data-t="sigErase"></button></div>
+      <div class="sig-pane" id="sigTypeP" hidden><input id="sigText" type="text" maxlength="40"><div class="sig-fonts" id="sigFonts"></div><canvas id="sigTypeCanvas" width="640" height="220"></canvas></div>
+      <div class="sig-pane" id="sigImageP" hidden><label class="pick"><input id="sigFile" type="file" accept="image/png,image/jpeg"><span data-t="sigPick"></span></label><canvas id="sigImgCanvas" width="640" height="220"></canvas></div>
+      <div class="saved" id="sigSaved" hidden><span data-t="sigSaved"></span><div id="sigSavedList"></div></div>
+      <div class="row"><button class="btn ghost" id="sigCancel" data-t="cancel"></button><button class="btn" id="sigUse" data-t="sigUse"></button></div>
+    </div>
+  </div>
+</div>
+<div id="printRoot" aria-hidden="true"></div>
+<script type="module" src="viewer.js"></script>
+</body>
+</html>
