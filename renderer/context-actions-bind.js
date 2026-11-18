@@ -1,3 +1,5 @@
+const { setMediaAccess } = require('../shared/media-permissions')
+
 function bindContextActionsUi({
     state,
     store,
@@ -138,6 +140,19 @@ function bindContextActionsUi({
         store.set('filesInWindows', files)
         document.getElementById('ctxFilesToggle')?.classList.toggle('on', files[m.id] === true)
     })
+
+    // Microphone / camera of this session, each on its own (applies to the next call; main/bootstrap/registerAppEvents.js).
+    for (const [itemId, kind] of [['ctxMic', 'mic'], ['ctxCam', 'camera']]) {
+        document.getElementById(itemId)?.addEventListener('click', (e) => {
+            const m = getMessengerById(state.contextTargetId)
+            if (!m) { hideAllMenus(); return }
+            e.stopPropagation()
+            const prefs = store.get('mediaPermissions', {}) || {}
+            const allowedNow = (prefs[m.id] || {})[kind] !== false
+            store.set('mediaPermissions', setMediaAccess(prefs, m.id, kind, !allowedNow))
+            document.getElementById(itemId + 'Toggle')?.classList.toggle('on', !allowedNow)
+        })
+    }
 
     // Hibernation (3.7.1): this tab is never put to sleep on its own.
     document.getElementById('ctxKeepAwake')?.addEventListener('click', (e) => {

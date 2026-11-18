@@ -1325,6 +1325,14 @@ function registerWindowIpc({ getMainWindow, isQuittingRef }) {
             return
         }
 
+        // A link to a PDF opens in Centrio's own reader (settings.pdfViewer) instead of the outside browser.
+        try {
+            const pdf = require('../services/pdfViewer')
+            if (pdf.isEnabled() && pdf.openUrl(url)) return
+        } catch (error) {
+            console.error('pdf viewer error:', error)
+        }
+
         try {
             // DEBUG (2026-08-24, "Яндекс сам открывает браузер" — see
             // matching comments in registerAppEvents.js's

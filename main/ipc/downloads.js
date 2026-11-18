@@ -38,7 +38,9 @@ function wireSessionDownloads(ses, getMainWindow) {
     if (typeof getMainWindow === 'function') mainWindowGetter = getMainWindow
 
     ses.on('will-download', (_event, item) => {
-        if (!askDownload && downloadDir) {
+        // A PDF opens in Centrio's own reader (settings.pdfViewer); it is saved aside, without the "where to save" dialog.
+        const inReader = require('../services/pdfViewer').takeDownload(item)
+        if (!inReader && !askDownload && downloadDir) {
             try { item.setSavePath(path.join(downloadDir, item.getFilename())) } catch {}
         }
 
@@ -164,6 +166,8 @@ function registerDownloadsIpc({ getMainWindow }) {
         if (!record?.savePath || !fs.existsSync(record.savePath)) {
             return { success: false, error: 'File not found' }
         }
+        const pdf = require('../services/pdfViewer')
+        if (pdf.isEnabled() && /\.pdf$/i.test(record.savePath) && pdf.openFile(record.savePath, record.filename)) return { success: true }
         const err = await shell.openPath(record.savePath)
         return err ? { success: false, error: err } : { success: true }
     })

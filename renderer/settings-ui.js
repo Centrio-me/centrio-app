@@ -331,6 +331,7 @@ function createSettingsUiApi({
             sidebarPosition: document.querySelector('.position-item.active')?.dataset.position || currentSettings.sidebarPosition || 'left',
             downloadDir: currentSettings.downloadDir || '',
             askDownload: document.getElementById('settingAskDownload')?.checked ?? (currentSettings.askDownload ?? true),
+            pdfViewer: document.getElementById('settingPdfViewer')?.checked ?? (currentSettings.pdfViewer !== false),
             adblockEnabled: document.getElementById('extAdblockToggle')?.checked ?? (currentSettings.adblockEnabled !== false)
         }
     }
@@ -455,6 +456,9 @@ function createSettingsUiApi({
         if (askDownloadCheckbox) {
             askDownloadCheckbox.checked = settings.askDownload ?? true
         }
+
+        const pdfViewerCheckbox = document.getElementById('settingPdfViewer')
+        if (pdfViewerCheckbox) pdfViewerCheckbox.checked = settings.pdfViewer !== false
 
         updateDownloadDirUI(settings.downloadDir || '')
         initProxySection()

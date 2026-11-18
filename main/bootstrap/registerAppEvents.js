@@ -2226,11 +2226,18 @@ function registerAppEvents({
                             // «В браузере произошла ошибка базы данных. Повторите привязку устройства» — no QR, no login
                             'persistent-storage'
                         ])
-                        guestSession.setPermissionRequestHandler((_webContents, permission, callback) => {
-                            callback(ALLOWED_PERMISSIONS.has(permission))
+                        // Per-session microphone / camera switches (context menu of the tab): read from the store at the
+                        // moment of each request, so a change applies to the next call without reloading the tab.
+                        const mediaPerm = require('../../shared/media-permissions')
+                        const mediaOwnerId = mediaPerm.messengerIdFromPartition(partition)
+                        const mediaBlocked = (permission, details) =>
+                            mediaPerm.isMediaBlocked(store.get('mediaPermissions', {}) || {}, mediaOwnerId, permission, details)
+                        guestSession.setPermissionRequestHandler((_webContents, permission, callback, details) => {
+                            callback(ALLOWED_PERMISSIONS.has(permission) && !mediaBlocked(permission, details))
                         })
                         if (typeof guestSession.setPermissionCheckHandler === 'function') {
-                            guestSession.setPermissionCheckHandler((_webContents, permission) => ALLOWED_PERMISSIONS.has(permission))
+                            guestSession.setPermissionCheckHandler((_webContents, permission, _origin, details) =>
+                                ALLOWED_PERMISSIONS.has(permission) && !mediaBlocked(permission, details))
                         }
                         // 3.7.3: screen sharing in calls (Telemost, Meet, Zoom) — Centrio's own picker (main/services/screenShare.js)
                         require('../services/screenShare').attach(guestSession)

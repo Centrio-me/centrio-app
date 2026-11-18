@@ -34,6 +34,7 @@ function initApp({
     registerProtocol()
 
     app.whenReady().then(() => {
+        try { require('../services/pdfViewer').sweepTemp() } catch {} // PDFs the reader kept aside last time
         createWindow()
         createTray()
 

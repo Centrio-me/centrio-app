@@ -5,6 +5,8 @@ module.exports = {
     ctx: {
          sound: "Звук уведомления",
          filesInWindows: "Файлы — в отдельных окнах",
+         micAccess: "Микрофон в этой вкладке",
+         camAccess: "Камера в этой вкладке",
         detach: "Открыть в отдельном окне",
        reload: 'Обновить',
         rename: 'Переименовать',
@@ -248,6 +250,8 @@ module.exports = {
         downloadDirEmpty: 'Не задана — спрашивать каждый раз',
         downloadAsk: 'Спрашивать при каждой загрузке',
         downloadAskHint: 'Если выключено — сохраняет сразу в папку',
+        pdfViewer: "PDF — во встроенном просмотрщике",
+        pdfViewerHint: "Открывать PDF из мессенджеров в окне Centrio, а не скачивать и не отправлять в браузер",
         folders: 'Папки',
         foldersEnable: 'Включить папки',
         foldersEnableHint: 'Выкл — все мессенджеры показываются без папок',

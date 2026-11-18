@@ -3903,6 +3903,9 @@ function applyTabZoom(level) {
         const m = state.activeMessengers.find(x => x.id === id)
         document.getElementById('ctxFilesToggle')?.classList.toggle('on', (store.get('filesInWindows', {}) || {})[id] === true)
         document.getElementById('ctxKeepAwakeToggle')?.classList.toggle('on', window.__centrioHibernation?.getTabChoice(id) === 'never')
+        const mediaOwn = (store.get('mediaPermissions', {}) || {})[id] || {}
+        document.getElementById('ctxMicToggle')?.classList.toggle('on', mediaOwn.mic !== false)
+        document.getElementById('ctxCamToggle')?.classList.toggle('on', mediaOwn.camera !== false)
         const dmLabel = document.getElementById('ctxDarkModeLabel')
         const dmItem = document.getElementById('ctxDarkMode')
         const extState = store.get('extensionsState', {})
