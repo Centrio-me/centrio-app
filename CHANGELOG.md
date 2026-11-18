@@ -9,6 +9,9 @@ The format is based on Keep a Changelog. This project does not currently follow 
 ## [Unreleased]
 
 ### Fixed
+- Support chat: a big screenshot (a 4K screen makes 5 to 10 MB, the server takes 5 MB) is made smaller by itself instead of being refused, so a screenshot can always be attached (renderer/ticket-image.js, support-tickets-ui.js). A client could not attach a screenshot twice.
+
+### Fixed
 - The check for updates (version history window and settings) said «Проверка выполнена» whatever the answer was. Now it says plainly «Обновлений нет, у вас последняя версия X» or «Найдена версия X, скачиваем» (the update server always sends its newest version; only isUpdateAvailable tells if it is newer — main/ipc/updater.js, renderer.js, 7 locales).
 
 ## [3.8.8] - 2026-11-17

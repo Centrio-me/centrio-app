@@ -1,4 +1,19 @@
 const router = require('express').Router()
+const multer = require('multer')
+const ticketFiles = require('../lib/ticket-files')
+const { postTicketPhoto: adminPostTicketPhoto } = require('../lib/telegram-bot')
+
+// Pictures in an admin reply (2026-11-18): up to 4, the same rules as the client's (lib/ticket-files.js).
+const adminImageUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: ticketFiles.MAX_BYTES, files: ticketFiles.MAX_FILES } }).array('images', ticketFiles.MAX_FILES)
+function adminOptionalImages(req, res, next) {
+    if (!req.is('multipart/form-data')) return next()
+    adminImageUpload(req, res, (err) => {
+        if (!err) return next()
+        if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') return res.status(400).json({ error: 'Картинка слишком большая (максимум 5 МБ)' })
+        if (err instanceof multer.MulterError) return res.status(400).json({ error: 'Можно прикрепить не больше ' + ticketFiles.MAX_FILES + ' картинок' })
+        return res.status(400).json({ error: 'Не удалось загрузить картинки' })
+    })
+}
 const axios   = require('axios')
 const prisma  = require('../utils/prisma')
 const { uninstallSummary, daysBetween } = require('../lib/uninstall-mark')
@@ -70,6 +85,7 @@ router.use('/', require('./admin-teams'))
 router.use('/', require('./admin-extra'))
 router.use('/', require('./admin-insights'))
 router.use('/', require('./admin-channel'))
+router.use('/', require('./admin-announcements'))
 router.use('/ads', require('./admin-ads'))
 router.use('/metrika', require('./admin-metrika'))
 router.use('/ai', require('./admin-ai'))
@@ -717,10 +733,16 @@ router.get('/tickets/:id', async (req, res) => {
     }
 })
 
-router.post('/tickets/:id/messages', async (req, res) => {
+router.post('/tickets/:id/messages', adminOptionalImages, async (req, res) => {
     try {
-        const { body } = req.body
-        if (!body || !String(body).trim()) return res.status(400).json({ error: 'Введите сообщение' })
+        const text = String((req.body && req.body.body) || '').trim()
+        let names = []
+        try { names = ticketFiles.saveImages(req.files || []) } catch (e) {
+            if (e instanceof ticketFiles.TicketFileError) return res.status(400).json({ error: e.message })
+            throw e
+        }
+        if (!text && !names.length) return res.status(400).json({ error: 'Введите сообщение или приложите картинку' })
+        const body = text
 
         const ticket = await prisma.ticket.findUnique({
             where: { id: req.params.id },
@@ -729,7 +751,7 @@ router.post('/tickets/:id/messages', async (req, res) => {
         if (!ticket) return res.status(404).json({ error: 'Обращение не найдено' })
 
         const [message] = await prisma.$transaction([
-            prisma.ticketMessage.create({ data: { ticketId: ticket.id, isAdmin: true, body: String(body).trim() } }),
+            prisma.ticketMessage.create({ data: { ticketId: ticket.id, isAdmin: true, body: text, attachments: names } }),
             prisma.ticket.update({ where: { id: ticket.id }, data: { status: 'ANSWERED' } })
         ])
 
@@ -737,7 +759,7 @@ router.post('/tickets/:id/messages', async (req, res) => {
 
         // Fire-and-forget: sendEmail() itself fails soft (no RESEND_API_KEY
         // = no-op), so this never blocks the admin reply on email delivery.
-        sendTicketReplyEmail(ticket.user, ticket, message.body)
+        sendTicketReplyEmail(ticket.user, ticket, message.body + (names.length ? (message.body ? '\n\n' : '') + '[К ответу приложены картинки: откройте обращение в Centrio]' : ''))
             .catch(e => console.error('[tickets] reply email failed:', e.message))
 
         res.status(201).json({ ok: true, message })
@@ -762,6 +784,10 @@ router.post('/tickets/:id/messages', async (req, res) => {
                 }
                 if (!threadId) return
                 await postTicketMessage(threadId, `<b>Ответ администратора (сайт)</b>\n\n${escapeHtml(message.body)}`)
+                for (const name of names) {
+                    const buffer = ticketFiles.readFile(name)
+                    if (buffer) await adminPostTicketPhoto(threadId, buffer, name)
+                }
             } catch (e) { console.error('[tickets] telegram sync (admin reply) failed:', e.message) }
         })()
     } catch (err) {

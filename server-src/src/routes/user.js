@@ -34,7 +34,9 @@ router.get('/profile', authMiddleware, async (req, res) => {
         _count: { select: { messengers: true, folders: true } }
       }
     })
-    res.json(user)
+    // the team summary belongs to the answer: the website refreshes its cached user from here after a payment
+    const orgSummary = await require('../lib/org').getOrgSummaryForUser(req.user.id).catch(() => null)
+    res.json(require('../lib/profile-shape').withOrgSummary(user, orgSummary))
   } catch (err) {
     res.status(500).json({ error: 'Ошибка получения профиля' })
   }

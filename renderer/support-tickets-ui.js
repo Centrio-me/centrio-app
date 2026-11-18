@@ -10,6 +10,7 @@
 'use strict'
 
 const { showCabinetTab } = require('./cloud-tabs')
+const { prepareImage } = require('./ticket-image')
 
 const IMAGE_MIMES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif']
 const MAX_IMAGES = 4
@@ -339,15 +340,18 @@ function bindSupportTicketsUi({
         })
     }
 
-    function addFiles(files, target) {
+    // A big screenshot (a 4K screen makes 5 to 10 MB) is made smaller by prepareImage instead of being refused.
+    async function addFiles(files, target) {
         const list = target === 'new' ? newImages : replyImages
         const container = target === 'new' ? newShotsEl : replyShotsEl
         showError(target, '')
-        for (const file of Array.from(files || [])) {
-            if (!IMAGE_MIMES.includes(file.type)) { showError(target, tt('cloud.supportAttachErrType')); continue }
-            if (file.size > MAX_IMAGE_BYTES) { showError(target, tt('cloud.supportAttachErrSize')); continue }
+        for (const original of Array.from(files || [])) {
             if (list.length >= MAX_IMAGES) { showError(target, tt('cloud.supportAttachErrCount')); break }
+            if (!/^image\//.test(original.type)) { showError(target, tt('cloud.supportAttachErrType')); continue }
+            const file = await prepareImage(original, MAX_IMAGE_BYTES)
+            if (!file) { showError(target, original.size > MAX_IMAGE_BYTES ? tt('cloud.supportAttachErrSize') : tt('cloud.supportAttachErrType')); continue }
             list.push({ file, preview: URL.createObjectURL(file) })
+            renderThumbs(container, list, target)
         }
         renderThumbs(container, list, target)
     }
