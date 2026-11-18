@@ -38,6 +38,7 @@ svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width:
 .zoom:hover { border-color: #3a372f; }
 [data-tip]:hover::after { content: attr(data-tip-text); position: absolute; top: calc(100% + 8px); left: 50%; transform: translateX(-50%); white-space: nowrap; padding: 5px 9px; border-radius: 7px; background: #26231e; color: var(--text); font-size: 12px; box-shadow: 0 6px 18px rgba(0,0,0,.5); z-index: 50; pointer-events: none; }
 .group.right [data-tip]:last-child:hover::after { left: auto; right: 0; transform: none; }
+.group:first-child > .ib:first-child:hover::after { left: 0; transform: none; }
 
 /* ── search / signature bars ── */
 .search, .signbar { display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: var(--panel); border-bottom: 1px solid var(--line); }
