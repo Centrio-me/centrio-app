@@ -11,6 +11,19 @@
 // exception — a broken email provider must never break a payment webhook
 // or the auto-renew cron.
 const axios = require('axios')
+const https = require('https')
+
+// 2026-11-18: from this server the two addresses that api.resend.com resolves to (172.66.165.132, 104.20.29.242) stopped
+// answering: the TLS handshake hangs, and every letter timed out for hours (ticket replies, the admin app showed mail
+// alerts). Other Cloudflare edge addresses carry the same site and answer at once, so after a network failure the letter
+// goes through them, and the server remembers that for 30 minutes before trying the usual route again.
+const ALT_EDGES = ['104.18.2.1', '162.159.128.233', '104.16.0.1']
+const ALT_FOR_MS = 30 * 60 * 1000
+let altUntil = 0
+
+function edgeAgent(ip) {
+  return new https.Agent({ lookup: (host, opts, cb) => (opts && opts.all ? cb(null, [{ address: ip, family: 4 }]) : cb(null, ip, 4)) })
+}
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY
 const FROM_ADDRESS    = process.env.EMAIL_FROM || 'Centrio <noreply@centrio.me>'
@@ -27,15 +40,29 @@ async function sendEmail({ to, subject, html, replyTo }) {
   }
   // Older Telegram accounts have a stand-in address with no mailbox behind it: letters to it only hurt delivery.
   if (/^tg_\d+@centrio\.me$/.test(String(to))) return { ok: false, reason: 'no_mailbox' }
+  const payload = { from: FROM_ADDRESS, to, subject, html: wrapEmailHtml(html), ...(replyTo ? { reply_to: replyTo } : {}) }
+  const post = (agent) => axios.post(RESEND_API, payload, {
+    headers: { Authorization: `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+    timeout: 10000,
+    ...(agent ? { httpsAgent: agent } : {})
+  })
   try {
-    await axios.post(RESEND_API, {
-      from: FROM_ADDRESS, to, subject, html: wrapEmailHtml(html),
-      ...(replyTo ? { reply_to: replyTo } : {})
-    }, {
-      headers: { Authorization: `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-      timeout: 10000
-    })
-    return { ok: true }
+    if (Date.now() >= altUntil) {
+      try { await post(); return { ok: true } } catch (err) {
+        if (err.response) throw err // Resend answered (a refusal): another route would not change it
+        altUntil = Date.now() + ALT_FOR_MS
+        console.warn('[email] the usual Resend address did not answer, going through other Cloudflare addresses')
+      }
+    }
+    let last
+    for (const ip of ALT_EDGES) {
+      try { await post(edgeAgent(ip)); return { ok: true } } catch (err) {
+        if (err.response) throw err
+        last = err
+      }
+    }
+    altUntil = 0
+    throw last
   } catch (err) {
     console.error(`[email] Failed to send "${subject}" to ${to}:`, err.response?.data || err.message)
     require('./event-log').appendEvent('mail-errors', { at: new Date().toISOString(), reason: String(err.response?.status || err.code || 'unknown') })
@@ -487,7 +514,25 @@ async function sendOrgExpiryEmail(owner, orgName, expiresAt, days) {
   })
 }
 
-module.exports = { sendRegistrationCodeEmail, sendRestoredNoticeEmail, sendOrgWaitingAlertEmail,
+// For the libs that post to Resend themselves (plan-ending-notice, restored-notice): axios.post(url, data, config) with the
+// same route fallback as sendEmail above.
+async function resendPost(url, data, config = {}) {
+  const run = (agent) => axios.post(url, data, { ...config, timeout: config.timeout || 10000, ...(agent ? { httpsAgent: agent } : {}) })
+  if (Date.now() >= altUntil) {
+    try { return await run() } catch (err) {
+      if (err.response) throw err
+      altUntil = Date.now() + ALT_FOR_MS
+    }
+  }
+  let last
+  for (const ip of ALT_EDGES) {
+    try { return await run(edgeAgent(ip)) } catch (err) { if (err.response) throw err; last = err }
+  }
+  altUntil = 0
+  throw last
+}
+
+module.exports = { resendPost, sendRegistrationCodeEmail, sendRestoredNoticeEmail, sendOrgWaitingAlertEmail,
   sendEmail, sendPaymentReceiptEmail, sendWelcomeEmail, sendVerificationEmail,
   sendPasswordResetEmail, sendAutoRenewFailedEmail, sendRefundConfirmationEmail,
   sendContactFormEmail, sendTicketReplyEmail, sendNewTicketFromAdminEmail, sendOrgInviteEmail,
