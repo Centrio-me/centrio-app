@@ -8,11 +8,15 @@ The format is based on Keep a Changelog. This project does not currently follow 
 
 ## [Unreleased]
 
-### Fixed
-- Support chat: a big screenshot (a 4K screen makes 5 to 10 MB, the server takes 5 MB) is made smaller by itself instead of being refused, so a screenshot can always be attached (renderer/ticket-image.js, support-tickets-ui.js). A client could not attach a screenshot twice.
+## [3.9.0] - 2026-11-19
+
+### Added
+- PDF reader (pdf-viewer/, main/services/pdfViewer.js): a PDF a messenger downloads, or a link to one, opens in a window of Centrio drawn by pdf.js: thumbnails and outline, zoom (buttons, Ctrl+wheel, fit width / whole page), rotate, search with highlight, print, «Save as…», open another file or drop one on the window, password-protected files. Setting «PDF — во встроенном просмотрщике» in Settings → Downloads (default on).
+- «Add text» in the reader: any text in a font, size, colour and style of choice, placed on a page, moved, resized and removed; written into a copy of the file when saved (the original stays).
+- Microphone and camera switched on and off per tab (tab context menu); applied to the next call (shared/media-permissions.js, registerAppEvents.js).
 
 ### Fixed
-- The check for updates (version history window and settings) said «Проверка выполнена» whatever the answer was. Now it says plainly «Обновлений нет, у вас последняя версия X» or «Найдена версия X, скачиваем» (the update server always sends its newest version; only isUpdateAvailable tells if it is newer — main/ipc/updater.js, renderer.js, 7 locales).
+- The check for updates (version history window and settings) said «Проверка выполнена» whatever the answer was. Now it says plainly «Обновлений нет, у вас последняя версия X» or «Найдена версия X, скачиваем» (main/ipc/updater.js, renderer.js, 7 locales).
 
 ## [3.8.8] - 2026-11-17
 
