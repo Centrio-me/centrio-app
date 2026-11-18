@@ -1,7 +1,7 @@
 // The PDF reader page: pdf.js draws the pages, everything around them is ours.
 import * as pdfjs from '../node_modules/pdfjs-dist/build/pdf.min.mjs'
 import { t, applyI18n } from './i18n.js'
-import { createSigner } from './sign.js'
+import { createTextTool } from './text-tool.js'
 
 pdfjs.GlobalWorkerOptions.workerSrc = new URL('../node_modules/pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).href
 const ASSETS = new URL('../node_modules/pdfjs-dist/', import.meta.url).href
@@ -23,14 +23,15 @@ function showStatus(title, text) { el.status.hidden = false; el.status.replaceCh
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v))
 const cssScale = () => s.zoom * CSS_PER_PT
 
-// ── signer (needs the page elements) ──
-const signer = createSigner({
+// ── text tool (needs the page elements) ──
+const textTool = createTextTool({
   getPageEl: (num) => s.pages[num - 1]?.div || null,
+  getCssScale: cssScale,
   toast,
   canPlace: () => {
     if (!s.doc) return false
-    if (s.rot % 360 !== 0) { toast(t('signRotated')); return false }
-    if (s.pages.some((p) => p.intrinsic !== 0)) { toast(t('signUnsupported')); return false }
+    if (s.rot % 360 !== 0) { toast(t('placeRotated')); return false }
+    if (s.pages.some((p) => p.intrinsic !== 0)) { toast(t('placeUnsupported')); return false }
     return true
   }
 })
@@ -40,7 +41,7 @@ async function loadDocument(bytes, title) {
   const token = ++s.token
   showStatus(t('loading'))
   if (s.doc) { try { await s.doc.destroy() } catch {} }
-  signer.clearAll()
+  textTool.clearAll()
   s.doc = null; s.pages = []; s.live.clear(); s.hits = []; s.hitIndex = -1; s.rot = 0; s.current = 1
   el.pages.replaceChildren(); el.thumbs.replaceChildren(); el.outline.replaceChildren()
   s.bytes = bytes; s.title = title || t('unnamed')
@@ -184,7 +185,7 @@ async function renderPage(p) {
   if (token !== s.token || p.key !== key) return
   p.rendered = true
   s.live.add(p.num)
-  signer.reattach(p.num)
+  textTool.reattach(p.num)
   applyHighlights(p)
   trimLive()
 }
@@ -365,11 +366,11 @@ async function doPrint() {
 async function doSave() {
   if (!s.doc) return
   try {
-    const signed = signer.hasAny()
-    const bytes = signed ? await signer.embed(s.bytes) : s.bytes
-    const name = signed ? s.title.replace(/\.pdf$/i, '') + ' (signed).pdf' : s.title
+    const signed = textTool.hasAny()
+    const bytes = signed ? await textTool.embed(s.bytes) : s.bytes
+    const name = signed ? s.title.replace(/\.pdf$/i, '') + t('editedSuffix') + '.pdf' : s.title
     const res = await window.centrioPdf.saveAs(bytes, name)
-    if (res && res.ok) toast(t(signed ? 'signedSaved' : 'saved', { name: res.path.split(/[\\/]/).pop() }))
+    if (res && res.ok) toast(t(signed ? 'editedSaved' : 'saved', { name: res.path.split(/[\\/]/).pop() }))
     else if (res && !res.canceled) toast(t('saveFailed'))
   } catch { toast(t('saveFailed')) }
 }
@@ -378,7 +379,7 @@ async function doOpen() {
   if (res && res.ok) loadDocument(res.bytes, res.title); else if (res && !res.canceled && res.error) toast(t('failedTitle'))
 }
 function rotate() {
-  if (signer.hasAny()) { toast(t('rotateSigned')); return }
+  if (textTool.hasAny()) { toast(t('rotateEdited')); return }
   const anchor = anchorOf(); s.rot = (s.rot + 90) % 360
   layout(); restoreAnchor(anchor); releaseAll(); renderVisible()
   if (s.fit) fitTo(s.fit)
@@ -403,7 +404,7 @@ $('btnPrev').addEventListener('click', () => goTo(s.current - 1, true)); $('btnN
 $('btnZoomIn').addEventListener('click', () => stepZoom(1)); $('btnZoomOut').addEventListener('click', () => stepZoom(-1))
 $('btnFit').addEventListener('click', () => fitTo(s.fit === 'width' ? 'page' : 'width'))
 $('btnRotate').addEventListener('click', rotate)
-$('btnSign').addEventListener('click', () => signer.open())
+$('btnText').addEventListener('click', () => textTool.open())
 $('btnPrint').addEventListener('click', doPrint); $('btnSave').addEventListener('click', doSave); $('btnOpen').addEventListener('click', doOpen)
 $('pageInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') { const n = parseInt(e.target.value, 10); if (n) goTo(n, false); e.target.blur() } })
 $('pageInput').addEventListener('blur', () => { $('pageInput').value = s.current })
@@ -419,7 +420,7 @@ document.addEventListener('keydown', (e) => {
   else if (mod && (e.key === '=' || e.key === '+')) { e.preventDefault(); stepZoom(1) }
   else if (mod && e.key === '-') { e.preventDefault(); stepZoom(-1) }
   else if (mod && e.key === '0') { e.preventDefault(); setZoom(1) }
-  else if (e.key === 'Escape') { if (!searchBar.hidden) closeSearch(); else { $('sigModal').hidden = true; zoomMenu.hidden = true } }
+  else if (e.key === 'Escape') { if (!searchBar.hidden) closeSearch(); else { $('textModal').hidden = true; zoomMenu.hidden = true } }
   else if (e.key === 'F3') { e.preventDefault(); focusHit(s.hitIndex + (e.shiftKey ? -1 : 1)) }
   else if (!typing && !mod) {
     if (e.key === 'PageDown' || (e.key === 'ArrowRight' && !e.shiftKey)) { e.preventDefault(); goTo(s.current + 1, true) }

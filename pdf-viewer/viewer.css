@@ -113,28 +113,29 @@ svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width:
 .btn:disabled { opacity: .4; pointer-events: none; }
 .modal { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(5,4,3,.66); backdrop-filter: blur(6px); z-index: 70; padding: 16px; }
 .card { width: min(380px, 100%); padding: 22px; border-radius: 16px; background: var(--panel); border: 1px solid var(--line); box-shadow: 0 24px 60px rgba(0,0,0,.6); }
-.card.wide { width: min(700px, 100%); }
+.card.wide { width: min(620px, 100%); }
 .card h2 { margin: 0 0 6px; font-size: 17px; letter-spacing: -.01em; }
 .card p { margin: 0 0 14px; color: var(--muted); }
 .card input[type=password], .card input[type=text] { width: 100%; height: 38px; padding: 0 12px; border: 1px solid var(--line); background: var(--bg); border-radius: 9px; }
 .card input:focus { border-color: var(--accent); outline: none; }
 .row { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
-.sig-pane { position: relative; }
-.sig-pane canvas { display: block; width: 100%; height: auto; aspect-ratio: 640 / 220; border-radius: 11px; background: #fbfaf6; border: 1px solid var(--line); }
-#sigCanvas { cursor: crosshair; touch-action: none; }
-#sigErase { position: absolute; right: 10px; top: 10px; }
-.sig-pane input[type=text] { margin-bottom: 10px; }
-.sig-fonts { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
-.sig-fonts button { height: 34px; padding: 0 14px; border: 1px solid var(--line); border-radius: 9px; background: transparent; cursor: pointer; font-size: 18px; }
-.sig-fonts button.on { border-color: var(--accent); background: rgba(90,169,255,.1); }
-.pick { display: flex; align-items: center; justify-content: center; height: 40px; margin-bottom: 10px; border: 1px dashed var(--line); border-radius: 9px; color: var(--muted); cursor: pointer; }
-.pick:hover { border-color: var(--accent); color: var(--text); }
-.pick input { display: none; }
-.saved { margin-top: 14px; color: var(--muted); }
-#sigSavedList { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
-#sigSavedList button { width: 110px; height: 44px; padding: 4px; border: 1px solid var(--line); border-radius: 9px; background: #fbfaf6; cursor: pointer; }
-#sigSavedList button:hover { border-color: var(--accent); }
-#sigSavedList img { width: 100%; height: 100%; object-fit: contain; }
+#textInput { font-family: var(--font); width: 100%; resize: vertical; min-height: 74px; padding: 10px 12px; border: 1px solid var(--line); background: var(--bg); border-radius: 10px; font-size: 14px; line-height: 1.4; }
+#textInput:focus { border-color: var(--accent); outline: none; }
+.opts { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 18px; margin: 14px 0; }
+.opt { display: flex; flex-direction: column; gap: 6px; color: var(--muted); font-size: 12px; }
+.opt select { height: 34px; padding: 0 10px; border: 1px solid var(--line); background: var(--bg); color: var(--text); border-radius: 9px; font-size: 14px; }
+.opt select:focus { border-color: var(--accent); outline: none; }
+.range { display: flex; align-items: center; gap: 10px; height: 34px; }
+.range input { flex: 1; accent-color: var(--accent); }
+.range b { min-width: 28px; text-align: right; color: var(--text); font-variant-numeric: tabular-nums; }
+.seg { display: flex; gap: 6px; }
+.tb { width: 38px; height: 34px; border: 1px solid var(--line); border-radius: 9px; background: transparent; cursor: pointer; font-size: 15px; }
+.tb:hover { background: var(--panel-2); }
+.tb.on { border-color: var(--accent); background: rgba(90,169,255,.12); color: var(--accent); }
+.swatches { display: flex; gap: 8px; align-items: center; height: 34px; }
+.swatch { width: 24px; height: 24px; border-radius: 50%; border: 2px solid transparent; box-shadow: 0 0 0 1px rgba(255,255,255,.22); cursor: pointer; padding: 0; }
+.swatch.on { border-color: var(--bar); box-shadow: 0 0 0 2px var(--accent); }
+#textPreview { display: block; width: 100%; height: auto; aspect-ratio: 640 / 130; border-radius: 11px; background: #fbfaf6; border: 1px solid var(--line); }
 
 #printRoot { display: none; }
 @media print {
@@ -146,4 +147,5 @@ svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width:
 }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
 @media (max-width: 860px) { .doc-name { display: none; } .sep { margin: 0 3px; } }
+@media (max-width: 560px) { .opts { grid-template-columns: 1fr; } }
 @media (max-width: 700px) { .bar { grid-template-columns: auto 1fr; } .group.right { grid-column: 1 / -1; display: none; } }
