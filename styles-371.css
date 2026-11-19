@@ -269,3 +269,10 @@
 
 /* a TEAM company's own logo in place of Centrio's (org-branding.js, 3.8.3): rounded like an app icon */
 img.is-org-logo { border-radius: 22%; }
+
+/* the name the owner gave to the program (org-branding.js applyBrandName, 3.9.1): it may be long — one line, cut with a dot
+   mark, never pushing the open tab off the bar; the full name shows on hover. A team's own logo is not turned black in the
+   light theme (only Centrio's white glyph needs it). */
+.app-name.is-team-name { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
+.about-name.is-team-name, .sp-word.is-team-name { max-width: min(86vw, 460px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-inline: auto; }
+[data-theme="light"] img.is-org-logo { filter: none; }

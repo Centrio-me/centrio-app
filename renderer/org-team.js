@@ -15,6 +15,7 @@ const { runCommand } = require('./team-commands')
 const { createTeamNotes } = require('./team-notes')
 const { showTeamNotice } = require('./team-toast')
 const { ownAssignments } = require('./org-own-assignments')
+const { applyBrandName } = require('./org-branding')
 
 function createOrgTeamApi({
     authorizedInvoke,
@@ -55,6 +56,8 @@ function createOrgTeamApi({
     let statsPushTimer = null
     const reportedMessengerIds = new Set()
     let lastForcedTheme = null
+    // the theme and the name of the program the owner gave to the team, as last applied
+    let lastForcedKey = null
 
     function getOrgId() {
         return cloudStore.getUser()?.orgSummary?.orgId || null
@@ -77,8 +80,13 @@ function createOrgTeamApi({
             const result = await authorizedInvoke('api-org-get-settings', orgId)
             const forced = unwrap(result)
             const theme = forced && typeof forced.theme === 'string' ? forced.theme : null
-            if (theme === lastForcedTheme) return
+            // the name of the program the owner chose (3.9.1): put in place of «Centrio» (org-branding.js), cleaned there too
+            const brand = forced && typeof forced.brandName === 'string' ? forced.brandName : ''
+            const key = `${theme || ''}|${brand}`
+            if (key === lastForcedKey) return
+            lastForcedKey = key
             lastForcedTheme = theme
+            applyBrandName(brand)
 
             // BUGFIX (2026-09-30, "тема не меняет если с главного акка меняю"):
             // state.orgForcedTheme is the actual enforcement mechanism now —

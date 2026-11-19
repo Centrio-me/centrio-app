@@ -41,7 +41,7 @@ const { createLockApi } = require('./renderer/lock')
 const { createCloudUiApi } = require('./renderer/cloud-ui')
 const { bindSupportTicketsUi } = require('./renderer/support-tickets-ui')
 const { bindCabinetAccount } = require('./renderer/cloud-account')
-const { applyOrgLogo } = require('./renderer/org-branding')
+const { applyOrgLogo, applyBrandName } = require('./renderer/org-branding')
 const { createOrgTeamApi } = require('./renderer/org-team')
 // how often the account (plan, team) is asked again while the app runs, even untouched
 const ACCOUNT_REFRESH_MS = 3 * 60 * 1000
@@ -4593,6 +4593,8 @@ function applyTabZoom(level) {
         return cloudApi.refreshUser().then(() => { if (typeof updateCloudBtn === 'function') updateCloudBtn(); updateAddButtonState(); updateTrialStatusBar(); reapplyMessengerLocks(); reapplyExtensionLocks(); reapplySettingsLocks(); reapplyFolderLocks(); reapplySoundLocks(); notesUiApiRef?.invalidate(); notesUiApiRef?.updateButtonVisibility(); quickRepliesApiRef?.updateButtonState(); rightbarCustomApiRef?.apply() })
     }
     window.__centrioRefreshAccount = refreshAccountNow
+    // the name the owner gave to the program can be put on by hand (tests, pictures of the program)
+    window.__centrioApplyBrandName = applyBrandName
     if (cloudStore.isLoggedIn()) {
         appNotifApi?.fetchNotifications?.()
 
