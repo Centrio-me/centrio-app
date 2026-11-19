@@ -8,6 +8,20 @@ The format is based on Keep a Changelog. This project does not currently follow 
 
 ## [Unreleased]
 
+## [3.9.1] - 2026-11-19 (beta)
+
+### Fixed
+- «Все мессенджеры»: the history of the open chat is remembered (renderer/all-inbox/history-memory.js): the messenger's page keeps only a window of it and dropped the newest messages when earlier ones loaded, so the list jumped and never reached further back. The tab is brought back to its newest messages when the person is at the newest ones.
+- MAX list is read with the folder «Все» chosen in the tab (a folder chosen there cut the chats of the others).
+- A file saved from a conversation is entered in the downloads list, its folder is made if gone, the message names the folder.
+- A MAX edit the messenger did not take is cancelled and said to have failed; the field leaves the editing before the next message.
+- Telegram topic names come from the name element, not the first letter of the row.
+- Notes: the list on screen is refreshed underneath on account revalidation instead of being wiped (renderer/notes-cache.js).
+
+### Added
+- The card of a chat for MAX and WhatsApp (header click): name, kind, members, description, number, own link.
+- A video inside a Telegram album has a play button with its length and plays on a click.
+
 ## [3.9.0] - 2026-11-19
 
 ### Added
