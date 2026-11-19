@@ -12,7 +12,7 @@ const MAX_LIVE_PAGES = 20
 const PRINT_DPI = 150
 
 const el = { scroller: $('scroller'), pages: $('pages'), thumbs: $('thumbs'), outline: $('outline'), side: $('side'), status: $('status'), toast: $('toast') }
-const s = { doc: null, bytes: null, title: '', pages: [], zoom: 1, fit: 'width', rot: 0, current: 1, live: new Set(), search: null, hits: [], hitIndex: -1, token: 0 }
+const s = { doc: null, bytes: null, title: '', pages: [], zoom: 1, fit: 'page', rot: 0, current: 1, live: new Set(), search: null, hits: [], hitIndex: -1, token: 0 }
 
 applyI18n()
 
@@ -60,7 +60,7 @@ async function loadDocument(bytes, title) {
   await buildPages(token)
   if (token !== s.token) return
   el.status.hidden = true
-  fitTo(s.fit || 'width', true)
+  fitTo(s.fit || 'page', true)
   buildThumbs(); buildOutline()
   updateChrome()
   el.scroller.focus()
