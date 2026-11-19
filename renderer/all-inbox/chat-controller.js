@@ -282,9 +282,12 @@ function createChatController({ state, webviewOf, host, ipcRenderer, onSubtitle 
     // the tab is brought back to its own, or what arrives after would never be read
     let lastNewest = 0
     function toNewest(w) {
-        if (!current || typeof current.adapter.BOTTOM !== 'string' || !view.isAtBottom()) return
+        // never at the opening of a chat: MAX takes a tab scrolled to its end as read, and the unread messages of a channel
+        // were all read away before the person saw them (Oleg, 3.9.1-beta.1)
+        if (!current || !current.wentUp || typeof current.adapter.BOTTOM !== 'string' || !view.isAtBottom()) return
         if (Date.now() - lastNewest < NEWEST_EVERY_MS) return
         lastNewest = Date.now()
+        current.wentUp = false
         w.executeJavaScript(current.adapter.BOTTOM).catch(() => {})
     }
 
@@ -613,6 +616,8 @@ function createChatController({ state, webviewOf, host, ipcRenderer, onSubtitle 
         const w = tab()
         if (!w || !current || Date.now() - lastOlder < OLDER_THROTTLE_MS) return
         lastOlder = Date.now()
+        // the tab was scrolled up for the person: only then it is brought back to its newest (toNewest)
+        current.wentUp = true
         w.executeJavaScript(current.adapter.OLDER).catch(() => {})
     }
 
