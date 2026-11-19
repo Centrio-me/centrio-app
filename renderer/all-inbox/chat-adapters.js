@@ -638,7 +638,12 @@ const telegram = {
                 var lines = String(rows[i].innerText || '').split(String.fromCharCode(10)).map(function (x) { return x.trim(); }).filter(Boolean);
                 if (!lines.length) continue;
                 var last = lines[lines.length - 1];
-                out.push({ id: String(rows[i].getAttribute('data-thread-id')), title: lines[0].slice(0, 60), unread: lines.length > 3 && /^[0-9]+$/.test(last) ? Number(last) : 0 });
+                // the name is the page's own name element; the first line of the row can be the topic's icon (a letter or an
+                // emoji), which showed as the whole name (3.9.1, Oleg: «только первая буква»)
+                var nameEl = rows[i].querySelector('.peer-title, .dialog-title');
+                var named = nameEl ? String(nameEl.innerText || nameEl.textContent || '').trim() : '';
+                var shown = named || (lines[0].length <= 2 && lines.length > 1 ? lines[1] : lines[0]);
+                out.push({ id: String(rows[i].getAttribute('data-thread-id')), title: shown.slice(0, 60), unread: lines.length > 3 && /^[0-9]+$/.test(last) ? Number(last) : 0 });
             }
             return Promise.resolve(d.toggleForumTabByPeerId(peerId, false)).catch(function () {}).then(function () { return out; });
         }).catch(function () { return null; });
