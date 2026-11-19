@@ -277,44 +277,43 @@ img.is-org-logo { border-radius: 22%; }
 .about-name.is-team-name, .sp-word.is-team-name { max-width: min(86vw, 460px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-inline: auto; }
 [data-theme="light"] img.is-org-logo { filter: none; }
 
-/* ── The context menu of a tab (3.9.1, owner: «ужасно и неровно»): a head with the tab's name, quick actions as tiles, the
-   microphone and the camera as a pair, then lists in groups, every icon of one size and every row of one height. ── */
-.context-menu.ctx-v2 { width: 296px; min-width: 296px; padding: 6px; }
+/* ── The context menu of a tab (3.9.1, owner: «ужасно и неровно», then «огромное, 3 иконки в ряд, красивее»): a slim head with the
+   name, two rows of three icon tiles (what to do / what the tab may use), then short lists in groups. Every colour comes from
+   the theme: tiles are a wash of the text colour, a tile that is on takes the accent. ── */
+.context-menu.ctx-v2 { width: 288px; min-width: 288px; padding: 6px; border-radius: 14px; }
 .ctx-v2.show .context-item { animation: none !important; }
-.ctx-v2 .ctx-head { padding: 8px 8px 10px; min-width: 0; }
-.ctx-v2 .ctx-head-name { display: block; font-size: 13px; font-weight: 500; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ctx-v2 .ctx-head { padding: 6px 8px 8px; min-width: 0; }
+.ctx-v2 .ctx-head-name { display: block; font-size: 11.5px; font-weight: 500; letter-spacing: 0.02em; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ctx-v2 .ctx-head:has(.ctx-head-name:empty) { display: none; }
-.ctx-v2 .context-divider { margin: 4px 8px; }
+.ctx-v2 .context-divider { margin: 5px 6px; }
 
-.ctx-v2 .ctx-tiles { display: grid; gap: 6px; padding: 0 4px 6px; }
-.ctx-v2 .ctx-tiles-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-.ctx-v2 .ctx-tiles-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); padding-bottom: 2px; }
+.ctx-v2 .ctx-tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; padding: 0 2px 6px; }
+.ctx-v2 .ctx-tiles + .ctx-tiles { padding-bottom: 2px; }
 .ctx-v2 .ctx-tile {
-    position: relative; flex-direction: column; justify-content: center; gap: 6px; height: 62px; padding: 0 3px;
-    text-align: center; font-size: 11px; line-height: 1.15; border-radius: 10px;
-    background: var(--bg-tertiary); border: 0.5px solid var(--border-light);
+    position: relative; flex-direction: column; justify-content: center; gap: 7px; height: 58px; padding: 0 4px;
+    text-align: center; font-size: 11.5px; line-height: 1.1; border-radius: 12px; color: var(--text-primary);
+    background: color-mix(in srgb, var(--text-primary) 6%, transparent); border: 0; transform: none;
+    transition: background 0.14s ease, color 0.14s ease;
 }
-.ctx-v2 .ctx-tile > span:not(.ctx-toggle) { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; max-width: 100%; }
-.ctx-v2 .ctx-tile-wide { flex-direction: row; justify-content: flex-start; gap: 9px; height: 42px; padding: 0 12px; text-align: left; font-size: 12px; }
+.ctx-v2 .ctx-tile > span:not(.ctx-toggle) { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ctx-v2 .ctx-tile svg { width: 20px; height: 20px; opacity: 0.85; }
 .ctx-v2 .ctx-tile .ctx-toggle { display: none; }
-.ctx-v2 .ctx-tile:hover { background: color-mix(in srgb, var(--text-primary) 9%, var(--bg-tertiary)); color: var(--text-primary); transform: none; }
+.ctx-v2 .ctx-tile:hover { background: color-mix(in srgb, var(--text-primary) 11%, transparent); color: var(--text-primary); transform: none; }
 .ctx-v2 .ctx-tile:hover svg { opacity: 1; }
-.ctx-v2 .ctx-tile:has(.ctx-toggle.on) {
-    background: color-mix(in srgb, var(--accent) 16%, transparent);
-    border-color: color-mix(in srgb, var(--accent) 45%, transparent); color: var(--accent);
-}
+.ctx-v2 .ctx-tile:has(.ctx-toggle.on) { background: color-mix(in srgb, var(--accent) 20%, transparent); color: var(--accent); }
 .ctx-v2 .ctx-tile:has(.ctx-toggle.on) svg { opacity: 1; }
-.ctx-v2 .ctx-tile.context-item-toggle:not(:has(.ctx-toggle.on)) svg { opacity: 0.45; }
-.ctx-v2 .ctx-tile.context-item-toggle::after {
-    content: ""; position: absolute; top: 6px; right: 6px; width: 6px; height: 6px; border-radius: 50%; background: transparent;
+.ctx-v2 .ctx-tile.context-item-toggle:not(:has(.ctx-toggle.on)) { color: var(--text-secondary); }
+.ctx-v2 .ctx-tile.context-item-toggle:not(:has(.ctx-toggle.on)) svg { opacity: 0.6; }
+.ctx-v2 .ctx-tile:is(#ctxMic, #ctxCam):not(:has(.ctx-toggle.on))::after {
+    content: ""; position: absolute; left: 22%; right: 22%; top: 15px; height: 1.5px; border-radius: 1px; background: currentColor;
+    transform: rotate(-35deg); opacity: 0.8; pointer-events: none;
 }
-.ctx-v2 .ctx-tile:has(.ctx-toggle.on)::after { background: currentColor; }
 
-.ctx-v2 .context-item:not(.ctx-tile) { height: 34px; padding: 0 8px; gap: 10px; }
+.ctx-v2 .context-item:not(.ctx-tile) { height: 32px; padding: 0 8px; gap: 10px; border-radius: 9px; }
 .ctx-v2 .context-item:not(.ctx-tile):hover { background: color-mix(in srgb, var(--text-primary) 8%, transparent); color: var(--text-primary); transform: none; }
-.ctx-v2 .context-item svg { opacity: 0.7; }
-.ctx-v2 .context-item:not(.ctx-tile) svg { width: 17px; height: 17px; }
+.ctx-v2 .context-item:not(.ctx-tile) svg { width: 17px; height: 17px; opacity: 0.7; }
 .ctx-v2 .ctx-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ctx-v2 .ctx-sub-arrow { margin-left: auto; opacity: 0.6; font-size: 16px; line-height: 1; }
+.ctx-v2 .ctx-sub-arrow { margin-left: auto; opacity: 0.55; font-size: 16px; line-height: 1; }
+.context-menu.ctx-v2 .context-item.context-danger { color: var(--danger); }
 .ctx-v2 .context-danger:hover { background: color-mix(in srgb, var(--danger) 16%, transparent) !important; color: var(--danger) !important; }
 .ctx-v2 .context-danger svg { opacity: 1; }

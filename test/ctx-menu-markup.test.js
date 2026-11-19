@@ -19,10 +19,11 @@ test('the tab menu keeps every element its handlers look for, once each', () => 
     for (const id of IDS) assert.equal(block.split(`id="${id}"`).length, 2, id)
 })
 
-test('quick actions are tiles, microphone and camera are a pair of wide tiles (owner, 2026-11-19: menu «неровно»)', () => {
-    const tiles = (cls) => (block.match(new RegExp(`class="ctx-tiles ${cls}"[\\s\\S]*?\\n    </div>`)) || [''])[0]
-    for (const id of ['ctxReload', 'ctxSound', 'ctxDetach', 'ctxKeepAwake']) assert.ok(tiles('ctx-tiles-4').includes(`id="${id}"`), id)
-    for (const id of ['ctxMic', 'ctxCam']) assert.ok(tiles('ctx-tiles-2').includes(`id="${id}"`), id)
+test('actions are tiles in two rows of three: what to do, then what the tab may use (owner, 2026-11-19: «3 иконки в ряд»)', () => {
+    const rows = block.match(/class="ctx-tiles">[\s\S]*?\n    <\/div>/g) || []
+    assert.equal(rows.length, 2)
+    for (const id of ['ctxReload', 'ctxSound', 'ctxDetach']) assert.ok(rows[0].includes(`id="${id}"`), id)
+    for (const id of ['ctxMic', 'ctxCam', 'ctxKeepAwake']) assert.ok(rows[1].includes(`id="${id}"`), id)
 })
 
 test('the short labels of the tiles exist in all seven languages', () => {
