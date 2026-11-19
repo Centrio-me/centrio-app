@@ -14,7 +14,8 @@ const { createChatSearch } = require('./chat-search')
 const { describeInfo } = require('./info-card')
 
 const NEAR_BOTTOM_PX = 120
-const TOP_LOAD_PX = 40
+// earlier messages are asked for before the top is reached, so the history is there when the person gets to it
+const TOP_LOAD_PX = 700
 const USER_SCROLL_MS = 1200
 
 function el(tag, cls, text) {
@@ -679,7 +680,9 @@ function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab
         setTopics,
         isShown: () => !root.hidden,
         // the person really sees the newest messages: our window on screen, Centrio in focus, the conversation at its end
-        isReading: () => !root.hidden && !lightbox.isOpen() && document.visibilityState === 'visible' && document.hasFocus() && atBottom()
+        isReading: () => !root.hidden && !lightbox.isOpen() && document.visibilityState === 'visible' && document.hasFocus() && atBottom(),
+        // the person is at the newest messages (not reading above): the tab behind may be brought to its newest too
+        isAtBottom: () => !root.hidden && atBottom()
     }
 }
 

@@ -4,6 +4,7 @@
 //                kind: text | photo | video | voice | sticker | file | service
 //   COMPOSER   — page script that focuses the message field and returns its centre { x, y } (null when there is none)
 //   OLDER      — page script that scrolls the page's own message list up so the messenger loads earlier messages
+//   BOTTOM     — page script that scrolls it back to the newest messages (optional)
 // The tab is behind our window: Centrio types into it with real input (webview.insertText + Enter).
 const { AVATAR_HELPER } = require('./adapters')
 const { whatsappChat } = require('./whatsapp')
@@ -697,6 +698,17 @@ const telegram = {
         if (box) box.scrollTop = 0;
         __ciMore();
         return !!box;
+    })()`,
+    // back to the newest messages: after loading earlier ones the page keeps the top of the history and drops the bottom,
+    // so the newest would stop arriving (3.9.1)
+    BOTTOM: `(function () {
+        var chat = document.querySelector('.chats-container > .chat.active, #column-center .chat.active');
+        var box = chat && chat.querySelector('.scrollable-y.bubbles-scrollable');
+        if (!box) return false;
+        var down = chat.querySelector('.bubbles-go-down:not(.is-hidden)');
+        if (down && down.offsetParent) down.click();
+        else box.scrollTop = box.scrollHeight;
+        return true;
     })()`
 }
 
@@ -1243,6 +1255,13 @@ const max = {
         box.scrollTop = 0;
         box.dispatchEvent(new Event('scroll'));
         __ciMore();
+        return true;
+    })()`,
+    // back to the newest messages (see Telegram's BOTTOM)
+    BOTTOM: `(function () {
+        var box = document.querySelector('.openedChat .scrollListScrollable');
+        if (!box) return false;
+        box.scrollTop = box.scrollHeight;
         return true;
     })()`
 }

@@ -6,6 +6,7 @@ const { canEditNow } = require('./edit-window')
 const { toggleReaction, overlayReactions } = require('./quick-reactions')
 const { setEmojiSet } = require('./emoji-images')
 const { buildTimeline, signature } = require('./timeline')
+const { mergeHistory } = require('./history-memory')
 const { createChatView } = require('./chat-view')
 const { sameChat } = require('./same-chat')
 const { createPending, withPending } = require('./pending')
@@ -26,6 +27,7 @@ const READ_TIMEOUT_MS = 2500
 // a group with topics: how often the list of topics is asked again (new messages move the unread counts)
 const TOPICS_EVERY_MS = 25 * 1000
 const OLDER_THROTTLE_MS = 1500
+const NEWEST_EVERY_MS = 3000
 const FOCUS_SETTLE_MS = 120
 const TYPE_SETTLE_MS = 80
 const AFTER_SEND_MS = 600
@@ -244,7 +246,9 @@ function createChatController({ state, webviewOf, host, ipcRenderer, onSubtitle 
             cur.reopens = 0
             // a picture whose answer was lost: a new session, so the next read brings every picture again
             if (missingImages(data.messages, cur.images)) cur.script = withImageMemo(cur.adapter.CHAT, newSession())
-            lastRows = buildTimeline(resolveImages(data.messages, current.images), Date.now())
+            // the page keeps only a window of the history: what was read before and lies outside it stays (history-memory.js)
+            cur.history = mergeHistory(cur.history || [], data.messages)
+            lastRows = buildTimeline(resolveImages(cur.history, current.images), Date.now())
             redraw()
             // a group with topics: the list of topics is asked now and then, and the chips show which one is open
             if (data.forum && typeof cur.adapter.TOPICS === 'string') {
@@ -258,6 +262,7 @@ function createChatController({ state, webviewOf, host, ipcRenderer, onSubtitle 
             }
             view.setCanWrite(data.canWrite !== false)
             markRead(w)
+            toNewest(w)
             // inside a topic the header says which one («В <группа>» is the group's name, already in the title)
             const sub = [data.topic ? `Тема: ${data.topic}` : data.subtitle, current.chat.messengerName].filter(Boolean).join(' · ')
             view.setSubtitle(sub)
@@ -270,6 +275,16 @@ function createChatController({ state, webviewOf, host, ipcRenderer, onSubtitle 
     // The messenger behind our window does not see the person (the keyboard is in Centrio, the page counts as «away»),
     // so it would leave what was read unread: while the newest messages are really in front of the person, the
     // messenger is told itself (Telegram's and VK's own «read» — the same the page sends when it is looked at)
+    // earlier messages loaded above make the page drop its newest: while the person is at the newest ones in our window,
+    // the tab is brought back to its own, or what arrives after would never be read
+    let lastNewest = 0
+    function toNewest(w) {
+        if (!current || typeof current.adapter.BOTTOM !== 'string' || !view.isAtBottom()) return
+        if (Date.now() - lastNewest < NEWEST_EVERY_MS) return
+        lastNewest = Date.now()
+        w.executeJavaScript(current.adapter.BOTTOM).catch(() => {})
+    }
+
     let lastMarked = 0
     function markRead(w) {
         if (!current || typeof current.adapter.READ !== 'string' || !view.isReading()) return
