@@ -276,6 +276,7 @@ function navigateMaxWebview(webview, token) {
 // shared/oauthProviders.js, который уже содержал верный список. Импортируем
 // вместо повторного дублирования.
 const { OAUTH_PROVIDER_HOST_RE, isOAuthProviderUrl } = require('../shared/oauthProviders')
+const { leavesTheSite } = require('../shared/site-families')
 
 // BUGFIX ("клик по другому сервису в шапке Яндекс.Почты открывал внешний
 // браузер"): 'will-navigate' ниже сравнивал ТОЧНЫЙ hostname навигации с
@@ -1282,9 +1283,9 @@ function createWebviewTabsApi({
                 // открыть во внешнем браузере" ниже.
                 if (isOAuthProviderUrl(url)) return
 
-                const messengerHost = new URL(messenger.url).hostname
-                const navHost = new URL(url).hostname
-                if (baseDomain(navHost) !== baseDomain(messengerHost) && !url.startsWith('file://')) {
+                // another site goes to the system browser; the sign-in pages of identity providers and a site's other own domain do not
+                // (shared/site-families.js: Mail.ru signs in through VK ID, Tilda on tilda.cc — they were sent away, 3.9.1)
+                if (leavesTheSite(url, messenger.url)) {
                     e.preventDefault()
                     ipcRenderer.send('open-url', url)
                 }

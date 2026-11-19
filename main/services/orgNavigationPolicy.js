@@ -8,10 +8,10 @@ function setState({ strict, assigned }) {
     current = { strict: strict === true, assigned: assigned && typeof assigned === 'object' ? { ...assigned } : {} }
 }
 
-const { baseDomain, allowedBaseDomains } = require('./signInDomains')
+const { baseDomain, navigationBaseDomains, isSignInHost } = require('./signInDomains')
 
 function hostMatches(host, assignedUrl) {
-    return allowedBaseDomains(assignedUrl).includes(baseDomain(host))
+    return isSignInHost(host) || navigationBaseDomains(assignedUrl).includes(baseDomain(host))
 }
 
 function decideNavigation({ messengerId, targetUrl }) {

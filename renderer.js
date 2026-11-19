@@ -586,6 +586,9 @@ async function bootstrap() {
         // 3.8.3 BUGFIX: «Все мессенджеры» (on/off, own folders) was read with the cache-only store.get() but never
         // hydrated — the mode turned itself on again after every restart and folders vanished
         ['allInbox', {}],
+        // 3.9.1 BUGFIX: the per-tab microphone and camera switches (3.9.0) were never hydrated: after a restart the menu said «on»
+        // again and the next click overwrote all the others
+        ['mediaPermissions', {}],
         // 3.7.2 BUGFIX: these were read with the cache-only store.get() but never hydrated. 'todos' came back empty
         // on every start, and the task panel then saved that empty list over the real one (tasks lost on restart since
         // 2.5); 'tabOrder' never restored the tab order; 'globalProxy' went to the cloud empty.

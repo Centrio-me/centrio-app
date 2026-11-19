@@ -38,4 +38,15 @@ function allowedBaseDomains(assignedUrl) {
     return [...new Set([base, ...(PROVIDER_DOMAINS[base] || [])])]
 }
 
-module.exports = { baseDomain, allowedBaseDomains, PROVIDER_DOMAINS }
+// For the strict-mode navigation lock ONLY (the saved-password autofill keeps to allowedBaseDomains above): the site's other own
+// domain and the sign-in pages of identity providers come from shared/site-families.js, the list the tabs use as well.
+const { FAMILIES, isSignInHost } = require('../../shared/site-families')
+
+/** The sites a team tab may stay on while navigating (strict mode): its own, the providers it signs in with, its other own domain. */
+function navigationBaseDomains(assignedUrl) {
+    const own = allowedBaseDomains(assignedUrl)
+    const extra = FAMILIES.filter((f) => own.some((d) => f.includes(d))).flat()
+    return [...new Set([...own, ...extra])]
+}
+
+module.exports = { baseDomain, allowedBaseDomains, navigationBaseDomains, isSignInHost, PROVIDER_DOMAINS }

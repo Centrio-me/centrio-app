@@ -11,6 +11,8 @@ The format is based on Keep a Changelog. This project does not currently follow 
 ## [3.9.1] - 2026-11-19 (beta)
 
 ### Fixed
+- The sign-in of Mail.ru (through VK ID: e.mail.ru → login.vk.com → account.mail.ru → id.vk.ru) and of Tilda (tilda.cc) was sent to the system browser by the tab's «other site» rule and by the team's strict-mode lock. shared/site-families.js holds the exact sign-in hosts of identity providers and the sites' second own domains, and both places use it.
+- The per-tab microphone and camera switches (3.9.0) were never saved: `mediaPermissions` was missing from ALLOWED_STORE_ROOTS (main.js), from the window's hydrated keys (renderer.js) and from the profile keys (main/ipc/profile.js), so the click was thrown away in silence and the menu said «on» again after a restart.
 - The drag handle of a split divider: in the card themes a rule for the vertical bar was stronger than the one for the horizontal bar, so a divider lying across the window wore a bar standing along it. The grip size now comes from two variables the horizontal divider swaps; the grip is a visible pill at rest, lights up with a glow and a line along the divider under the pointer and while dragging (styles.css).
 - A team's own logo is not turned black in the light theme (styles-371.css).
 - «Все мессенджеры»: the history of the open chat is remembered (renderer/all-inbox/history-memory.js): the messenger's page keeps only a window of it and dropped the newest messages when earlier ones loaded, so the list jumped and never reached further back. The tab is brought back to its newest messages when the person is at the newest ones.

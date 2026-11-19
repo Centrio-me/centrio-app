@@ -245,6 +245,8 @@ const ALLOWED_STORE_ROOTS = new Set([
     // be restored on next launch — same disease as the splitPresets bug above
     // (store:set silently rejected for any key missing from this allowlist).
     'activeTabId',
+    // 3.9.1 BUGFIX: the microphone and camera switches of the tabs (3.9.0) — store:set threw them away for lack of this entry
+    'mediaPermissions',
     // Онбординг-экран первого запуска (renderer/onboarding-auth.js) — same
     // disease as the two bugs above: a new persisted key added without also
     // adding it here silently never gets read or written.
