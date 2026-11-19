@@ -28,6 +28,9 @@ const READ_TIMEOUT_MS = 2500
 const TOPICS_EVERY_MS = 25 * 1000
 const OLDER_THROTTLE_MS = 1500
 const NEWEST_EVERY_MS = 3000
+// after an edit MAX is looked at this often, this many times, to see that its field left the editing
+const EDIT_LOOK_MS = 600
+const EDIT_LOOKS = 5
 const FOCUS_SETTLE_MS = 120
 const TYPE_SETTLE_MS = 80
 const AFTER_SEND_MS = 600
@@ -459,6 +462,13 @@ function createChatController({ state, webviewOf, host, ipcRenderer, onSubtitle 
         w.sendInputEvent({ type: 'keyUp', keyCode: 'Escape' })
     }
 
+    // a tab left in the messenger's editing (a failed edit, or one begun in the tab itself) would take the next message in
+    // place of the old one: the bar is closed first. true when it was open
+    async function leaveEditing(w, cur) {
+        if (typeof cur.adapter.CANCEL_EDIT !== 'string') return false
+        return (await run(w, cur.adapter.CANCEL_EDIT)) === true
+    }
+
     async function edit(m, text) {
         const w = tab()
         const cur = current
@@ -480,6 +490,16 @@ function createChatController({ state, webviewOf, host, ipcRenderer, onSubtitle 
                 ok = !!point && typeof point.x === 'number' && await typeAt(w, point, text)
                 if (ok) pressEnter(w)
             } else pressEscape(w)
+            // the field still in editing after a few looks means the messenger did not take the words (too long, an error):
+            // the edit is cancelled, and it is said to have failed
+            if (ok && typeof cur.adapter.EDITING === 'string') {
+                let still = true
+                for (let look = 0; look < EDIT_LOOKS && still; look += 1) {
+                    await wait(EDIT_LOOK_MS)
+                    still = (await run(w, cur.adapter.EDITING)) === true
+                }
+                if (still) { await leaveEditing(w, cur); ok = false }
+            } else if (!ok) await leaveEditing(w, cur)
         }
         await wait(AFTER_SEND_MS)
         poll()
@@ -543,6 +563,7 @@ function createChatController({ state, webviewOf, host, ipcRenderer, onSubtitle 
         // check again right before typing: the tab may have moved to another chat since the last read, and our window
         // to another chat while this was checked (the text then went to the new one, 3.8.3 check)
         if (!(await stillHere(w, cur))) return false
+        await leaveEditing(w, cur)
         // the field's marks become the messenger's own (bold, italic…, text-format.js); the message waiting with its
         // clock shows as the messenger will show it
         typingFor = cur.service

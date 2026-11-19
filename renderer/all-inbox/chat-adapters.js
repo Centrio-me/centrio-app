@@ -1263,6 +1263,21 @@ const max = {
         if (!box) return false;
         box.scrollTop = box.scrollHeight;
         return true;
+    })()`,
+    // the bar «Редактирование сообщения» of MAX's field is closed; true when the tab was in editing (3.9.1: a failed edit
+    // left it open, and the next message went in place of the old one, Oleg 2026-11-18)
+    EDITING: `(function () {
+        var title = [].filter.call(document.querySelectorAll('span.title'), function (e) { return /Редактирование сообщения/.test(e.textContent); })[0];
+        var bar = title && title.closest('.action');
+        return !!(bar && bar.offsetParent);
+    })()`,
+    CANCEL_EDIT: `(function () {
+        var title = [].filter.call(document.querySelectorAll('span.title'), function (e) { return /Редактирование сообщения/.test(e.textContent); })[0];
+        var bar = title && title.closest('.action');
+        var close = bar && bar.offsetParent && bar.querySelector('button.close');
+        if (!close) return false;
+        close.click();
+        return true;
     })()`
 }
 

@@ -17,3 +17,11 @@ test('MAX chat list reading puts the tab on «Все» first, so a folder chosen
     assert.match(text, /foldersViewport button\.button/)
     assert.match(text, /button--active/)
 })
+
+test('MAX scripts that look at and leave the editing of a message are valid JavaScript', () => {
+    const max = chatAdapterFor('max')
+    for (const code of [max.EDITING, max.CANCEL_EDIT]) {
+        assert.equal(typeof code, 'string')
+        assert.doesNotThrow(() => new vm.Script(code))
+    }
+})
