@@ -13,6 +13,7 @@ const {
     isOAuthBrokerActive, markOAuthBrokerActive, clearOAuthBrokerActive
 } = require('../ipc/window')
 const { isOAuthProviderUrl, isYandexInternalSsoHost } = require('../services/oauthProviders')
+const { isVkIdPopupFor } = require('../../shared/site-families')
 const { popularMessengers } = require('../../renderer/constants')
 const { FIND_MEDIA_SOURCE, READ_LEVEL_SOURCE } = require('../../shared/media-elements')
 const { findTabForUrl } = require('../services/linkRouting')
@@ -1664,7 +1665,7 @@ function registerAppEvents({
             // wireOAuthPopup() в main/ipc/window.js.
             const oauthPendingMessengerIds = new Set()
             contents.setWindowOpenHandler(({ url }) => {
-                if (!isOAuthProviderUrl(url)) return { action: 'allow' }
+                if (!isOAuthProviderUrl(url) && !isVkIdPopupFor(url, contents.getURL())) return { action: 'allow' }
 
                 // DEBUG (Grok "2 окна" investigation): openOAuthBroker() already
                 // logs its own entry — this handler didn't log at all, so a live
@@ -2009,35 +2010,6 @@ function registerAppEvents({
                 childWindow.webContents.once('did-navigate', (_evt, navUrl) => {
                     if (isDownload || childWindow.isDestroyed()) return
                     if (!navUrl || navUrl === 'about:blank') return
-
-                    // 3.9.1 (owner, 2026-11-19: «только нажал Войти в Mail.ru — уже перекинуло в браузер»): the Войти button of
-                    // Mail.ru opens the sign-in of VK ID (id.vk.ru) as a popup. It stays a window of the app — the session of the
-                    // tab and the link to the page that opened it (window.opener) are what bring the person back signed in.
-                    try {
-                        const popupUrl = new URL(navUrl)
-                        if (require('../../shared/site-families').isSignInHost(popupUrl.hostname)) {
-                            log.info(`[external-open] sign-in popup kept in the app: ${popupUrl.host}${popupUrl.pathname.slice(0, 40)}`)
-                            childWindow.setSize(520, 720)
-                            childWindow.center()
-                            childWindow.show()
-                            // the sign-in ends by returning to the site (auth.mail.ru/inbox): the tab goes there, the window is closed
-                            const ownRecord = findMessengerRecordForSession(contents.session)
-                            const backToSite = (_e, backUrl) => {
-                                try {
-                                    if (!ownRecord?.url || childWindow.isDestroyed()) return
-                                    const backHost = new URL(backUrl).hostname
-                                    if (backHost === popupUrl.hostname) return
-                                    if (baseDomain(backHost) !== baseDomain(new URL(ownRecord.url).hostname)) return
-                                    log.info(`[external-open] sign-in finished, the tab goes to ${backHost}`)
-                                    if (!contents.isDestroyed()) contents.loadURL(backUrl).catch(() => {})
-                                    childWindow.destroy()
-                                } catch {}
-                            }
-                            childWindow.webContents.on('did-navigate', backToSite)
-                            childWindow.webContents.on('did-redirect-navigation', (_e, backUrl, _inPlace, isMainFrame) => { if (isMainFrame) backToSite(_e, backUrl) })
-                            return
-                        }
-                    } catch {}
 
                     // BUGFIX (2026-09-11, "Mail.ru — запрети ходить ему в
                     // браузер. Нажимаешь 'Входящие' — он браузер открывает"):

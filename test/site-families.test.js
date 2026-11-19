@@ -36,3 +36,19 @@ test('another subdomain of the same site, a local file and a broken address stay
     assert.equal(leavesTheSite('file:///C:/x.html', 'https://e.mail.ru/'), false)
     assert.equal(leavesTheSite('not a url', 'https://e.mail.ru/'), false)
 })
+
+// the sign-in window of VK ID that another site (Mail.ru) opens is a window of the app in its own style, with the way back to the tab
+const { isVkIdPopupFor } = require('../shared/site-families')
+
+test('a sign-in popup of VK ID opened by another site is the app\'s sign-in window (owner, 2026-11-19: Mail.ru «Войти»)', () => {
+    assert.equal(isVkIdPopupFor('https://id.vk.ru/auth?app_id=7539952', 'https://account.mail.ru/login'), true)
+    assert.equal(isVkIdPopupFor('https://id.vk.com/auth', 'https://e.mail.ru/inbox'), true)
+})
+
+test('VK\'s own tab and any other address are not touched by that rule', () => {
+    assert.equal(isVkIdPopupFor('https://id.vk.ru/auth', 'https://vk.ru/im'), false)
+    assert.equal(isVkIdPopupFor('https://id.vk.com/auth', 'https://vk.com/feed'), false)
+    assert.equal(isVkIdPopupFor('https://example.com/', 'https://account.mail.ru/login'), false)
+    assert.equal(isVkIdPopupFor('https://id.vk.com.evil.example/', 'https://account.mail.ru/'), false)
+    assert.equal(isVkIdPopupFor('not a url', 'https://account.mail.ru/'), false)
+})

@@ -4,6 +4,7 @@ const pinHash = require('../services/pinHash')
 const { grantSecurityChange } = require('../services/pinGrant')
 const store = require('../services/store')
 const { isOAuthProviderUrl, isYandexInternalSsoHost } = require('../services/oauthProviders')
+const { isSignInHost } = require('../../shared/site-families')
 const orgAssignedPartitions = require('../services/orgAssignedPartitions')
 
 let log
@@ -541,7 +542,10 @@ function wireOAuthPopup(popup, { url, mainWin, partition }) {
     const maybeFinishOAuth = (navUrl) => {
         if (finishFired || popup.isDestroyed()) return false
         if (!navUrl) return false
-        if (isOAuthProviderUrl(navUrl) || isGoogleAccountsUrl(navUrl) || isYandexInternalSsoHost(navUrl)) {
+        // the hops of the sign-in of VK ID are not its end (Mail.ru: id.vk.ru -> login.vk.com -> auth.mail.ru)
+        let hopHost = ''
+        try { hopHost = new URL(navUrl).hostname } catch {}
+        if (isOAuthProviderUrl(navUrl) || isGoogleAccountsUrl(navUrl) || isYandexInternalSsoHost(navUrl) || isSignInHost(hopHost)) {
             if (finishSettleTimer) {
                 clearTimeout(finishSettleTimer)
                 finishSettleTimer = null

@@ -48,4 +48,16 @@ function leavesTheSite(navUrl, tabUrl) {
     }
 }
 
-module.exports = { isSignInHost, sameSiteFamily, leavesTheSite, baseDomain, FAMILIES, SIGN_IN_HOSTS }
+/** A sign-in popup of VK ID that a site other than VK itself opens (Mail.ru signs in through it); VK's own tabs are not touched. */
+function isVkIdPopupFor(popupUrl, openerUrl) {
+    try {
+        const host = new URL(popupUrl).hostname
+        if (!/^(id|login|oauth).vk.(com|ru)$/i.test(host) || !isSignInHost(host)) return false
+        const opener = baseDomain(new URL(openerUrl).hostname)
+        return opener !== 'vk.com' && opener !== 'vk.ru'
+    } catch {
+        return false
+    }
+}
+
+module.exports = { isVkIdPopupFor, isSignInHost, sameSiteFamily, leavesTheSite, baseDomain, FAMILIES, SIGN_IN_HOSTS }
