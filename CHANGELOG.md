@@ -8,7 +8,18 @@ The format is based on Keep a Changelog. This project does not currently follow 
 
 ## [Unreleased]
 
-## [3.9.1] - 2026-11-19 (beta)
+## [3.9.2] - 2026-11-19
+
+(3.9.1 was only a test version, 3.9.1-beta.1…3; this release holds everything of it.)
+
+### Changed
+- The context menu of a tab is rebuilt: the name of the tab, two rows of three icon tiles (reload, sound, window / microphone, camera, keep awake), then grouped rows of one height; coloured from the theme, short labels in 7 languages (index.html #contextMenu, styles-371.css, locales ctx.tile*).
+- A PDF opens fitted as a whole page, not by width (pdf-viewer/viewer.js).
+
+### Fixed
+- The Войти button of Mail.ru (sign-in popup of VK ID, id.vk.ru) opens in the app's own sign-in window (the same chrome as Google/Yandex) instead of the system browser; the hops through VK hosts do not close it early and the tab follows to the site when it ends (shared/site-families.js `isVkIdPopupFor`, registerAppEvents.js, main/ipc/window.js).
+
+## [3.9.1] - 2026-11-19 (test versions only)
 
 ### Fixed
 - «Все мессенджеры»: the unread count of a MAX chat is read from the round `counter` of the row (MAX stopped drawing it in a text of class text--20): no counters were shown (Oleg, 3.9.1-beta.2). The older place is still read first (renderer/all-inbox/adapters.js, `__mxUnread`).
