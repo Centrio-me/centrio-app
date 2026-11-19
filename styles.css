@@ -2644,8 +2644,16 @@ webview.reply-render:not(.active) { display: flex; opacity: 0; pointer-events: n
 .content-area.split-active[data-split-focus="left"]  .tabs-content::before { opacity: 1; }
 .content-area.split-active[data-split-focus="right"] .tabs-content::after  { opacity: 1; }
 
-/* ── Drag handle ────────────────────────────────────────────────── */
+/* ── Drag handle ──────────────────────────────────────────────────
+   3.9.1 (a user of the program: «горизонтальный разделитель — вертикальная тянулка, её как будто забыли перевернуть»): in the
+   card themes a rule for the vertical bar (4×40) was stronger than the one for the horizontal bar, so a divider lying across
+   the window wore a bar standing along it. Now the size of the grip comes from two variables and the horizontal divider swaps
+   them — a theme only colours the grip, it never sets its size again. The grip is a quiet pill at rest, so it can be found;
+   under the pointer it lights up in the accent colour with a soft glow and a line along the divider; while dragging it
+   stretches a little and holds the colour. */
 .split-handle {
+    --grip-thick: 4px;
+    --grip-len:   44px;
     display:    none;
     position:   absolute;
     top:        0;
@@ -2661,43 +2669,88 @@ webview.reply-render:not(.active) { display: flex; opacity: 0; pointer-events: n
 .content-area.split-active .split-handle { display: block; }
 
 .split-handle:hover,
-.split-handle.dragging { background: var(--accent); }
+.split-handle.dragging { background: color-mix(in srgb, var(--accent) 22%, var(--border)); }
 
+/* the grip itself */
 .split-handle::after {
     content:    '';
     position:   absolute;
     top:        50%;
     left:       50%;
+    width:      var(--grip-thick);
+    height:     var(--grip-len);
     transform:  translate(-50%, -50%);
-    width:      2px;
-    height:     32px;
-    background: var(--text-secondary);
-    border-radius: 2px;
-    opacity:    0;
-    transition: opacity 0.15s;
+    border-radius: 999px;
+    background: var(--text-primary);
+    opacity:    0.36;
+    transition: opacity .16s ease, background .16s ease, box-shadow .16s ease, height .18s cubic-bezier(.2, .8, .2, 1), width .18s cubic-bezier(.2, .8, .2, 1);
+    pointer-events: none;
 }
-.split-handle:hover::after { opacity: 0.5; }
-/* card themes: the panes are two cards with the window's own backdrop between them, the bar is just a grip */
-[data-theme="embedded"] .split-handle { background: transparent; }
+/* the line along the divider, shown under the pointer */
+.split-handle::before {
+    content:    '';
+    position:   absolute;
+    top:        10%;
+    bottom:     10%;
+    left:       50%;
+    width:      2px;
+    transform:  translateX(-50%) scaleY(.35);
+    border-radius: 2px;
+    background: linear-gradient(to bottom, transparent, var(--accent) 22%, var(--accent) 78%, transparent);
+    opacity:    0;
+    transition: opacity .18s ease, transform .22s cubic-bezier(.2, .8, .2, 1);
+    pointer-events: none;
+}
+.split-handle:hover::before,
+.split-handle.dragging::before { opacity: .8; transform: translateX(-50%) scaleY(1); }
+
+.split-handle:hover::after {
+    opacity: .95;
+    background: var(--accent);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 16%, transparent), 0 0 14px color-mix(in srgb, var(--accent) 55%, transparent);
+}
+.split-handle.dragging::after {
+    opacity: 1;
+    background: var(--accent);
+    height: calc(var(--grip-len) + 14px);
+    box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent) 22%, transparent), 0 0 20px color-mix(in srgb, var(--accent) 65%, transparent);
+}
+
+/* the divider that lies across the window (panes one above the other): the same grip turned round */
+.split-handle-row { cursor: row-resize; }
+.split-handle-row::after { width: var(--grip-len); height: var(--grip-thick); }
+.split-handle-row.dragging::after { width: calc(var(--grip-len) + 14px); height: var(--grip-thick); }
+.split-handle-row::before {
+    top:        50%;
+    bottom:     auto;
+    left:       10%;
+    right:      10%;
+    width:      auto;
+    height:     2px;
+    transform:  translateY(-50%) scaleX(.35);
+    background: linear-gradient(to right, transparent, var(--accent) 22%, var(--accent) 78%, transparent);
+}
+.split-handle-row:hover::before,
+.split-handle-row.dragging::before { transform: translateY(-50%) scaleX(1); }
+.split-handle-side { cursor: col-resize; }
+
+/* card themes: the panes are cards with the window's own backdrop between them, the divider is only the grip and its line */
+[data-theme="embedded"] .split-handle,
 [data-theme="embedded"] .split-handle:hover,
 [data-theme="embedded"] .split-handle.dragging { background: transparent; }
-[data-theme="embedded"] .split-handle::after { width: 4px; height: 40px; border-radius: 4px; background: var(--text-primary); opacity: .18; transition: opacity .15s, background .15s; }
-[data-theme="embedded"] .split-handle:hover::after,
-[data-theme="embedded"] .split-handle.dragging::after { opacity: .9; background: var(--accent); }
+
+@media (prefers-reduced-motion: reduce) {
+    .split-handle::before, .split-handle::after { transition: none; }
+}
 
 /* Скрываем handle когда открыты настройки или любой модал */
 body.settings-open .split-handle { display: none !important; }
 body:has(.modal.show) .split-handle { display: none !important; }
 
 /* Границы сетки-раскладок 2top1bottom/1top2bottom (см. split.js
-   _positionGridHandles) — тот же внешний вид/поведение, что и .split-handle
-   выше, только с другим курсором под свою ось перетаскивания. Позиция
-   (top/left/width/height) полностью считается и проставляется инлайн из
-   JS — здесь только курсор и вид индикатора-палочки через общий класс
-   .split-handle. */
-.split-handle-row { cursor: row-resize; }
-.split-handle-row::after { width: 32px; height: 2px; }
-.split-handle-side { cursor: col-resize; }
+   _positionGridHandles) и свободной раскладки — тот же внешний вид, что и у
+   .split-handle выше; позиция (top/left/width/height) считается и
+   проставляется инлайн из JS, здесь — только курсор и ось «таблетки». */
 
 /* ── Right-pane messenger picker ────────────────────────────────── */
 /* position:fixed + z-index are set by JS (appended to document.body) */

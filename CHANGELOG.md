@@ -11,6 +11,8 @@ The format is based on Keep a Changelog. This project does not currently follow 
 ## [3.9.1] - 2026-11-19 (beta)
 
 ### Fixed
+- The drag handle of a split divider: in the card themes a rule for the vertical bar was stronger than the one for the horizontal bar, so a divider lying across the window wore a bar standing along it. The grip size now comes from two variables the horizontal divider swaps; the grip is a visible pill at rest, lights up with a glow and a line along the divider under the pointer and while dragging (styles.css).
+- A team's own logo is not turned black in the light theme (styles-371.css).
 - «Все мессенджеры»: the history of the open chat is remembered (renderer/all-inbox/history-memory.js): the messenger's page keeps only a window of it and dropped the newest messages when earlier ones loaded, so the list jumped and never reached further back. The tab is brought back to its newest messages when the person is at the newest ones.
 - MAX list is read with the folder «Все» chosen in the tab (a folder chosen there cut the chats of the others).
 - A file saved from a conversation is entered in the downloads list, its folder is made if gone, the message names the folder.
@@ -19,6 +21,7 @@ The format is based on Keep a Changelog. This project does not currently follow 
 - Notes: the list on screen is refreshed underneath on account revalidation instead of being wiped (renderer/notes-cache.js).
 
 ### Added
+- Team look (owner's «Управление»): any theme of the program for all employees and the name of the program, shown with the team's logo instead of «Centrio» in the title bar, the start screen and «О программе» and in the window title (shared/org-brand.js cleans and cuts the name to 24 visible characters everywhere; renderer/org-branding.js applyBrandName).
 - The card of a chat for MAX and WhatsApp (header click): name, kind, members, description, number, own link.
 - A video inside a Telegram album has a play button with its length and plays on a click.
 
