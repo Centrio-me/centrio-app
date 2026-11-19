@@ -11,6 +11,8 @@ The format is based on Keep a Changelog. This project does not currently follow 
 ## [3.9.1] - 2026-11-19 (beta)
 
 ### Fixed
+- «Все мессенджеры»: the unread count of a MAX chat is read from the round `counter` of the row (MAX stopped drawing it in a text of class text--20): no counters were shown (Oleg, 3.9.1-beta.2). The older place is still read first (renderer/all-inbox/adapters.js, `__mxUnread`).
+- The log tells what is sent to the system browser and from where ([external-open], the address without its query).
 - The sign-in of Mail.ru (through VK ID: e.mail.ru → login.vk.com → account.mail.ru → id.vk.ru) and of Tilda (tilda.cc) was sent to the system browser by the tab's «other site» rule and by the team's strict-mode lock. shared/site-families.js holds the exact sign-in hosts of identity providers and the sites' second own domains, and both places use it.
 - The per-tab microphone and camera switches (3.9.0) were never saved: `mediaPermissions` was missing from ALLOWED_STORE_ROOTS (main.js), from the window's hydrated keys (renderer.js) and from the profile keys (main/ipc/profile.js), so the click was thrown away in silence and the menu said «on» again after a restart.
 - The drag handle of a split divider: in the card themes a rule for the vertical bar was stronger than the one for the horizontal bar, so a divider lying across the window wore a bar standing along it. The grip size now comes from two variables the horizontal divider swaps; the grip is a visible pill at rest, lights up with a glow and a line along the divider under the pointer and while dragging (styles.css).

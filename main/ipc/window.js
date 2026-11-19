@@ -1283,6 +1283,8 @@ function registerWindowIpc({ getMainWindow, isQuittingRef }) {
 
     safeOn('open-url', async (_event, url) => {
         if (!url || typeof url !== 'string') return
+        // what is sent to the system browser, and from where, is in the log (the address without its query: no tokens)
+        try { const u = new URL(url); log.info(`[external-open] ${u.protocol}//${u.host}${u.pathname.slice(0, 80)}`) } catch {}
 
         // Only allow safe external protocols.
         // 'tg:' added for the deep-link fallback path (renderer/messengers.js,

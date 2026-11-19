@@ -1221,7 +1221,10 @@ function registerAppEvents({
                 const decision = policy.decideNavigation({ messengerId: policy.messengerIdForSession(contents.session, (p) => session.fromPartition(p)), targetUrl: url })
                 if (decision === 'allow') return
                 event.preventDefault()
-                if (decision === 'external') shell.openExternal(url).catch(() => {})
+                if (decision === 'external') {
+                    try { const u = new URL(url); log.info(`[external-open] (team lock) ${u.protocol}//${u.host}${u.pathname.slice(0, 80)}`) } catch {}
+                    shell.openExternal(url).catch(() => {})
+                }
             }
             contents.on('will-navigate', teamNavigationGuard)
             // a redirect through a link shim (vk.com/away.php, google.com/url) is checked too (review I2)

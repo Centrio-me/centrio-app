@@ -292,6 +292,16 @@ const telegram = {
 
 // the name of a MAX row, shared by reading the list and finding a chat to open (max-title.js)
 const MAX_TITLE_HELPER = `var __ciMaxTitle = (${maxTitleOf.toString()});`
+// The unread count of a row of MAX's list. MAX draws it in a round counter (class `counter`, inside `indicator`) — the row's own
+// texts do not hold it any more, and every chat looked read in «Все мессенджеры» (Oleg, 3.9.1-beta.2: 18, 1 and 19 in the web
+// version, none here). The old place (a text of class text--20) is still read first, in the loop of the list.
+const MAX_UNREAD_HELPER = `
+function __mxUnread(row, text) {
+    var counter = row.querySelector('.indicator .counter, .counter');
+    var raw = String(counter ? text(counter) : '').replace(/\\s+/g, '');
+    return /^[0-9]+[+KkКк]?$/.test(raw) ? raw : 0;
+}
+`
 
 const max = {
     id: 'max',
@@ -299,7 +309,7 @@ const max = {
     // MAX draws only the chats on screen and keeps no list anywhere else: the rows are remembered as they are seen,
     // and while the tab is not on screen its list is walked through now and then (scrolled down a screen at a time, then
     // back to where it was), so every chat gets on the list. New messages lift a chat to the top, where it is seen at once.
-    listScript: ({ sweep }) => `(function () {${AVATAR_HELPER}${MAX_TITLE_HELPER}
+    listScript: ({ sweep }) => `(function () {${AVATAR_HELPER}${MAX_TITLE_HELPER}${MAX_UNREAD_HELPER}
         function readCells() {
             var cells = document.querySelectorAll('.scrollListContent > div.item button.cell');
             var out = [], seen = {};
@@ -316,6 +326,8 @@ const max = {
                     if (/text--20/.test(cls) && /^\\d+$/.test(text)) { unread = text; continue; }
                     preview.push(text);
                 }
+                var counted = __mxUnread(c, __ciText);
+                if (counted) unread = counted;
                 if (!title || seen[title]) continue; seen[title] = 1;
                 // in a group MAX writes «Автор: слова» in one text with the author in a span of its own: the words were not
                 // counted (they sit in the text that holds the author), so the group looked private and its line held only the name
@@ -414,4 +426,4 @@ function adapterFor(url) {
     return ADAPTERS.find((a) => a.match(String(url || ''))) || null
 }
 
-module.exports = { adapterFor, ADAPTERS, MAX_CHATS, AVATAR_HELPER }
+module.exports = { adapterFor, ADAPTERS, MAX_CHATS, AVATAR_HELPER, MAX_UNREAD_HELPER }
