@@ -477,6 +477,13 @@ html[data-mode="light"] .aic-row.is-out .aic-check, html[data-theme="light"] .ai
 .aic-album-item { position: absolute; padding: 1px; box-sizing: border-box; }
 .aic-album-item img { display: block; width: 100%; height: 100%; object-fit: cover; background: rgba(127, 127, 127, .14); }
 .aic-photo.is-zoomable, .aic-album-item.is-zoomable { cursor: zoom-in; }
+/* a video among the pictures of an album (3.9.1): a round button over it and its length */
+.aic-album-play { position: absolute; left: 50%; top: 50%; width: 44px; height: 44px; margin: -22px 0 0 -22px; padding: 0; border: 0; border-radius: 50%; display: grid; place-items: center; background: rgba(0, 0, 0, .5); color: #fff; cursor: pointer; backdrop-filter: blur(4px); transition: transform .15s ease, background .15s ease; }
+.aic-album-play:hover { transform: scale(1.06); background: rgba(0, 0, 0, .62); }
+.aic-album-play:focus-visible { outline: 2px solid var(--accent, #5AA9FF); outline-offset: 2px; }
+.aic-album-play-tri { width: 0; height: 0; margin-left: 3px; border-style: solid; border-width: 8px 0 8px 13px; border-color: transparent transparent transparent currentColor; }
+.aic-album-play-time { position: absolute; left: 6px; bottom: 6px; margin: 0; padding: 1px 6px; border-radius: 8px; background: rgba(0, 0, 0, .55); font-size: 11px; line-height: 16px; transform: translateY(0); }
+.aic-album-item.is-loading .aic-album-play { animation: aic-voice-spin 1s linear infinite; border: 2px solid transparent; border-top-color: #fff; }
 
 /* stickers and 1–3 lonely emoji: no bubble at all */
 .aic-bubble.is-sticker, .aic-bubble.is-jumbo { padding: 0 0 22px; background: none; box-shadow: none; }

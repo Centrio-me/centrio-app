@@ -221,7 +221,11 @@ const telegram = {
                     src: p ? __ciPicture('tg' + mid + '_' + n, p) : '',
                     picture: p ? 'tg' + mid + '_' + n : '',
                     x: (rects[n].left - minX) / w, y: (rects[n].top - minY) / h, w: rects[n].width / w, h: rects[n].height / h,
-                    ratio: w / h
+                    ratio: w / h,
+                    // a video among the pictures: its length and its own message number, to be played from our window
+                    video: !!items[n].querySelector('.video-time, .video-play, video'),
+                    duration: __ciText(items[n].querySelector('.video-time')),
+                    mid: String(items[n].getAttribute('data-mid') || '')
                 });
             }
             return list;
@@ -371,7 +375,9 @@ const telegram = {
             else if (b.querySelector('.document-name')) kind = 'file';
             // a shared contact: Telegram draws its name and number in a card
             else if (b.querySelector('.contact')) kind = 'contact';
-            else if (own(b, 'img.media-photo')) kind = 'photo';
+            // a video or a GIF whose player the page has not drawn yet shows its poster as a picture with the time on it: it is
+            // still a video (3.9.1, Oleg: «некоторые медиа в телеграмме грузятся как картинки»)
+            else if (own(b, 'img.media-photo')) kind = b.querySelector('.video-time, .video-play') ? 'video' : 'photo';
             var nameEl = /hide-name/.test(cls) ? null : b.querySelector('.name .peer-title, .colored-name .peer-title');
             var img = (kind === 'file' ? own(b, '.document img, .document-thumb img, img.media-photo') : own(b, 'img.media-photo')) || (kind === 'sticker' ? own(b, 'img.media-sticker') : null) || (kind === 'video' ? own(b, 'img.thumbnail, video') : null);
             var group = groupOf(b);

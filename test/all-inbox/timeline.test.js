@@ -131,3 +131,18 @@ test('the topic of a group with topics stands as a pill after the day mark', () 
     assert.deepEqual(shape, ['day', 'msg', 'day', 'note:topic', 'msg', 'msg'])
     assert.equal(rows[3].text, '📆 Расписание')
 })
+
+test('a video inside a Telegram album is marked with its length and the number of its own message', () => {
+    const album = [
+        { src: 'data:image/png;base64,AA', picture: 'k1', x: 0, y: 0, w: 0.5, h: 1, ratio: 1 },
+        { src: 'data:image/png;base64,BB', picture: 'k2', x: 0.5, y: 0, w: 0.5, h: 1, ratio: 1, video: true, duration: '0:56', mid: '4295069522' }
+    ]
+    const [row] = msgs([{ id: '1', kind: 'photo', album, at: NOW }])
+    assert.equal(row.album[0].video, false)
+    assert.equal(row.album[1].video, true)
+    assert.equal(row.album[1].duration, '0:56')
+    assert.equal(row.album[1].mid, '4295069522')
+    // a number that is not digits only reaches the window as nothing
+    const [bad] = msgs([{ id: '2', kind: 'photo', album: [{ ...album[0] }, { ...album[1], mid: '12);alert(1)' }], at: NOW }])
+    assert.equal(bad.album[1].mid, '121')
+})

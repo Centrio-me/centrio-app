@@ -267,7 +267,7 @@ function photo(m, onZoom, ctx = {}) {
     return wrap
 }
 
-function album(m, onZoom) {
+function album(m, onZoom, onVideo) {
     const ratio = m.album[0].ratio || 1
     const width = MEDIA_MAX_W
     const wrap = el('div', 'aic-album')
@@ -287,6 +287,16 @@ function album(m, onZoom) {
             cell.append(img)
             cell.classList.add('is-zoomable')
             cell.addEventListener('click', () => onZoom(m, item.src, item.picture || ''))
+        }
+        // a video among the pictures plays on a click, like a video of its own
+        if (item.video && item.mid && onVideo) {
+            const play = el('button', 'aic-album-play')
+            play.type = 'button'
+            play.setAttribute('aria-label', 'Воспроизвести видео')
+            play.append(el('span', 'aic-album-play-tri'))
+            play.addEventListener('click', (e) => { e.stopPropagation(); onVideo({ ...m, id: item.mid }, cell) })
+            cell.append(play)
+            if (item.duration) cell.append(el('span', 'aic-album-play-time', item.duration))
         }
         wrap.append(cell)
     }
@@ -414,7 +424,7 @@ function renderMessage(m, ctx) {
     }
 
     // a bubble with a photo is as wide as the photo, its caption wraps under it, like in Telegram
-    if (m.album) { b.append(album(m, ctx.onZoom)); b.style.width = `${MEDIA_MAX_W}px` }
+    if (m.album) { b.append(album(m, ctx.onZoom, ctx.onVideo)); b.style.width = `${MEDIA_MAX_W}px` }
     else if (hasMedia) { const media = photo(m, ctx.onZoom, ctx); b.append(media); b.style.width = media.style.width }
     else if (sticker) {
         const img = el('img', 'aic-sticker')

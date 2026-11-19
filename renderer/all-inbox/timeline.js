@@ -56,7 +56,11 @@ function cleanAlbum(album) {
         src: picture(a && a.src), x: share(a && a.x), y: share(a && a.y), w: share(a && a.w), h: share(a && a.h),
         // the page's own key of the picture: a click asks for it in full size
         picture: a && typeof a.picture === 'string' ? a.picture.slice(0, 240) : '',
-        ratio: Number(a && a.ratio) > 0 ? Number(a.ratio) : 1
+        ratio: Number(a && a.ratio) > 0 ? Number(a.ratio) : 1,
+        // a video among the pictures (3.9.1): its length, and the number of its own message to take it by
+        video: !!(a && a.video === true),
+        duration: a && a.video === true ? String(a.duration || '').slice(0, 12) : '',
+        mid: a && a.video === true ? String(a.mid || '').replace(/[^0-9]/g, '').slice(0, 20) : ''
     }))
 }
 
