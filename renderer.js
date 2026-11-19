@@ -4263,7 +4263,11 @@ function applyTabZoom(level) {
         const { data, name, done } = e.detail || {}
         const ok = await ipcRenderer.invoke('all-inbox:save-file', { data, name }).catch(() => false)
         if (typeof done === 'function') {
-            if (ok === true) done('Файл сохранён')
+            if (ok && typeof ok.path === 'string') {
+                const parts = ok.path.split(/[\\/]/)
+                parts.pop()
+                done(`Файл сохранён в папку «${parts.pop() || ok.path}»`)
+            }
             else if (ok === false) done('Не удалось сохранить файл')
         }
     })

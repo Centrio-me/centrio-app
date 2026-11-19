@@ -5,7 +5,8 @@ const { ipcMain, dialog, clipboard, nativeImage, webContents, app, BrowserWindow
 const fs = require('fs')
 const path = require('path')
 const { checkFiles, dropFiles, startDrag, finishDrag } = require('../services/inboxFiles')
-const { parseFilePayload, parsePicturePayload, autoSavePath } = require('../services/inboxSaveFile')
+const { parseFilePayload, parsePicturePayload, autoSavePath, savedRecord } = require('../services/inboxSaveFile')
+const { addDownloadRecord } = require('./downloads')
 const store = require('../services/store')
 
 const THUMB_PX = 96
@@ -167,7 +168,14 @@ function registerAllInboxIpc({ getMainWindow }) {
             if (picked.canceled || !picked.filePath) return null
             filePath = picked.filePath
         }
-        try { await fs.promises.writeFile(filePath, file.bytes); return true } catch { return false }
+        try {
+            // a folder chosen in the settings may be gone: made again, rather than a failure the person cannot understand
+            await fs.promises.mkdir(path.dirname(filePath), { recursive: true })
+            await fs.promises.writeFile(filePath, file.bytes)
+        } catch { return false }
+        addDownloadRecord(savedRecord({ name: path.basename(filePath), filePath, size: file.bytes.length, now: Date.now(), id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}` }))
+        // where it went is told, so the person knows which folder to look in
+        return { path: filePath }
     })
 
     // «Файл» in WhatsApp (3.8.3): its own document sending needs the files' bytes — only files that pass the usual

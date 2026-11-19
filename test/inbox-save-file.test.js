@@ -93,3 +93,12 @@ test('a file that is already there is not overwritten: a number is added', () =>
     const p = autoSavePath({ askDownload: false, downloadDir: 'D', name: 'a.pdf', exists: (f) => taken.has(f) })
     assert.equal(p, require('path').join('D', 'a (2).pdf'))
 })
+
+test('a file saved from a conversation becomes a finished entry of the downloads list', () => {
+    const { savedRecord } = require('../main/services/inboxSaveFile')
+    const r = savedRecord({ name: 'Договор.pdf', filePath: 'D:\Загрузки\Договор.pdf', size: 2048, now: 1000, id: 'x1' })
+    assert.deepEqual(r, {
+        id: 'x1', filename: 'Договор.pdf', url: '', savePath: 'D:\Загрузки\Договор.pdf',
+        totalBytes: 2048, receivedBytes: 2048, state: 'completed', startTime: 1000, endTime: 1000
+    })
+})

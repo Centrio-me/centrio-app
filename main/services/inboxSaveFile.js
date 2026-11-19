@@ -62,4 +62,12 @@ function autoSavePath({ askDownload, downloadDir, name, exists }) {
     return candidate
 }
 
-module.exports = { parseFilePayload, parsePicturePayload, safeName, autoSavePath, MAX_FILE_BYTES }
+/**
+ * The entry of the downloads list for a file saved from a conversation: it was written without one, so «Файл сохранён»
+ * left nothing to find in the list (Oleg, 2026-11-18: «ни в списке загрузок, ни в папке файла нет»).
+ */
+function savedRecord({ name, filePath, size, now, id }) {
+    return { id, filename: name, url: '', savePath: filePath, totalBytes: size, receivedBytes: size, state: 'completed', startTime: now, endTime: now }
+}
+
+module.exports = { parseFilePayload, parsePicturePayload, safeName, autoSavePath, savedRecord, MAX_FILE_BYTES }

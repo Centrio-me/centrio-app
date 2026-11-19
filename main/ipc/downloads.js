@@ -32,6 +32,13 @@ function broadcastDownloadUpdate(record) {
     }
 }
 
+// A file saved by Centrio itself (from a conversation in «Все мессенджеры»): it is entered in the list like any download
+function addDownloadRecord(record) {
+    downloadsHistory.unshift(record)
+    persistDownloadsHistory()
+    broadcastDownloadUpdate(record)
+}
+
 function wireSessionDownloads(ses, getMainWindow) {
     if (!ses || wiredDownloadSessions.has(ses)) return
     wiredDownloadSessions.add(ses)
@@ -382,6 +389,7 @@ function registerDownloadsIpc({ getMainWindow }) {
 }
 
 module.exports = {
+    addDownloadRecord,
     registerDownloadsIpc,
     updateDownloadHandler,
     wireSessionDownloads
