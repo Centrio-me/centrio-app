@@ -59,3 +59,10 @@ test('a person without a number shows the address, and a bot says it is a bot', 
 test('a number that is not a number is not shown', () => {
     assert.equal(describeInfo({ kind: 'user', title: 'X', phone: 'abc<script>' }).subtitle, 'Контакт')
 })
+
+test('a card of another messenger shows its own https link and never a t.me one', () => {
+    const { describeInfo } = require('../../renderer/all-inbox/info-card')
+    assert.equal(describeInfo({ kind: 'channel', title: 'К', members: 5, link: 'https://max.ru/join/abc' }).link, 'https://max.ru/join/abc')
+    assert.equal(describeInfo({ kind: 'channel', title: 'К', link: 'javascript:alert(1)' }).link, '')
+    assert.equal(describeInfo({ kind: 'channel', title: 'К', username: 'durov' }).link, 'https://t.me/durov')
+})

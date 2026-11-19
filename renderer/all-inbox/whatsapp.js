@@ -332,6 +332,27 @@ function whatsappChat({ AVATAR_HELPER, IMAGE_HELPER }) {
                 messages: out
             };
         })()`,
+        // the card of the chat (3.9.1, Oleg: «у чатов нет возможности открыть окошко с информацией о чате (Макс, ВА)»): read from
+        // the page's own store, nothing is opened in the tab
+        INFO: `(function () {${WA_STORE}
+            var C = __waStore();
+            if (!C || !C.Chat.getActive) return null;
+            var a = C.Chat.getActive();
+            if (!a) return null;
+            var server = a.id && a.id.server, title = __waTitle(C, a);
+            if (server === 'g.us' || a.isGroup) {
+                var gm = a.groupMetadata || {}, parts = gm.participants;
+                var n = Number(gm.size) || (parts && (parts.length != null ? parts.length : (parts.getModelsArray ? parts.getModelsArray().length : 0))) || 0;
+                return { kind: 'group', title: String(title || ''), username: '', phone: '', about: String(gm.desc || gm.displayedDesc || ''), members: n };
+            }
+            if (server === 'newsletter' || a.isNewsletter) {
+                var nl = a.newsletterMetadata || {};
+                return { kind: 'channel', title: String(title || ''), username: '', phone: '', about: String(nl.description || ''), members: Number(nl.subscribersCount || nl.subscribers_count || 0) || 0 };
+            }
+            var ct = a.contact || {}, wid = a.id || {};
+            var phone = (ct.phoneNumber && ct.phoneNumber.user) || (server === 'c.us' ? wid.user : '') || '';
+            return { kind: 'user', title: String(title || ''), username: '', phone: String(phone), about: '', members: 0 };
+        })()`,
         COMPOSER: `(function () {
             var el = document.querySelector('#main footer [contenteditable="true"]');
             if (!el) return null;

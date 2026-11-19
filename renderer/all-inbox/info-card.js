@@ -49,7 +49,8 @@ function describeInfo(info) {
         title: String(info.title || ''),
         subtitle,
         about: String(info.about || '').trim(),
-        link: USERNAME.test(username) ? `https://t.me/${username}` : ''
+        // a messenger's own address (MAX, 3.9.1) when it gives one; Telegram's comes from the name
+        link: /^https:\/\/\S+$/.test(String(info.link || '')) ? String(info.link) : (USERNAME.test(username) ? `https://t.me/${username}` : '')
     }
 }
 

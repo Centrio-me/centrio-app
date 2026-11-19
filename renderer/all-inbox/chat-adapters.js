@@ -1271,6 +1271,48 @@ const max = {
     })()`,
     // the bar «Редактирование сообщения» of MAX's field is closed; true when the tab was in editing (3.9.1: a failed edit
     // left it open, and the next message went in place of the old one, Oleg 2026-11-18)
+    // the card of the chat (3.9.1, Oleg: «у чатов нет возможности открыть окошко с информацией о чате (Макс, ВА)»): MAX shows
+    // the profile of a chat in place of the conversation — the header is pressed, what the profile says is read, and the
+    // page goes back to the conversation
+    INFO: `(function () {
+        var head = document.querySelector('.openedChat button.main.content--clickable');
+        if (!head) return null;
+        function tabs() { return [].filter.call(document.querySelectorAll('button.tab'), function (b) { return b.offsetParent; }); }
+        function back() {
+            var bs = [].filter.call(document.querySelectorAll('button[aria-label="Перейти назад"]'), function (b) { return b.offsetParent; });
+            if (bs.length) bs[bs.length - 1].click();
+        }
+        head.click();
+        return new Promise(function (resolve) {
+            var started = Date.now();
+            (function wait() {
+                var t = tabs()[0];
+                if (!t) { if (Date.now() - started > 3000) return resolve(null); return setTimeout(wait, 100); }
+                var out = null;
+                try {
+                    var p = t;
+                    for (var i = 0; i < 14 && p.parentElement; i++) { p = p.parentElement; if (p.getBoundingClientRect().height > 400 && p.querySelector('.text')) break; }
+                    var leaves = [].filter.call(p.querySelectorAll('*'), function (e) { return e.children.length === 0 && String(e.textContent || '').trim(); });
+                    var texts = leaves.map(function (e) { return String(e.textContent).trim(); });
+                    var title = texts[0] || '', sub = texts[1] || '';
+                    var members = 0, kind = 'user';
+                    var m = /([0-9][0-9\\s\\u00a0]*)\\s*(подписчик|участник)/i.exec(sub);
+                    if (m) { members = Number(m[1].replace(/[^0-9]/g, '')) || 0; kind = /подписчик/i.test(m[2]) ? 'channel' : 'group'; }
+                    var phone = '', about = '', link = '';
+                    for (var k = 0; k < leaves.length; k++) {
+                        if (String(leaves[k].className).indexOf('action-small') < 0) continue;
+                        var label = texts[k], value = texts[k + 1] || '';
+                        if (/телефон/i.test(label)) phone = value;
+                        else if (/описан|о себе|о канале|о группе|био|информац/i.test(label)) about = value;
+                        else if (/имя пользователя|ссылк/i.test(label)) link = /^https?:/i.test(value) ? value.replace(/^http:/i, 'https:') : (/^[a-z0-9.-]+\\.[a-z]{2,}\\//i.test(value) ? 'https://' + value : '');
+                    }
+                    out = { kind: kind, title: title, link: link, phone: phone, about: about, members: members };
+                } catch (e) { out = null; }
+                back();
+                resolve(out);
+            })();
+        });
+    })()`,
     EDITING: `(function () {
         var title = [].filter.call(document.querySelectorAll('span.title'), function (e) { return /Редактирование сообщения/.test(e.textContent); })[0];
         var bar = title && title.closest('.action');
