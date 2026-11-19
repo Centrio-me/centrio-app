@@ -13,6 +13,7 @@
 
 const { createSaveQueue } = require('./notes-save-queue')
 const { applyFormat, toHtml, stripMarks, noteToMarkedText } = require('./notes-format')
+const { staleAction, sameNotes } = require('./notes-cache')
 
 function bindNotesUi({ store, tGet, authorizedInvoke, invokeIpc, openRightPanel, closeRightPanel, getUserIsPro, requirePro, onNotesChange, onSendToChat = null }) {
     const btn = document.getElementById('notesBtn')
@@ -451,7 +452,7 @@ function bindNotesUi({ store, tGet, authorizedInvoke, invokeIpc, openRightPanel,
         return false
     }
 
-    async function loadNotes() {
+    async function loadNotes({ quiet = false } = {}) {
         if (loading) return
         loading = true
         // BUGFIX (2026-09-14, "клик — не открывается — двойной клик — опять
@@ -478,12 +479,17 @@ function bindNotesUi({ store, tGet, authorizedInvoke, invokeIpc, openRightPanel,
         loading = false
         if (!result?.success) {
             if (await handleAuthError(result)) return
+            // a quiet refresh that failed leaves the list on screen as it is
+            if (quiet) return
             if (!notes.length) {
                 listEl.innerHTML = `<div class="app-notif-empty">${escapeHtml(tGet('notes.syncError') || 'Не удалось синхронизировать заметки')}</div>`
             }
             return
         }
-        notes = result.data?.notes || []
+        const fresh = result.data?.notes || []
+        // a refresh that brings nothing new does not draw the list again (a click under way would be lost)
+        if (quiet && sameNotes(fresh, notes)) return
+        notes = fresh
         renderList()
     }
 
@@ -1034,7 +1040,10 @@ function bindNotesUi({ store, tGet, authorizedInvoke, invokeIpc, openRightPanel,
         // при следующем открытии панели заново подтянуть актуальный список
         // (например, после входа в другой аккаунт на этом же устройстве).
         invalidate() {
-            notes = []
+            // the list on screen is refreshed from the server underneath it, not wiped (notes-cache.js)
+            const open = panel.classList.contains('active') || document.body.classList.contains('notes-window-open')
+            if (staleAction(open) === 'refresh') loadNotes({ quiet: true })
+            else notes = []
         }
     }
 }
