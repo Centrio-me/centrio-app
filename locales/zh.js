@@ -3,6 +3,7 @@ module.exports = {
     addMessenger: '添加应用',
 
     ctx: {
+        tileReload: '刷新', tileSound: '声音', tileWindow: '窗口', tileAwake: '保持唤醒', tileMic: '麦克风', tileCam: '摄像头',
         moveToWorkspace: '移动到工作区',
         translate: '翻译选定内容',
          sound: "通知声音",

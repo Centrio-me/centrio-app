@@ -99,16 +99,11 @@ function createUnreadApi({
         if (!ctxMute) return
 
         const muted = state.mutedMessengers[id] === true
-        ctxMute.innerHTML = muted
-            ? `<svg width="13" height="13" viewBox="0 0 24 24" fill="none">
-                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" stroke="currentColor" stroke-width="2"/>
-                <path d="M13.73 21a2 2 0 0 1-3.46 0" stroke="currentColor" stroke-width="2"/>
-               </svg> ${tGet('notifications.unmute')}`
-            : `<svg width="13" height="13" viewBox="0 0 24 24" fill="none">
-                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" stroke="currentColor" stroke-width="2"/>
-                <path d="M13.73 21a2 2 0 0 1-3.46 0" stroke="currentColor" stroke-width="2"/>
-                <line x1="2" y1="2" x2="22" y2="22" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-               </svg> ${tGet('notifications.mute')}`
+        // same drawing as the menu itself (index.html #ctxMute): a bell, struck through while the tab is not muted
+        const bell = '<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0"/>'
+        const slash = '<path d="M3 3l18 18"/>'
+        ctxMute.innerHTML = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' +
+            bell + (muted ? '' : slash) + '</svg><span class="ctx-label">' + tGet(muted ? 'notifications.unmute' : 'notifications.mute') + '</span>'
     }
 
     function updateMuteAllBtn() {

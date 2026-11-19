@@ -3,6 +3,7 @@ module.exports = {
     addMessenger: 'Добавить сервис',
 
     ctx: {
+        tileReload: 'Обновить', tileSound: 'Звук', tileWindow: 'В окне', tileAwake: 'Не усыплять', tileMic: 'Микрофон', tileCam: 'Камера',
          sound: "Звук уведомления",
          filesInWindows: "Файлы — в отдельных окнах",
          micAccess: "Микрофон в этой вкладке",

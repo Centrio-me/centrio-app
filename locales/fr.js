@@ -3,6 +3,7 @@ module.exports = {
     addMessenger: 'Ajouter un service',
 
     ctx: {
+        tileReload: 'Actualiser', tileSound: 'Son', tileWindow: 'Fenêtre', tileAwake: 'Garder active', tileMic: 'Micro', tileCam: 'Caméra',
         moveToWorkspace: 'Vers l\'espace',
         translate: 'Traduire la sélection',
          sound: "Son de notification",

@@ -93,6 +93,8 @@ function createContextMenusApi({
         }
 
         updateContextMuteLabel(messengerId)
+        const headName = document.getElementById('ctxHeadName')
+        if (headName) { headName.textContent = (messenger && messenger.name) || ''; headName.title = headName.textContent }
         document.dispatchEvent(new CustomEvent('contextmenu-opened', { detail: { messengerId } }))
         contextMenu.style.left = `${e.clientX}px`
         contextMenu.style.top = `${e.clientY}px`
