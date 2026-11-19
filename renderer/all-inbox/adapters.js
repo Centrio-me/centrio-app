@@ -355,6 +355,13 @@ const max = {
                 setTimeout(step, ${MAX_WALK_STEP_MS});
             })();
         }
+        // the tab shows one of MAX's folders («Работа», «Личные»…): its list holds only the chats of that folder, and the chats of
+        // the others fell out of ours (Oleg, 2026-11-18). «Все» is chosen first, and the next read sees every chat
+        var folderAll = document.querySelector('.foldersViewport button.button');
+        if (folderAll && !/button--active/.test(folderAll.className)) {
+            folderAll.click();
+            return Object.keys(cache).map(function (k) { return cache[k].row; });
+        }
         remember(readCells());
         if (${sweep ? 1 : 0} && !window.__ciMaxWalking && Date.now() - (window.__ciMaxWalkedAt || 0) > ${MAX_WALK_EVERY_MS}) walk();
         return Object.keys(cache).map(function (k) { return cache[k].row; });
