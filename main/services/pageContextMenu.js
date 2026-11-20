@@ -127,4 +127,4 @@ function handleAction({ getMainWindow, language }, sender, wcId, action, payload
     try { return perform(guest, String(action), payload, language()) } catch { return false }
 }
 
-module.exports = { attach, handleAction, safeExternal, searchUrl }
+module.exports = { attach, handleAction, safeExternal, searchUrl, guestFor }

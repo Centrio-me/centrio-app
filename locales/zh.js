@@ -3,6 +3,17 @@ module.exports = {
     addMessenger: '添加应用',
 
     ctx: {
+        fileSaved: "文件已保存：{name}",
+        fileFail: "无法下载文件“{name}”：连接中断或服务拒绝。请重试。",
+        imgSaved: "图片已保存：{name}",
+        imgShow: "在文件夹中显示",
+        imgFail_network: "无法下载图片：与服务器没有连接。请检查网络后重试。",
+        imgFail_denied: "该服务未登录时不提供此图片。请全屏打开后从那里保存。",
+        imgFail_notImage: "此地址不是图片。请全屏打开后从那里保存。",
+        imgFail_tooBig: "图片太大（超过 60 MB）。请使用该服务自带的按钮下载。",
+        imgFail_folder: "无法将文件写入文件夹“{dir}”。请在 设置 → 下载 中选择其他文件夹。",
+        imgFail_gone: "页面上已没有这张图片。请重新打开后再试。",
+        imgFail_generic: "无法保存图片。请全屏打开后从那里保存。",
         tileReload: '刷新', tileSound: '声音', tileWindow: '窗口', tileAwake: '保持唤醒', tileMic: '麦克风', tileCam: '摄像头',
         moveToWorkspace: '移动到工作区',
         translate: '翻译选定内容',

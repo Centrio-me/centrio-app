@@ -8,6 +8,12 @@ The format is based on Keep a Changelog. This project does not currently follow 
 
 ## [Unreleased]
 
+### Fixed
+- «Сохранить изображение» in the page menu worked never since 3.5.0: the window read `.success` from a plain path string and quietly returned, so no file was ever written. The main process now gets the picture itself (main/services/imageSave.js): a data: address, the address over the tab's own session (cookies, no CORS), the page for blob:, a canvas, or a picture of the element on screen as the last way; the file gets its REAL extension from the bytes (a .jpg that held a WebP is saved as .webp) and a name that does not overwrite.
+- A picture the browser did not report as one (canvas, CSS background, one under a layer) now gets the item too: the page is asked what is under the pointer.
+- Every outcome is said in the window (renderer/save-toast.js): «Картинка сохранена: name — Показать в папке» or why not, in 7 languages; the files a messenger downloads on its own (Telegram «Загрузить», a file from a chat) get the same message when they end. The channels used are in the preload lists (a missing one answered `blocked_channel` and did nothing).
+- Check before a release: scripts/image-save-check (13 kinds of pictures, 5 runs, 65 of 65).
+
 ## [3.9.2] - 2026-11-19
 
 (3.9.1 was only a test version, 3.9.1-beta.1…3; this release holds everything of it.)

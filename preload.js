@@ -99,7 +99,8 @@ const validReceiveChannels = new Set([
     'detached:opened',
     'detached:closed',
     // A right-click the page did not handle itself: the main window draws the menu (main/services/pageContextMenu.js).
-    'pagemenu:show'
+    'pagemenu:show',
+    'download-toast'
 ])
 
 const invokeChannelMap = {
@@ -137,6 +138,8 @@ const validInvokeChannels = new Set([
     'all-inbox:stash-picture',
     'all-inbox:read-files',
     'pagemenu:action',
+    'pagemenu:save-image',
+    'pagemenu:probe-image',
     'detached:focus',
     'detached:close',
     'detached:list',

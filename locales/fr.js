@@ -3,6 +3,17 @@ module.exports = {
     addMessenger: 'Ajouter un service',
 
     ctx: {
+        fileSaved: "Fichier enregistré : {name}",
+        fileFail: "Impossible de télécharger le fichier « {name} » : connexion interrompue ou refus du service. Réessayez.",
+        imgSaved: "Image enregistrée : {name}",
+        imgShow: "Afficher dans le dossier",
+        imgFail_network: "Impossible de télécharger l’image : pas de connexion au serveur. Vérifiez internet et réessayez.",
+        imgFail_denied: "Le service ne donne pas cette image sans connexion. Ouvrez-la en plein écran et enregistrez-la de là.",
+        imgFail_notImage: "Cette adresse n’est pas une image. Ouvrez-la en plein écran et enregistrez-la de là.",
+        imgFail_tooBig: "L’image est trop grande (plus de 60 Mo). Téléchargez-la avec le bouton du service.",
+        imgFail_folder: "Impossible d’écrire le fichier dans le dossier « {dir} ». Choisissez-en un autre dans Paramètres → Téléchargements.",
+        imgFail_gone: "L’image n’est plus sur la page. Rouvrez-la et réessayez.",
+        imgFail_generic: "Impossible d’enregistrer l’image. Ouvrez-la en plein écran et enregistrez-la de là.",
         tileReload: 'Actualiser', tileSound: 'Son', tileWindow: 'Fenêtre', tileAwake: 'Garder active', tileMic: 'Micro', tileCam: 'Caméra',
         moveToWorkspace: 'Vers l\'espace',
         translate: 'Traduire la sélection',

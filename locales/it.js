@@ -3,6 +3,17 @@ module.exports = {
     addMessenger: 'Aggiungi servizio',
 
     ctx: {
+        fileSaved: "File salvato: {name}",
+        fileFail: "Impossibile scaricare il file «{name}»: connessione interrotta o servizio ha rifiutato. Riprova.",
+        imgSaved: "Immagine salvata: {name}",
+        imgShow: "Mostra nella cartella",
+        imgFail_network: "Impossibile scaricare l’immagine: nessuna connessione al server. Controlla internet e riprova.",
+        imgFail_denied: "Il servizio non fornisce questa immagine senza accesso. Aprila a schermo intero e salvala da lì.",
+        imgFail_notImage: "A questo indirizzo non c’è un’immagine. Aprila a schermo intero e salvala da lì.",
+        imgFail_tooBig: "L’immagine è troppo grande (oltre 60 MB). Scaricala con il pulsante del servizio.",
+        imgFail_folder: "Impossibile scrivere il file nella cartella «{dir}». Scegline un’altra in Impostazioni → Download.",
+        imgFail_gone: "L’immagine non è più nella pagina. Riaprila e riprova.",
+        imgFail_generic: "Impossibile salvare l’immagine. Aprila a schermo intero e salvala da lì.",
         tileReload: 'Aggiorna', tileSound: 'Suono', tileWindow: 'Finestra', tileAwake: 'Resta attiva', tileMic: 'Microfono', tileCam: 'Fotocamera',
         moveToWorkspace: 'Nello spazio',
         translate: 'Traduci selezionato',

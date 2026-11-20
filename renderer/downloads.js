@@ -1,9 +1,25 @@
+const { showSaveToast } = require('./save-toast')
 function bindDownloads({
     store,
     ipcRenderer,
     invokeIpc,
     tGet
 }) {
+    // How a file the messenger downloaded ended (main/ipc/downloads.js sends it): saved with a way to see it, or a plain failure
+    ipcRenderer.on('download-toast', (_event, info) => {
+        const name = (info && info.name) || ''
+        if (info && info.state === 'completed') {
+            showSaveToast({
+                kind: 'ok',
+                text: tGet('ctx.fileSaved').replace('{name}', name),
+                actionLabel: tGet('ctx.imgShow'),
+                onAction: () => ipcRenderer.send('downloads:show-in-folder', info.id)
+            })
+        } else if (info) {
+            showSaveToast({ kind: 'error', text: tGet('ctx.fileFail').replace('{name}', name) })
+        }
+    })
+
     function updateDownloadDirUI(dir) {
         const text = document.getElementById('downloadDirText')
         const clearBtn = document.getElementById('clearDownloadDirBtn')

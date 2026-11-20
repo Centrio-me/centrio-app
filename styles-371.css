@@ -317,3 +317,21 @@ img.is-org-logo { border-radius: 22%; }
 .context-menu.ctx-v2 .context-item.context-danger { color: var(--danger); }
 .ctx-v2 .context-danger:hover { background: color-mix(in srgb, var(--danger) 16%, transparent) !important; color: var(--danger) !important; }
 .ctx-v2 .context-danger svg { opacity: 1; }
+
+/* ── The message after saving a picture or a file (renderer/save-toast.js): plain, at the bottom, coloured from the theme ── */
+.save-toast {
+    position: fixed; left: 50%; bottom: 34px; z-index: 100020; max-width: min(560px, calc(100vw - 48px));
+    display: flex; align-items: center; gap: 12px; padding: 11px 12px 11px 16px; border-radius: 12px;
+    background: var(--bg-secondary); color: var(--text-primary); border: 0.5px solid var(--border-light);
+    box-shadow: var(--shadow-lg); font-size: 13px; line-height: 1.35;
+    opacity: 0; transform: translate(-50%, 8px); pointer-events: none; transition: opacity 0.18s ease, transform 0.18s ease;
+}
+.save-toast.show { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+.save-toast.is-error { border-color: color-mix(in srgb, var(--danger) 55%, transparent); }
+.save-toast.is-ok { border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
+.save-toast-text { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.save-toast-action { flex-shrink: 0; border: 0; border-radius: 8px; padding: 6px 10px; cursor: pointer; font: inherit; font-weight: 500;
+    background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent); }
+.save-toast-action:hover { background: color-mix(in srgb, var(--accent) 28%, transparent); }
+.save-toast-close { flex-shrink: 0; border: 0; background: transparent; color: var(--text-secondary); cursor: pointer; font-size: 18px; line-height: 1; padding: 2px 6px; }
+.save-toast-close:hover { color: var(--text-primary); }

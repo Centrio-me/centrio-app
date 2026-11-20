@@ -3,6 +3,17 @@ module.exports = {
     addMessenger: 'Dienst hinzufügen',
 
     ctx: {
+        fileSaved: "Datei gespeichert: {name}",
+        fileFail: "Die Datei „{name}“ konnte nicht geladen werden: Verbindung abgebrochen oder Dienst hat abgelehnt. Erneut versuchen.",
+        imgSaved: "Bild gespeichert: {name}",
+        imgShow: "Im Ordner zeigen",
+        imgFail_network: "Das Bild konnte nicht geladen werden: keine Verbindung zum Server. Internet prüfen und erneut versuchen.",
+        imgFail_denied: "Der Dienst gibt dieses Bild nur nach Anmeldung heraus. Im Vollbild öffnen und von dort speichern.",
+        imgFail_notImage: "Unter dieser Adresse liegt kein Bild. Im Vollbild öffnen und von dort speichern.",
+        imgFail_tooBig: "Das Bild ist zu groß (über 60 MB). Mit der eigenen Schaltfläche des Dienstes herunterladen.",
+        imgFail_folder: "Die Datei konnte nicht in den Ordner „{dir}“ geschrieben werden. Anderen Ordner unter Einstellungen → Downloads wählen.",
+        imgFail_gone: "Das Bild ist nicht mehr auf der Seite. Neu öffnen und wiederholen.",
+        imgFail_generic: "Das Bild konnte nicht gespeichert werden. Im Vollbild öffnen und von dort speichern.",
         tileReload: 'Neu laden', tileSound: 'Ton', tileWindow: 'Fenster', tileAwake: 'Wach halten', tileMic: 'Mikrofon', tileCam: 'Kamera',
         moveToWorkspace: 'In den Arbeitsbereich',
         translate: 'Ausgewähltes übersetzen',

@@ -88,6 +88,11 @@ function wireSessionDownloads(ses, getMainWindow) {
             record.endTime = Date.now()
             persistDownloadsHistory()
             broadcastDownloadUpdate(record)
+            // «Сохранено» or why not, in the window itself (not for a PDF the reader took, nor a download the person cancelled)
+            if (!inReader && (state === 'completed' || state === 'interrupted')) {
+                const win = mainWindowGetter && mainWindowGetter()
+                if (win && !win.isDestroyed()) win.webContents.send('download-toast', { id: record.id, state, name: path.basename(record.savePath || record.filename || '') })
+            }
         })
     })
 }
@@ -388,8 +393,12 @@ function registerDownloadsIpc({ getMainWindow }) {
     })
 }
 
+// What «where to save» is set to now (image saving reads it at the moment of the save)
+function getDownloadPrefs() { return { askDownload, downloadDir } }
+
 module.exports = {
     addDownloadRecord,
+    getDownloadPrefs,
     registerDownloadsIpc,
     updateDownloadHandler,
     wireSessionDownloads

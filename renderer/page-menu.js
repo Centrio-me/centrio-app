@@ -1,3 +1,4 @@
+const { showSaveToast } = require('./save-toast')
 // The right-click menu of a messenger page: built from what is under the cursor (a link, an image, selected text,
 // an input field, a misspelled word) plus the always-useful page items. The facts come from the main process
 // (main/services/pageContextMenu.js), which also does every action that touches the page; this file only draws.
@@ -130,7 +131,8 @@ function createPageMenu({
         const link = WEB_SCHEMES.has(schemeOf(ctx.linkURL)) || /^(mailto|tel):/i.test(ctx.linkURL || '')
         const webLink = WEB_SCHEMES.has(schemeOf(ctx.linkURL))
         const isImage = ctx.mediaType === 'image' && !!ctx.srcURL
-        const plainPage = !link && !isImage && !ctx.isEditable && !ctx.selectionText
+        const probedPicture = !isImage && ctx.probedPicture === true
+        const plainPage = !link && !isImage && !probedPicture && !ctx.isEditable && !ctx.selectionText
         const item = (options) => buildItem(options)
 
         if (plainPage) groups.push([buildNavRow(ctx, act)])
@@ -159,6 +161,10 @@ function createPageMenu({
                 item({ iconName: 'save', label: tGet('ctx.saveImage'), onClick: () => saveImage(webview, ctx) }),
                 item({ iconName: 'link', label: t('copyImageUrl'), onClick: () => act('copyText', ctx.srcURL) })
             ])
+        }
+
+        if (probedPicture) {
+            groups.push([item({ iconName: 'save', label: tGet('ctx.saveImage'), onClick: () => saveImage(webview, ctx) })])
         }
 
         if (ctx.isEditable) {
@@ -199,12 +205,39 @@ function createPageMenu({
         return groups
     }
 
-    // Saving goes through the page itself (it can read blob: images the main process cannot), see webview-preload.js.
+    // The main process gets the picture and writes it (main/services/imageSave.js); every outcome is said plainly.
+    // The point is where the picture is ON THE PAGE: a click the main process saw is in the window, one the page forwarded is in the page.
+    function pagePoint(webview, ctx) {
+        const box = webview.getBoundingClientRect()
+        const zoom = Number(state.tabZoomLevel || 1) || 1
+        return ctx.inWindow
+            ? { x: ((Number(ctx.x) || 0) - box.left) / zoom, y: ((Number(ctx.y) || 0) - box.top) / zoom }
+            : { x: Number(ctx.x) || 0, y: Number(ctx.y) || 0 }
+    }
+
     async function saveImage(webview, ctx) {
-        const result = await invokeIpc('get-save-image-path', ctx.srcURL).catch(() => null)
-        if (!result || !result.success || !result.data) return
-        state.wvContextParams = { ...ctx, _filePath: result.data }
-        webview.send('download-image', ctx.srcURL)
+        let wcId = null
+        try { wcId = webview.getWebContentsId() } catch { /* not attached */ }
+        const point = pagePoint(webview, ctx)
+        const result = wcId === null ? { ok: false, code: 'gone' }
+            : await invokeIpc('pagemenu:save-image', wcId, { srcURL: ctx.srcURL, x: point.x, y: point.y, pageURL: ctx.pageURL }).catch(() => ({ ok: false, code: 'generic' }))
+        reportImageSave(result)
+    }
+
+    function reportImageSave(result) {
+        if (!result || result.canceled) return
+        if (result.ok) {
+            showSaveToast({
+                kind: 'ok',
+                text: tGet('ctx.imgSaved').replace('{name}', result.name),
+                actionLabel: tGet('ctx.imgShow'),
+                onAction: () => ipcRenderer.send('downloads:show-in-folder', result.id)
+            })
+            return
+        }
+        const known = ['network', 'denied', 'notImage', 'tooBig', 'folder', 'gone']
+        const key = known.includes(result.code) ? result.code : 'generic'
+        showSaveToast({ kind: 'error', text: tGet(`ctx.imgFail_${key}`).replace('{dir}', result.dir || '') })
     }
 
     function place(ctx, guest) {
@@ -236,8 +269,24 @@ function createPageMenu({
         })
     }
 
+    // The menu for this click, drawn at once. A picture the browser did not report (canvas, CSS background, one under a layer)
+    // is found by asking the page what is under the pointer; the answer adds «Сохранить изображение» when it comes, however late.
+    let showToken = 0
+    function draw(guest, ctx, act) {
+        state.wvContextParams = ctx
+        document.querySelectorAll('.context-menu').forEach((m) => { m.classList.remove('show'); m.style.visibility = '' })
+        menuEl.textContent = ''
+        const groups = buildGroups(ctx, guest, act).filter((g) => g.length)
+        groups.forEach((group, i) => {
+            if (i > 0) menuEl.appendChild(buildDivider())
+            group.forEach((el) => menuEl.appendChild(el))
+        })
+        place(ctx, guest)
+    }
+
     // ctx: what the main process saw (see snapshot() in pageContextMenu.js); missing fields mean "nothing there".
     function show(guest, rawCtx) {
+        const mine = ++showToken
         const ctx = {
             x: 0, y: 0, inWindow: false, linkURL: '', srcURL: '', mediaType: 'none', selectionText: '', isEditable: false, misspelledWord: '',
             suggestions: [], pageURL: '', canGoBack: false, canGoForward: false,
@@ -247,16 +296,15 @@ function createPageMenu({
         let wcId = null
         try { wcId = guest.webview.getWebContentsId() } catch { return }
         const act = (action, payload) => invokeIpc('pagemenu:action', wcId, action, payload).catch(() => {})
-        state.wvContextParams = ctx
-
-        document.querySelectorAll('.context-menu').forEach((m) => { m.classList.remove('show'); m.style.visibility = '' })
-        menuEl.textContent = ''
-        const groups = buildGroups(ctx, guest, act).filter((g) => g.length)
-        groups.forEach((group, i) => {
-            if (i > 0) menuEl.appendChild(buildDivider())
-            group.forEach((el) => menuEl.appendChild(el))
+        draw(guest, ctx, act)
+        if ((ctx.mediaType === 'image' && ctx.srcURL) || ctx.isEditable || ctx.selectionText || ctx.linkURL) return
+        const point = pagePoint(guest.webview, ctx)
+        invokeIpc('pagemenu:probe-image', wcId, point.x, point.y).catch(() => null).then((probe) => {
+            if (!probe || !probe.found || mine !== showToken) return
+            if (!menuEl.classList.contains('show')) return
+            ctx.probedPicture = true
+            draw(guest, ctx, act)
         })
-        place(ctx, guest)
     }
 
     // Main process: a right-click the page did not handle itself.

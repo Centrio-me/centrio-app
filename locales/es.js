@@ -3,6 +3,17 @@ module.exports = {
     addMessenger: 'Añadir servicio',
 
     ctx: {
+        fileSaved: "Archivo guardado: {name}",
+        fileFail: "No se pudo descargar el archivo «{name}»: se cortó la conexión o el servicio lo rechazó. Inténtelo de nuevo.",
+        imgSaved: "Imagen guardada: {name}",
+        imgShow: "Mostrar en la carpeta",
+        imgFail_network: "No se pudo descargar la imagen: sin conexión con el servidor. Compruebe internet e inténtelo de nuevo.",
+        imgFail_denied: "El servicio no entrega esta imagen sin iniciar sesión. Ábrala a pantalla completa y guárdela desde ahí.",
+        imgFail_notImage: "En esta dirección no hay una imagen. Ábrala a pantalla completa y guárdela desde ahí.",
+        imgFail_tooBig: "La imagen es demasiado grande (más de 60 MB). Descárguela con el botón del propio servicio.",
+        imgFail_folder: "No se pudo escribir el archivo en la carpeta «{dir}». Elija otra en Ajustes → Descargas.",
+        imgFail_gone: "La imagen ya no está en la página. Ábrala de nuevo y repita.",
+        imgFail_generic: "No se pudo guardar la imagen. Ábrala a pantalla completa y guárdela desde ahí.",
         tileReload: 'Recargar', tileSound: 'Sonido', tileWindow: 'Ventana', tileAwake: 'Mantener activa', tileMic: 'Micrófono', tileCam: 'Cámara',
         moveToWorkspace: 'A espacio',
         translate: 'Traducir seleccionado',

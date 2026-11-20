@@ -3,6 +3,17 @@ module.exports = {
     addMessenger: 'Add service',
 
     ctx: {
+        fileSaved: "File saved: {name}",
+        fileFail: "Could not download the file \"{name}\": the connection broke or the service refused. Try again.",
+        imgSaved: "Picture saved: {name}",
+        imgShow: "Show in folder",
+        imgFail_network: "Could not download the picture: no connection to the server. Check your internet and try again.",
+        imgFail_denied: "The service does not give this picture without signing in. Open it full screen and save it from there.",
+        imgFail_notImage: "This address is not a picture. Open it full screen and save it from there.",
+        imgFail_tooBig: "The picture is too big (over 60 MB). Download it with the service's own button.",
+        imgFail_folder: "Could not write the file to the folder \"{dir}\". Pick another one in Settings → Downloads.",
+        imgFail_gone: "The picture is no longer on the page. Open it again and retry.",
+        imgFail_generic: "Could not save the picture. Open it full screen and save it from there.",
         tileReload: 'Reload', tileSound: 'Sound', tileWindow: 'Window', tileAwake: 'Stay awake', tileMic: 'Microphone', tileCam: 'Camera',
         moveToWorkspace: 'To workspace',
         translate: 'Translate selection',
