@@ -139,8 +139,11 @@ function createAttemptLock({ max, windowMs }) {
     }
 }
 
+// One lock for the sign-in route: 10 wrong passwords for a login in 15 minutes close that login for the rest of the window.
+const loginLock = createAttemptLock({ max: 10, windowMs: 15 * 60 * 1000 })
+
 module.exports = {
-    STAND_IN_DOMAIN, LOGIN_MIN, LOGIN_MAX, PASSWORD_MIN,
+    loginLock, STAND_IN_DOMAIN, LOGIN_MIN, LOGIN_MAX, PASSWORD_MIN,
     normalizeLogin, checkLogin, looksLikeLogin, standInEmail, isLoginOnlyEmail, shownEmail,
     checkPassword, loginFromName, assignLogins, generatePassword, parseEmails, createAttemptLock
 }

@@ -3,7 +3,7 @@
 const router = require('express').Router()
 const authMiddleware = require('../middleware/auth')
 const prisma = require('../utils/prisma')
-const { requireOrgRole } = require('../lib/org')
+const { requireOrgRole, requireStatsAccess } = require('../lib/org')
 const { streamOrgEvents } = require('../lib/team-stream')
 
 // ── GET /api/org/:orgId/events ─────────────────────────────────────────
@@ -101,7 +101,7 @@ router.post('/:orgId/presence', authMiddleware, presenceLimiter, requireOrgRole(
 
 // ── GET /api/org/:orgId/live ───────────────────────────────────────────
 // The «Сейчас» tab: one row per employee (owner excluded), plus the team at a glance.
-router.get('/:orgId/live', authMiddleware, requireOrgRole(['OWNER', 'ADMIN']), async (req, res) => {
+router.get('/:orgId/live', authMiddleware, requireOrgRole(['OWNER', 'ADMIN']), requireStatsAccess, async (req, res) => {
     try {
         const orgId = req.params.orgId
         const now = new Date()
@@ -294,7 +294,7 @@ router.post('/:orgId/notes/:id/read', authMiddleware, requireOrgRole(['OWNER', '
 // ── GET /api/org/:orgId/reports?days=7|30 ───────────────────────────────
 const { buildReportRows } = require('../lib/team-report')
 
-router.get('/:orgId/reports', authMiddleware, requireOrgRole(['OWNER', 'ADMIN']), async (req, res) => {
+router.get('/:orgId/reports', authMiddleware, requireOrgRole(['OWNER', 'ADMIN']), requireStatsAccess, async (req, res) => {
     try {
         const orgId = req.params.orgId
         const days = Number(req.query.days) === 30 ? 30 : 7

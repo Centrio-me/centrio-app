@@ -22,9 +22,10 @@ const { isAllowedAssignmentUrl, passwordSurvivesUrlChange } = require('../lib/te
 const { queueCommands } = require('../lib/team-command-store')
 const { defaultStrictForJoin } = require('../lib/team-strict')
 const { recordReactions } = require('../lib/team-reactions')
+const loginAccounts = require('../lib/login-accounts')
 const {
   getOrgSummaryForUser,
-  requireOrgRole,
+  requireOrgRole, requireStatsAccess,
   createInviteToken,
   hashInviteToken,
   generateUniqueOrgSlug,
@@ -155,6 +156,9 @@ async function logOrgAudit(orgId, actorUserId, action, meta) {
   const evt = eventForAudit(action, meta)
   if (evt) emitOrgEvent(orgId, evt.type, evt.data)
 }
+
+// Accounts with a login and a password, batch invitations, password reset, invitation re-send (2026-11-21)
+require('./org-accounts')(router, { requireOrgRole, logOrgAudit, orgActionKey, memberActionLimiter })
 
 // ── POST /api/org ───────────────────────────────────────────────────
 // Creates a new organization with the calling user as OWNER. Phase 1 MVP
@@ -291,20 +295,24 @@ router.get('/:orgId/members', authMiddleware, requireOrgRole(['OWNER', 'ADMIN', 
   try {
     const members = await prisma.orgMember.findMany({
       where: { orgId: req.params.orgId, status: 'ACTIVE' },
-      include: { user: { select: { id: true, email: true, name: true } } },
+      include: { user: { select: { id: true, email: true, name: true, login: true } } },
       orderBy: { joinedAt: 'asc' }
     })
     res.json({
       success: true,
       data: members.map(m => ({
         userId: m.userId,
-        email: m.user.email,
+        // a login-only account shows its login instead of the stand-in address
+        email: loginAccounts.shownEmail(m.user),
+        login: m.user.login || null,
+        loginOnly: loginAccounts.isLoginOnlyEmail(m.user.email),
         name: m.user.name,
         role: m.role,
         // BUGFIX (2026-10-02): the PATCH saved this flag but the list never returned it, so the
         // team page checkbox and the employee app always read it as 'allowed'.
         canAddOwnMessengers: m.canAddOwnMessengers,
         strictMode: m.strictMode,
+        canViewStats: m.canViewStats,
         joinedAt: m.joinedAt
       }))
     })
@@ -382,7 +390,7 @@ router.post('/:orgId/invites', inviteLimiter, authMiddleware, requireOrgRole(['O
 
     await logOrgAudit(org.id, req.user.id, 'member.invite', { email, role })
 
-    sendOrgInviteEmail({ email, orgName: org.name, inviterEmail: req.user.email, token })
+    sendOrgInviteEmail({ email, orgName: org.name, inviterEmail: loginAccounts.isLoginOnlyEmail(req.user.email) ? (req.user.name || 'Администратор') : req.user.email, token })
       .catch(e => console.error('[email] org invite send failed:', e.message))
 
     res.json({ success: true, data: { id: invite.id, email: invite.email, role: invite.role, expiresAt: invite.expiresAt } })
@@ -449,7 +457,8 @@ router.post('/invites/:token/accept', acceptInviteLimiter, authMiddleware, async
 
     // A person removed earlier keeps a SUSPENDED row; inviting him back reactivates it instead of
     // hitting the unique (orgId, userId) constraint (TEAM audit A2, 2026-11-08).
-    const strictMode = defaultStrictForJoin(new Date(), process.env.TEAM_STRICT_DEFAULT_FROM)
+    // admins manage the team themselves: strict mode by default is for regular employees only
+    const strictMode = invite.role === 'ADMIN' ? false : defaultStrictForJoin(new Date(), process.env.TEAM_STRICT_DEFAULT_FROM)
     await prisma.$transaction([
       prisma.orgMember.upsert({
         where: { orgId_userId: { orgId: org.id, userId: req.user.id } },
@@ -492,7 +501,9 @@ router.get('/invites/:token', async (req, res) => {
     if (!invite) return res.status(404).json({ success: false, error: 'Приглашение не найдено' })
     if (invite.acceptedAt) return res.status(409).json({ success: false, error: 'Приглашение уже использовано' })
     if (invite.expiresAt < new Date()) return res.status(410).json({ success: false, error: 'Срок действия приглашения истёк' })
-    res.json({ success: true, data: { email: invite.email, orgName: invite.organization.name, role: invite.role } })
+    // the page sends a person without an account straight to registration and one with an account to sign-in
+    const holder = await prisma.user.findFirst({ where: { email: { equals: invite.email, mode: 'insensitive' } }, select: { id: true } })
+    res.json({ success: true, data: { email: invite.email, orgName: invite.organization.name, role: invite.role, hasAccount: !!holder } })
   } catch (err) {
     console.error('Org invite lookup error:', err.message)
     res.status(500).json({ success: false, error: 'Ошибка получения приглашения' })
@@ -568,6 +579,13 @@ router.delete('/:orgId/members/:userId', memberActionLimiter, authMiddleware, re
       data: { status: 'SUSPENDED' }
     })
 
+    // An account made with a login and a password exists only for this team: it is closed with the removal (its login stays taken).
+    const removed = await prisma.user.findUnique({ where: { id: req.params.userId }, select: { email: true } })
+    if (removed && loginAccounts.isLoginOnlyEmail(removed.email)) {
+      await prisma.session.deleteMany({ where: { userId: req.params.userId } })
+      await prisma.user.update({ where: { id: req.params.userId }, data: { isActive: false } })
+    }
+
     await logOrgAudit(req.params.orgId, req.user.id, 'member.remove', { userId: req.params.userId })
 
     res.json({ success: true })
@@ -594,13 +612,14 @@ router.patch('/:orgId/members/:userId', memberActionLimiter, authMiddleware, req
     const hasRole = req.body?.role !== undefined
     const hasCanAdd = req.body?.canAddOwnMessengers !== undefined
     const hasStrict = req.body?.strictMode !== undefined
+    const hasStats = req.body?.canViewStats !== undefined
     // BUGFIX (2026-10-02): admins manage employees' messengers, so they may toggle 'can add own
     // messengers' for regular members (the team page already showed them the checkbox, but the
     // endpoint was owner-only and answered 403). Role changes stay owner-only.
     if (hasRole && req.orgMembership.role !== 'OWNER') {
       return res.status(403).json({ success: false, error: 'Менять роли может только владелец' })
     }
-    if (!hasRole && !hasCanAdd && !hasStrict) {
+    if (!hasRole && !hasCanAdd && !hasStrict && !hasStats) {
       return res.status(400).json({ success: false, error: 'Нечего изменять' })
     }
     if (hasRole && !['ADMIN', 'MEMBER'].includes(req.body.role)) {
@@ -608,6 +627,9 @@ router.patch('/:orgId/members/:userId', memberActionLimiter, authMiddleware, req
     }
     if (hasCanAdd && typeof req.body.canAddOwnMessengers !== 'boolean') {
       return res.status(400).json({ success: false, error: 'Недопустимое значение' })
+    }
+    if (hasStats && (typeof req.body.canViewStats !== 'boolean' || req.orgMembership.role !== 'OWNER')) {
+      return res.status(hasStats && req.orgMembership.role !== 'OWNER' ? 403 : 400).json({ success: false, error: 'Доступ к статистике назначает только владелец' })
     }
     if (hasStrict && typeof req.body.strictMode !== 'boolean') {
       return res.status(400).json({ success: false, error: 'Недопустимое значение' })
@@ -629,6 +651,7 @@ router.patch('/:orgId/members/:userId', memberActionLimiter, authMiddleware, req
     if (hasRole) data.role = req.body.role
     if (hasCanAdd) data.canAddOwnMessengers = req.body.canAddOwnMessengers
     if (hasStrict) data.strictMode = req.body.strictMode
+    if (hasStats) data.canViewStats = req.body.canViewStats
 
     await prisma.orgMember.update({
       where: { orgId_userId: { orgId: req.params.orgId, userId: req.params.userId } },
@@ -645,7 +668,7 @@ router.patch('/:orgId/members/:userId', memberActionLimiter, authMiddleware, req
       await logOrgAudit(req.params.orgId, req.user.id, 'member.canAddOwnMessengers', { userId: req.params.userId, canAddOwnMessengers: req.body.canAddOwnMessengers })
     }
 
-    res.json({ success: true, data: { userId: req.params.userId, ...(hasRole ? { role: req.body.role } : {}), ...(hasCanAdd ? { canAddOwnMessengers: req.body.canAddOwnMessengers } : {}), ...(hasStrict ? { strictMode: req.body.strictMode } : {}) } })
+    res.json({ success: true, data: { userId: req.params.userId, ...(hasRole ? { role: req.body.role } : {}), ...(hasCanAdd ? { canAddOwnMessengers: req.body.canAddOwnMessengers } : {}), ...(hasStrict ? { strictMode: req.body.strictMode } : {}), ...(hasStats ? { canViewStats: req.body.canViewStats } : {}) } })
   } catch (err) {
     console.error('Org member update error:', err.message)
     res.status(500).json({ success: false, error: 'Ошибка изменения роли' })
@@ -741,10 +764,12 @@ router.get('/:orgId/settings', authMiddleware, requireOrgRole(['OWNER', 'ADMIN',
 // it). OWNER-only, same rationale as VPN above.
 router.patch('/:orgId/settings', memberActionLimiter, authMiddleware, requireOrgRole(['OWNER']), async (req, res) => {
   try {
-    const settings = req.body?.settings ?? null
-    if (settings !== null && (typeof settings !== 'object' || Array.isArray(settings))) {
+    const incoming = req.body?.settings ?? null
+    if (incoming !== null && (typeof incoming !== 'object' || Array.isArray(incoming))) {
       return res.status(400).json({ success: false, error: 'Некорректные настройки' })
     }
+    // only a known theme and a clean name of the program (at most 24 visible characters) are kept — org-brand.js
+    const settings = require('../lib/org-brand').cleanOrgSettings(incoming)
 
     await prisma.organization.update({
       where: { id: req.params.orgId },
@@ -915,7 +940,7 @@ router.delete('/:orgId/custom-links/:id', memberActionLimiter, authMiddleware, r
 // employee read-status cards) — a MEMBER doesn't need to see anyone's
 // read/unread counts, including their own (the desktop app never reads
 // this back, only pushes to it).
-router.get('/:orgId/messenger-stats', authMiddleware, requireOrgRole(['OWNER', 'ADMIN']), async (req, res) => {
+router.get('/:orgId/messenger-stats', authMiddleware, requireOrgRole(['OWNER', 'ADMIN']), requireStatsAccess, async (req, res) => {
   try {
     const stats = await prisma.orgMessengerStat.findMany({ where: { orgId: req.params.orgId } })
     res.json({ success: true, data: stats })
@@ -1240,7 +1265,7 @@ router.post('/:orgId/alert-settings/test', alertTestLimiter, authMiddleware, req
 // channel) and the website's alert history. `after` is an ISO timestamp;
 // returns at most 50 newest-first. Returns channelEnabled so the desktop app
 // knows whether to surface them at all.
-router.get('/:orgId/alerts', authMiddleware, requireOrgRole(['OWNER', 'ADMIN']), async (req, res) => {
+router.get('/:orgId/alerts', authMiddleware, requireOrgRole(['OWNER', 'ADMIN']), (req, res, next) => (req.orgMembership.role === 'OWNER' || req.orgMembership.canViewStats !== false) ? next() : res.json({ success: true, data: { channelEnabled: false, items: [] } }), async (req, res) => {
   try {
     const afterRaw = req.query.after ? new Date(String(req.query.after)) : null
     const after = afterRaw && !isNaN(afterRaw) ? afterRaw : new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)

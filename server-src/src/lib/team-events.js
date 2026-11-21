@@ -39,6 +39,7 @@ const AUDIT_PREFIX_TO_EVENT = [
     ['credential.set', 'assignments'],
     ['credential.delete', 'assignments'],
     ['member.remove', 'member'],
+    ['member.create_login', 'member'],
     ['member.role', 'member'],
     ['member.canAddOwnMessengers', 'member'],
     ['member.strict', 'member'],

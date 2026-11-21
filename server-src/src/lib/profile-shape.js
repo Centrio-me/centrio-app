@@ -9,4 +9,17 @@ function withOrgSummary(profile, orgSummary) {
     return { ...profile, orgSummary: orgSummary || null }
 }
 
-module.exports = { withOrgSummary }
+const { isLoginOnlyEmail } = require('./login-accounts')
+
+/**
+ * An account made by a team owner with a login and a password holds a stand-in address; people (and apps that print the
+ * address) see the login instead, and the answer says `loginOnly` so an app can offer «Привяжите почту».
+ * @param {object|null} profile the user's own fields; `email` and `login` are read, nothing else is touched
+ */
+function withLoginShape(profile) {
+    if (!profile) return profile
+    const loginOnly = isLoginOnlyEmail(profile.email)
+    return { ...profile, email: loginOnly && profile.login ? profile.login : profile.email, login: profile.login || null, loginOnly }
+}
+
+module.exports = { withOrgSummary, withLoginShape }

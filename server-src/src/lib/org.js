@@ -201,6 +201,13 @@ async function getOrgSummaryForUser(userId) {
  *
  * @param {Array<'OWNER'|'ADMIN'|'MEMBER'>} allowedRoles
  */
+// An admin sees team statistics (messenger stats, "now" board, reports, unread alerts) only while the owner allows it.
+function requireStatsAccess(req, res, next) {
+    const m = req.orgMembership
+    if (m && (m.role === 'OWNER' || m.canViewStats !== false)) return next()
+    return res.status(403).json({ success: false, error: 'Нет доступа к статистике' })
+}
+
 function requireOrgRole(allowedRoles) {
     return async function orgRoleMiddleware(req, res, next) {
         try {
@@ -344,6 +351,7 @@ module.exports = {
     getProSeatHolderIds,
     getOrgSummaryForUser,
     requireOrgRole,
+    requireStatsAccess,
     createInviteToken,
     hashInviteToken,
     generateUniqueOrgSlug

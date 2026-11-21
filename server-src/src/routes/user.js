@@ -1,4 +1,5 @@
 const { MAX_DEVICES } = require('../utils/tokens')
+const { seatDeviceLimit, teamDeviceLimit } = require('../lib/pro-access')
 const router = require('express').Router()
 const authMiddleware = require('../middleware/auth')
 const prisma = require('../utils/prisma')
@@ -29,14 +30,15 @@ router.get('/profile', authMiddleware, async (req, res) => {
     const user = await prisma.user.findUnique({
       where: { id: req.user.id },
       select: {
-        id: true, email: true, name: true, avatar: true,
+        id: true, email: true, login: true, name: true, avatar: true,
         plan: true, planExpiresAt: true, createdAt: true,
         _count: { select: { messengers: true, folders: true } }
       }
     })
     // the team summary belongs to the answer: the website refreshes its cached user from here after a payment
     const orgSummary = await require('../lib/org').getOrgSummaryForUser(req.user.id).catch(() => null)
-    res.json(require('../lib/profile-shape').withOrgSummary(user, orgSummary))
+    const shape = require('../lib/profile-shape')
+    res.json(shape.withOrgSummary(shape.withLoginShape(user), orgSummary))
   } catch (err) {
     res.status(500).json({ error: 'Ошибка получения профиля' })
   }
@@ -121,14 +123,17 @@ router.get('/devices', authMiddleware, async (req, res) => {
         legacy: !s.deviceInfo,
         loginAt: s.loginAt,
         lastActiveAt: s.lastActiveAt,
-        current: !!s.deviceInfo && s.deviceInfo === req.headers['user-agent'],
+        // the same program on several computers has one user-agent: the computer's name tells which of them asks
+        current: !!s.deviceInfo && s.deviceInfo === req.headers['user-agent'] && (!s.deviceName || !req.headers['x-centrio-device-name'] || s.deviceName === (() => { try { return decodeURIComponent(String(req.headers['x-centrio-device-name'])) } catch { return String(req.headers['x-centrio-device-name']) } })()),
         label: s.deviceName || (browser ? `${browser} · ${os}` : os)
       }
     })
 
-    const isPro = req.user.plan !== 'FREE'
+    const seatLimit = req.user.plan === 'FREE' ? await seatDeviceLimit(req.user.id) : null
+    const onSeat = !!seatLimit
+    const isPro = req.user.plan !== 'FREE' || onSeat
     const used = parsed.filter(d => d.kind !== 'mobile').length
-    res.json({ devices: parsed, total: parsed.length, isPro, used, limits: { desktop: MAX_DEVICES[req.user.plan] ?? MAX_DEVICES.FREE } })
+    res.json({ devices: parsed, total: parsed.length, isPro, used, limits: { desktop: (await teamDeviceLimit(req.user.id)) || (onSeat ? seatLimit : (MAX_DEVICES[req.user.plan] ?? MAX_DEVICES.FREE)) } })
   } catch (err) {
     res.status(500).json({ error: 'Ошибка получения устройств' })
   }

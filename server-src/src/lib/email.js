@@ -12,6 +12,7 @@
 // or the auto-renew cron.
 const axios = require('axios')
 const https = require('https')
+const { isLoginOnlyEmail } = require('./login-accounts')
 
 // 2026-11-18: from this server the two addresses that api.resend.com resolves to (172.66.165.132, 104.20.29.242) stopped
 // answering: the TLS handshake hangs, and every letter timed out for hours (ticket replies, the admin app showed mail
@@ -40,6 +41,8 @@ async function sendEmail({ to, subject, html, replyTo }) {
   }
   // Older Telegram accounts have a stand-in address with no mailbox behind it: letters to it only hurt delivery.
   if (/^tg_\d+@centrio\.me$/.test(String(to))) return { ok: false, reason: 'no_mailbox' }
+  // Team accounts made with a login and a password (2026-11-21) hold a stand-in address that routes nowhere.
+  if (isLoginOnlyEmail(String(to))) return { ok: false, reason: 'no_mailbox' }
   const payload = { from: FROM_ADDRESS, to, subject, html: wrapEmailHtml(html), ...(replyTo ? { reply_to: replyTo } : {}) }
   const post = (agent) => axios.post(RESEND_API, payload, {
     headers: { Authorization: `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
@@ -411,6 +414,7 @@ async function sendOrgInviteEmail({ email, orgName, inviterEmail, token }) {
       <p style="margin:0 0 4px;font-size:20px;font-weight:700;color:${TEXT};letter-spacing:-0.01em;">Приглашение в команду</p>
       <p style="margin:0 0 18px;color:${MUTED};">${escapeHtml(inviterEmail || 'Коллега')} приглашает вас присоединиться к организации <strong style="color:${TEXT};">${escapeHtml(orgName)}</strong> в Centrio TEAM.</p>
       ${ctaButton('Принять приглашение', link)}
+      <p style="margin:14px 0 0;color:${MUTED};font-size:13px">Нет аккаунта Centrio? Ничего заранее делать не нужно: по кнопке откроется регистрация на этот адрес, и сразу после неё вы окажетесь в команде.</p>
       <p style="margin:8px 0 0;color:${MUTED};font-size:12px">Приглашение действительно 7 дней. Если вы не ожидали этого письма — просто проигнорируйте его.</p>
     `
   })
@@ -496,6 +500,18 @@ async function sendRegistrationCodeEmail(email, code) {
   return sendEmail({ to: email, subject: `${code} — код подтверждения Centrio`, html: body })
 }
 
+// Code that proves the mailbox of a team account made with a login and a password (routes/auth.js /email/attach/*).
+async function sendEmailAttachCodeEmail(email, code) {
+  if (!email || !/^\d{6}$/.test(code)) return { ok: false, reason: 'bad_input' }
+  const body = `
+    <p style="margin:0 0 4px;font-size:20px;font-weight:700;color:${TEXT};letter-spacing:-0.01em;">Привязка почты к Centrio</p>
+    <p style="margin:0 0 18px;color:${MUTED};">Введите этот код в Centrio, чтобы привязать эту почту к своему аккаунту. После этого вы сможете сами восстановить пароль.</p>
+    <p style="margin:0 0 18px;text-align:center;font-size:34px;font-weight:800;letter-spacing:0.28em;color:${TEXT};font-family:'SFMono-Regular',Consolas,'Courier New',monospace;">${code}</p>
+    <p style="margin:8px 0 0;color:${MUTED};font-size:13px;">Код действует 15 минут. Если вы этого не делали, просто проигнорируйте письмо.</p>
+  `
+  return sendEmail({ to: email, subject: `${code} — привязка почты в Centrio`, html: body })
+}
+
 // Team subscription ends soon and auto-renew is off (TEAM audit A1, 2026-11-08: these reminders
 // were lost in the server move). days = 7, 3, 1 or 0 (the last day).
 async function sendOrgExpiryEmail(owner, orgName, expiresAt, days) {
@@ -532,7 +548,7 @@ async function resendPost(url, data, config = {}) {
   throw last
 }
 
-module.exports = { resendPost, sendRegistrationCodeEmail, sendRestoredNoticeEmail, sendOrgWaitingAlertEmail,
+module.exports = { resendPost, sendEmailAttachCodeEmail, sendRegistrationCodeEmail, sendRestoredNoticeEmail, sendOrgWaitingAlertEmail,
   sendEmail, sendPaymentReceiptEmail, sendWelcomeEmail, sendVerificationEmail,
   sendPasswordResetEmail, sendAutoRenewFailedEmail, sendRefundConfirmationEmail,
   sendContactFormEmail, sendTicketReplyEmail, sendNewTicketFromAdminEmail, sendOrgInviteEmail,
