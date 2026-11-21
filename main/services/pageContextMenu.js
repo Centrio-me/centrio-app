@@ -78,17 +78,26 @@ function searchUrl(language, query) {
     return (language === 'ru' ? SEARCH_URL.ru : SEARCH_URL.other) + encodeURIComponent(query.slice(0, 300))
 }
 
+// The menu of Centrio is drawn in our window, so a click on it takes the keyboard focus from the tab. Copy, paste and the like
+// must act on the TAB, the way Ctrl+C / Ctrl+V do (the menu's «Вставить» did nothing after Telegram's own «Копировать», while Ctrl+V
+// pasted everything): the tab is focused first and the command follows once the focus has moved.
+const FOCUS_SETTLE_MS = 40
+const onTabFocus = (run) => (g) => {
+    try { g.focus() } catch { /* a tab that cannot take focus: the command still goes */ }
+    setTimeout(() => { try { if (!g.isDestroyed || !g.isDestroyed()) run(g) } catch { /* the tab went meanwhile */ } }, FOCUS_SETTLE_MS)
+}
+
 const PAGE_ACTIONS = {
     back: (g) => { if (g.navigationHistory ? g.navigationHistory.canGoBack() : g.canGoBack()) g.goBack() },
     forward: (g) => { if (g.navigationHistory ? g.navigationHistory.canGoForward() : g.canGoForward()) g.goForward() },
     reload: (g) => g.reload(),
-    undo: (g) => g.undo(),
-    redo: (g) => g.redo(),
-    cut: (g) => g.cut(),
-    copy: (g) => g.copy(),
-    paste: (g) => g.paste(),
-    pasteText: (g) => g.pasteAndMatchStyle(),
-    selectAll: (g) => g.selectAll()
+    undo: onTabFocus((g) => g.undo()),
+    redo: onTabFocus((g) => g.redo()),
+    cut: onTabFocus((g) => g.cut()),
+    copy: onTabFocus((g) => g.copy()),
+    paste: onTabFocus((g) => g.paste()),
+    pasteText: onTabFocus((g) => g.pasteAndMatchStyle()),
+    selectAll: onTabFocus((g) => g.selectAll())
 }
 
 function perform(guest, action, payload, language) {
@@ -127,4 +136,4 @@ function handleAction({ getMainWindow, language }, sender, wcId, action, payload
     try { return perform(guest, String(action), payload, language()) } catch { return false }
 }
 
-module.exports = { attach, handleAction, safeExternal, searchUrl, guestFor }
+module.exports = { attach, handleAction, perform, safeExternal, searchUrl, guestFor }
