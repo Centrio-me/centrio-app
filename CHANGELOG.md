@@ -8,6 +8,13 @@ The format is based on Keep a Changelog. This project does not currently follow 
 
 ## [Unreleased]
 
+## [3.10.0] - 2026-11-21
+
+### Added
+- Team accounts with a login and a password instead of an email (3.10): the owner or an admin creates them on the team page, one by one or a list of up to 30 (the site tells why an email is better and keeps «Всё равно создать без почты»); logins are suggested from the names, passwords are generated, both can be edited; shown once, copy or CSV. Server: User.login (unique), a stand-in address `<login>@login.centrio.invalid` that no letter is ever sent to, places counted under a lock on the organization row.
+- Sign-in by login in the app and on the site (a field without «@» is a login; 10 wrong passwords per login close it for 15 minutes); «Логин: …» in the profile and the «Привяжите почту» card (a code to the mailbox, then the real email replaces the stand-in; the login keeps working) (renderer/login-account.js, shared/login-account.js).
+- Invitations by email for a list (up to 30), a result for every address, «Отправить ещё раз» (a new link, the old one stops), reset of a password by the manager for an account without an email; removing such an employee closes the account.
+
 ### Fixed
 - «Сохранить изображение» in the page menu worked never since 3.5.0: the window read `.success` from a plain path string and quietly returned, so no file was ever written. The main process now gets the picture itself (main/services/imageSave.js): a data: address, the address over the tab's own session (cookies, no CORS), the page for blob:, a canvas, or a picture of the element on screen as the last way; the file gets its REAL extension from the bytes (a .jpg that held a WebP is saved as .webp) and a name that does not overwrite.
 - A picture the browser did not report as one (canvas, CSS background, one under a layer) now gets the item too: the page is asked what is under the pointer.
