@@ -2,6 +2,23 @@ module.exports = {
     appName: 'Centrio',
     addMessenger: 'Add service',
 
+    loginAcc: {
+        loginPh: "Email or login",
+        forgotLogin: "The password for a login is reset by your team manager. Ask them to reset it in Centrio.",
+        loginIs: "Login: {login}",
+        cardTitle: "Attach your email",
+        cardLead: "You sign in with a login now. With an email attached you can restore the password yourself and get important letters. We will send a code to it.",
+        emailPh: "Your email",
+        sendCode: "Send code",
+        codePh: "Code from the email",
+        confirm: "Confirm",
+        sending: "Sending…",
+        sentTo: "Code sent to {email}",
+        done: "Email attached. You can now restore the password yourself.",
+        enterEmail: "Enter your email",
+        enterCode: "Enter the 6 digits from the email",
+    },
+
     ctx: {
         fileSaved: "File saved: {name}",
         fileFail: "Could not download the file \"{name}\": the connection broke or the service refused. Try again.",

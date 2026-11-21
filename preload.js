@@ -168,6 +168,8 @@ const validInvokeChannels = new Set([
     'api-logout',
     'api-me',
     'api-beta-set',
+    'api-email-attach-start',
+    'api-email-attach-confirm',
     'api-notes-create',
     'api-notes-delete',
     'api-notes-list',

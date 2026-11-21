@@ -2,6 +2,23 @@ module.exports = {
     appName: 'Centrio',
     addMessenger: 'Aggiungi servizio',
 
+    loginAcc: {
+        loginPh: "Email o login",
+        forgotLogin: "La password di un login viene reimpostata dal responsabile del tuo team. Chiedigliela in Centrio.",
+        loginIs: "Login: {login}",
+        cardTitle: "Collega la tua email",
+        cardLead: "Ora accedi con un login. Con un’email collegata puoi reimpostare la password da solo e ricevere messaggi importanti. Invieremo un codice.",
+        emailPh: "La tua email",
+        sendCode: "Invia codice",
+        codePh: "Codice dall’email",
+        confirm: "Conferma",
+        sending: "Invio…",
+        sentTo: "Codice inviato a {email}",
+        done: "Email collegata. Ora puoi reimpostare la password da solo.",
+        enterEmail: "Inserisci la tua email",
+        enterCode: "Inserisci le 6 cifre dell’email",
+    },
+
     ctx: {
         fileSaved: "File salvato: {name}",
         fileFail: "Impossibile scaricare il file «{name}»: connessione interrotta o servizio ha rifiutato. Riprova.",

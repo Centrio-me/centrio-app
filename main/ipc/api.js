@@ -149,6 +149,15 @@ function registerApiIpc() {
         return result
     })
 
+    // Attach a real email to a team account that has only a login (3.10)
+    ipcMain.handle('api-email-attach-start', async (event, token, email) => {
+        return wrapApi(() => api.emailAttachStart(token, String(email || '')))
+    })
+
+    ipcMain.handle('api-email-attach-confirm', async (event, token, code) => {
+        return wrapApi(() => api.emailAttachConfirm(token, String(code || '')))
+    })
+
     // «Участвовать в тестировании» (3.8.2). The account is fetched again here so cloud.user (read by the updater for its
     // channel) changes at once; joining also checks for an update, so a test version that is already out comes now.
     ipcMain.handle('api-beta-set', async (event, token, enabled) => {

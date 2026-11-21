@@ -365,6 +365,15 @@ module.exports = {
         return request('POST', '/api/user/beta', { enabled: enabled === true }, token)
     },
 
+    // A team account made with a login and a password attaches a real email: a code goes to the mailbox, then it is confirmed
+    emailAttachStart(token, email) {
+        return request('POST', '/api/auth/email/attach/start', { email }, token)
+    },
+
+    emailAttachConfirm(token, code) {
+        return request('POST', '/api/auth/email/attach/confirm', { code }, token)
+    },
+
     claimAchievementReward(token) {
         return request('POST', '/api/achievements/claim-reward', {}, token)
     },

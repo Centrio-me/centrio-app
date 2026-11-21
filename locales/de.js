@@ -2,6 +2,23 @@ module.exports = {
     appName: 'Centrio',
     addMessenger: 'Dienst hinzufügen',
 
+    loginAcc: {
+        loginPh: "E-Mail oder Login",
+        forgotLogin: "Das Passwort für einen Login setzt Ihr Teamleiter zurück. Bitten Sie ihn darum in Centrio.",
+        loginIs: "Login: {login}",
+        cardTitle: "E-Mail verknüpfen",
+        cardLead: "Sie melden sich derzeit mit einem Login an. Mit verknüpfter E-Mail können Sie das Passwort selbst zurücksetzen und wichtige Mails erhalten. Wir senden einen Code dorthin.",
+        emailPh: "Ihre E-Mail",
+        sendCode: "Code senden",
+        codePh: "Code aus der E-Mail",
+        confirm: "Bestätigen",
+        sending: "Wird gesendet…",
+        sentTo: "Code an {email} gesendet",
+        done: "E-Mail verknüpft. Sie können das Passwort jetzt selbst zurücksetzen.",
+        enterEmail: "E-Mail eingeben",
+        enterCode: "Die 6 Ziffern aus der E-Mail eingeben",
+    },
+
     ctx: {
         fileSaved: "Datei gespeichert: {name}",
         fileFail: "Die Datei „{name}“ konnte nicht geladen werden: Verbindung abgebrochen oder Dienst hat abgelehnt. Erneut versuchen.",

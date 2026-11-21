@@ -422,3 +422,13 @@ body:has(.first-steps.is-collapsed) .app-hint-stack { bottom: 100px; }
 .beta-title svg { width: 15px; height: 15px; color: #a78bfa; }
 .beta-status:empty { display: none; }
 .beta-status { margin-top: 6px; }
+
+/* «Привяжите почту»: карточка в профиле аккаунта, у которого есть только логин (3.10) */
+#lkLoginAccount { margin-bottom: 14px; }
+#lkLoginAccount[hidden] { display: none; }
+.lk-band--attach { align-items: flex-start; }
+.lk-band--attach .la-form { margin-top: 10px; max-width: 420px; }
+.lk-band--attach .la-form > input:not(.la-code) { width: 100%; height: 44px; padding: 0 13px; border: 1px solid var(--border-light); border-radius: 10px; background: var(--bg-secondary); color: var(--text-primary); font: inherit; font-size: 14px; box-sizing: border-box; user-select: text; }
+.lk-band--attach .la-form > input:focus { border-color: var(--accent); outline: none; }
+.lk-band--attach .la-code { height: 48px; font-size: 22px; }
+.lk-band--attach .la-row { display: flex; gap: 8px; flex-wrap: wrap; }

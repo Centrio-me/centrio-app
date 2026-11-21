@@ -2,6 +2,23 @@ module.exports = {
     appName: 'Centrio',
     addMessenger: 'Añadir servicio',
 
+    loginAcc: {
+        loginPh: "Correo o usuario",
+        forgotLogin: "La contraseña de un usuario la restablece el responsable de su equipo. Pídaselo en Centrio.",
+        loginIs: "Usuario: {login}",
+        cardTitle: "Vincule su correo",
+        cardLead: "Ahora entra con un usuario. Con un correo vinculado podrá restablecer la contraseña usted mismo y recibir mensajes importantes. Le enviaremos un código.",
+        emailPh: "Su correo",
+        sendCode: "Enviar código",
+        codePh: "Código del correo",
+        confirm: "Confirmar",
+        sending: "Enviando…",
+        sentTo: "Código enviado a {email}",
+        done: "Correo vinculado. Ya puede restablecer la contraseña usted mismo.",
+        enterEmail: "Introduzca su correo",
+        enterCode: "Introduzca los 6 dígitos del correo",
+    },
+
     ctx: {
         fileSaved: "Archivo guardado: {name}",
         fileFail: "No se pudo descargar el archivo «{name}»: se cortó la conexión o el servicio lo rechazó. Inténtelo de nuevo.",

@@ -2,6 +2,7 @@ const { showTelegramWait, clearTelegramWait } = require('./telegram-wait')
 const { requireConsent } = require('./consent-ui')
 const { bindCabinetTabs } = require('./cloud-tabs')
 const { bindAchievements } = require('./cloud-achievements')
+const { forgotPasswordAction } = require('../shared/login-account')
 
 function bindCloudUi({
     cloudStore,
@@ -365,6 +366,13 @@ function bindCloudUi({
 
     document.getElementById('cloudForgotPasswordLink')?.addEventListener('click', (e) => {
         e.preventDefault()
+        // A login has no mailbox: the team manager resets that password (3.10)
+        if (forgotPasswordAction(document.getElementById('cloudEmail').value) === 'ask-manager') {
+            const errorEl = document.getElementById('cloudLoginError')
+            errorEl.textContent = tGet('loginAcc.forgotLogin')
+            errorEl.style.display = 'block'
+            return
+        }
         _doOpenUrl('https://centrio.me/auth/forgot-password')
     })
 

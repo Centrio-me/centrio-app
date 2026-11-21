@@ -2,6 +2,23 @@ module.exports = {
     appName: 'Centrio',
     addMessenger: '添加应用',
 
+    loginAcc: {
+        loginPh: "邮箱或登录名",
+        forgotLogin: "登录名的密码由团队负责人重置。请在 Centrio 中请他重置。",
+        loginIs: "登录名：{login}",
+        cardTitle: "绑定邮箱",
+        cardLead: "您目前使用登录名登录。绑定邮箱后，您可以自行找回密码并接收重要邮件。我们会向该邮箱发送验证码。",
+        emailPh: "您的邮箱",
+        sendCode: "发送验证码",
+        codePh: "邮件中的验证码",
+        confirm: "确认",
+        sending: "发送中…",
+        sentTo: "验证码已发送至 {email}",
+        done: "邮箱已绑定。您现在可以自行找回密码。",
+        enterEmail: "请输入邮箱",
+        enterCode: "请输入邮件中的 6 位数字",
+    },
+
     ctx: {
         fileSaved: "文件已保存：{name}",
         fileFail: "无法下载文件“{name}”：连接中断或服务拒绝。请重试。",

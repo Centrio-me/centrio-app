@@ -2,6 +2,23 @@ module.exports = {
     appName: 'Centrio',
     addMessenger: 'Ajouter un service',
 
+    loginAcc: {
+        loginPh: "E-mail ou identifiant",
+        forgotLogin: "Le mot de passe d’un identifiant est réinitialisé par le responsable de votre équipe. Demandez-lui dans Centrio.",
+        loginIs: "Identifiant : {login}",
+        cardTitle: "Associez votre e-mail",
+        cardLead: "Vous vous connectez avec un identifiant. Avec un e-mail associé, vous pourrez réinitialiser le mot de passe vous-même et recevoir les messages importants. Nous y enverrons un code.",
+        emailPh: "Votre e-mail",
+        sendCode: "Envoyer le code",
+        codePh: "Code reçu par e-mail",
+        confirm: "Confirmer",
+        sending: "Envoi…",
+        sentTo: "Code envoyé à {email}",
+        done: "E-mail associé. Vous pouvez désormais réinitialiser le mot de passe vous-même.",
+        enterEmail: "Saisissez votre e-mail",
+        enterCode: "Saisissez les 6 chiffres reçus par e-mail",
+    },
+
     ctx: {
         fileSaved: "Fichier enregistré : {name}",
         fileFail: "Impossible de télécharger le fichier « {name} » : connexion interrompue ou refus du service. Réessayez.",

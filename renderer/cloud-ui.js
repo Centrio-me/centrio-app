@@ -1,5 +1,6 @@
 const { getCurrentLanguage } = require('./i18n')
 const { DEFAULT_TAB, showCabinetTab } = require('./cloud-tabs')
+const { profileAddressLine } = require('../shared/login-account')
 
 function createCloudUiApi({
     cloudStore,
@@ -643,7 +644,8 @@ function createCloudUiApi({
 
         document.getElementById('cloudUserName').textContent  = user?.name  || ''
         // An account made through Telegram has a stand-in address: it is never shown to the person.
-        document.getElementById('cloudUserEmail').textContent = /^tg_\d+@centrio\.me$/.test(user?.email || '') ? 'Telegram' : (user?.email || '')
+        // A Telegram account has a stand-in address and a login account has a login: the person sees «Telegram» / «Логин: …»
+        document.getElementById('cloudUserEmail').textContent = profileAddressLine(user, (login) => tGet('loginAcc.loginIs', { login }))
 
         const plan     = (user?.plan || 'FREE').toUpperCase()
         const isPro    = _isPro(user)
