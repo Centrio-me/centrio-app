@@ -54,9 +54,9 @@ async function createLoginAccount(orgId, row, passwordHash) {
     try {
         return await withOrgLock(orgId, async (tx, org) => {
             if (!isPaidActive(org)) return fail('team_expired', MESSAGES.team_expired)
-            if ((await freeSeats(tx, org)) <= 0) return fail('no_seats', MESSAGES.no_seats)
             const taken = await tx.user.findFirst({ where: { OR: [{ login: row.login }, { email: la.standInEmail(row.login) }] }, select: { id: true } })
             if (taken) return fail('login_taken', MESSAGES.login_taken)
+            if ((await freeSeats(tx, org)) <= 0) return fail('no_seats', MESSAGES.no_seats)
             const user = await tx.user.create({
                 data: { email: la.standInEmail(row.login), login: row.login, name: row.name, passwordHash, emailVerified: true },
                 select: { id: true }
