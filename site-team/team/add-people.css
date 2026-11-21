@@ -1,0 +1,52 @@
+/* Блок «Добавить сотрудников»: приглашения списком и аккаунты с логином и паролем (3.10). Те же цвета, что у остальных карточек команды. */
+.team-shell .ap-card { padding: 22px; margin-bottom: 20px; }
+.team-shell .ap-modes { display: flex; gap: 6px; flex-wrap: wrap; padding: 4px; margin-bottom: 18px; background: #0d1421; border: 1px solid #233047; border-radius: 12px; width: fit-content; max-width: 100%; }
+.team-shell .ap-mode { padding: 9px 16px; border: none; border-radius: 9px; background: transparent; color: #9cabbe; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: background .16s, color .16s; }
+.team-shell .ap-mode:hover { color: #eaf0fb; }
+.team-shell .ap-mode.is-on { background: #437cff; color: #fff; }
+.team-shell .ap-mode:focus-visible { outline: 2px solid #689aff; outline-offset: 2px; }
+.team-shell .ap-reco { margin-left: 6px; padding: 2px 7px; border-radius: 999px; background: rgba(255, 255, 255, .16); font-size: 10.5px; font-weight: 600; letter-spacing: .02em; }
+.team-shell .ap-mode:not(.is-on) .ap-reco { background: #1b2a44; color: #aaccff; }
+.team-shell .ap-body { display: flex; flex-direction: column; gap: 10px; }
+.team-shell .ap-textarea { resize: vertical; min-height: 96px; font-family: inherit; line-height: 1.5; }
+.team-shell .ap-hint { font-size: 12.5px; line-height: 1.5; color: #8a9bb5; }
+.team-shell .ap-count { font-size: 12.5px; color: #9cabbe; font-variant-numeric: tabular-nums; }
+.team-shell .ap-count.is-bad { color: #f59e0b; }
+.team-shell .ap-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.team-shell .ap-role { width: auto; min-width: 150px; }
+.team-shell .ap-switch { margin-top: 4px; font-size: 12.5px; color: #8a9bb5; }
+.team-shell .ap-link { padding: 0; border: none; background: none; color: #8db4ff; font: inherit; font-size: 12.5px; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.team-shell .ap-link:hover { color: #bcd2ff; }
+.team-shell .ap-warn { padding: 16px 18px; border: 1px solid #5a4a1f; border-radius: 12px; background: #1c1a10; color: #e6dcc0; font-size: 13.5px; line-height: 1.55; }
+.team-shell .ap-warn-title { margin-bottom: 6px; font-size: 15px; font-weight: 650; color: #f5e7b8; }
+.team-shell .ap-warn p { margin: 0 0 8px; }
+.team-shell .ap-warn ul { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; }
+.team-shell .ap-title { font-size: 15px; font-weight: 650; color: #eaf0fb; }
+.team-shell .ap-title.is-bad { color: #ffa3ac; }
+.team-shell .ap-results { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-direction: column; }
+.team-shell .ap-results li { display: flex; justify-content: space-between; gap: 14px; padding: 7px 0; border-bottom: 1px solid #1a2334; font-size: 12.5px; }
+.team-shell .ap-results li:last-child { border-bottom: none; }
+.team-shell .ap-results .is-ok .ap-res-text { color: #7fd6a0; }
+.team-shell .ap-results .is-bad .ap-res-text { color: #ffa3ac; }
+.team-shell .ap-res-mail { min-width: 0; overflow-wrap: anywhere; color: #d5deee; }
+.team-shell .ap-res-text { flex-shrink: 0; text-align: right; }
+.team-shell .ap-table { display: flex; flex-direction: column; gap: 8px; overflow-x: auto; }
+.team-shell .ap-tr { display: grid; grid-template-columns: minmax(150px, 1.2fr) minmax(130px, 1fr) minmax(130px, 1fr) 38px; gap: 8px; align-items: center; min-width: 520px; }
+.team-shell .ap-tr-done { grid-template-columns: minmax(150px, 1.2fr) minmax(120px, 1fr) minmax(120px, 1fr) 110px; }
+.team-shell .ap-th { font-size: 11.5px; font-weight: 600; letter-spacing: .03em; text-transform: uppercase; color: #778ba9; }
+.team-shell .ap-tr .field-input { min-height: 40px; padding: 8px 11px; }
+.team-shell .ap-tr .field-input.is-bad { border-color: #c4505e; }
+.team-shell .ap-mono { font-family: 'Geist Mono', ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 13px; letter-spacing: .02em; }
+.team-shell .ap-cell { min-width: 0; overflow-wrap: anywhere; color: #eaf0fb; font-size: 13px; user-select: text; }
+.team-shell .ap-row-problem { margin: 2px 0 0; font-size: 11.5px; color: #ffa3ac; }
+.team-shell .ap-copy { min-height: 34px; padding: 6px 12px; font-size: 12px; }
+.team-shell .ap-keep { margin: 0; }
+.team-shell .ap-reset { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; margin-top: 10px; }
+.team-shell .ap-reset-result { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 12px 14px; border: 1px solid #29456b; border-radius: 10px; background: #0f1827; color: #eaf0fb; user-select: text; }
+.team-shell .tm-tag.is-noemail { background: #2a2414; color: #f0d98a; border-color: #5a4a1f; }
+
+@media (max-width: 640px) {
+  .team-shell .ap-card { padding: 16px; }
+  .team-shell .ap-mode { flex: 1 1 100%; text-align: left; }
+}
+.team-shell .tm-invite-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }

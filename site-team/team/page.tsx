@@ -22,6 +22,7 @@ import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import { useAuthStore } from '@/store/authStore'
 import { api } from '@/lib/api'
 import { encryptForDevice, vaultSupported } from '@/lib/vaultCrypto'
+import BrandingPanel from './BrandingPanel'
 import { useLang, type Lang } from '@/lib/i18n'
 import { basePath, translatedHref } from '@/lib/locales'
 import QuickRepliesPanel from './QuickRepliesPanel'
@@ -31,6 +32,9 @@ import StructurePanel from './StructurePanel'
 import LiveBoard from './LiveBoard'
 import ReportsPanel from './ReportsPanel'
 import { LIVE_STR } from './live-strings'
+import { ASSIGN_STR } from './assign-strings'
+import AddPeoplePanel, { ResetPasswordBlock } from './AddPeoplePanel'
+import { ADD_PEOPLE_STR } from './add-people-strings'
 // Same font family as dashboard/page.tsx (Geist, via .dash-shell in
 // dashboard-design.css) — dropped the separate Montserrat load 2026-09-28 so
 // /team stops looking like a different app skin from /dashboard.
@@ -71,6 +75,9 @@ const TEAM_STR = {
     auditMsgUpdate: 'Назначенный мессенджер изменён',
     auditMsgRemove: 'Назначенный мессенджер удалён',
     auditInviteCancel: (email: string) => `Приглашение отменено: ${email}`,
+    auditCreateLogin: (login: string) => `Создан аккаунт с логином: ${login}`,
+    auditPasswordReset: (login: string) => `Сброшен пароль: ${login}`,
+    auditInviteMailFailed: (email: string) => `Письмо с приглашением не ушло: ${email}`,
     auditCustomLinkCreate: (name: string) => `Создана своя ссылка «${name}»`,
     auditCustomLinkRemove: (name: string) => `Своя ссылка удалена «${name}»`,
 
@@ -107,7 +114,7 @@ const TEAM_STR = {
     // Nav
     navNow: 'Сейчас', navReports: 'Отчёты',
     auditStrict: (who: string, on: boolean) => `Строгий режим для ${who}: ${on ? 'включён' : 'выключен'}`,
-    auditCommand: (kind: string, who: string, name: string | null) => `${({ pause: 'Выключен мессенджер', resume: 'Включён мессенджер', reload: 'Перезагружен мессенджер', relogin: 'Попросили войти заново', wipe: 'Завершены рабочие сеансы' } as Record<string, string>)[kind] || kind}${name ? ` «${name}»` : ''}: ${who}`,
+    auditCommand: (kind: string, who: string, name: string | null) => `${({ pause: 'Выключен мессенджер', resume: 'Включён мессенджер', reload: 'Перезагружен мессенджер', relogin: 'Попросили войти заново', wipe: 'Завершены рабочие сеансы', refresh: 'Обновлены данные' } as Record<string, string>)[kind] || kind}${name ? ` «${name}»` : ''}: ${who}`,
     auditNote: (who: string | null) => (who ? `Сообщение сотруднику ${who}` : 'Сообщение всей команде'),
     auditDaily: 'Сводка за день отправлена в Telegram',
     auditExpiry: (days: number) => (days === 0 ? 'Напоминание: подписка заканчивается сегодня' : `Напоминание: подписка заканчивается через ${days} дн.`),
@@ -167,6 +174,12 @@ const TEAM_STR = {
 
     // Members
     membersTab: 'Участники',
+    refreshAllBtn: 'Обновить у всех сотрудников',
+    refreshAllHint: 'Приложения сотрудников сразу перечитают аккаунт и команду: тариф, мессенджеры, настройки. Помогает, если кто-то вернулся в команду, а приложение ведёт себя как бесплатное.',
+    refreshAllSending: 'Отправляю…',
+    refreshAllDone: (members: number, devices: number) => `Отправлено: ${members} сотр., ${devices} устр. Приложения обновятся в течение минуты.`,
+    refreshAllFailed: 'Не удалось отправить команду',
+    auditRefreshAll: (members: number) => `Обновлены данные у всех сотрудников (${members})`,
     coworkerEmailLabel: 'Email коллеги', roleLabel: 'Роль',
     memberSearchPlaceholder: 'Поиск по имени или email…', noMembersFound: 'Никого не найдено',
     sendingBtn: 'Отправляем…', inviteBtn: 'Пригласить',
@@ -176,7 +189,7 @@ const TEAM_STR = {
     messengerPaletteHint: 'Перетащите мессенджер на карточку сотрудника, чтобы назначить — или нажмите «+ мессенджер» внутри карточки.',
     dropHereLabel: 'Отпустите здесь, чтобы назначить',
     addMessengerBtn: 'мессенджер',
-    assignedCountSuffix: (n: number) => `${n} назнач.`,
+    assignedCountSuffix: (n: number) => `мессенджеров: ${n}`,
     pendingInvitesTitle: 'Приглашения ожидают принятия',
     cancelInviteBtn: 'Отменить', confirmCancelInvite: 'Отменить это приглашение?',
     sentOnPrefix: 'отправлено', invitedAsPrefix: 'как',
@@ -216,6 +229,7 @@ const TEAM_STR = {
     addingBtn: 'Добавляем…', assignBtn: 'Назначить',
     assignHint: 'Ниже, у каждого сотрудника — и его список мессенджеров, и статус прочтения (только прочитано / не прочитано, содержимое переписки Centrio не видит и не хранит).',
     canAddOwnLabel: 'Может добавлять свои мессенджеры',
+    canViewStatsLabel: 'Доступ к статистике и уведомлениям о непрочитанных',
     nothingAssigned: 'Ничего не назначено', removeShortBtn: 'Убрать',
     vaultBtn: 'Доступ', vaultSavedChip: 'доступ сохранён', vaultTitle: (name: string, who: string) => `Вход в «${name}» — ${who}`,
     vaultInfo: 'Логин и пароль шифруются в вашем браузере ключом устройства сотрудника и уходят только в зашифрованном виде: сервер Centrio прочитать их не может. Сотрудник пароль не увидит — приложение само подставит его в форму входа на назначенном сайте. Сохранённый пароль нельзя прочитать обратно, при необходимости введите его заново.',
@@ -259,6 +273,9 @@ const TEAM_STR = {
     auditMsgUpdate: 'Assigned messenger updated',
     auditMsgRemove: 'Assigned messenger removed',
     auditInviteCancel: (email: string) => `Invitation cancelled: ${email}`,
+    auditCreateLogin: (login: string) => `Account with a login created: ${login}`,
+    auditPasswordReset: (login: string) => `Password reset: ${login}`,
+    auditInviteMailFailed: (email: string) => `Invitation letter did not go out: ${email}`,
     auditCustomLinkCreate: (name: string) => `Custom link "${name}" created`,
     auditCustomLinkRemove: (name: string) => `Custom link "${name}" removed`,
 
@@ -293,7 +310,7 @@ const TEAM_STR = {
 
     navNow: 'Now', navReports: 'Reports',
     auditStrict: (who: string, on: boolean) => `Strict mode for ${who}: ${on ? 'on' : 'off'}`,
-    auditCommand: (kind: string, who: string, name: string | null) => `${({ pause: 'Messenger turned off', resume: 'Messenger turned on', reload: 'Messenger reloaded', relogin: 'Asked to sign in again', wipe: 'Work sessions ended' } as Record<string, string>)[kind] || kind}${name ? ` “${name}”` : ''}: ${who}`,
+    auditCommand: (kind: string, who: string, name: string | null) => `${({ pause: 'Messenger turned off', resume: 'Messenger turned on', reload: 'Messenger reloaded', relogin: 'Asked to sign in again', wipe: 'Work sessions ended', refresh: 'Data refreshed' } as Record<string, string>)[kind] || kind}${name ? ` “${name}”` : ''}: ${who}`,
     auditNote: (who: string | null) => (who ? `Message to ${who}` : 'Message to the whole team'),
     auditDaily: 'Daily summary sent to Telegram',
     auditExpiry: (days: number) => (days === 0 ? 'Reminder: the subscription ends today' : `Reminder: the subscription ends in ${days} days`),
@@ -348,6 +365,12 @@ const TEAM_STR = {
     allRead: 'all read', noDataStatus: 'no data', activeStatus: 'active', inactiveStatus: 'inactive for a while',
 
     membersTab: 'Members',
+    refreshAllBtn: 'Refresh for every member',
+    refreshAllHint: 'Members’ apps read their account and the team again right away: plan, messengers, settings. Helps when someone came back to the team but the app behaves as the free plan.',
+    refreshAllSending: 'Sending…',
+    refreshAllDone: (members: number, devices: number) => `Sent to ${members} members, ${devices} devices. Apps refresh within a minute.`,
+    refreshAllFailed: 'Could not send the command',
+    auditRefreshAll: (members: number) => `Data refreshed for every member (${members})`,
     coworkerEmailLabel: "Coworker's email", roleLabel: 'Role',
     memberSearchPlaceholder: 'Search by name or email…', noMembersFound: 'No one found',
     sendingBtn: 'Sending…', inviteBtn: 'Invite',
@@ -357,7 +380,7 @@ const TEAM_STR = {
     messengerPaletteHint: 'Drag a messenger onto an employee card to assign it — or click "+ messenger" inside the card.',
     dropHereLabel: 'Drop here to assign',
     addMessengerBtn: 'messenger',
-    assignedCountSuffix: (n: number) => `${n} assigned`,
+    assignedCountSuffix: (n: number) => `messengers: ${n}`,
     pendingInvitesTitle: 'Invitations awaiting acceptance',
     cancelInviteBtn: 'Cancel', confirmCancelInvite: 'Cancel this invitation?',
     sentOnPrefix: 'sent', invitedAsPrefix: 'as',
@@ -395,6 +418,7 @@ const TEAM_STR = {
     addingBtn: 'Adding…', assignBtn: 'Assign',
     assignHint: "Below, for each employee — their list of messengers and read status (read/unread only — Centrio does not see or store message contents).",
     canAddOwnLabel: 'Can add their own messengers',
+    canViewStatsLabel: 'Access to statistics and unread alerts',
     nothingAssigned: 'Nothing assigned', removeShortBtn: 'Remove',
     vaultBtn: 'Access', vaultSavedChip: 'access saved', vaultTitle: (name: string, who: string) => `Sign-in to “${name}” — ${who}`,
     vaultInfo: "The login and password are encrypted in your browser with the employee's device key and sent only in encrypted form: the Centrio server cannot read them. The employee never sees the password — the app types it into the sign-in form of the assigned site. A saved password cannot be read back; enter it again if needed.",
@@ -505,6 +529,11 @@ interface Member {
   canAddOwnMessengers?: boolean
   // TEAM control (2026-11-08): the employee works only in the assigned messengers
   strictMode?: boolean
+  // an admin sees statistics, the live board, reports and unread alerts only while the owner allows it
+  canViewStats?: boolean
+  // an account made by the owner with a login and a password (3.10): `email` then holds the login
+  login?: string | null
+  loginOnly?: boolean
 }
 
 interface AuditLog {
@@ -684,6 +713,18 @@ const IcoTrash = () => (
     <path d="M10 11v6M14 11v6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
   </svg>
 )
+const IcoPencil = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <path d="M4 20h4L19 9a2.1 2.1 0 0 0-3-3L5 17l-1 3Z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="m14.5 7.5 3 3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+  </svg>
+)
+const IcoKey = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <circle cx="8" cy="15" r="4" stroke="currentColor" strokeWidth="1.8"/>
+    <path d="m11 12 9-9m-3 3 2.5 2.5M14.5 8.5 17 11" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+)
 const IcoChevron = ({ open }: { open: boolean }) => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform .18s ease', flexShrink: 0 }}>
     <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -764,7 +805,8 @@ function describeAudit(log: AuditLog, byUser: Record<string, Member>, lang: Lang
       const who = byUser[meta.userId]?.email || shortId(meta.userId)
       return s.auditStrict(who, !!meta.strictMode)
     }
-    case 'command.pause': case 'command.resume': case 'command.reload': case 'command.relogin': case 'command.wipe': {
+    case 'command.refresh_all': return s.auditRefreshAll(Number(meta.members) || 0)
+    case 'command.pause': case 'command.resume': case 'command.reload': case 'command.relogin': case 'command.wipe': case 'command.refresh': {
       const who = byUser[meta.userId]?.email || shortId(meta.userId)
       return s.auditCommand(log.action.slice(8), who, meta.name || null)
     }
@@ -783,6 +825,9 @@ function describeAudit(log: AuditLog, byUser: Record<string, Member>, lang: Lang
     case 'org.messenger.update': return s.auditMsgUpdate
     case 'org.messenger.remove': return s.auditMsgRemove
     case 'member.invite_cancel': return s.auditInviteCancel(meta.email || '')
+    case 'member.create_login': return s.auditCreateLogin(meta.login || '')
+    case 'member.password_reset': return s.auditPasswordReset(meta.login || '')
+    case 'member.invite_mail_failed': return s.auditInviteMailFailed(meta.email || '')
     case 'customlink.create': return s.auditCustomLinkCreate(meta.name || '')
     case 'customlink.delete': return s.auditCustomLinkRemove(meta.name || '')
     // Server-side action names (routes/org.js) — the org.* variants above
@@ -855,6 +900,7 @@ function TeamPageInner() {
   const [removingUserId, setRemovingUserId] = useState<string | null>(null)
   const [roleUpdatingUserId, setRoleUpdatingUserId] = useState<string | null>(null)
   const [memberActionMsg, setMemberActionMsg] = useState<Msg>(null)
+  const [refreshingAll, setRefreshingAll] = useState(false)
 
   // Billing / seats
   const [seatsPeriod, setSeatsPeriod] = useState<'month' | 'year'>('month')
@@ -885,6 +931,8 @@ function TeamPageInner() {
   const [vpnMsg, setVpnMsg] = useState<Msg>(null)
 
   const [forcedTheme, setForcedTheme] = useState<string>('')
+  // the name the team gives to the program (kept in the same settings as the theme)
+  const [brandName, setBrandName] = useState<string>('')
   const [savingSettings, setSavingSettings] = useState(false)
   const [settingsMsg, setSettingsMsg] = useState<Msg>(null)
 
@@ -918,6 +966,12 @@ function TeamPageInner() {
   const [addingMessengerFor, setAddingMessengerFor] = useState<string | null>(null)
   const [dragOverUserId, setDragOverUserId] = useState<string | null>(null)
   const [quickAssigningUserId, setQuickAssigningUserId] = useState<string | null>(null)
+  // rename an assigned messenger, copy a set of messengers to another employee (Lucil, 2026-11-17)
+  const [renamingId, setRenamingId] = useState<string | null>(null)
+  const [renameDraft, setRenameDraft] = useState('')
+  const [copyFromUserId, setCopyFromUserId] = useState<string | null>(null)
+  const [copyToUserId, setCopyToUserId] = useState('')
+  const [copyBusy, setCopyBusy] = useState(false)
 
   // Custom link catalog (2026-09-28, "давать свои собственные ссылки...
   // создавать ссылки для перетягивания" — live request): org-level,
@@ -974,6 +1028,16 @@ function TeamPageInner() {
 
   useEffect(() => { loadMembers() }, [loadMembers])
 
+  // After people were added (invitations or accounts): the team, the member list and the waiting invitations are read again
+  const refreshPeople = useCallback(() => {
+    refreshOrg()
+    loadMembers()
+    if (!org?.orgId) return
+    api.get(`/api/org/${org.orgId}/invites`)
+      .then(({ data }) => { if (data?.success) setPendingInvites(data.data) })
+      .catch(() => {})
+  }, [refreshOrg, loadMembers, org?.orgId])
+
   useEffect(() => {
     if (tab !== 'audit' || !org?.orgId) return
     setLoadingAudit(true)
@@ -1004,6 +1068,7 @@ function TeamPageInner() {
 
       api.get(`/api/org/${org.orgId}/settings`).then(({ data }) => {
         if (data?.success && data.data?.theme) setForcedTheme(data.data.theme)
+        if (data?.success && typeof data.data?.brandName === 'string') setBrandName(data.data.brandName)
       }).catch(() => {})
     }
 
@@ -1110,9 +1175,25 @@ function TeamPageInner() {
     }
   }
 
+  // «Обновить у всех сотрудников»: every member's apps read the account and the team again (2026-11-11)
+  const handleRefreshAll = async () => {
+    if (!org?.orgId || refreshingAll) return
+    setRefreshingAll(true)
+    setMemberActionMsg(null)
+    try {
+      const { data } = await api.post(`/api/org/${org.orgId}/commands/refresh`, {})
+      setMemberActionMsg({ type: 'ok', text: s.refreshAllDone(Number(data?.data?.members) || 0, Number(data?.data?.devices) || 0) })
+    } catch (err: any) {
+      setMemberActionMsg({ type: 'err', text: err.response?.data?.error || s.refreshAllFailed })
+    } finally {
+      setRefreshingAll(false)
+    }
+  }
+
   const handleRemoveMember = async (userId: string) => {
     if (!org) return
-    if (!window.confirm(s.confirmRemoveMember)) return
+    const removing = members.find(m => m.userId === userId)
+    if (!window.confirm(removing?.loginOnly ? ADD_PEOPLE_STR[lang === 'en' ? 'en' : 'ru'].removeLoginWarn : s.confirmRemoveMember)) return
     setRemovingUserId(userId)
     setMemberActionMsg(null)
     try {
@@ -1148,6 +1229,21 @@ function TeamPageInner() {
     setMembers(list => list.map(m => m.userId === userId ? { ...m, strictMode: value } : m))
     try {
       await api.patch(`/api/org/${org.orgId}/members/${userId}`, { strictMode: value })
+    } catch {
+      setMembers(prevMembers)
+      setAssignMsg({ type: 'err', text: s.errChangePermFailed })
+    } finally {
+      setPermUpdatingUserId(null)
+    }
+  }
+
+  const handleToggleStats = async (userId: string, value: boolean) => {
+    if (!org) return
+    setPermUpdatingUserId(userId)
+    const prevMembers = members
+    setMembers(list => list.map(m => m.userId === userId ? { ...m, canViewStats: value } : m))
+    try {
+      await api.patch(`/api/org/${org.orgId}/members/${userId}`, { canViewStats: value })
     } catch {
       setMembers(prevMembers)
       setAssignMsg({ type: 'err', text: s.errChangePermFailed })
@@ -1309,19 +1405,41 @@ function TeamPageInner() {
     }
   }
 
+  // the theme and the name of the program live in one settings object: saving one keeps the other
+  const saveOrgSettings = async (theme: string, name: string) => {
+    if (!org) return null
+    const settings = theme || name ? { ...(theme ? { theme } : {}), ...(name ? { brandName: name } : {}) } : null
+    const { data } = await api.patch(`/api/org/${org.orgId}/settings`, { settings })
+    return data?.data || null
+  }
+
   const handleSaveTheme = async (theme: string) => {
     if (!org) return
+    const before = forcedTheme
     setForcedTheme(theme)
     setSavingSettings(true)
     setSettingsMsg(null)
     try {
-      const settings = theme ? { theme } : null
-      await api.patch(`/api/org/${org.orgId}/settings`, { settings })
+      await saveOrgSettings(theme, brandName)
       setSettingsMsg({ type: 'ok', text: theme ? s.themeAppliedAll : s.themeForceDisabled })
     } catch (err: any) {
+      setForcedTheme(before)
       setSettingsMsg({ type: 'err', text: err.response?.data?.error || s.errSaveSettingsFailed })
     } finally {
       setSavingSettings(false)
+    }
+  }
+
+  const handleSaveBrandName = async (name: string) => {
+    if (!org) return
+    setSettingsMsg(null)
+    try {
+      const saved = await saveOrgSettings(forcedTheme, name)
+      // the server cleans the name (spaces, invisible characters, length): what it kept is what is shown
+      setBrandName(typeof saved?.brandName === 'string' ? saved.brandName : '')
+      setSettingsMsg({ type: 'ok', text: name ? 'Название сохранено. У сотрудников оно появится в течение нескольких минут.' : 'Название сброшено: в программе снова «Centrio».' })
+    } catch (err: any) {
+      setSettingsMsg({ type: 'err', text: err.response?.data?.error || s.errSaveSettingsFailed })
     }
   }
 
@@ -1413,6 +1531,50 @@ function TeamPageInner() {
       setAssignments(prev)
       setAssignMsg({ type: 'err', text: s.errVpnToggle })
     }
+  }
+
+  const handleRenameAssignment = async (id: string) => {
+    if (!org) return
+    const t = ASSIGN_STR[lang === 'en' ? 'en' : 'ru']
+    const name = renameDraft.trim().slice(0, 100)
+    if (!name) { setAssignMsg({ type: 'err', text: t.renameEmpty }); return }
+    const prev = assignments
+    // an unchanged name is not sent
+    if (prev.find(a => a.id === id)?.name === name) { setRenamingId(null); return }
+    setAssignments(list => list.map(a => a.id === id ? { ...a, name } : a))
+    setRenamingId(null)
+    try {
+      await api.patch(`/api/org/${org.orgId}/messenger-assignments/${id}`, { name })
+    } catch {
+      setAssignments(prev)
+      setAssignMsg({ type: 'err', text: t.renameFailed })
+    }
+  }
+
+  // A set of messengers made once for one employee goes to another with one button: the same names, links, icons and
+  // VPN setting; what the target already has (same name and link) is skipped. Passwords are never copied.
+  const handleCopyAssignments = async (fromUserId: string, toUserId: string) => {
+    if (!org || !toUserId || fromUserId === toUserId) return
+    const t = ASSIGN_STR[lang === 'en' ? 'en' : 'ru']
+    const source = assignments.filter(a => a.userId === fromUserId)
+    const have = assignments.filter(a => a.userId === toUserId)
+    const fresh = source.filter(a => !have.some(h => h.url === a.url && h.name === a.name))
+    setCopyBusy(true)
+    setAssignMsg(null)
+    const added: MessengerAssignment[] = []
+    let failed = 0
+    for (const a of fresh) {
+      try {
+        const { data } = await api.post(`/api/org/${org.orgId}/messenger-assignments`, { userId: toUserId, name: a.name, url: a.url, icon: a.icon || undefined, color: a.color || undefined, useVpn: a.useVpn !== false })
+        if (data?.success) added.push(data.data); else failed++
+      } catch { failed++ }
+    }
+    if (added.length) setAssignments(prev => [...prev, ...added])
+    setExpandedUserIds(prev => new Set(prev).add(toUserId))
+    setCopyBusy(false)
+    setCopyFromUserId(null)
+    setCopyToUserId('')
+    setAssignMsg(failed > 0 ? { type: 'err', text: t.copyFailed } : { type: 'ok', text: t.copyDone(added.length, source.length - fresh.length) })
   }
 
   const handleDeleteAssignment = async (id: string) => {
@@ -1511,6 +1673,19 @@ function TeamPageInner() {
     }
   }
 
+  // The letter did not arrive: a fresh link goes out and the old one stops working
+  const handleResendInvite = async (id: string) => {
+    if (!org) return
+    const t = ADD_PEOPLE_STR[lang === 'en' ? 'en' : 'ru']
+    setMemberActionMsg(null)
+    try {
+      await api.post(`/api/org/${org.orgId}/invites/${id}/resend`, {})
+      setMemberActionMsg({ type: 'ok', text: t.resendDone })
+    } catch (err: any) {
+      setMemberActionMsg({ type: 'err', text: err.response?.data?.error || t.resendFailed })
+    }
+  }
+
   const handleCancelInvite = async (id: string) => {
     if (!org) return
     setCancelingInviteId(id)
@@ -1530,7 +1705,7 @@ function TeamPageInner() {
   useEffect(() => {
     const role = org?.orgRole
     if (!role) return
-    if ((tab === 'alerts' && role !== 'OWNER') || ((tab === 'replies' || tab === 'tasks' || tab === 'folders' || tab === 'now' || tab === 'reports') && role === 'MEMBER')) setTab('overview')
+    if ((tab === 'alerts' && role !== 'OWNER') || ((tab === 'replies' || tab === 'tasks' || tab === 'folders' || tab === 'now' || tab === 'reports') && role === 'MEMBER') || ((tab === 'now' || tab === 'reports') && statsBlocked)) setTab('overview')
   }, [org?.orgRole, tab])
 
   if (!_hasHydrated || (_hasHydrated && !user)) {
@@ -1555,11 +1730,12 @@ function TeamPageInner() {
       ? seatPlansDisplay[seatsPeriod].pricePerSeat * (org?.orgSeatLimit || 0) * (seatsPeriod === 'year' ? 12 : 1)
       : seatPlansDisplay[seatsPeriod].pricePerSeat * seatsCount * (seatsPeriod === 'year' ? 12 : 1)
   const canManage = org?.orgRole === 'OWNER' || org?.orgRole === 'ADMIN'
+  const statsBlocked = org?.orgRole === 'ADMIN' && members.find(m => m.userId === user?.id)?.canViewStats === false
   const isOwner = org?.orgRole === 'OWNER'
   const freeSeats = org ? Math.max(0, org.orgSeatLimit - org.orgSeatsUsed) : 0
 
   const NAV: {key:typeof tab;label:string;Icon:React.ComponentType}[] = [
-    ...(canManage ? [{ key: 'now' as const, label: s.navNow, Icon: IcoNow }] : []),
+    ...(canManage && !statsBlocked ? [{ key: 'now' as const, label: s.navNow, Icon: IcoNow }] : []),
     { key: 'overview', label: s.navOverview, Icon: IcoOverview },
     { key: 'members', label: s.navMembers, Icon: IcoUsers },
     { key: 'billing', label: s.navBilling, Icon: IcoCard },
@@ -1568,7 +1744,7 @@ function TeamPageInner() {
     ...(canManage ? [{ key: 'folders' as const, label: s.navFolders, Icon: IcoFolders }] : []),
     ...(canManage ? [{ key: 'replies' as const, label: s.navReplies, Icon: IcoReplies }] : []),
     ...(isOwner ? [{ key: 'alerts' as const, label: s.navAlerts, Icon: IcoBell }] : []),
-    ...(canManage ? [{ key: 'reports' as const, label: s.navReports, Icon: IcoReports }] : []),
+    ...(canManage && !statsBlocked ? [{ key: 'reports' as const, label: s.navReports, Icon: IcoReports }] : []),
     ...(canManage ? [{ key: 'audit' as const, label: s.navAudit, Icon: IcoShield }] : []),
   ] as const
 
@@ -1891,7 +2067,7 @@ function TeamPageInner() {
                     ) : members.filter(m => m.role !== 'OWNER').length === 0 ? (
                       <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13.5 }}>{s.noEmployeesYet}</div>
                     ) : (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <div className="tm-overview">
                         {members.filter(m => m.role !== 'OWNER').map(m => {
                           const ownAssignments = assignments.filter(a => a.userId === m.userId)
                           const ownStats = stats.filter(st => st.userId === m.userId)
@@ -1903,9 +2079,19 @@ function TeamPageInner() {
                           }, 0)
                           const activeRecently = lastActivityTs > 0 && (Date.now() - lastActivityTs) < 3 * 24 * 60 * 60 * 1000
                           return (
-                            <div key={m.userId} className="audit-row" style={{ alignItems: 'center' }}>
-                              <span>{m.name || m.email} · {ownAssignments.length} {s.messengersCountSuffix} · {noLoginCount > 0 ? <span style={{ color: '#ef4444', fontWeight: 700 }}>{s.loginMissingCount(noLoginCount)}</span> : unread > 0 ? s.unreadCountSuffix(unread) : s.allRead}</span>
-                              <span style={{ flexShrink: 0, fontWeight: 700, color: lastActivityTs === 0 ? 'rgba(255,255,255,0.35)' : activeRecently ? '#22c55e' : '#f59e0b' }}>
+                            <div key={m.userId} className="tm-ov-row">
+                              <div className="member-avatar">{(m.name || m.email).charAt(0).toUpperCase()}</div>
+                              <div className="tm-id">
+                                <div className="tm-name">{m.name || m.email}</div>
+                                <div className="tm-tags">
+                                  <span className="tm-tag">{s.assignedCountSuffix(ownAssignments.length)}</span>
+                                  {noLoginCount > 0
+                                    ? <span className="tm-tag is-bad">{s.loginMissingCount(noLoginCount)}</span>
+                                    : unread > 0 ? <span className="tm-tag is-warn">{s.unreadCountSuffix(unread)}</span>
+                                    : <span className="tm-tag is-ok">{s.allRead}</span>}
+                                </div>
+                              </div>
+                              <span className={`tm-presence ${lastActivityTs === 0 ? 'is-none' : activeRecently ? 'is-on' : 'is-away'}`}>
                                 {lastActivityTs === 0 ? s.noDataStatus : activeRecently ? s.activeStatus : s.inactiveStatus}
                               </span>
                             </div>
@@ -1922,61 +2108,54 @@ function TeamPageInner() {
               <>
                 <div className="section-title"><IcoUsers /> {s.membersTab} ({members.length})</div>
 
-                {canManage && (
-                  <div className="glass-card" style={{ padding: 22, marginBottom: 20 }}>
-                    <form onSubmit={handleInvite} style={{ display: 'flex', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap' }}>
-                      <div style={{ flex: '1 1 240px' }}>
-                        <label className="field-label">{s.coworkerEmailLabel}</label>
-                        <input className="field-input" type="email" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} placeholder="coworker@company.com" />
-                      </div>
-                      {isOwner && (
-                        <div>
-                          <label className="field-label">{s.roleLabel}</label>
-                          <select className="field-select" value={inviteRole} onChange={e => setInviteRole(e.target.value as 'MEMBER' | 'ADMIN')}>
-                            <option value="MEMBER">{s.roleMember}</option>
-                            <option value="ADMIN">{s.roleAdmin}</option>
-                          </select>
-                        </div>
-                      )}
-                      <button type="submit" className="btn-primary" disabled={inviting || freeSeats <= 0}>
-                        <IcoSend /> {inviting ? s.sendingBtn : s.inviteBtn}
-                      </button>
-                    </form>
-                    {freeSeats <= 0 && (
-                      <div className="form-msg err" style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                        <span style={{ flex: 1 }}>{s.noFreeSeatsMsg}</span>
-                        {/* UX (2026-09-29): a real button that jumps straight
-                            to Billing instead of just naming the tab — one
-                            click instead of "now go find it yourself". */}
-                        <button type="button" className="btn-primary" style={{ flexShrink: 0 }} onClick={() => setTab('billing')}>{s.buySeatsShortBtn}</button>
-                      </div>
-                    )}
-                    {inviteMsg && <div className={`form-msg ${inviteMsg.type}`} style={{ marginTop: 10 }}>{inviteMsg.text}</div>}
+                {canManage && members.length > 1 && (
+                  <div className="glass-card" style={{ padding: '14px 18px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+                    <div style={{ flex: '1 1 260px', fontSize: 13, lineHeight: 1.45, opacity: 0.8 }}>{s.refreshAllHint}</div>
+                    <button type="button" className="btn-secondary" onClick={handleRefreshAll} disabled={refreshingAll} style={{ flexShrink: 0 }}>
+                      {refreshingAll ? s.refreshAllSending : s.refreshAllBtn}
+                    </button>
                   </div>
+                )}
+
+                {canManage && org && (
+                  <AddPeoplePanel
+                    orgId={org.orgId}
+                    isOwner={isOwner}
+                    freeSeats={Math.max(0, freeSeats - pendingInvites.length)}
+                    lang={lang}
+                    onChanged={refreshPeople}
+                    onBuySeats={() => setTab('billing')}
+                  />
                 )}
 
                 {memberActionMsg && <div className={`form-msg ${memberActionMsg.type}`} style={{ marginBottom: 12 }}>{memberActionMsg.text}</div>}
                 {assignMsg && <div className={`form-msg ${assignMsg.type}`} style={{ marginBottom: 12 }}>{assignMsg.text}</div>}
 
                 {canManage && !loadingPendingInvites && pendingInvites.length > 0 && (
-                  <div className="glass-card" style={{ padding: '14px 18px', marginBottom: 20 }}>
-                    <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 10 }}>{s.pendingInvitesTitle} ({pendingInvites.length})</div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <div className="glass-card tm-invites">
+                    <div className="tm-card-title">{s.pendingInvitesTitle} <span className="tm-count">{pendingInvites.length}</span></div>
+                    <div>
                       {pendingInvites.map(inv => (
-                        <div key={inv.id} className="member-row">
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: 13.5, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{inv.email}</div>
-                            <div style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.4)' }}>
+                        <div key={inv.id} className="tm-invite">
+                          <div className="member-avatar is-pending">{inv.email.charAt(0).toUpperCase()}</div>
+                          <div className="tm-id">
+                            <div className="tm-name">{inv.email}</div>
+                            <div className="tm-email">
                               {s.sentOnPrefix} {fmtDate(inv.createdAt, dateLocale)} · {s.invitedAsPrefix} {ROLE_LABELS[inv.role]}
                             </div>
                           </div>
-                          <button
-                            className="btn-danger"
-                            disabled={cancelingInviteId === inv.id}
-                            onClick={() => { if (window.confirm(s.confirmCancelInvite)) handleCancelInvite(inv.id) }}
-                          >
-                            <IcoTrash /> {cancelingInviteId === inv.id ? '…' : s.cancelInviteBtn}
-                          </button>
+                          <div className="tm-invite-actions">
+                            <button className="btn-secondary tm-btn-sm" onClick={() => handleResendInvite(inv.id)}>
+                              {ADD_PEOPLE_STR[lang === 'en' ? 'en' : 'ru'].resendBtn}
+                            </button>
+                            <button
+                              className="btn-danger tm-btn-sm"
+                              disabled={cancelingInviteId === inv.id}
+                              onClick={() => { if (window.confirm(s.confirmCancelInvite)) handleCancelInvite(inv.id) }}
+                            >
+                              <IcoTrash /> {cancelingInviteId === inv.id ? '…' : s.cancelInviteBtn}
+                            </button>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -1984,23 +2163,29 @@ function TeamPageInner() {
                 )}
 
                 {canManage && (
-                  <div className="glass-card" style={{ padding: '14px 18px', marginBottom: 20 }}>
-                    <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 4 }}>{s.messengerPaletteTitle}</div>
-                    <p style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.4)', marginBottom: 12 }}>{s.messengerPaletteHint}</p>
-                    <label className="field-label" htmlFor="assign-vpn-mode">{s.assignVpnLabel}</label>
-                    <select id="assign-vpn-mode" className="field-select" value={assignVpnMode} onChange={e => setAssignVpnMode(e.target.value as 'auto' | 'on' | 'off')} style={{ marginBottom: 6 }}>
-                      <option value="auto">{s.vpnModeAuto}</option>
-                      <option value="on">{s.vpnModeOn}</option>
-                      <option value="off">{s.vpnModeOff}</option>
-                    </select>
-                    <p style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.4)', marginBottom: 12 }}>{s.assignVpnHint}</p>
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                  <div className="glass-card tm-palette">
+                    <div className="tm-palette-head">
+                      <div>
+                        <div className="tm-card-title">{s.messengerPaletteTitle}</div>
+                        <p className="tm-card-hint">{s.messengerPaletteHint}</p>
+                      </div>
+                      <div className="tm-vpn-mode">
+                        <label className="field-label" htmlFor="assign-vpn-mode">{s.assignVpnLabel}</label>
+                        <select id="assign-vpn-mode" className="field-select" value={assignVpnMode} onChange={e => setAssignVpnMode(e.target.value as 'auto' | 'on' | 'off')} title={s.assignVpnHint}>
+                          <option value="auto">{s.vpnModeAuto}</option>
+                          <option value="on">{s.vpnModeOn}</option>
+                          <option value="off">{s.vpnModeOff}</option>
+                        </select>
+                      </div>
+                    </div>
+                    <p className="tm-card-hint" style={{ marginTop: 6 }}>{s.assignVpnHint}</p>
+                    <div className="tm-chips">
                       {POPULAR_MESSENGERS.map((preset, i) => (
                         <div
                           key={preset.name}
                           draggable
+                          className="tm-chip"
                           onDragStart={e => { e.dataTransfer.setData('text/plain', String(i)); e.dataTransfer.effectAllowed = 'copy' }}
-                          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', borderRadius: 9, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', cursor: 'grab', fontSize: 12.5, userSelect: 'none' }}
                           title={preset.name}
                         >
                           {/* draggable=false on the <img>: browsers make <img>
@@ -2008,7 +2193,7 @@ function TeamPageInner() {
                               parent chip's own drag (starting an image-URL
                               drag instead of ours) — this was the actual
                               cause of "перетаскивание не работает". */}
-                          <img src={preset.icon} alt="" width={16} height={16} draggable={false} style={{ borderRadius: 4, objectFit: 'contain', pointerEvents: 'none' }} />
+                          <img src={preset.icon} alt="" width={16} height={16} draggable={false} />
                           {preset.name}
                         </div>
                       ))}
@@ -2016,23 +2201,24 @@ function TeamPageInner() {
                         <div
                           key={link.id}
                           draggable
+                          className="tm-chip is-custom"
                           onDragStart={e => { e.dataTransfer.setData('text/plain', `custom:${link.id}`); e.dataTransfer.effectAllowed = 'copy' }}
-                          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', borderRadius: 9, background: 'rgba(67,124,255,0.08)', border: '1px solid rgba(67,124,255,0.2)', cursor: 'grab', fontSize: 12.5, userSelect: 'none' }}
                           title={link.url}
                         >
                           {link.name}
                           <button
                             type="button"
+                            className="tm-chip-x"
                             onClick={() => handleDeleteCustomLink(link.id)}
-                            style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', cursor: 'pointer', padding: 0, display: 'flex' }}
                             title={s.removeShortBtn}
+                            aria-label={`${s.removeShortBtn}: ${link.name}`}
                           >
                             <IcoTrash />
                           </button>
                         </div>
                       ))}
                       {!addingCustomLink && (
-                        <button type="button" className="btn-ghost" style={{ padding: '6px 10px', fontSize: 12.5 }} onClick={() => setAddingCustomLink(true)}>
+                        <button type="button" className="tm-chip is-add" onClick={() => setAddingCustomLink(true)}>
                           <IcoPlus /> {s.addLinkBtn}
                         </button>
                       )}
@@ -2073,7 +2259,7 @@ function TeamPageInner() {
                   const filtered = q ? members.filter(m => (m.name || '').toLowerCase().includes(q) || m.email.toLowerCase().includes(q)) : members
                   if (filtered.length === 0) return <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13.5 }}>{s.noMembersFound}</div>
                   return (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div className="glass-card tm-list">
                     {filtered.map(m => {
                       const canRemove = canManage && m.role !== 'OWNER' && !(m.role === 'ADMIN' && !isOwner)
                       const canDrop = canManage && m.role !== 'OWNER'
@@ -2086,12 +2272,7 @@ function TeamPageInner() {
                       return (
                         <div
                           key={m.userId}
-                          className="member-row"
-                          style={{
-                            flexDirection: 'column', alignItems: 'stretch', gap: 0, cursor: 'default',
-                            outline: isDragTarget ? '2px dashed #437cff' : 'none', outlineOffset: 2,
-                            background: isDragTarget ? 'rgba(67,124,255,0.08)' : undefined,
-                          }}
+                          className={`tm-member${expanded ? ' is-open' : ''}${isDragTarget ? ' is-drop' : ''}`}
                           onDragOver={canDrop ? (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; if (dragOverUserId !== m.userId) setDragOverUserId(m.userId) } : undefined}
                           onDragLeave={canDrop ? () => setDragOverUserId(prev => (prev === m.userId ? null : prev)) : undefined}
                           onDrop={canDrop ? (e) => {
@@ -2107,130 +2288,189 @@ function TeamPageInner() {
                             }
                           } : undefined}
                         >
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', width: '100%' }} onClick={() => toggleExpanded(m.userId)}>
-                            <div className="member-avatar">{(m.name || m.email).charAt(0).toUpperCase()}</div>
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <div style={{ fontSize: 14, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.name || m.email}</div>
-                              <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)' }}>{m.email}</div>
+                          <div className="tm-head" onClick={() => toggleExpanded(m.userId)}>
+                            <div className={`member-avatar${m.role === 'OWNER' ? ' is-owner' : ''}`}>{(m.name || m.email).charAt(0).toUpperCase()}</div>
+                            <div className="tm-id">
+                              <div className="tm-name">{m.name || m.email}</div>
+                              {m.name && <div className="tm-email">{m.email}</div>}
+                              {m.loginOnly && <div className="tm-tags"><span className="tm-tag is-noemail">{ADD_PEOPLE_STR[lang === 'en' ? 'en' : 'ru'].noEmailTag}</span></div>}
+                              {(own.length > 0 || (canManage && unreadTotal > 0)) && (
+                                <div className="tm-tags">
+                                  {own.length > 0 && <span className="tm-tag">{s.assignedCountSuffix(own.length)}</span>}
+                                  {canManage && own.length > 0 && noLoginTotal > 0 && <span className="tm-tag is-bad">{s.loginMissingCount(noLoginTotal)}</span>}
+                                  {canManage && unreadTotal > 0 && <span className="tm-tag is-warn">{s.unreadCountSuffix(unreadTotal)}</span>}
+                                </div>
+                              )}
                             </div>
-                            {own.length > 0 && (
-                              <span className="badge" style={{ background: 'rgba(67,124,255,0.1)', color: '#87b7ff' }}>{s.assignedCountSuffix(own.length)}</span>
-                            )}
-                            {canManage && own.length > 0 && noLoginTotal > 0 && (
-                              <span className="badge" style={{ background: 'rgba(239,68,68,0.12)', color: '#ef4444' }}>{s.loginMissingCount(noLoginTotal)}</span>
-                            )}
-                            {canManage && unreadTotal > 0 && (
-                              <span className="badge" style={{ background: 'rgba(245,158,11,0.12)', color: '#f59e0b' }}>{s.unreadCountSuffix(unreadTotal)}</span>
-                            )}
-                            {isOwner && m.role !== 'OWNER' ? (
-                              <select
-                                className="field-select"
-                                value={m.role}
-                                disabled={roleUpdatingUserId === m.userId}
-                                onClick={e => e.stopPropagation()}
-                                onChange={e => handleChangeRole(m.userId, e.target.value as 'ADMIN' | 'MEMBER')}
-                                style={{ padding: '7px 10px', fontSize: 12.5 }}
-                              >
-                                <option value="MEMBER">{s.roleMember}</option>
-                                <option value="ADMIN">{s.roleAdmin}</option>
-                              </select>
-                            ) : (
-                              <span className="badge" style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.6)' }}>
-                                {m.role === 'OWNER' && <IcoCrown />} {ROLE_LABELS[m.role]}
-                              </span>
-                            )}
-                            {canRemove && (
-                              <button className="btn-danger" disabled={removingUserId === m.userId} onClick={e => { e.stopPropagation(); handleRemoveMember(m.userId) }}>
-                                <IcoTrash /> {removingUserId === m.userId ? '…' : s.removeBtn}
+                            <div className="tm-controls" onClick={e => e.stopPropagation()}>
+                              {isOwner && m.role !== 'OWNER' ? (
+                                <select
+                                  className="tm-role"
+                                  aria-label={s.roleLabel}
+                                  value={m.role}
+                                  disabled={roleUpdatingUserId === m.userId}
+                                  onChange={e => handleChangeRole(m.userId, e.target.value as 'ADMIN' | 'MEMBER')}
+                                >
+                                  <option value="MEMBER">{s.roleMember}</option>
+                                  <option value="ADMIN">{s.roleAdmin}</option>
+                                </select>
+                              ) : (
+                                <span className={`tm-role-badge${m.role === 'OWNER' ? ' is-owner' : ''}`}>
+                                  {m.role === 'OWNER' && <IcoCrown />} {ROLE_LABELS[m.role]}
+                                </span>
+                              )}
+                              {canRemove && (
+                                <button
+                                  type="button"
+                                  className="tm-icon-btn is-danger"
+                                  title={s.removeBtn}
+                                  aria-label={`${s.removeBtn}: ${m.name || m.email}`}
+                                  disabled={removingUserId === m.userId}
+                                  onClick={() => handleRemoveMember(m.userId)}
+                                >
+                                  <IcoTrash />
+                                </button>
+                              )}
+                              <button type="button" className="tm-icon-btn tm-chevron" aria-expanded={expanded} aria-label={m.name || m.email} onClick={() => toggleExpanded(m.userId)}>
+                                <IcoChevron open={expanded} />
                               </button>
-                            )}
-                            <IcoChevron open={expanded} />
+                            </div>
                           </div>
 
-                          {isDragTarget && (
-                            <div style={{ marginTop: 10, padding: '8px 10px', borderRadius: 8, background: 'rgba(67,124,255,0.12)', color: '#87b7ff', fontSize: 12, textAlign: 'center' }}>
-                              {s.dropHereLabel}
-                            </div>
-                          )}
+                          {isDragTarget && <div className="tm-drop-hint">{s.dropHereLabel}</div>}
 
                           {expanded && (
-                            <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid rgba(255,255,255,0.08)', display: 'flex', flexDirection: 'column', gap: 12 }}>
-                              {canManage && m.role === 'MEMBER' && (
-                                <label title={LIVE_STR[lang === 'en' ? 'en' : 'ru'].strictHint} style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 12, color: 'rgba(255,255,255,0.75)', cursor: permUpdatingUserId === m.userId ? 'wait' : 'pointer' }}>
-                                  <input
-                                    type="checkbox"
-                                    checked={m.strictMode === true}
-                                    disabled={permUpdatingUserId === m.userId}
-                                    onChange={e => handleToggleStrict(m.userId, e.target.checked)}
-                                  />
-                                  {LIVE_STR[lang === 'en' ? 'en' : 'ru'].strict}
-                                </label>
+                            <div className="tm-body">
+                              {canManage && m.loginOnly && m.role !== 'OWNER' && (m.role === 'MEMBER' || isOwner) && (
+                                <ResetPasswordBlock orgId={org?.orgId || ''} userId={m.userId} name={m.name || m.email} lang={lang} />
                               )}
-                              {canManage && m.role !== 'OWNER' && m.strictMode !== true && (
-                                <label style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 12, color: 'rgba(255,255,255,0.55)', cursor: permUpdatingUserId === m.userId ? 'wait' : 'pointer' }}>
-                                  <input
-                                    type="checkbox"
-                                    checked={m.canAddOwnMessengers !== false}
-                                    disabled={permUpdatingUserId === m.userId}
-                                    onChange={e => handleToggleCanAdd(m.userId, e.target.checked)}
-                                  />
-                                  {s.canAddOwnLabel}
-                                </label>
+                              {canManage && m.role !== 'OWNER' && (
+                                <div className="tm-perms">
+                                  {(m.role === 'MEMBER' || (m.role === 'ADMIN' && isOwner)) && (
+                                    <label className="switch-row" title={LIVE_STR[lang === 'en' ? 'en' : 'ru'].strictHint} style={{ cursor: permUpdatingUserId === m.userId ? 'wait' : 'pointer' }}>
+                                      <input
+                                        type="checkbox"
+                                        className="switch"
+                                        checked={m.strictMode === true}
+                                        disabled={permUpdatingUserId === m.userId}
+                                        onChange={e => handleToggleStrict(m.userId, e.target.checked)}
+                                      />
+                                      {LIVE_STR[lang === 'en' ? 'en' : 'ru'].strict}
+                                    </label>
+                                  )}
+                                  {m.role === 'ADMIN' && isOwner && (
+                                    <label className="switch-row" style={{ cursor: permUpdatingUserId === m.userId ? 'wait' : 'pointer' }}>
+                                      <input
+                                        type="checkbox"
+                                        className="switch"
+                                        checked={m.canViewStats !== false}
+                                        disabled={permUpdatingUserId === m.userId}
+                                        onChange={e => handleToggleStats(m.userId, e.target.checked)}
+                                      />
+                                      {s.canViewStatsLabel}
+                                    </label>
+                                  )}
+                                  {m.strictMode !== true && !(m.role === 'ADMIN' && !isOwner) && (
+                                    <label className="switch-row" style={{ cursor: permUpdatingUserId === m.userId ? 'wait' : 'pointer' }}>
+                                      <input
+                                        type="checkbox"
+                                        className="switch"
+                                        checked={m.canAddOwnMessengers !== false}
+                                        disabled={permUpdatingUserId === m.userId}
+                                        onChange={e => handleToggleCanAdd(m.userId, e.target.checked)}
+                                      />
+                                      {s.canAddOwnLabel}
+                                    </label>
+                                  )}
+                                </div>
                               )}
 
                               {own.length === 0 ? (
-                                <div style={{ fontSize: 12.5, color: 'rgba(255,255,255,0.35)' }}>{s.nothingAssigned}</div>
+                                <div className="tm-empty">{s.nothingAssigned}</div>
                               ) : (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                <div className="tm-assign-list">
                                   {own.map(a => {
                                     const stat = ownStats.find(st => st.messengerKey === a.id)
+                                    const kind = loginKindOf(stat)
+                                    const loginLabel = kind === 'in' ? s.loginInLabel : kind === 'out' ? `${s.loginOutLabel} · ${formatSince(minutesSince(stat?.notLoggedInSince))}` : kind === 'never' ? s.loginNeverLabel : s.loginUnknownLabel
                                     return (
-                                      <div key={a.id} className="member-row">
-                                        {a.icon && <img src={a.icon} alt="" width={22} height={22} style={{ borderRadius: 6, flexShrink: 0, objectFit: 'contain' }} />}
-                                        <div style={{ flex: 1, minWidth: 0 }}>
-                                          <div style={{ fontSize: 14, fontWeight: 700 }}>{a.name}</div>
-                                          <div style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.4)' }}>{a.url}</div>
+                                      <div key={a.id} className="tm-assign">
+                                        <div className="tm-assign-icon">
+                                          {a.icon ? <img src={a.icon} alt="" width={22} height={22} /> : <span>{a.name.charAt(0).toUpperCase()}</span>}
                                         </div>
-                                        {canManage && (() => {
-                                          const kind = loginKindOf(stat)
-                                          const color = kind === 'in' ? '#22c55e' : kind === 'out' ? '#ef4444' : 'rgba(255,255,255,0.45)'
-                                          const label = kind === 'in' ? s.loginInLabel : kind === 'out' ? `${s.loginOutLabel} · ${formatSince(minutesSince(stat?.notLoggedInSince))}` : kind === 'never' ? s.loginNeverLabel : s.loginUnknownLabel
-                                          return (
-                                            <>
-                                              <span title={s.loginHint} style={{ fontSize: 11.5, fontWeight: 700, color, flexShrink: 0 }}>{label}</span>
-                                              {stat && kind === 'in' && (
-                                                <span style={{ fontSize: 11.5, fontWeight: 700, color: stat.unreadCount > 0 ? '#f59e0b' : '#22c55e', flexShrink: 0 }}>
-                                                  {stat.unreadCount > 0 ? s.unreadCountSuffix(stat.unreadCount) : s.readLabel}
-                                                </span>
-                                              )}
-                                            </>
-                                          )
-                                        })()}
+                                        <div className="tm-assign-id">
+                                          {renamingId === a.id ? (
+                                            <form className="tm-rename" onSubmit={e => { e.preventDefault(); handleRenameAssignment(a.id) }}>
+                                              <input
+                                                className="field-input"
+                                                value={renameDraft}
+                                                maxLength={100}
+                                                autoFocus
+                                                aria-label={ASSIGN_STR[lang === 'en' ? 'en' : 'ru'].renameBtn}
+                                                onChange={e => setRenameDraft(e.target.value)}
+                                                onKeyDown={e => { if (e.key === 'Escape') setRenamingId(null) }}
+                                              />
+                                              <button type="submit" className="btn-primary">{ASSIGN_STR[lang === 'en' ? 'en' : 'ru'].renameSave}</button>
+                                              <button type="button" className="btn-ghost" onClick={() => setRenamingId(null)}>{ASSIGN_STR[lang === 'en' ? 'en' : 'ru'].renameCancel}</button>
+                                            </form>
+                                          ) : (
+                                            <div className="tm-assign-name">{a.name}</div>
+                                          )}
+                                          <div className="tm-assign-url">{a.url}</div>
+                                        </div>
                                         {canManage && (
-                                          <button
-                                            type="button"
-                                            onClick={() => openVault(a, m.name || m.email)}
-                                            style={{ flexShrink: 0, padding: '6px 12px', borderRadius: 20, fontSize: 12, fontWeight: 700, cursor: 'pointer', border: '1px solid', borderColor: a.credentialAvailable ? 'rgba(34,197,94,0.5)' : 'rgba(255,255,255,0.18)', background: a.credentialAvailable ? 'rgba(34,197,94,0.12)' : 'transparent', color: a.credentialAvailable ? '#22c55e' : 'rgba(255,255,255,0.7)' }}
-                                          >
-                                            {a.credentialAvailable ? `🔑 ${s.vaultSavedChip}` : `🔑 ${s.vaultBtn}`}
-                                          </button>
+                                          <div className="tm-assign-status">
+                                            <span className={`tm-status is-${kind}`} title={s.loginHint}>{loginLabel}</span>
+                                            {stat && kind === 'in' && (
+                                              <span className={`tm-status ${stat.unreadCount > 0 ? 'is-warn' : 'is-in'}`}>
+                                                {stat.unreadCount > 0 ? s.unreadCountSuffix(stat.unreadCount) : s.readLabel}
+                                              </span>
+                                            )}
+                                          </div>
                                         )}
                                         {canManage && (
-                                          <button
-                                            type="button"
-                                            onClick={() => handleToggleAssignmentVpn(a.id, a.useVpn === false)}
-                                            style={{ flexShrink: 0, padding: '6px 12px', borderRadius: 20, fontSize: 12, fontWeight: 700, cursor: 'pointer', border: '1px solid', borderColor: a.useVpn === false ? 'rgba(255,255,255,0.18)' : 'rgba(90,169,255,0.55)', background: a.useVpn === false ? 'transparent' : 'rgba(90,169,255,0.15)', color: a.useVpn === false ? 'rgba(255,255,255,0.55)' : '#8fbdff' }}
-                                          >
-                                            {a.useVpn === false ? s.vpnToggleOff : s.vpnToggleOn}
-                                          </button>
-                                        )}
-                                        {canManage && (
-                                          <button className="btn-danger" onClick={() => handleDeleteAssignment(a.id)}><IcoTrash /> {s.removeShortBtn}</button>
+                                          <div className="tm-assign-actions">
+                                            <button type="button" className={`tm-pill${a.credentialAvailable ? ' is-on-green' : ''}`} onClick={() => openVault(a, m.name || m.email)}>
+                                              <IcoKey /> {a.credentialAvailable ? s.vaultSavedChip : s.vaultBtn}
+                                            </button>
+                                            <button type="button" className={`tm-pill${a.useVpn === false ? '' : ' is-on'}`} aria-pressed={a.useVpn !== false} onClick={() => handleToggleAssignmentVpn(a.id, a.useVpn === false)}>
+                                              {a.useVpn === false ? s.vpnToggleOff : s.vpnToggleOn}
+                                            </button>
+                                            <button type="button" className="tm-icon-btn" title={ASSIGN_STR[lang === 'en' ? 'en' : 'ru'].renameBtn} aria-label={`${ASSIGN_STR[lang === 'en' ? 'en' : 'ru'].renameBtn}: ${a.name}`} onClick={() => { setRenamingId(a.id); setRenameDraft(a.name) }}>
+                                              <IcoPencil />
+                                            </button>
+                                            <button type="button" className="tm-icon-btn is-danger" title={s.removeShortBtn} aria-label={`${s.removeShortBtn}: ${a.name}`} onClick={() => handleDeleteAssignment(a.id)}>
+                                              <IcoTrash />
+                                            </button>
+                                          </div>
                                         )}
                                       </div>
                                     )
                                   })}
                                 </div>
+                              )}
+
+                              {canManage && own.length > 0 && (
+                                copyFromUserId === m.userId ? (
+                                  <div className="tm-copy">
+                                    <label className="field-label">{ASSIGN_STR[lang === 'en' ? 'en' : 'ru'].copyPick}</label>
+                                    <div className="tm-copy-row">
+                                      <select className="field-select" value={copyToUserId} onChange={e => setCopyToUserId(e.target.value)}>
+                                        <option value="">{ASSIGN_STR[lang === 'en' ? 'en' : 'ru'].copyChoose}</option>
+                                        {members.filter(x => x.role !== 'OWNER' && x.userId !== m.userId).map(x => (
+                                          <option key={x.userId} value={x.userId}>{x.name || x.email}</option>
+                                        ))}
+                                      </select>
+                                      <button type="button" className="btn-primary" disabled={!copyToUserId || copyBusy} onClick={() => handleCopyAssignments(m.userId, copyToUserId)}>{ASSIGN_STR[lang === 'en' ? 'en' : 'ru'].copyGo}</button>
+                                      <button type="button" className="btn-ghost" disabled={copyBusy} onClick={() => { setCopyFromUserId(null); setCopyToUserId('') }}>{ASSIGN_STR[lang === 'en' ? 'en' : 'ru'].copyCancel}</button>
+                                    </div>
+                                    <div className="tm-copy-hint">{ASSIGN_STR[lang === 'en' ? 'en' : 'ru'].copyHint}</div>
+                                  </div>
+                                ) : (
+                                  <button type="button" className="btn-ghost" style={{ alignSelf: 'flex-start' }} onClick={() => { setCopyFromUserId(m.userId); setCopyToUserId('') }}>
+                                    {ASSIGN_STR[lang === 'en' ? 'en' : 'ru'].copyBtn}
+                                  </button>
+                                )
                               )}
 
                               {canManage && m.role !== 'OWNER' && (
@@ -2368,23 +2608,20 @@ function TeamPageInner() {
               <>
                 <div className="section-title"><IcoManage /> {s.manageTab}</div>
 
-                <div className="glass-card" style={{ padding: 26, marginBottom: 20 }}>
-                  <div style={{ fontSize: 14, fontWeight: 800, marginBottom: 4 }}>{s.logoTitle}</div>
-                  <p style={{ fontSize: 12.5, color: 'rgba(255,255,255,0.45)', marginBottom: 16 }}>{s.logoDesc}</p>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                    <div style={{ width: 56, height: 56, borderRadius: 14, background: 'rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0 }}>
-                      {org.orgLogoUrl ? <img src={org.orgLogoUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} /> : <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)' }}>{s.defaultLogoLabel}</span>}
-                    </div>
-                    <label className="btn-primary" style={{ cursor: uploadingLogo ? 'not-allowed' : 'pointer', opacity: uploadingLogo ? 0.55 : 1 }}>
-                      {uploadingLogo ? s.uploadingBtn : s.uploadLogoBtn}
-                      <input type="file" accept="image/*" onChange={handleLogoUpload} disabled={uploadingLogo} style={{ display: 'none' }} />
-                    </label>
-                    {org.orgLogoUrl && (
-                      <button className="btn-danger" disabled={uploadingLogo} onClick={handleRemoveLogo}>{s.resetBtn}</button>
-                    )}
-                  </div>
-                  {logoMsg && <div className={`form-msg ${logoMsg.type}`} style={{ marginTop: 12 }}>{logoMsg.text}</div>}
-                </div>
+                <BrandingPanel
+                  lang={lang === 'en' ? 'en' : 'ru'}
+                  logoUrl={org.orgLogoUrl || null}
+                  uploadingLogo={uploadingLogo}
+                  logoMsg={logoMsg}
+                  onLogoUpload={handleLogoUpload}
+                  onRemoveLogo={handleRemoveLogo}
+                  theme={forcedTheme}
+                  onSaveTheme={handleSaveTheme}
+                  brandName={brandName}
+                  onSaveBrandName={handleSaveBrandName}
+                  saving={savingSettings}
+                  settingsMsg={settingsMsg}
+                />
 
                 <div className="glass-card" style={{ padding: 26, marginBottom: 20 }}>
                   <div style={{ fontSize: 14, fontWeight: 800, marginBottom: 4 }}>{s.vpnTitle}</div>
@@ -2404,17 +2641,6 @@ function TeamPageInner() {
                     {vpnLink && <button className="btn-danger" disabled={savingVpn} onClick={handleClearVpn}>{s.disableBtn}</button>}
                   </div>
                   {vpnMsg && <div className={`form-msg ${vpnMsg.type}`} style={{ marginTop: 12 }}>{vpnMsg.text}</div>}
-                </div>
-
-                <div className="glass-card" style={{ padding: 26, marginBottom: 20 }}>
-                  <div style={{ fontSize: 14, fontWeight: 800, marginBottom: 4 }}>{s.themeTitle}</div>
-                  <p style={{ fontSize: 12.5, color: 'rgba(255,255,255,0.45)', marginBottom: 16 }}>{s.themeDesc}</p>
-                  <select className="field-select" value={forcedTheme} disabled={savingSettings} onChange={e => handleSaveTheme(e.target.value)} style={{ maxWidth: 240 }}>
-                    <option value="">{s.themeNotSet}</option>
-                    <option value="embedded">{s.themeDark}</option>
-                    <option value="light">{s.themeLight}</option>
-                  </select>
-                  {settingsMsg && <div className={`form-msg ${settingsMsg.type}`} style={{ marginTop: 12 }}>{settingsMsg.text}</div>}
                 </div>
 
                 {/* MOVED (2026-09-28, employees redesign): per-employee
@@ -2440,7 +2666,7 @@ function TeamPageInner() {
               </>
             )}
 
-            {tab === 'reports' && canManage && (
+            {tab === 'reports' && canManage && !statsBlocked && (
               <>
                 <div className="section-title"><IcoReports /> {s.navReports}</div>
                 <ReportsPanel orgId={org.orgId} lang={lang === 'en' ? 'en' : 'ru'} />
