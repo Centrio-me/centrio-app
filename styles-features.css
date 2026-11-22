@@ -2799,3 +2799,7 @@ body.onb-active #titlebarMenu {
 .folders-modern .folder-panel.open, .folders-modern .folder-panel.folder-panel-wide.open { border: 1px solid var(--card-border); box-shadow: 0 26px 64px rgba(0,0,0,.55), 0 10px 40px color-mix(in srgb, var(--folder-color) 16%, transparent); }
 .folders-modern .folder-panel::before { content: ""; position: absolute; left: -8px; top: calc(var(--tail-y, 30px) - 8px); width: 16px; height: 16px; transform: rotate(45deg); background: var(--card-bg); border-left: 1px solid var(--card-border); border-bottom: 1px solid var(--card-border); border-radius: 0 0 0 5px; z-index: 0; }
 .folders-modern .folder-panel .folder-panel-content { position: relative; z-index: 1; border-radius: 18px; max-height: calc(100vh - 100px); }
+/* the editor of a note's words shows its formatting while it is typed (2026-11-22) */
+.notes-edit-preview { white-space: pre-wrap; }
+.notes-edit-preview:empty::before { content: attr(data-placeholder); color: var(--text-tertiary, var(--text-secondary)); opacity: .7; pointer-events: none; }
+.notes-edit-preview:focus-visible { outline: none; }

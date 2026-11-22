@@ -26,6 +26,52 @@ function toHtml(text) {
     return html.replace(/\n/g, '<br>')
 }
 
+/** The text as the editor shows it: the formatting on the spot, and a place to type on an empty last line. */
+function toEditorHtml(text) {
+    const html = toHtml(text)
+    return html.endsWith('<br>') ? html + '<br>' : html
+}
+
+// the editor (a field that shows the formatting while it is typed, 2026-11-22) gives the text back as our plain marks
+const MARK_OF = { b: '**', strong: '**', i: '*', em: '*', u: '++', s: '~~', strike: '~~', del: '~~' }
+const BLOCKS = new Set(['div', 'p', 'li'])
+const NBSP = / /g
+const NEW_LINE = '\n'
+
+function isBreak(node) { return !!node && String(node.nodeName).toLowerCase() === 'br' }
+
+function marksOfChildren(node) {
+    let out = ''
+    for (const child of Array.from(node.childNodes || [])) {
+        if (child.nodeType === 3) { out += String(child.nodeValue || '').replace(NBSP, ' '); continue }
+        if (child.nodeType !== 1) continue
+        const name = String(child.nodeName).toLowerCase()
+        if (name === 'br') { out += NEW_LINE; continue }
+        let inner = marksOfChildren(child)
+        if (BLOCKS.has(name)) {
+            // a line the browser made of its own: it starts on a new line, and its last <br> only keeps an empty line open
+            if (isBreak(child.lastChild) && inner.endsWith(NEW_LINE)) inner = inner.slice(0, -1)
+            out += (out && !out.endsWith(NEW_LINE) ? NEW_LINE : '') + inner
+            continue
+        }
+        const mark = MARK_OF[name]
+        if (!mark) { out += inner; continue }
+        // the spaces stay outside the pair: «** word **» would not read as bold
+        const lead = /^\s*/.exec(inner)[0]
+        const tail = inner.length > lead.length ? /\s*$/.exec(inner)[0] : ''
+        const core = inner.slice(lead.length, inner.length - tail.length)
+        out += core ? lead + mark + core + mark + tail : inner
+    }
+    return out
+}
+
+/** @param {{ childNodes: any[], lastChild?: any }} root the editor's element */
+function marksFromNode(root) {
+    const text = marksOfChildren(root)
+    // the browser keeps one <br> at the end so that an empty last line can be typed in: it is not a line of its own
+    return isBreak(root.lastChild) && text.endsWith(NEW_LINE) ? text.slice(0, -1) : text
+}
+
 /** The words of a formatted text without the marks (for the list and the search of notes). */
 function stripMarks(text) {
     let out = String(text)
@@ -110,4 +156,4 @@ function marksForService(text, service) {
     })
 }
 
-module.exports = { applyFormat, toHtml, stripMarks, noteToText, noteToMarkedText, marksForService, MARKS }
+module.exports = { applyFormat, toHtml, toEditorHtml, marksFromNode, stripMarks, noteToText, noteToMarkedText, marksForService, MARKS }

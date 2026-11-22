@@ -12,7 +12,7 @@
 // Ассистента/Задач/Уведомлений), этот модуль отвечает за содержимое.
 
 const { createSaveQueue } = require('./notes-save-queue')
-const { applyFormat, toHtml, stripMarks, noteToMarkedText } = require('./notes-format')
+const { toEditorHtml, marksFromNode, stripMarks, noteToMarkedText } = require('./notes-format')
 const { staleAction, sameNotes } = require('./notes-cache')
 
 function bindNotesUi({ store, tGet, authorizedInvoke, invokeIpc, openRightPanel, closeRightPanel, getUserIsPro, requirePro, onNotesChange, onSendToChat = null }) {
@@ -248,15 +248,15 @@ function bindNotesUi({ store, tGet, authorizedInvoke, invokeIpc, openRightPanel,
         if (note.type === 'CHECKLIST') {
             bodyTextarea.style.display = 'none'
             fmtBar.hidden = true
-            preview.hidden = true
+            editor.hidden = true
             checklistWrap.style.display = ''
             renderChecklistItems()
         } else {
-            bodyTextarea.style.display = ''
+            bodyTextarea.style.display = 'none'
             fmtBar.hidden = false
             checklistWrap.style.display = 'none'
             bodyTextarea.value = note.body || ''
-            showPreviewIfFormatted()
+            showEditor()
         }
         saveIndicator.textContent = ''
         updateCharCount()
@@ -860,43 +860,59 @@ function bindNotesUi({ store, tGet, authorizedInvoke, invokeIpc, openRightPanel,
         btn.addEventListener('click', () => formatSelection(kind))
         fmtBar.append(btn)
     }
-    const preview = document.createElement('div')
-    preview.className = 'notes-edit-preview'
-    preview.hidden = true
-    preview.tabIndex = 0
-    preview.title = 'Нажмите, чтобы изменить'
+    // The text is edited on the spot with its formatting (Oleg, 2026-11-22: «пока редактируешь показывает символы — неудобно»):
+    // a field that shows bold, italic, underline and strikethrough as they are typed. The hidden textarea stays the model
+    // (the note's text as plain marks), so saving, counting, search and sending work as before.
+    const editor = document.createElement('div')
+    editor.className = 'notes-edit-preview'
+    editor.contentEditable = 'true'
+    editor.spellcheck = true
+    editor.setAttribute('role', 'textbox')
+    editor.setAttribute('aria-multiline', 'true')
+    editor.hidden = true
     if (bodyTextarea && bodyTextarea.parentNode) {
         bodyTextarea.parentNode.insertBefore(fmtBar, bodyTextarea)
-        bodyTextarea.parentNode.insertBefore(preview, bodyTextarea.nextSibling)
+        bodyTextarea.parentNode.insertBefore(editor, bodyTextarea.nextSibling)
     }
-    function formatSelection(kind) {
+    function showEditor() {
+        if (!bodyTextarea || !activeNote || activeNote.type === 'CHECKLIST') { editor.hidden = true; return }
+        editor.dataset.placeholder = bodyTextarea.getAttribute('placeholder') || ''
+        editor.innerHTML = toEditorHtml(bodyTextarea.value)
+        editor.hidden = false
+    }
+    // what is typed goes to the model, which saves it
+    function editorChanged() {
         if (!bodyTextarea) return
-        bodyTextarea.focus()
-        const r = applyFormat(bodyTextarea.value, bodyTextarea.selectionStart, bodyTextarea.selectionEnd, kind)
-        bodyTextarea.value = r.text
-        bodyTextarea.setSelectionRange(r.start, r.end)
+        // an emptied field keeps a stray <br> in some cases: it is empty, and the placeholder must show
+        if (!editor.textContent && !editor.querySelector('img')) editor.innerHTML = ''
+        bodyTextarea.value = marksFromNode(editor)
         bodyTextarea.dispatchEvent(new Event('input', { bubbles: true }))
     }
-    function showPreviewIfFormatted() {
-        if (!bodyTextarea || !activeNote || activeNote.type === 'CHECKLIST') { preview.hidden = true; return }
-        const html = toHtml(bodyTextarea.value)
-        // only a text that has formatting in it is shown formatted; a plain one stays the field itself
-        if (!/<(b|i|u|s)>/.test(html)) { preview.hidden = true; bodyTextarea.style.display = ''; return }
-        preview.innerHTML = html
-        preview.hidden = false
-        bodyTextarea.style.display = 'none'
+    editor.addEventListener('input', editorChanged)
+    // only words are pasted or dropped: a page's colours and fonts do not come in
+    editor.addEventListener('paste', (e) => {
+        e.preventDefault()
+        const plain = (e.clipboardData && e.clipboardData.getData('text/plain')) || ''
+        if (plain) document.execCommand('insertText', false, plain)
+    })
+    editor.addEventListener('drop', (e) => {
+        e.preventDefault()
+        const plain = (e.dataTransfer && e.dataTransfer.getData('text/plain')) || ''
+        if (plain) document.execCommand('insertText', false, plain)
+    })
+    const COMMAND = { bold: 'bold', italic: 'italic', underline: 'underline', strike: 'strikeThrough' }
+    function formatSelection(kind) {
+        if (!COMMAND[kind]) return
+        editor.focus()
+        document.execCommand(COMMAND[kind], false, null)
     }
-    function editFromPreview() {
-        preview.hidden = true
-        bodyTextarea.style.display = ''
-        bodyTextarea.focus()
-        const end = bodyTextarea.value.length
-        bodyTextarea.setSelectionRange(end, end)
-    }
-    preview.addEventListener('click', editFromPreview)
-    preview.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); editFromPreview() } })
-    bodyTextarea?.addEventListener('blur', () => setTimeout(() => { if (document.activeElement !== bodyTextarea) showPreviewIfFormatted() }, 0))
-    bodyTextarea?.addEventListener('keydown', (e) => {
+    editor.addEventListener('keydown', (e) => {
+        // a new line is a line break, not a block: the text is kept as lines of plain marks
+        if (e.key === 'Enter' && !e.ctrlKey && !e.metaKey && !e.altKey && !e.isComposing) {
+            e.preventDefault()
+            document.execCommand('insertLineBreak')
+            return
+        }
         if (!(e.ctrlKey || e.metaKey) || e.altKey) return
         // by the physical key (e.code): on the Russian layout e.key is «и», «ш», «г», «ч»
         const code = e.code
