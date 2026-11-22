@@ -62,7 +62,7 @@ function openingMark() {
     return box
 }
 
-function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab, onClose, onOlder, onLink, onPicture, onPickFiles, onDescribeFiles, onPasteImage, canReply = () => false, onEdit = null, canEdit = () => false, onReact = null, reactionsFor = () => [], onDelete = null, canDelete = () => false, onMedia = () => Promise.resolve(null), canPlay = () => false, onFile = null, canFile = () => false, onInfo = null, canInfo = () => false, onVote = null, canVote = () => false, onTopic = null, onTranscribe = null, canTranscribe = () => false }) {
+function createChatView({ onNewest = () => {}, onDismissPending = () => {}, host, onSend, onOpenInTab, onClose, onOlder, onLink, onPicture, onPickFiles, onDescribeFiles, onPasteImage, canReply = () => false, onEdit = null, canEdit = () => false, onReact = null, reactionsFor = () => [], onDelete = null, canDelete = () => false, onMedia = () => Promise.resolve(null), canPlay = () => false, onFile = null, canFile = () => false, onInfo = null, canInfo = () => false, onVote = null, canVote = () => false, onTopic = null, onTranscribe = null, canTranscribe = () => false }) {
     const root = el('section', 'aic')
     root.hidden = true
     root.dataset.bg = readBackground()
@@ -204,7 +204,9 @@ function createChatView({ onDismissPending = () => {}, host, onSend, onOpenInTab
         downN.hidden = !unseen
         downN.textContent = unseen > 99 ? '99+' : String(unseen)
     }
-    down.addEventListener('click', () => { stick = true; unseen = 0; scroll.scrollTo({ top: scroll.scrollHeight, behavior: 'smooth' }); refreshDown() })
+    // «down» goes to the newest message: the page behind is told to bring its own newest first (it had dropped them while earlier
+    // ones were loaded above, and the conversation stopped at some past day — Oleg, 2026-11-22)
+    down.addEventListener('click', () => { stick = true; unseen = 0; try { onNewest() } catch { /* the page may be gone */ } scroll.scrollTo({ top: scroll.scrollHeight, behavior: 'smooth' }); refreshDown() })
     scroll.addEventListener('scroll', () => {
         if (Date.now() - touchedAt < USER_SCROLL_MS) stick = atBottom()
         else if (stick) scroll.scrollTop = scroll.scrollHeight

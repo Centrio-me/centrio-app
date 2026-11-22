@@ -111,6 +111,7 @@ function createChatController({ state, webviewOf, host, ipcRenderer, onSubtitle 
         onClose: () => { close(); onClosed() },
         onDismissPending: (id) => { pending.drop(id); redraw() },
         onOlder: older,
+        onNewest: jumpToNewest,
         canReply: () => !!(current && typeof current.adapter.REPLY === 'function'),
         // edit an own message and react (3.8.3)
         onEdit: (m, text) => edit(m, text),
@@ -280,6 +281,17 @@ function createChatController({ state, webviewOf, host, ipcRenderer, onSubtitle 
     // messenger is told itself (Telegram's and VK's own «read» — the same the page sends when it is looked at)
     // earlier messages loaded above make the page drop its newest: while the person is at the newest ones in our window,
     // the tab is brought back to its own, or what arrives after would never be read
+    // the «down» button: the page behind goes to its newest messages and the next reads bring them
+    function jumpToNewest() {
+        const w = tab()
+        if (!w || !current || typeof current.adapter.BOTTOM !== 'string') return
+        current.wentUp = false
+        lastNewest = Date.now()
+        w.executeJavaScript(current.adapter.BOTTOM).catch(() => {})
+        setTimeout(poll, 350)
+        setTimeout(poll, 1200)
+    }
+
     let lastNewest = 0
     function toNewest(w) {
         // never at the opening of a chat: MAX takes a tab scrolled to its end as read, and the unread messages of a channel
