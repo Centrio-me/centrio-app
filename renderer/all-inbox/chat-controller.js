@@ -147,6 +147,8 @@ function createChatController({ state, webviewOf, host, ipcRenderer, onSubtitle 
             const w = tab()
             if (!w || !current || typeof current.adapter.MEDIA !== 'function') return null
             const got = await withTimeout(w.executeJavaScript(current.adapter.MEDIA(String(id).split('+')[0])).catch(() => null), MEDIA_TIMEOUT_MS)
+            // a file the messenger no longer has: told as it is (the window says so), not as a failure to open in the tab
+            if (got && got.gone) return { gone: String(got.gone) }
             // only a sound or a video, in the type the data itself declares
             return got && typeof got.data === 'string' && MEDIA_DATA.test(got.data) ? { data: got.data, mime: got.data.slice(5, got.data.indexOf(';')) } : null
         },

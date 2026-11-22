@@ -143,6 +143,7 @@ function createChatView({ onNewest = () => {}, onDismissPending = () => {}, host
         const got = await Promise.resolve(onMedia(m.id)).catch(() => null)
         holder.classList.remove('is-loading')
         if (mine !== videoToken || root.hidden) return
+        if (got && got.gone) { flash(got.gone === 'phone' ? 'WhatsApp просит файл с телефона: откройте WhatsApp на телефоне и нажмите на видео там' : 'WhatsApp уже не хранит это видео, его не открыть и в самом WhatsApp'); return }
         if (!got) { onOpenInTab(); return }
         player.reset()
         lightbox.openVideo(dataToBlobUrl(got.data, got.mime), [m.out ? 'Вы' : (m.author || q('.aic-title').textContent), m.time].filter(Boolean).join(' · '), !!m.round)

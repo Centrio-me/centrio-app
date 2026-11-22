@@ -387,7 +387,11 @@ function whatsappChat({ AVATAR_HELPER, IMAGE_HELPER }) {
         // a voice message or a video, played in our window (it went to the web page)
         MEDIA: (id) => `(function () {${WA_STORE}
             var C = __waStore(), m = __waMsg(C, ${JSON.stringify(String(id))});
+            // a file WhatsApp has deleted from its server cannot come from anywhere (checked 2026-11-23: stage ERROR_MISSING, and
+            // NEED_POKE ones too after the phone was asked): said at once, not after a turning wheel and a jump to the tab
+            if (m && m.mediaData && m.mediaData.mediaStage === 'ERROR_MISSING') return Promise.resolve({ gone: 'missing' });
             return __waFile(m, 30000).then(function (blob) {
+                if (!blob && m && m.mediaData && m.mediaData.mediaStage === 'NEED_POKE') return { gone: 'phone' };
                 if (!blob || blob.size > ${100 * 1024 * 1024}) return null;
                 // «audio/ogg; codecs=opus» — the space in it is not part of a data URL type
                 var type = String((m && m.mimetype) || blob.type || '').split(';')[0].trim() || (m && m.type === 'video' ? 'video/mp4' : 'audio/ogg');

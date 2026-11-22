@@ -25,3 +25,20 @@ test('a round video message (ptv) is a video, drawn round', () => {
     assert.ok(wa.CHAT.includes("ptv: 'video'"))
     assert.ok(wa.CHAT.includes("round: type === 'ptv'"))
 })
+
+// a video WhatsApp has deleted from its server is told at once, not after a wait and a jump to the tab (2026-11-23)
+function mediaAnswer(stage) {
+    const msg = { id: { _serialized: 'ABC', id: 'ABC' }, type: 'video', mimetype: 'video/mp4', mediaData: { mediaStage: stage } }
+    const C = { Chat: { getActive: () => ({ msgs: { getModelsArray: () => [msg] } }) } }
+    const sandbox = { window: { require: () => C }, Promise, Blob, Proxy, AbortController, URL, setTimeout, Date, fetch: async () => ({ ok: false }) }
+    sandbox.window.window = sandbox.window
+    return vm.runInNewContext(wa.MEDIA('ABC'), sandbox)
+}
+
+test('a video missing from WhatsApp answers "gone" at once', async () => {
+    assert.equal(JSON.stringify(await mediaAnswer('ERROR_MISSING')), JSON.stringify({ gone: 'missing' }))
+})
+
+test('a video WhatsApp wants from the phone answers "gone: phone" when the wait ends with nothing', () => {
+    assert.ok(wa.MEDIA('ABC').includes("mediaStage === 'NEED_POKE') return { gone: 'phone' }"))
+})
