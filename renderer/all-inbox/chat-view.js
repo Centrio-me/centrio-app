@@ -1,4 +1,5 @@
 'use strict'
+const { cleanTopicTitle } = require('../../shared/topic-title')
 // «Все мессенджеры» (3.8): our own conversation window over the messenger's tab. It only draws what timeline.js gives
 // and hands typed text back; the tab behind it does the real work.
 
@@ -432,13 +433,13 @@ function createChatView({ onNewest = () => {}, onDismissPending = () => {}, host
             b.type = 'button'
             b.setAttribute('role', 'tab')
             b.setAttribute('aria-selected', on ? 'true' : 'false')
-            b.append(el('span', 'aic-topic-name', title))
+            b.append(el('span', 'aic-topic-name', cleanTopicTitle(title)))
             if (unread > 0) b.append(el('span', 'aic-topic-n', unread > 99 ? '99+' : String(unread)))
             b.addEventListener('click', () => { if (!on) onTopic(id) })
             return b
         }
         const active = String(activeTitle || '')
-        topicsBar.replaceChildren(chip('', 'Все', 0, !active), ...items.map((t) => chip(t.id, t.title, t.unread, !!active && active === t.title)))
+        topicsBar.replaceChildren(chip('', 'Все', 0, !active), ...items.map((t) => chip(t.id, t.title, t.unread, !!active && cleanTopicTitle(active) === cleanTopicTitle(t.title))))
         // the chosen topic is brought into view; the faded edges are set once the row has its width
         requestAnimationFrame(() => {
             const on = topicsBar.querySelector('.aic-topic.is-on')
