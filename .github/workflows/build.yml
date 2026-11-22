@@ -183,14 +183,34 @@ jobs:
         run: |
           set -euo pipefail
           SSH="ssh -i $HOME/.ssh/deploy_key -o StrictHostKeyChecking=no"
-          SCP="scp -i $HOME/.ssh/deploy_key -o StrictHostKeyChecking=no"
+          # a transfer that breaks half way (the link to the server is slow and drops, 2026-11-22: two releases failed at 113 and 145 of
+          # 170 MB) is taken up again where it stopped, a few times, instead of failing the whole release
+          put() { # <destination dir on the server> <files...>
+            local to="$1" n
+            shift
+            for n in 1 2 3 4 5 6 7 8; do
+              if rsync -e "ssh -i $HOME/.ssh/deploy_key -o StrictHostKeyChecking=no -o ServerAliveInterval=20 -o ServerAliveCountMax=6" --partial --inplace --timeout=120 "$@" "$DEST:$to"; then return 0; fi
+              echo "upload to $to broke (try $n of 8), taking it up again"
+              sleep 10
+            done
+            return 1
+          }
+          # the small update files go one by one through scp, tried again a few times
+          SCP() {
+            local n
+            for n in 1 2 3 4 5; do
+              if scp -i $HOME/.ssh/deploy_key -o StrictHostKeyChecking=no "$@"; then return 0; fi
+              sleep 5
+            done
+            return 1
+          }
           ROOT=/var/www/centrio-downloads
           case "$TAG" in *-beta*) BETA=1 ;; *) BETA=0 ;; esac
           echo "tag $TAG beta=$BETA"
 
-          $SCP artifacts/win-artifacts/*.exe artifacts/win-artifacts/*.exe.blockmap "$DEST:$ROOT/"
-          $SCP artifacts/mac-artifacts/*.dmg "$DEST:$ROOT/mac/"
-          $SCP artifacts/linux-artifacts/*.AppImage artifacts/linux-artifacts/*.deb "$DEST:$ROOT/linux/"
+          put "$ROOT/" artifacts/win-artifacts/*.exe artifacts/win-artifacts/*.exe.blockmap
+          put "$ROOT/mac/" artifacts/mac-artifacts/*.dmg
+          put "$ROOT/linux/" artifacts/linux-artifacts/*.AppImage artifacts/linux-artifacts/*.deb
 
           # newer A B: succeeds when version A is newer than B (a release is newer than its own betas)
           newer() { node scripts/version-newer.js "$1" "$2"; }
@@ -198,15 +218,15 @@ jobs:
           publish() { # <artifact dir> <server dir> <suffix: "" | -mac | -linux>
             local dir="$1" to="$2" sfx="$3" mine theirs
             if [ "$BETA" = 1 ]; then
-              $SCP "$dir/beta$sfx.yml" "$DEST:$to/beta$sfx.yml"
+              SCP "$dir/beta$sfx.yml" "$DEST:$to/beta$sfx.yml"
               echo "beta$sfx.yml -> $TAG"
               return
             fi
-            $SCP "$dir/latest$sfx.yml" "$DEST:$to/latest$sfx.yml"
+            SCP "$dir/latest$sfx.yml" "$DEST:$to/latest$sfx.yml"
             mine=$(grep -m1 '^version:' "$dir/latest$sfx.yml" | awk '{print $2}')
             theirs=$($SSH "$DEST" "grep -m1 '^version:' $to/beta$sfx.yml 2>/dev/null" | awk '{print $2}' || true)
             if [ -z "$theirs" ] || newer "$mine" "$theirs"; then
-              $SCP "$dir/latest$sfx.yml" "$DEST:$to/beta$sfx.yml"
+              SCP "$dir/latest$sfx.yml" "$DEST:$to/beta$sfx.yml"
               echo "beta$sfx.yml -> $mine"
             else
               echo "beta$sfx.yml stays $theirs (newer than $mine)"
