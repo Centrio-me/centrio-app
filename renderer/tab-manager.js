@@ -95,6 +95,8 @@ function createTabManager({ state, store, invokeIpc, switchTab, sleepTab, wakeTa
     function render() {
         if (!overlay) return
         const panel = overlay.querySelector('.tm-panel')
+        // the list is drawn again at every measure: the place the person scrolled to is kept (Oleg 2026-11-22: it jumped back to the top)
+        const keptScroll = (panel.querySelector('.tm-list') || {}).scrollTop || 0
         panel.textContent = ''
         const list = rows()
         const sleepingCount = list.filter((r) => r.status === 'sleeping').length
@@ -162,6 +164,7 @@ function createTabManager({ state, store, invokeIpc, switchTab, sleepTab, wakeTa
             table.appendChild(row)
         })
         panel.appendChild(table)
+        table.scrollTop = keptScroll
 
         const foot = el('div', 'tm-foot')
         if (toast) foot.appendChild(el('div', 'tm-toast', toast))
