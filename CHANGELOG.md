@@ -8,6 +8,19 @@ The format is based on Keep a Changelog. This project does not currently follow 
 
 ## [Unreleased]
 
+## [3.10.1] - 2026-11-22
+
+### Added
+- Word files (.docx) open in the built-in reader like a PDF: the file is drawn in a hidden window (docx-preview, strict CSP, sandbox), turned into a PDF and shown with pages, zoom and search; the original stays next to it («Открыть в Word»); a file that cannot be drawn opens in the system program (main/services/docxToPdf.js). The setting is now «PDF и Word».
+- A download is visible: «Скачивается «имя»: N%» with a bar, several files at once, «Открываем «имя»…» when a file goes to the reader (shared/download-progress.js, renderer/save-toast.js).
+- Double-sided printing in the reader, remembered between documents (duplexMode longEdge); a close cross in the reader's panel.
+
+### Fixed
+- The quick-replies list and every other right-hand panel did not scroll with the mouse wheel: the dimming layer was measured while the panel was still opening and covered it (ResizeObserver on the content area).
+- The «Файл сохранён» message never appeared: the renderer handler took an event argument the bridge does not send.
+- Changing the theme could leave dark text on a dark ground: the adaptive theme read the page colour late and laid it over the chosen light theme; settings are now applied before the save answers, and transitions are off while the theme switches.
+- Copy / Paste / Cut / Select all / Undo / Redo in the page menu focus the tab first, so «Вставить» works after Telegram's own «Копировать».
+
 ## [3.10.0] - 2026-11-21
 
 ### Added
