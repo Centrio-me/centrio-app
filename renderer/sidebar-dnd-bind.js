@@ -53,6 +53,15 @@ function createSidebarDndApi({
         })
     }
 
+    // The tabs a team gives (org:...) are added to the sidebar after the start, at the end, when loadOrder() has already run: the saved
+    // order is applied again once they have arrived (one pass for a burst of them).
+    const REAPPLY_DELAY_MS = 300
+    let reapplyTimer = null
+    function reapplyOrderSoon() {
+        clearTimeout(reapplyTimer)
+        reapplyTimer = setTimeout(() => { reapplyTimer = null; loadOrder() }, REAPPLY_DELAY_MS)
+    }
+
     // ── Очистка состояния ─────────────────────────────────────────────────
     function clearDragState() {
         document.querySelectorAll('.drop-indicator-top, .drop-indicator-bottom, .folder-drop-target, .dragging')
@@ -248,7 +257,8 @@ function createSidebarDndApi({
         initRootDropZone,
         handleDrop,
         saveOrder,
-        loadOrder
+        loadOrder,
+        reapplyOrderSoon
     }
 }
 

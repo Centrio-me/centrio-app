@@ -2936,6 +2936,8 @@ function applyTabZoom(level) {
             updateFolderBadge(newMessenger.folderId)
         } else {
             addToSidebar(newMessenger)
+            // the tab came after the saved order was applied: put it (and the dividers around it) where the person left them
+            reapplyOrderSoon()
         }
         addTab(newMessenger)
 
@@ -3091,6 +3093,7 @@ function applyTabZoom(level) {
         initDropTarget,
         initRootDropZone,
         loadOrder,
+        reapplyOrderSoon,
         saveOrder
     } = sidebarDndApi
 
