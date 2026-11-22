@@ -10,6 +10,7 @@ const { AVATAR_HELPER } = require('./adapters')
 const { whatsappChat } = require('./whatsapp')
 const { vkChat } = require('./vk')
 const { instagramChat } = require('./instagram')
+const { visiblePoint } = require('../../shared/visible-point')
 
 const MAX_MESSAGES = 120
 // scrolling up in our window reads this many more of what the page has loaded, up to the most (3.8.3, owner: in
@@ -1062,8 +1063,9 @@ const max = {
         var b = w && (w.querySelector('.bubble') || w);
         if (!b) return null;
         b.scrollIntoView({ block: 'nearest' });
-        var r = b.getBoundingClientRect();
-        return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+        // a long message is taller than the window: its middle is out of sight, so the click goes to the part that can be seen
+        var vp = ${visiblePoint.toString()};
+        return vp(b.getBoundingClientRect(), window.innerWidth, window.innerHeight);
     })()`,
     // edit and react (3.8.3): MAX does both from its own menu on a right click over the message (REPLY_POINT gives
     // where): MENU_ITEM presses «Редактировать», then the field holds the text and Enter saves; REACT_PICK presses the
