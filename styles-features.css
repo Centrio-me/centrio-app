@@ -2803,3 +2803,9 @@ body.onb-active #titlebarMenu {
 .notes-edit-preview { white-space: pre-wrap; }
 .notes-edit-preview:empty::before { content: attr(data-placeholder); color: var(--text-tertiary, var(--text-secondary)); opacity: .7; pointer-events: none; }
 .notes-edit-preview:focus-visible { outline: none; }
+
+/* folders of notes: dragged up and down, renamed with the pencil (2026-11-22) */
+.notes-folder.is-dragging { opacity: .45; }
+.notes-folder.is-drop-before { box-shadow: 0 -2px 0 0 var(--accent) inset; }
+.notes-folder.is-drop-after { box-shadow: 0 2px 0 0 var(--accent) inset; }
+.notes-folder-pen:hover { color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); }

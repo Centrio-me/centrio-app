@@ -7,6 +7,7 @@ const ICON_FOLDER = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none"
 const ICON_ALL = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>'
 const ICON_CLOSE = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>'
 const ICON_PLUS = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>'
+const ICON_PEN = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>'
 const ICON_TRASH = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>'
 
 function el(tag, cls, html) {
@@ -20,6 +21,7 @@ function el(tag, cls, html) {
  * @param {{ tGet: Function, authorizedInvoke: Function, getNotesApi: () => any }} deps
  */
 const { dockWidth, canDock, readSaved, saveWidth, forgetWidth } = require('./notes-dock-width')
+const { moveFolder } = require('../shared/folder-order')
 
 function createNotesWindow({ tGet, authorizedInvoke, getNotesApi }) {
     const say = (key, fallback) => tGet(`notes.${key}`) || fallback
@@ -80,20 +82,50 @@ function createNotesWindow({ tGet, authorizedInvoke, getNotesApi }) {
                 del.title = say('deleteFolder', 'Удалить папку (заметки останутся)')
                 del.addEventListener('click', (e) => { e.stopPropagation(); askDelete(item, id, name) })
                 item.append(del)
-                // a double click renames the folder in place
+                // a double click renames the folder in place; the pencil does the same where it can be seen
                 label.addEventListener('dblclick', (e) => { e.stopPropagation(); rename(label, id, name) })
+                const pen = el('button', 'notes-folder-del notes-folder-pen', ICON_PEN)
+                pen.type = 'button'
+                pen.title = say('renameFolder', 'Переименовать папку')
+                pen.addEventListener('click', (e) => { e.stopPropagation(); rename(label, id, name) })
+                item.insertBefore(pen, del)
+                // a folder is dragged up and down to put it where it belongs
+                item.draggable = true
+                item.addEventListener('dragstart', (e) => {
+                    e.dataTransfer.setData('text/x-centrio-folder', id)
+                    e.dataTransfer.effectAllowed = 'move'
+                    item.classList.add('is-dragging')
+                })
+                item.addEventListener('dragend', () => { item.classList.remove('is-dragging'); list.querySelectorAll('.is-drop-before, .is-drop-after').forEach((x) => x.classList.remove('is-drop-before', 'is-drop-after')) })
             }
             item.addEventListener('click', () => choose(id))
             item.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); choose(id) } })
             // a note dragged from the list is put into this folder
             item.addEventListener('dragover', (e) => {
-                if (![...(e.dataTransfer?.types || [])].includes('text/x-centrio-note')) return
+                const types = [...(e.dataTransfer?.types || [])]
+                if (types.includes('text/x-centrio-folder') && id !== 'all') {
+                    e.preventDefault()
+                    const box = item.getBoundingClientRect()
+                    const below = e.clientY > box.top + box.height / 2
+                    item.classList.toggle('is-drop-after', below)
+                    item.classList.toggle('is-drop-before', !below)
+                    return
+                }
+                if (!types.includes('text/x-centrio-note')) return
                 e.preventDefault()
                 item.classList.add('is-drop')
             })
-            item.addEventListener('dragleave', () => item.classList.remove('is-drop'))
+            item.addEventListener('dragleave', () => item.classList.remove('is-drop', 'is-drop-before', 'is-drop-after'))
             item.addEventListener('drop', (e) => {
                 item.classList.remove('is-drop')
+                const folderId = e.dataTransfer?.getData('text/x-centrio-folder')
+                if (folderId && id !== 'all') {
+                    e.preventDefault()
+                    const below = item.classList.contains('is-drop-after')
+                    item.classList.remove('is-drop-before', 'is-drop-after')
+                    reorder(folderId, id, below)
+                    return
+                }
                 const noteId = e.dataTransfer?.getData('text/x-centrio-note')
                 if (!noteId) return
                 e.preventDefault()
@@ -103,6 +135,16 @@ function createNotesWindow({ tGet, authorizedInvoke, getNotesApi }) {
         }
         row('all', say('allNotes', 'Все заметки'), ICON_ALL, c.all)
         for (const f of folders) row(f.id, f.name, ICON_FOLDER, c[f.id] || 0)
+    }
+
+    // a folder dragged onto another: the order is shown at once and saved on the server (the folders that moved)
+    async function reorder(fromId, toId, after) {
+        const next = moveFolder(folders, fromId, toId, after)
+        if (!next.changed.length) return
+        folders = Array.from(next, (f) => ({ ...f }))
+        getNotesApi()?.setFolders(folders)
+        render()
+        for (const f of next.changed) await authorizedInvoke('api-notes-folder-update', f.id, { position: f.position }).catch(() => null)
     }
 
     function choose(id) {
