@@ -1235,3 +1235,15 @@ html[data-theme="light"] #allInboxPanel { border-right: 1px solid rgba(0, 0, 0, 
 
 /* the message field shows focus with the glow of its rounded bar (.aic-bar:focus-within), not with a square ring of its own inside it */
 .aic .aic-input:focus, .aic .aic-input:focus-visible { outline: none; }
+
+/* the icon of a file by its type, like the web versions: PDF red, Word blue, Excel green, slides orange, archives amber */
+.aic-card-icon { position: relative; }
+.aic-card-icon .aic-card-ext { position: absolute; left: 0; right: 0; bottom: 3px; font-size: 8.5px; font-weight: 700; letter-spacing: .02em; text-align: center; line-height: 1; opacity: .95; }
+.aic-card.kind-file .aic-card-icon.tone-pdf { background: #e5484d; color: #fff; }
+.aic-card.kind-file .aic-card-icon.tone-doc { background: #2f6fed; color: #fff; }
+.aic-card.kind-file .aic-card-icon.tone-sheet { background: #1f9d55; color: #fff; }
+.aic-card.kind-file .aic-card-icon.tone-slides { background: #e8742a; color: #fff; }
+.aic-card.kind-file .aic-card-icon.tone-zip { background: #c99a1a; color: #fff; }
+.aic-card.kind-file .aic-card-icon.tone-pdf svg, .aic-card.kind-file .aic-card-icon.tone-doc svg, .aic-card.kind-file .aic-card-icon.tone-sheet svg,
+.aic-card.kind-file .aic-card-icon.tone-slides svg, .aic-card.kind-file .aic-card-icon.tone-zip svg { transform: translateY(-4px); }
+.aic-row.is-out .aic-card.kind-file .aic-card-icon[class*="tone-"] { color: #fff; }

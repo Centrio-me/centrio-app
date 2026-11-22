@@ -158,6 +158,12 @@ function registerAllInboxIpc({ getMainWindow }) {
         if (!fromMainWindow(event)) return false
         const file = parseFilePayload(payload)
         if (!file) return false
+        // a PDF, Word file or picture is read in Centrio's own reader: no dialog, no entry in the downloads list (Oleg, 2026-11-22)
+        const pdfViewer = require('../services/pdfViewer')
+        if (pdfViewer.isEnabled()) {
+            const kind = await pdfViewer.openBytes(file.bytes, file.name).catch(() => null)
+            if (kind) return { opened: kind }
+        }
         // the setting of Settings → Downloads decides: a chosen folder with «ask» off takes the file without a question
         const folder = store.get('settings.downloadDir', '')
         const auto = autoSavePath({ askDownload: store.get('settings.askDownload', true), downloadDir: folder, name: file.name, exists: (p) => fs.existsSync(p) })

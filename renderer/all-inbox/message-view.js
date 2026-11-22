@@ -6,6 +6,7 @@ const { runsOf } = require('./text-format')
 const { linkParts } = require('./linkify')
 const { jumboCount, mediaBox, MEDIA_MAX_W } = require('./message-shape')
 const { waveBars, clock } = require('./media-player')
+const { fileTone } = require('../../shared/file-tone')
 // the emoji set of the open chat's messenger (3.8.3): Telegram and MAX pictures from their own servers, others our font
 const { emojiUrl, emojiParts, setEmojiSet, getEmojiSet } = require('./emoji-images')
 
@@ -349,6 +350,11 @@ function card(m, onOpenInTab, onPlay = null, hint = '') {
     if (m.kind === 'file' && m.media) {
         icon.replaceChildren(Object.assign(el('img'), { src: m.media, alt: '' }))
         icon.classList.add('has-thumb')
+    } else if (m.kind === 'file') {
+        // the colour and the extension of the file's type, like the web versions (PDF red, Excel green)
+        const { tone, label } = fileTone(m.name)
+        icon.classList.add(`tone-${tone}`)
+        if (label) icon.append(el('span', 'aic-card-ext', label))
     }
     const info = el('span', 'aic-card-info')
     info.append(el('span', 'aic-card-name', m.name || (m.round ? 'Видеосообщение' : KIND_LABEL[m.kind]) || ''))

@@ -243,10 +243,11 @@ async function convertAndOpen(docxPath, name) {
         // the PDF goes to our own temp folder, never next to the person's file
         const pdfPath = tempPathFor(String(name || path.basename(docxPath)).replace(/\.docx$/i, '') + '.pdf')
         await fs.promises.writeFile(pdfPath, pdf)
-        openWindow({ file: pdfPath, name, original: docxPath })
+        return openWindow({ file: pdfPath, name, original: docxPath })
     } catch (err) {
         try { console.warn('[reader] Word file not shown, opening it outside:', err && err.message) } catch {}
         shell.openPath(docxPath).catch(() => {})
+        return null
     }
 }
 
@@ -259,11 +260,33 @@ async function openImage(imagePath, name) {
         const base = String(name || path.basename(imagePath)).replace(/.[a-z0-9]{1,5}$/i, '')
         const pdfPath = tempPathFor(base + '.pdf')
         await fs.promises.writeFile(pdfPath, pdf)
-        openWindow({ file: pdfPath, name: base + '.pdf' })
+        return openWindow({ file: pdfPath, name: base + '.pdf' })
     } catch (err) {
         try { console.warn('[reader] picture not shown, opening it outside:', err && err.message) } catch {}
         shell.openPath(imagePath).catch(() => {})
+        return null
     }
 }
 
-module.exports = { isEnabled, takeDownload, openFile, openWord, openImage, openUrl, sweepTemp }
+// A file taken out of a conversation («Все мессенджеры»): opened in the reader without a dialog and without an entry in the
+// downloads list. Clicking the same file again brings its window forward instead of opening another one (Oleg, 2026-11-22).
+const openedByHash = new Map()
+async function openBytes(bytes, name) {
+    const { readerKindForName } = require('../../shared/reader-kind')
+    const kind = readerKindForName(name)
+    if (!kind || !bytes || !bytes.length) return null
+    const hash = require('crypto').createHash('sha1').update(bytes).digest('hex')
+    const known = openedByHash.get(hash)
+    if (known && !known.isDestroyed()) {
+        if (known.isMinimized()) known.restore()
+        known.focus()
+        return kind
+    }
+    const savePath = tempPathFor(name)
+    await fs.promises.writeFile(savePath, bytes)
+    const win = kind === 'pdf' ? openWindow({ file: savePath, name }) : kind === 'image' ? await openImage(savePath, name) : await openWord(savePath, name)
+    if (win && !win.isDestroyed()) openedByHash.set(hash, win)
+    return kind
+}
+
+module.exports = { isEnabled, takeDownload, openFile, openWord, openImage, openBytes, openUrl, sweepTemp }
