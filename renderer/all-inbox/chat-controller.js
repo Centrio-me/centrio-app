@@ -13,6 +13,7 @@ const { createPending, withPending } = require('./pending')
 const { isAway, isHidden, onAttentionChange } = require('../window-attention')
 const { toMessenger, runsOf, entitiesOf } = require('./text-format')
 const { openLink } = require('./open-link')
+const { typeLines } = require('./typing')
 const { marksForService } = require('../notes-format')
 
 const CHAT_POLL_MS = 1500
@@ -60,6 +61,8 @@ const MEDIA_DATA = /^data:(audio|video)\/[\w.+-]+(;[\w=.+-]+)*;base64,/
 const FILE_DATA = /^data:[\w.+/-]+(;[\w=.+-]+)*;base64,/
 
 
+// what a send answers when the files went but the words after them did not
+const FILES_SENT = 'files-sent'
 const wait = (ms) => new Promise((r) => setTimeout(r, ms))
 const withTimeout = (p, ms) => Promise.race([p, wait(ms).then(() => null)])
 
@@ -326,6 +329,12 @@ function createChatController({ state, webviewOf, host, ipcRenderer, onSubtitle 
         w.sendInputEvent({ type: 'keyUp', keyCode: 'A', modifiers: ['control'] })
     }
 
+    // words into the field: Telegram takes a whole text at once; the others get their lines one by one (typing.js)
+    async function typeBlock(w, text) {
+        if (typingFor === 'telegram') w.insertText(text)
+        else await typeLines(w, text, wait)
+    }
+
     async function typeAt(w, point, text) {
         clickAt(w, point)
         await wait(FOCUS_SETTLE_MS)
@@ -334,7 +343,7 @@ function createChatController({ state, webviewOf, host, ipcRenderer, onSubtitle 
         const runs = KEYED_FORMATTING.has(typingFor) && text ? runsOf(text) : null
         if (runs && runs.some((r) => r.marks.length)) return typeRuns(w, runs)
         try {
-            if (text) w.insertText(text)
+            if (text) await typeBlock(w, text)
             else { w.sendInputEvent({ type: 'keyDown', keyCode: 'Backspace' }); w.sendInputEvent({ type: 'keyUp', keyCode: 'Backspace' }) }
         } catch { return false }
         await wait(TYPE_SETTLE_MS)
@@ -360,7 +369,7 @@ function createChatController({ state, webviewOf, host, ipcRenderer, onSubtitle 
                 await wait(FORMAT_SETTLE_MS)
                 const struck = strikeByHand && run.marks.includes('strike')
                 if (struck) await typeChars('~~')
-                w.insertText(run.text)
+                await typeBlock(w, run.text)
                 if (struck) await typeChars('~~')
                 await wait(FORMAT_SETTLE_MS)
             }
@@ -413,6 +422,12 @@ function createChatController({ state, webviewOf, host, ipcRenderer, onSubtitle 
         return ipcRenderer.invoke('all-inbox:drag-finish', { guestId, point: at }).catch(() => false)
     }
 
+    // the files have gone already when the words follow: if the words do not go, the answer says so, and only the words come back to the
+    // field (all of it coming back sent the files twice, and the person saw the text «vanish», Oleg 2026-11-22)
+    async function textAfterFiles(w, text, cur) {
+        return (await sendText(w, text, cur)) ? true : FILES_SENT
+    }
+
     async function sendFiles(w, files, text, asFile = false, cur = current) {
         // WhatsApp «Файл»: sent as documents by WhatsApp itself (it has no drop zone for them); the upload takes a
         // while, and a short wait gave up while WhatsApp went on sending — pressed again, the file went twice
@@ -429,11 +444,11 @@ function createChatController({ state, webviewOf, host, ipcRenderer, onSubtitle 
         if (cur.adapter.sendsOnDrop) {
             // MAX has sent the files already; the text follows as its own message
             await wait(AFTER_DROP_MS)
-            return text ? sendText(w, text, cur) : true
+            return text ? textAfterFiles(w, text, cur) : true
         }
         // Telegram: its «send» window, the text as the caption, its own send button; MAX: its message field holding the file
         const popup = await waitSettled(w, cur.adapter.MEDIA_POPUP, POPUP_WAIT_MS)
-        if (!popup && cur.adapter.dropMaySendAtOnce) return text ? sendText(w, text, cur) : true
+        if (!popup && cur.adapter.dropMaySendAtOnce) return text ? textAfterFiles(w, text, cur) : true
         if (!popup || !popup.send || current !== cur) return false
         // Enter in the caption sends; a click while the window still slides in would land on its backdrop and close it
         if (popup.caption) {
@@ -588,11 +603,12 @@ function createChatController({ state, webviewOf, host, ipcRenderer, onSubtitle 
         // message waited for a text with asterisks that never came, Oleg 2026-11-13)
         const pid = pending.add({ text: toMessenger(text, ''), files, knownIds })
         redraw()
-        const ok = await deliver(w, out, files, reply, asFile, cur)
+        const result = await deliver(w, out, files, reply, asFile, cur)
+        const ok = result === true
         if (!ok) pending.drop(pid)
         await wait(AFTER_SEND_MS)
         poll()
-        return ok
+        return result === FILES_SENT ? FILES_SENT : ok
     }
 
     async function deliver(w, text, files, reply, asFile = false, cur = current) {

@@ -103,7 +103,7 @@ function createChatView({ onNewest = () => {}, onDismissPending = () => {}, host
     let shownOnce = false // the field has shown for this chat (it takes the cursor then)
     let chatIsSaved = false // «Избранное»: nobody else to delete a message for
     // a failure says what happened and what to do; a red edge for a moment said nothing (3.8.3 check)
-    const said = (p, text) => Promise.resolve(p).then((ok) => { if (ok === false) flash(text); return ok }, () => { flash(text); return false })
+    const said = (p, text) => Promise.resolve(p).then((ok) => { if (ok === false) flash(text); else if (ok === 'files-sent') flash('Файлы отправлены, а текст не ушёл — он остался в поле, нажмите «Отправить» ещё раз'); return ok }, () => { flash(text); return false })
     const sendSaying = (...a) => said(onSend(...a), 'Не отправилось. Текст остался в поле — попробуйте ещё раз или откройте чат в мессенджере')
     const editSaying = onEdit ? (...a) => said(onEdit(...a), 'Не удалось изменить сообщение') : onEdit
     const composer = createComposer({ root, onSend: sendSaying, onEdit: editSaying, onPickFiles, onDescribeFiles, onPasteImage, onDraft: (text) => drafts.keep(chatId, text), chatKey: () => chatId, onDraftFor: (id, text) => drafts.keep(id, text) })

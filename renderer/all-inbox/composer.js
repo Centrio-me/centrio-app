@@ -233,7 +233,10 @@ function createComposer({ root, onSend, onEdit = null, onPickFiles, onDescribeFi
         // the send belongs to the chat it started in: the person may open another chat while it runs
         const owner = chatKey()
         input.value = ''; files = []; renderTray(); autosize(); refreshSend(); showReply(null)
-        const ok = await onSend(text, sent.files, sent.reply, asFile && sent.files.some(isPicture)).catch(() => false)
+        const answer = await onSend(text, sent.files, sent.reply, asFile && sent.files.some(isPicture)).catch(() => false)
+        // the files went but the words did not: only the words come back (the files would go twice)
+        const ok = answer === true
+        const filesGone = answer === 'files-sent'
         const here = chatKey() === owner
         if (sendingFor === owner) { sending = false; sendingFor = null }
         if (here) form.classList.remove('is-sending')
@@ -242,7 +245,7 @@ function createComposer({ root, onSend, onEdit = null, onPickFiles, onDescribeFi
         else {
             // what was typed meanwhile is kept: the text that did not go comes back in front of it
             input.value = input.value.trim() ? `${sent.text}\n${input.value}` : sent.text
-            files = [...sent.files, ...files]
+            files = [...(filesGone ? [] : sent.files), ...files]
             if (sent.reply && !reply) showReply(sent.reply)
             renderTray(); autosize(); refreshSend(); onDraft(input.value)
             form.classList.add('is-failed')
