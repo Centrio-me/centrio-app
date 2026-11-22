@@ -193,6 +193,20 @@ function createChatView({ onNewest = () => {}, onDismissPending = () => {}, host
     let touchedAt = 0
     const touched = () => { touchedAt = Date.now() }
     for (const type of ['wheel', 'pointerdown', 'keydown', 'touchstart']) scroll.addEventListener(type, touched, { passive: true })
+    function topMessageMark() {
+        const top = scroll.getBoundingClientRect().top
+        for (const row of list.querySelectorAll('.aic-row[data-id]')) {
+            const box = row.getBoundingClientRect()
+            if (box.bottom > top + 1) return { id: row.dataset.id, offset: box.top - top }
+        }
+        return null
+    }
+    function restoreMessageMark(mark) {
+        const row = [...list.querySelectorAll('.aic-row[data-id]')].find((r) => r.dataset.id === mark.id)
+        if (!row) return
+        const shift = row.getBoundingClientRect().top - scroll.getBoundingClientRect().top - mark.offset
+        if (Math.abs(shift) >= 1) scroll.scrollTop += shift
+    }
     // the round «down» button of Telegram: shows while reading above, counts what arrived meanwhile
     const down = q('.aic-down')
     const downN = q('.aic-down-n')
@@ -579,6 +593,9 @@ function createChatView({ onNewest = () => {}, onDismissPending = () => {}, host
             if (sig === lastSig) return
             const nearBottom = stick || atBottom() || !lastSig
             const fromBottom = scroll.scrollHeight - scroll.scrollTop
+            // the message at the top of the view and how far under the top edge it stands: the place is kept by this message, not by
+            // the distance to the bottom — pictures and previews that settle above change that distance (Oleg, 2026-11-22: jumps)
+            const held = nearBottom ? null : topMessageMark()
             lastSig = sig
             lastRows = rows
             const frag = document.createDocumentFragment()
@@ -636,6 +653,7 @@ function createChatView({ onNewest = () => {}, onDismissPending = () => {}, host
             }
             // stay at the bottom for new messages; keep the place when earlier ones load above
             scroll.scrollTop = nearBottom ? scroll.scrollHeight : scroll.scrollHeight - fromBottom
+            if (held) restoreMessageMark(held)
             refreshDown()
         },
         // the tab shows another chat: nothing of it is drawn and nothing can be sent until the right one is open
