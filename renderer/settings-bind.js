@@ -81,12 +81,17 @@ function bindSettingsUi({
         const newLang = (settings.language || 'ru').trim()
 
         // Используем setAsync чтобы гарантировать запись в main-процесс до reload
-        if (store.setAsync) {
-            await store.setAsync('settings', settings)
-        } else {
-            await (store.set('settings', settings) || Promise.resolve())
+        // The renderer's cache takes the new settings at once (store.setAsync fills it before it waits for the main
+        // process), so the screen is changed first and only then is the write awaited: on a slow computer the main
+        // process answers late, and the chosen theme used to appear seconds after the click.
+        const written = store.setAsync
+            ? store.setAsync('settings', settings)
+            : Promise.resolve(store.set('settings', settings))
+        try {
+            applySettings(settings)
+        } finally {
+            await written
         }
-        applySettings(settings)
 
         const autoLaunch = document.getElementById('settingAutoLaunch')
         const autoLaunchRequested = !!autoLaunch?.checked

@@ -45,7 +45,7 @@ function wireSessionDownloads(ses, getMainWindow) {
     if (typeof getMainWindow === 'function') mainWindowGetter = getMainWindow
 
     ses.on('will-download', (_event, item) => {
-        // A PDF opens in Centrio's own reader (settings.pdfViewer); it is saved aside, without the "where to save" dialog.
+        // A PDF or a Word file (.docx) opens in Centrio's own reader (settings.pdfViewer); it is saved aside, without the "where to save" dialog.
         const inReader = require('../services/pdfViewer').takeDownload(item)
         if (!inReader && !askDownload && downloadDir) {
             try { item.setSavePath(path.join(downloadDir, item.getFilename())) } catch {}
@@ -67,6 +67,16 @@ function wireSessionDownloads(ses, getMainWindow) {
         persistDownloadsHistory()
         broadcastDownloadUpdate(record)
 
+        // The window says at once that a file is coming down (and how far), so nobody presses the file again and again.
+        // A file the reader took has its own window instead of «Файл сохранён», so its line is only cleared at the end.
+        const nameOf = () => path.basename(record.savePath || record.filename || '')
+        const toastState = (payload) => {
+            const win = mainWindowGetter && mainWindowGetter()
+            if (win && !win.isDestroyed()) win.webContents.send('download-toast', { id: record.id, name: nameOf(), ...payload })
+        }
+        toastState({ state: 'started', received: 0, total: record.totalBytes })
+        let lastToast = 0
+
         let lastBroadcast = 0
         item.on('updated', (_e, state) => {
             record.receivedBytes = item.getReceivedBytes()
@@ -79,6 +89,10 @@ function wireSessionDownloads(ses, getMainWindow) {
                 lastBroadcast = now
                 broadcastDownloadUpdate(record)
             }
+            if (state !== 'interrupted' && now - lastToast > 400) {
+                lastToast = now
+                toastState({ state: 'progress', received: record.receivedBytes, total: record.totalBytes })
+            }
         })
 
         item.once('done', (_e, state) => {
@@ -88,11 +102,9 @@ function wireSessionDownloads(ses, getMainWindow) {
             record.endTime = Date.now()
             persistDownloadsHistory()
             broadcastDownloadUpdate(record)
-            // «Сохранено» or why not, in the window itself (not for a PDF the reader took, nor a download the person cancelled)
-            if (!inReader && (state === 'completed' || state === 'interrupted')) {
-                const win = mainWindowGetter && mainWindowGetter()
-                if (win && !win.isDestroyed()) win.webContents.send('download-toast', { id: record.id, state, name: path.basename(record.savePath || record.filename || '') })
-            }
+            // «Сохранено» or why not, in the window itself (the line above: not for a file the reader took, nor a download the person cancelled)
+            // (a cancelled one and one the reader took are sent too, only to take them off the «Скачивается» line)
+            toastState({ state: inReader && state === 'completed' ? 'handled' : state })
         })
     })
 }
@@ -180,6 +192,7 @@ function registerDownloadsIpc({ getMainWindow }) {
         }
         const pdf = require('../services/pdfViewer')
         if (pdf.isEnabled() && /\.pdf$/i.test(record.savePath) && pdf.openFile(record.savePath, record.filename)) return { success: true }
+        if (pdf.isEnabled() && /\.docx$/i.test(record.savePath)) { pdf.openWord(record.savePath, record.filename); return { success: true } }
         const err = await shell.openPath(record.savePath)
         return err ? { success: false, error: err } : { success: true }
     })

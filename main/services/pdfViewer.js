@@ -4,11 +4,16 @@
 // the save and print dialogs. The page only gets the narrow API of pdf-viewer/preload.js.
 'use strict'
 
-const { BrowserWindow, app, ipcMain, dialog, net } = require('electron')
+const { BrowserWindow, app, ipcMain, dialog, net, shell } = require('electron')
 const path = require('path')
 const fs = require('fs')
 const store = require('./store')
 const { isPdfDownload, isPdfUrl } = require('../../shared/pdf-detect')
+const { isWordDownload } = require('../../shared/doc-detect')
+const { printOptions, isDuplexOn } = require('../../shared/pdf-print')
+
+// a top-level key: the renderer saves the whole 'settings' object from its own copy and would wipe a key kept inside it
+const DUPLEX_KEY = 'pdfDuplex'
 
 const TEMP_DIR_NAME = 'centrio-pdf'
 const MAX_WINDOWS = 8
@@ -73,7 +78,7 @@ function registerIpc() {
         if (!entry) return { ok: false, error: 'no window' }
         try {
             const bytes = await readSource(entry.source)
-            return { ok: true, title: entry.title, bytes, canSaveCopy: !!entry.source.file || !!entry.source.url }
+            return { ok: true, title: entry.title, bytes, canSaveCopy: !!entry.source.file || !!entry.source.url, canOpenOriginal: !!entry.source.original }
         } catch (err) {
             return { ok: false, error: String((err && err.message) || err), title: entry.title }
         }
@@ -99,8 +104,12 @@ function registerIpc() {
     ipcMain.handle('pdfv:print', (event) => new Promise((resolve) => {
         const entry = ownerWindow(event)
         if (!entry) return resolve({ ok: false })
-        entry.win.webContents.print({ printBackground: true }, (success, reason) => resolve({ ok: success, reason }))
+        entry.win.webContents.print(printOptions(isDuplexOn(store.get(DUPLEX_KEY, false))), (success, reason) => resolve({ ok: success, reason }))
     }))
+
+    // «Печать на обеих сторонах»: remembered between prints and between documents
+    ipcMain.handle('pdfv:get-duplex', () => isDuplexOn(store.get(DUPLEX_KEY, false)))
+    ipcMain.handle('pdfv:set-duplex', (_event, on) => { store.set(DUPLEX_KEY, isDuplexOn(on)); return isDuplexOn(on) })
 
     ipcMain.handle('pdfv:open-dialog', async (event) => {
         const entry = ownerWindow(event)
@@ -117,6 +126,20 @@ function registerIpc() {
         } catch (err) {
             return { ok: false, error: String((err && err.message) || err) }
         }
+    })
+
+    // A Word file shown here as a PDF: hand the original to the program that edits it (Word, LibreOffice…)
+    ipcMain.handle('pdfv:open-original', async (event) => {
+        const entry = ownerWindow(event)
+        const original = entry && entry.source.original
+        if (!original || !/\.docx$/i.test(original) || !fs.existsSync(original)) return { ok: false }
+        const error = await shell.openPath(original)
+        return { ok: !error, error }
+    })
+
+    ipcMain.on('pdfv:close', (event) => {
+        const entry = ownerWindow(event)
+        if (entry) entry.win.close()
     })
 
     ipcMain.on('pdfv:title', (event, title) => {
@@ -178,12 +201,45 @@ async function openUrl(url) {
 
 // Called from a session's will-download. Returns true when the reader takes the file over (the caller then skips the
 // "where to save" dialog and the default save path); the reader opens as soon as the file is complete.
+// Returns 'pdf' | 'word' when the reader takes the file, false when it does not.
 function takeDownload(item) {
-    if (!isEnabled() || !isPdfDownload(item.getFilename(), item.getMimeType())) return false
-    const savePath = tempPathFor(item.getFilename())
+    if (!isEnabled()) return false
+    const filename = item.getFilename()
+    const mime = item.getMimeType()
+    const kind = isPdfDownload(filename, mime) ? 'pdf' : (isWordDownload(filename) ? 'word' : null)
+    if (!kind) return false
+    const savePath = tempPathFor(filename)
     try { item.setSavePath(savePath) } catch { return false }
-    item.once('done', (_e, state) => { if (state === 'completed') openFile(savePath, item.getFilename()) })
-    return true
+    item.once('done', (_e, state) => {
+        if (state !== 'completed') return
+        if (kind === 'pdf') openFile(savePath, filename)
+        else openWord(savePath, filename)
+    })
+    return kind
 }
 
-module.exports = { isEnabled, takeDownload, openFile, openUrl, sweepTemp }
+// A Word file that has come down: made into a PDF and opened in the reader (the original is kept beside it for «Открыть в Word»).
+// When it cannot be drawn (damaged, protected, too big) it opens in whatever program the system has for it, so nothing is lost.
+// One conversion at a time: each runs a hidden window, and a person who clicks the file again must not start a pile of them.
+let conversionQueue = Promise.resolve()
+function openWord(docxPath, name) {
+    if (!/\.docx$/i.test(String(docxPath || ''))) return Promise.resolve()
+    conversionQueue = conversionQueue.then(() => convertAndOpen(docxPath, name), () => convertAndOpen(docxPath, name))
+    return conversionQueue
+}
+
+async function convertAndOpen(docxPath, name) {
+    try {
+        const { convertDocxToPdf } = require('./docxToPdf')
+        const pdf = await convertDocxToPdf(docxPath)
+        // the PDF goes to our own temp folder, never next to the person's file
+        const pdfPath = tempPathFor(String(name || path.basename(docxPath)).replace(/\.docx$/i, '') + '.pdf')
+        await fs.promises.writeFile(pdfPath, pdf)
+        openWindow({ file: pdfPath, name, original: docxPath })
+    } catch (err) {
+        try { console.warn('[reader] Word file not shown, opening it outside:', err && err.message) } catch {}
+        shell.openPath(docxPath).catch(() => {})
+    }
+}
+
+module.exports = { isEnabled, takeDownload, openFile, openWord, openUrl, sweepTemp }

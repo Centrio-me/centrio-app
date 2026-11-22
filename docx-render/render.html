@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<!-- A Word file is untrusted: this page may run only our two scripts, take pictures and fonts that are inside the file and
+     nothing from the network. It is never shown; main/services/docxToPdf.js prints it to PDF for the reader. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; img-src data: blob:; font-src data: blob:">
+<title>docx</title>
+<style>
+  html, body { margin: 0; padding: 0; background: #fff; }
+  .docx-wrapper { background: #fff !important; padding: 0 !important; display: block !important; }
+  .docx-wrapper > section.docx { box-shadow: none !important; margin: 0 !important; break-after: page; overflow: hidden; }
+  .docx-wrapper > section.docx:last-child { break-after: auto; }
+</style>
+</head>
+<body>
+<div id="doc"></div>
+<script src="../node_modules/jszip/dist/jszip.min.js"></script>
+<script src="../node_modules/docx-preview/dist/docx-preview.min.js"></script>
+<script src="render.js"></script>
+</body>
+</html>

@@ -23,6 +23,9 @@ function _rgbToHsl(r, g, b) {
 }
 
 function _applyAdaptiveColor({ r, g, b }) {
+    // The colour is read from the open page and arrives LATE (a busy page answers in seconds). If another theme was chosen in
+    // the meantime, these dark inline colours must not land on it: that gave dark text on a dark background in «Светлая».
+    if (!_adaptiveActive) return
     // Слишком тёмный пиксель — нейтральный тёмно-синий
     if (r + g + b < 30) { r = 28; g = 34; b = 80 }
     const [h, s] = _rgbToHsl(r, g, b)
@@ -244,11 +247,19 @@ function createSettingsUiApi({
         const root = document.documentElement
         _adaptiveActive = (effectiveTheme === 'adaptive')
         if (!_adaptiveActive) {
+            clearTimeout(_adaptiveTimer)
             _clearAdaptiveVars()
         }
         // 3.7.3: «Аврора» and «Время суток» ride on a base theme (renderer/theme-fx-layer.js); when the time of day
         // moves on, the same theme is applied again and lands on its new base
-        root.setAttribute('data-theme', applyThemeFx(effectiveTheme, () => applyTheme(theme)))
+        // All colours change in one go: no element's 0.15-0.2 s transition runs while the others have already switched
+        // (on a slow computer that showed light text on a still-dark background for seconds)
+        root.classList.add('theme-switching')
+        try {
+            root.setAttribute('data-theme', applyThemeFx(effectiveTheme, () => applyTheme(theme)))
+        } finally {
+            requestAnimationFrame(() => requestAnimationFrame(() => root.classList.remove('theme-switching')))
+        }
 
         const settings = getSettings()
         if (settings.accentColor && effectiveTheme !== 'adaptive') {

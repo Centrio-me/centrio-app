@@ -1,4 +1,8 @@
-const { showSaveToast } = require('./save-toast')
+const { showSaveToast, showProgressToast, hideSaveToast } = require('./save-toast')
+const { progressView, applyUpdate } = require('../shared/download-progress')
+
+// After «Файл сохранён» the next «Скачивается…» tick of another file waits a moment, so the result can be read
+const RESULT_QUIET_MS = 2500
 function bindDownloads({
     store,
     ipcRenderer,
@@ -6,8 +10,35 @@ function bindDownloads({
     tGet
 }) {
     // How a file the messenger downloaded ended (main/ipc/downloads.js sends it): saved with a way to see it, or a plain failure
-    ipcRenderer.on('download-toast', (_event, info) => {
+    let activeDownloads = new Map()
+    let quietUntil = 0
+    const showActive = () => {
+        const view = progressView([...activeDownloads.values()], {
+            one: tGet('ctx.fileLoading'),
+            oneWithPercent: tGet('ctx.fileLoadingPercent'),
+            many: tGet('ctx.filesLoading')
+        })
+        if (view) showProgressToast(view.text, view.fraction)
+        else hideSaveToast()
+    }
+
+    // (the bridge hands over the payload only, no event: with the old (_event, info) signature this toast never showed at all)
+    ipcRenderer.on('download-toast', (info) => {
         const name = (info && info.name) || ''
+        activeDownloads = applyUpdate(activeDownloads, info)
+        // a file is coming down: say so, with how far it got (changed in place), instead of silence until it is saved
+        if (info && (info.state === 'started' || info.state === 'progress')) {
+            if (Date.now() >= quietUntil) showActive()
+            return
+        }
+        if (info && info.state === 'cancelled') { showActive(); return }
+        // a file the reader took: its window opens in a moment (a Word file is made into a PDF first, which takes a second or two)
+        if (info && info.state === 'handled') {
+            if (activeDownloads.size > 0) showActive()
+            else showSaveToast({ kind: 'ok', text: tGet('ctx.fileOpening').replace('{name}', name) })
+            return
+        }
+        quietUntil = Date.now() + RESULT_QUIET_MS
         if (info && info.state === 'completed') {
             showSaveToast({
                 kind: 'ok',

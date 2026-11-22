@@ -154,3 +154,6 @@ html[data-fx] .titlebar-active-tab.is-split .titlebar-tab-chip.is-focused {
 html[data-fx] .tab:hover:not(.active),
 html[data-fx] .titlebar-active-tab.is-split .titlebar-tab-chip:not(.is-focused):hover { background: color-mix(in srgb, var(--text-primary) 7%, transparent); }
 html[data-fx] .titlebar-active-tab.is-split .titlebar-tab-chip.is-focused .titlebar-active-tab-name { color: var(--text-primary); }
+
+/* while a theme is being switched (renderer/settings-ui.js applyTheme) nothing eases between the old and the new colours */
+html.theme-switching *, html.theme-switching *::before, html.theme-switching *::after { transition: none !important; }

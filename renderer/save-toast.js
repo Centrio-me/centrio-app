@@ -25,6 +25,38 @@ function hideSaveToast() {
     if (el) el.classList.remove('show')
 }
 
+/** A «Скачивается…» line that stays while the file comes down and is changed in place (no blinking) as it goes. fraction: 0..1 or null. */
+function showProgressToast(text, fraction) {
+    if (!text) return
+    const el = host()
+    if (timer) { clearTimeout(timer); timer = null }
+    const live = el.classList.contains('is-progress') && el.classList.contains('show')
+    if (!live) {
+        el.textContent = ''
+        el.className = 'save-toast is-progress'
+        const message = document.createElement('span')
+        message.className = 'save-toast-text'
+        el.appendChild(message)
+        const bar = document.createElement('span')
+        bar.className = 'save-toast-bar'
+        bar.appendChild(document.createElement('span'))
+        el.appendChild(bar)
+        const close = document.createElement('button')
+        close.type = 'button'
+        close.className = 'save-toast-close'
+        close.setAttribute('aria-label', '×')
+        close.textContent = '×'
+        close.addEventListener('click', hideSaveToast)
+        el.appendChild(close)
+        requestAnimationFrame(() => el.classList.add('show'))
+    }
+    el.querySelector('.save-toast-text').textContent = text
+    const bar = el.querySelector('.save-toast-bar')
+    const fill = bar.firstChild
+    bar.classList.toggle('is-indeterminate', fraction == null)
+    fill.style.width = fraction == null ? '' : `${Math.round(fraction * 100)}%`
+}
+
 /** options: { kind: 'ok' | 'error', text, actionLabel?, onAction? } */
 function showSaveToast({ kind = 'ok', text, actionLabel, onAction }) {
     if (!text) return
@@ -55,4 +87,4 @@ function showSaveToast({ kind = 'ok', text, actionLabel, onAction }) {
     timer = setTimeout(hideSaveToast, kind === 'error' ? ERROR_MS : OK_MS)
 }
 
-module.exports = { showSaveToast, hideSaveToast }
+module.exports = { showSaveToast, showProgressToast, hideSaveToast }

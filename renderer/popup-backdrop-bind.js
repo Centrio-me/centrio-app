@@ -38,6 +38,12 @@ function bindPopupBackdrop({ contentArea } = {}) {
 
     reposition()
     window.addEventListener('resize', reposition)
+    // The right panel (tasks, replies, notes…) opens with a width animation, so #contentArea keeps changing size AFTER 'popup-opened'.
+    // A backdrop measured once stayed as wide as before the panel and covered it: clicks went through (mousedown closes the
+    // backdrop) but the mouse wheel did nothing. Follow the area while the backdrop is shown.
+    if (contentArea && typeof ResizeObserver === 'function') {
+        new ResizeObserver(() => { if (backdrop.classList.contains('show')) reposition() }).observe(contentArea)
+    }
 
     document.addEventListener('popup-opened', () => {
         reposition()

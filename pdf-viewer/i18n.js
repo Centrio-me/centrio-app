@@ -1,7 +1,7 @@
 // Strings of the PDF reader. Russian and English; every other system language falls back to English.
 const RU = {
   sidebar: 'Панель страниц', prev: 'Предыдущая страница', next: 'Следующая страница', zoomOut: 'Уменьшить', zoomMenu: 'Масштаб', zoomIn: 'Увеличить',
-  fit: 'Вписать по ширине', rotate: 'Повернуть', search: 'Поиск (Ctrl+F)', addText: 'Добавить текст', print: 'Печать (Ctrl+P)', saveAs: 'Сохранить как… (Ctrl+S)',
+  fit: 'Вписать по ширине', rotate: 'Повернуть', search: 'Поиск (Ctrl+F)', addText: 'Добавить текст', print: 'Печать (Ctrl+P)', duplex: 'Печать на обеих сторонах', openOriginal: 'Открыть в Word', openOriginalFailed: 'Не удалось открыть файл в Word', duplexOn: 'Печать на обеих сторонах включена. Запомним для следующих файлов.', duplexOff: 'Печать на обеих сторонах выключена', saveAs: 'Сохранить как… (Ctrl+S)',
   open: 'Открыть другой PDF (Ctrl+O)', prevMatch: 'Предыдущее совпадение', nextMatch: 'Следующее совпадение', close: 'Закрыть',
   matchCase: 'Учитывать регистр', pages: 'Страницы', outline: 'Оглавление', noOutline: 'В документе нет оглавления', dropTitle: 'Отпустите, чтобы открыть PDF',
   pwTitle: 'Документ защищён паролем', pwText: 'Введите пароль, чтобы открыть этот файл.', pwWrong: 'Пароль не подошёл. Попробуйте ещё раз.', pwOk: 'Открыть', cancel: 'Отмена',
@@ -15,7 +15,7 @@ const RU = {
 }
 const EN = {
   sidebar: 'Page panel', prev: 'Previous page', next: 'Next page', zoomOut: 'Zoom out', zoomMenu: 'Zoom', zoomIn: 'Zoom in',
-  fit: 'Fit to width', rotate: 'Rotate', search: 'Search (Ctrl+F)', addText: 'Add text', print: 'Print (Ctrl+P)', saveAs: 'Save as… (Ctrl+S)',
+  fit: 'Fit to width', rotate: 'Rotate', search: 'Search (Ctrl+F)', addText: 'Add text', print: 'Print (Ctrl+P)', duplex: 'Print on both sides', openOriginal: 'Open in Word', openOriginalFailed: 'Could not open the file in Word', duplexOn: 'Printing on both sides is on. It is remembered for the next files.', duplexOff: 'Printing on both sides is off', saveAs: 'Save as… (Ctrl+S)',
   open: 'Open another PDF (Ctrl+O)', prevMatch: 'Previous match', nextMatch: 'Next match', close: 'Close',
   matchCase: 'Match case', pages: 'Pages', outline: 'Outline', noOutline: 'This document has no outline', dropTitle: 'Drop to open the PDF',
   pwTitle: 'This document is password protected', pwText: 'Enter the password to open this file.', pwWrong: 'Wrong password. Try again.', pwOk: 'Open', cancel: 'Cancel',

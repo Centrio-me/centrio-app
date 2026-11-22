@@ -405,6 +405,18 @@ $('btnZoomIn').addEventListener('click', () => stepZoom(1)); $('btnZoomOut').add
 $('btnFit').addEventListener('click', () => fitTo(s.fit === 'width' ? 'page' : 'width'))
 $('btnRotate').addEventListener('click', rotate)
 $('btnText').addEventListener('click', () => textTool.open())
+$('btnDuplex').addEventListener('click', async () => {
+  const on = $('btnDuplex').getAttribute('aria-pressed') !== 'true'
+  $('btnDuplex').setAttribute('aria-pressed', String(on))
+  try { await window.centrioPdf.setDuplex(on) } catch { /* the choice just is not remembered */ }
+  toast(t(on ? 'duplexOn' : 'duplexOff'))
+})
+window.centrioPdf.getDuplex().then((on) => $('btnDuplex').setAttribute('aria-pressed', String(on === true))).catch(() => {})
+$('btnClose').addEventListener('click', () => window.centrioPdf.close())
+$('btnOpenOriginal').addEventListener('click', async () => {
+  const res = await window.centrioPdf.openOriginal().catch(() => null)
+  if (!res || !res.ok) toast(t('openOriginalFailed'))
+})
 $('btnPrint').addEventListener('click', doPrint); $('btnSave').addEventListener('click', doSave); $('btnOpen').addEventListener('click', doOpen)
 $('pageInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') { const n = parseInt(e.target.value, 10); if (n) goTo(n, false); e.target.blur() } })
 $('pageInput').addEventListener('blur', () => { $('pageInput').value = s.current })
@@ -447,4 +459,6 @@ window.addEventListener('drop', async (e) => {
   const first = await window.centrioPdf.init()
   if (!first || !first.ok) { showStatus(t('failedTitle'), t('failedText')); return }
   loadDocument(first.bytes, first.title)
+  // a Word file shown here as a PDF: «Открыть в Word» hands the original to the program that edits it
+  $('btnOpenOriginal').hidden = first.canOpenOriginal !== true
 })()
