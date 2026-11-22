@@ -14,6 +14,7 @@ const {
 } = require('../ipc/window')
 const { isOAuthProviderUrl, isYandexInternalSsoHost } = require('../services/oauthProviders')
 const { isVkIdPopupFor } = require('../../shared/site-families')
+const vkDocs = require('../services/vkDocs')
 const { popularMessengers } = require('../../renderer/constants')
 const { FIND_MEDIA_SOURCE, READ_LEVEL_SOURCE } = require('../../shared/media-elements')
 const { findTabForUrl } = require('../services/linkRouting')
@@ -1665,6 +1666,14 @@ function registerAppEvents({
             // wireOAuthPopup() в main/ipc/window.js.
             const oauthPendingMessengerIds = new Set()
             contents.setWindowOpenHandler(({ url }) => {
+                // A document opened in VK (a PDF, Word, a picture sent as a file) is read here and opened in Centrio's reader, not in a window of VK's
+                // «Скачать файл» page and not in the outside browser; if it cannot be read, it goes the way it always did.
+                if (vkDocs.handles(contents, url)) {
+                    vkDocs.open(contents, url).then((done) => {
+                        if (!done) shell.openExternal(url).catch(() => {})
+                    })
+                    return { action: 'deny' }
+                }
                 if (!isOAuthProviderUrl(url) && !isVkIdPopupFor(url, contents.getURL())) return { action: 'allow' }
 
                 // DEBUG (Grok "2 окна" investigation): openOAuthBroker() already
@@ -1829,6 +1838,12 @@ function registerAppEvents({
             // preventDefault() реально работает — навигация не стартует
             // вовсе, процесс гостя не переключается, обрывать нечего.
             contents.on('will-navigate', (event, url) => {
+                // the tab itself heading for a VK document (instead of VK's own page or an inline viewer that replaces the chat)
+                if (vkDocs.handles(contents, url)) {
+                    event.preventDefault()
+                    vkDocs.open(contents, url).then((done) => { if (!done) contents.loadURL(url).catch(() => {}) })
+                    return
+                }
                 if (!isOAuthProviderUrl(url)) return
                 if (isGoogleInternalPath(url)) return
                 if (isYandexInternalSsoHost(url)) return

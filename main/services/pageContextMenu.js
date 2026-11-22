@@ -54,8 +54,10 @@ function attach(contents, { getMainWindow }) {
         const main = getMainWindow()
         if (!main || main.isDestroyed() || contents.isDestroyed()) return
         if (contents.hostWebContents !== main.webContents) return
+        noteMisspelling(contents.id, text(params.misspelledWord, 120))
         main.webContents.send('pagemenu:show', snapshot(contents, params, main.webContents.getZoomFactor() || 1))
     })
+    contents.once('destroyed', () => forgetMisspelling(contents.id))
 }
 
 // A guest we may act on: a <webview> hosted by the main window, nothing else.
@@ -87,6 +89,27 @@ const onTabFocus = (run) => (g) => {
     setTimeout(() => { try { if (!g.isDestroyed || !g.isDestroyed()) run(g) } catch { /* the tab went meanwhile */ } }, FOCUS_SETTLE_MS)
 }
 
+// The typo under the cursor at the moment the menu opened, per tab: Chromium leaves it SELECTED, so after a suggestion is chosen the
+// selection still reading as that word means the replacement did not happen and the suggestion is typed over it instead.
+const misspelledByTab = new Map()
+const SPELL_CHECK_DELAY_MS = 80
+const noteMisspelling = (id, word) => { if (word) misspelledByTab.set(id, word); else misspelledByTab.delete(id) }
+const forgetMisspelling = (id) => { misspelledByTab.delete(id) }
+
+function replaceWord(guest, word) {
+    const wrong = misspelledByTab.get(guest.id) || ''
+    onTabFocus((g) => {
+        g.replaceMisspelling(word)
+        if (!wrong) return
+        setTimeout(() => {
+            if (g.isDestroyed && g.isDestroyed()) return
+            g.executeJavaScript('String(window.getSelection())')
+                .then((selected) => { if (typeof selected === 'string' && selected.trim() === wrong) g.insertText(word) })
+                .catch(() => { /* the page went meanwhile: nothing to fix */ })
+        }, SPELL_CHECK_DELAY_MS)
+    })(guest)
+}
+
 const PAGE_ACTIONS = {
     back: (g) => { if (g.navigationHistory ? g.navigationHistory.canGoBack() : g.canGoBack()) g.goBack() },
     forward: (g) => { if (g.navigationHistory ? g.navigationHistory.canGoForward() : g.canGoForward()) g.goForward() },
@@ -104,7 +127,7 @@ function perform(guest, action, payload, language) {
     if (PAGE_ACTIONS[action]) { PAGE_ACTIONS[action](guest); return true }
     switch (action) {
         case 'replaceMisspelling':
-            if (typeof payload === 'string' && payload) guest.replaceMisspelling(payload.slice(0, 120))
+            if (typeof payload === 'string' && payload) replaceWord(guest, payload.slice(0, 120))
             return true
         case 'addToDictionary':
             if (typeof payload === 'string' && payload) guest.session.addWordToSpellCheckerDictionary(payload.slice(0, 120))
@@ -136,4 +159,4 @@ function handleAction({ getMainWindow, language }, sender, wcId, action, payload
     try { return perform(guest, String(action), payload, language()) } catch { return false }
 }
 
-module.exports = { attach, handleAction, perform, safeExternal, searchUrl, guestFor }
+module.exports = { attach, handleAction, perform, safeExternal, searchUrl, guestFor, noteMisspelling, forgetMisspelling }

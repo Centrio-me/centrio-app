@@ -201,18 +201,26 @@ async function openUrl(url) {
 
 // Called from a session's will-download. Returns true when the reader takes the file over (the caller then skips the
 // "where to save" dialog and the default save path); the reader opens as soon as the file is complete.
-// Returns 'pdf' | 'word' when the reader takes the file, false when it does not.
+// Returns 'pdf' | 'word' | 'image' when the reader takes the file, false when it does not.
+// A picture goes to the reader only when it was opened from a VK document (see vkDocs.js), never every image a messenger saves.
+function isVkReaderImage(item) {
+    const { takesImage } = require('./vkDocs')
+    const chain = typeof item.getURLChain === 'function' ? item.getURLChain() : [item.getURL()]
+    return chain.some((url) => takesImage(url))
+}
+
 function takeDownload(item) {
     if (!isEnabled()) return false
     const filename = item.getFilename()
     const mime = item.getMimeType()
-    const kind = isPdfDownload(filename, mime) ? 'pdf' : (isWordDownload(filename) ? 'word' : null)
+    const kind = isPdfDownload(filename, mime) ? 'pdf' : (isWordDownload(filename) ? 'word' : (isVkReaderImage(item) ? 'image' : null))
     if (!kind) return false
     const savePath = tempPathFor(filename)
     try { item.setSavePath(savePath) } catch { return false }
     item.once('done', (_e, state) => {
         if (state !== 'completed') return
         if (kind === 'pdf') openFile(savePath, filename)
+        else if (kind === 'image') openImage(savePath, filename)
         else openWord(savePath, filename)
     })
     return kind
@@ -242,4 +250,20 @@ async function convertAndOpen(docxPath, name) {
     }
 }
 
-module.exports = { isEnabled, takeDownload, openFile, openWord, openUrl, sweepTemp }
+// A picture that has come down (a VK document that is an image): made into a PDF page and opened in the reader; when it cannot be
+// drawn it opens in the system's picture program, so nothing is lost.
+async function openImage(imagePath, name) {
+    try {
+        const { convertImageToPdf } = require('./imageToPdf')
+        const pdf = await convertImageToPdf(imagePath)
+        const base = String(name || path.basename(imagePath)).replace(/.[a-z0-9]{1,5}$/i, '')
+        const pdfPath = tempPathFor(base + '.pdf')
+        await fs.promises.writeFile(pdfPath, pdf)
+        openWindow({ file: pdfPath, name: base + '.pdf' })
+    } catch (err) {
+        try { console.warn('[reader] picture not shown, opening it outside:', err && err.message) } catch {}
+        shell.openPath(imagePath).catch(() => {})
+    }
+}
+
+module.exports = { isEnabled, takeDownload, openFile, openWord, openImage, openUrl, sweepTemp }
