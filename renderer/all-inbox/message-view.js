@@ -4,7 +4,7 @@ const { runsOf } = require('./text-format')
 // its colour bar, photos edge to edge with the time over them, albums laid out as Telegram lays them out, the time and
 // ticks at the end of the text line, reactions, large lonely emoji, and the tail on the last bubble of a group.
 const { linkParts } = require('./linkify')
-const { jumboCount, mediaBox, MEDIA_MAX_W } = require('./message-shape')
+const { jumboCount, mediaBox, hasMediaBox, MEDIA_MAX_W } = require('./message-shape')
 const { waveBars, clock } = require('./media-player')
 const { fileTone } = require('../../shared/file-tone')
 // the emoji set of the open chat's messenger (3.8.3): Telegram and MAX pictures from their own servers, others our font
@@ -387,7 +387,7 @@ function reactions(m) {
  */
 function renderMessage(m, ctx) {
     const jumbo = m.kind === 'text' && !m.reply && !m.forwarded ? jumboCount(m.text) : 0
-    const hasMedia = !!(m.album || (m.media && (m.kind === 'photo' || m.kind === 'video')))
+    const hasMedia = hasMediaBox(m)
     const sticker = m.kind === 'sticker' && m.media
     const classes = ['aic-row', m.out ? 'is-out' : 'is-in']
     if (m.groupStart) classes.push('is-first')

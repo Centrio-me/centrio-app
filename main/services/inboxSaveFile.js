@@ -31,7 +31,13 @@ function parseFilePayload(payload) {
     if (Math.floor((m[2].length * 3) / 4) > MAX_FILE_BYTES) return null
     const bytes = Buffer.from(m[2], 'base64')
     if (!bytes.length || bytes.length > MAX_FILE_BYTES) return null
-    return { bytes, name: safeName(payload.name) }
+    return { bytes, name: withPdfExtension(safeName(payload.name), data) }
+}
+
+// a PDF the page named with no extension at all: its type says what it is, so the name gets «.pdf» and the reader takes it
+function withPdfExtension(name, data) {
+    if (!/^data:application\/pdf[;,]/i.test(data)) return name
+    return /\.[A-Za-z0-9]{1,8}$/.test(name) ? name : `${name}.pdf`
 }
 
 const PICTURE_DATA = /^data:image\/(png|jpeg|webp|gif);base64,([A-Za-z0-9+/=]+)$/

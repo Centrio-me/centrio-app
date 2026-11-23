@@ -29,4 +29,16 @@ function mediaBox(w, h) {
     return { width, height }
 }
 
-module.exports = { jumboCount, mediaBox, MEDIA_MAX_W }
+/**
+ * Is this message drawn as a picture box? A video whose size is already known gets its box at once, before its frame has
+ * come, so the bubble keeps its width and height when the frame arrives (it used to be a wide "Video" card first and a
+ * narrow picture later: the feed jumped).
+ */
+function hasMediaBox(m) {
+    if (m.album) return true
+    if (m.kind !== 'photo' && m.kind !== 'video') return false
+    if (m.media) return true
+    return m.kind === 'video' && m.mediaW > 0 && m.mediaH > 0
+}
+
+module.exports = { jumboCount, mediaBox, hasMediaBox, MEDIA_MAX_W }

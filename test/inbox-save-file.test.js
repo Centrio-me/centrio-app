@@ -11,6 +11,19 @@ test('a file given as a data address is turned into its bytes and a safe name', 
     assert.equal(r.name, 'Счёт №5.pdf')
 })
 
+// Oleg 2026-11-23: «в максе не открываются пдфы, в тг ок» — a name the page gave with no extension kept a PDF out of the reader
+test('a PDF whose name has no extension gets ".pdf" from its type, so the reader takes it', () => {
+    const data = `data:application/pdf;base64,${b64('%PDF-1.4')}`
+    assert.equal(parseFilePayload({ data, name: 'Сертификат' }).name, 'Сертификат.pdf')
+    assert.equal(parseFilePayload({ data, name: 'Сертификат.pdf' }).name, 'Сертификат.pdf')
+    assert.equal(parseFilePayload({ data, name: 'report v2.final' }).name, 'report v2.final')
+})
+
+test('a name with an extension is never changed by the type; other types keep their names', () => {
+    assert.equal(parseFilePayload({ data: `data:application/pdf;base64,${b64('x')}`, name: 'doc.bin' }).name, 'doc.bin')
+    assert.equal(parseFilePayload({ data: `data:application/zip;base64,${b64('x')}`, name: 'archive' }).name, 'archive')
+})
+
 test('characters a file name must not hold are replaced, a path is never kept', () => {
     const r = parseFilePayload({ data: `data:text/plain;base64,${b64('x')}`, name: '..\..\Windows\evil:name?.txt' })
     assert.ok(!/[\/:*?"<>|]/.test(r.name))
