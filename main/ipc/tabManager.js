@@ -3,13 +3,15 @@
 // one and reads Electron's own per-process counters. Only numbers go back, never page content.
 const { ipcMain, app, webContents } = require('electron')
 
+const { breakdownOther } = require('../../shared/process-breakdown')
+
 const KB = 1024
 
 function toMb(kilobytes) {
     return Math.round(((Number(kilobytes) || 0) / KB) * 10) / 10
 }
 
-function collect(views) {
+function collect(views, uiPid) {
     const metrics = app.getAppMetrics()
     const byPid = new Map(metrics.map((m) => [m.pid, m]))
     const claimed = new Set()
@@ -42,12 +44,12 @@ function collect(views) {
         totalCpu += (m.cpu && m.cpu.percentCPUUsage) || 0
         if (!claimed.has(m.pid)) otherKb += kb
     }
-    return { success: true, tabs, totalMb: toMb(totalKb), otherMb: toMb(otherKb), cpu: Math.round(totalCpu * 10) / 10 }
+    return { success: true, tabs, totalMb: toMb(totalKb), otherMb: toMb(otherKb), otherParts: breakdownOther(metrics, claimed, uiPid), cpu: Math.round(totalCpu * 10) / 10 }
 }
 
 function registerTabManagerIpc() {
-    ipcMain.handle('tabs:metrics', (_event, views) => {
-        try { return collect(views) } catch { return { success: false, error: 'FAILED' } }
+    ipcMain.handle('tabs:metrics', (event, views) => {
+        try { return collect(views, event.sender.getOSProcessId()) } catch { return { success: false, error: 'FAILED' } }
     })
 }
 

@@ -6,7 +6,7 @@ const { track } = require('./stats')
 const copy = {
     ru: {
         title: 'Диспетчер вкладок', statusTitle: 'Память приложения: открыть диспетчер вкладок',
-        total: 'Centrio использует {mem}', tabsLine: 'Вкладок: {n}, спит: {s}', cpuLine: 'Процессор: {cpu}%', other: 'Сам Centrio, окна и службы: {mem}',
+        total: 'Centrio использует {mem}', tabsLine: 'Вкладок: {n}, спит: {s}', cpuLine: 'Процессор: {cpu}%', other: 'Сам Centrio, окна и службы: {mem}', otherParts: 'из них: окно Centrio {app}, видео {gpu}, страницы внутри вкладок {frames}, службы {services}',
         active: 'Открыта', background: 'Работает', sleeping: 'Спит', shared: 'делит процесс',
         reload: 'Перезагрузить', sleep: 'Усыпить', wake: 'Разбудить', open: 'Открыть', sleepAll: 'Усыпить неактивные', sleepAllHint: 'Не трогаем открытую вкладку, вкладки в разделённом экране и те, где есть непрочитанные.',
         sleepNote: 'Спящая вкладка не занимает память, но не получает сообщения и уведомления. Она проснётся при открытии, вход в аккаунт сохранится.',
@@ -15,7 +15,7 @@ const copy = {
     },
     en: {
         title: 'Tab manager', statusTitle: 'App memory: open the tab manager',
-        total: 'Centrio uses {mem}', tabsLine: 'Tabs: {n}, asleep: {s}', cpuLine: 'CPU: {cpu}%', other: 'Centrio itself, windows and services: {mem}',
+        total: 'Centrio uses {mem}', tabsLine: 'Tabs: {n}, asleep: {s}', cpuLine: 'CPU: {cpu}%', other: 'Centrio itself, windows and services: {mem}', otherParts: 'of which: Centrio window {app}, video {gpu}, pages inside tabs {frames}, services {services}',
         active: 'Open', background: 'Running', sleeping: 'Asleep', shared: 'shares a process',
         reload: 'Reload', sleep: 'Sleep', wake: 'Wake up', open: 'Open', sleepAll: 'Sleep inactive tabs', sleepAllHint: 'The open tab, tabs in split screen and tabs with unread messages are left alone.',
         sleepNote: 'A sleeping tab uses no memory but does not receive messages or notifications. It wakes up when opened and stays signed in.',
@@ -113,6 +113,8 @@ function createTabManager({ state, store, invokeIpc, switchTab, sleepTab, wakeTa
         const sub = el('div', 'tm-sub', `${t('tabsLine', { n: list.length, s: sleepingCount })}${last ? ' · ' + t('cpuLine', { cpu: last.cpu }) : ''}`)
         summary.appendChild(sub)
         if (last) summary.appendChild(el('div', 'tm-sub', t('other', { mem: mem(last.otherMb) })))
+        const parts = last && last.otherParts
+        if (parts) summary.appendChild(el('div', 'tm-sub', t('otherParts', { app: mem(parts.appMb), gpu: mem(parts.gpuMb), frames: mem(parts.framesMb), services: mem(parts.servicesMb) })))
         panel.appendChild(summary)
 
         const maxMb = Math.max(1, ...list.map((r) => r.memoryMb))
