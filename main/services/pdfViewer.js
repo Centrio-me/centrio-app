@@ -10,6 +10,7 @@ const fs = require('fs')
 const store = require('./store')
 const { isPdfDownload, isPdfUrl } = require('../../shared/pdf-detect')
 const { isWordDownload } = require('../../shared/doc-detect')
+const { saveChoices, saveKind } = require('../../shared/reader-save')
 const { printOptions, isDuplexOn } = require('../../shared/pdf-print')
 
 // a top-level key: the renderer saves the whole 'settings' object from its own copy and would wipe a key kept inside it
@@ -88,13 +89,16 @@ function registerIpc() {
         const entry = ownerWindow(event)
         if (!entry || !(bytes instanceof Uint8Array || Buffer.isBuffer(bytes))) return { ok: false }
         const base = path.basename(String(suggestedName || entry.title || 'document.pdf')).replace(/[<>:"/\\|?*\x00-\x1f]/g, '_')
+        const original = entry.source.original && fs.existsSync(entry.source.original) ? entry.source.original : ''
+        const choices = saveChoices(base, !!original)
         const result = await dialog.showSaveDialog(entry.win, {
-            defaultPath: path.join(app.getPath('downloads'), /\.pdf$/i.test(base) ? base : `${base}.pdf`),
-            filters: [{ name: 'PDF', extensions: ['pdf'] }]
+            defaultPath: path.join(app.getPath('downloads'), choices.defaultName),
+            filters: choices.filters
         })
         if (result.canceled || !result.filePath) return { ok: false, canceled: true }
         try {
-            await fs.promises.writeFile(result.filePath, Buffer.from(bytes))
+            if (saveKind(result.filePath, !!original) === 'original') await fs.promises.copyFile(original, result.filePath)
+            else await fs.promises.writeFile(result.filePath, Buffer.from(bytes))
             return { ok: true, path: result.filePath }
         } catch (err) {
             return { ok: false, error: String((err && err.message) || err) }
