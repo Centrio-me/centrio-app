@@ -1,0 +1,69 @@
+/* VPN window v2 (2026-11-28): a status card with a live dot, one big connect button, server cards with ping chips, quiet import row.
+   Theme tokens only, same family as the sidebar, the downloads and the version card. */
+.vpn-panel { width: 340px; max-height: 620px; border-radius: 18px; font-family: 'Manrope', 'Geist', 'Golos Text', system-ui, sans-serif; }
+.vpn-panel-header { padding: 14px 16px; font-size: 15px; font-weight: 600; border-bottom: 1px solid var(--border); }
+.vpn-panel-body { padding: 14px; gap: 14px; }
+
+/* ── Status card ── */
+.vpn-top-section { gap: 10px; }
+.vpn-status-block { padding: 14px; border-radius: 14px; gap: 12px; border: 1px solid var(--border); background: var(--bg-tertiary); }
+.vpn-status-block.connected { background: color-mix(in srgb, #22c55e 11%, var(--bg-tertiary)); border-color: color-mix(in srgb, #22c55e 40%, var(--border)); }
+.vpn-dot-green, .vpn-dot-grey { width: 10px; height: 10px; }
+.vpn-dot-green { box-shadow: 0 0 0 4px color-mix(in srgb, #22c55e 22%, transparent); }
+.vpn-dot-grey { opacity: .55; box-shadow: 0 0 0 4px color-mix(in srgb, var(--text-muted) 16%, transparent); }
+.vpn-status-label { font-size: 14px; font-weight: 600; color: var(--text-bright); overflow-wrap: anywhere; }
+.vpn-status-port { font-size: 12px; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+.vpn-timer { color: #22c55e; font-weight: 600; }
+
+.vpn-main-btn { height: 44px; border-radius: 13px; font: 600 14px/1 'Manrope', 'Geist', 'Golos Text', system-ui, sans-serif; transition: background .15s, transform .12s; }
+.vpn-main-connect { background: var(--accent); color: #fff; }
+.vpn-main-connect:hover { opacity: 1; background: var(--accent-hover); }
+.vpn-main-disconnect { background: color-mix(in srgb, var(--danger) 14%, transparent); color: var(--danger); border: 1px solid color-mix(in srgb, var(--danger) 35%, transparent); }
+.vpn-main-disconnect:hover { opacity: 1; background: color-mix(in srgb, var(--danger) 22%, transparent); }
+
+.vpn-top-actions { gap: 6px; }
+.vpn-top-action-btn { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; background: color-mix(in srgb, var(--text-primary) 6%, transparent); border: 1px solid var(--border); color: var(--text-secondary); }
+.vpn-top-action-btn:hover { color: var(--text-bright); background: color-mix(in srgb, var(--text-primary) 11%, transparent); border-color: var(--border-light); }
+
+/* ── Servers ── */
+.vpn-section-label { margin: 2px 2px 0; font-size: 11.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-secondary); }
+.vpn-configs-list { gap: 6px; }
+.vpn-config-item { padding: 11px 12px; border-radius: 13px; border: 1px solid var(--border); background: color-mix(in srgb, var(--text-primary) 3.5%, transparent); transition: background .15s, border-color .15s; }
+.vpn-config-item:hover { background: color-mix(in srgb, var(--text-primary) 7%, transparent); }
+.vpn-config-item.selected { border-color: color-mix(in srgb, var(--accent) 60%, var(--border)); background: color-mix(in srgb, var(--accent) 10%, transparent); }
+.vpn-config-item.active { border-color: color-mix(in srgb, #22c55e 55%, var(--border)); background: color-mix(in srgb, #22c55e 10%, transparent); }
+.vpn-config-label { gap: 10px; min-width: 0; }
+.vpn-flag-img { width: 24px; height: 18px; border-radius: 4px; object-fit: cover; flex: none; box-shadow: 0 0 0 1px rgba(255, 255, 255, .08); }
+.vpn-config-name { font-size: 13.5px; font-weight: 600; color: var(--text-bright); line-height: 1.3; overflow-wrap: anywhere; white-space: normal; }
+.vpn-config-right { gap: 6px; flex: none; }
+.vpn-ping { padding: 3px 9px; border-radius: 999px; font-size: 11.5px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.vpn-cfg-delete, .vpn-cfg-repingbtn { width: 26px; height: 26px; border-radius: 8px; }
+.vpn-cfg-repingbtn { color: var(--text-secondary) !important; }
+
+/* ── Subscription and import ── */
+.vpn-sub-row { padding: 10px 12px; border-radius: 13px; border: 1px solid var(--border); background: var(--bg-tertiary); gap: 10px; }
+.vpn-sub-refresh { height: 30px; padding: 0 12px; border-radius: 9px; font-weight: 600; }
+.vpn-import-section { gap: 8px; }
+.vpn-link-input { height: 38px; border-radius: 11px; padding: 0 12px; border: 1px solid var(--border); background: var(--bg-tertiary); font-size: 13px; }
+.vpn-link-input:focus { border-color: color-mix(in srgb, var(--accent) 60%, var(--border)); outline: none; }
+.vpn-import-btn { height: 38px; border-radius: 11px; font-weight: 600; }
+.vpn-add-hint { margin-top: 2px; }
+.vpn-add-settings-btn { border-radius: 11px; height: 38px; width: 100%; border: 1px dashed var(--border-light); background: transparent; color: var(--text-secondary); font-weight: 600; transition: background .15s, color .15s, border-color .15s; }
+.vpn-add-settings-btn:hover { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 55%, var(--border)); background: color-mix(in srgb, var(--accent) 8%, transparent); }
+
+.vpn-download-area { padding: 12px; border-radius: 13px; background: var(--bg-tertiary); border: 1px solid var(--border); }
+.vpn-progress-track { height: 5px; border-radius: 3px; }
+.vpn-progress-fill { border-radius: 3px; }
+
+.vpn-top-action-btn { width: auto; flex: 1; display: inline-flex; flex-direction: row; align-items: center; justify-content: center; gap: 7px; padding: 0 10px; font: 600 12px/1 'Manrope', 'Geist', 'Golos Text', system-ui, sans-serif; white-space: nowrap; }
+.vpn-top-action-btn svg { flex: none; }
+
+/* the status card and the buttons stay in place; only the list of servers scrolls, with a scrollbar that can be seen */
+.vpn-panel-body { overflow: hidden; }
+.vpn-top-section, .vpn-foot, .vpn-status-bar, .vpn-download-area { flex: none; }
+.vpn-foot { display: flex; flex-direction: column; gap: 10px; }
+.vpn-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; margin-right: -8px; padding-right: 8px; display: flex; flex-direction: column; gap: 10px; }
+.vpn-scroll::-webkit-scrollbar { width: 8px; }
+.vpn-scroll::-webkit-scrollbar-track { background: transparent; }
+.vpn-scroll::-webkit-scrollbar-thumb { border-radius: 4px; border: 2px solid transparent; background-clip: padding-box; background-color: color-mix(in srgb, var(--text-primary) 24%, transparent); }
+.vpn-scroll::-webkit-scrollbar-thumb:hover { background-color: color-mix(in srgb, var(--text-primary) 42%, transparent); }

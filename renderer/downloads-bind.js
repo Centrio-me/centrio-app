@@ -47,14 +47,6 @@ function bindDownloadsUi({
         </svg>
     `
 
-    function thumbnailHtml(d) {
-        if (d.state === 'completed' && d.savePath && isImageFile(d.filename)) {
-            const url = toFileUrl(d.savePath)
-            return `<img class="downloads-thumb" data-image-thumb="1" src="${escapeHtml(url)}" alt="">`
-        }
-        return `<div class="downloads-thumb downloads-thumb-generic">${GENERIC_FILE_ICON}</div>`
-    }
-
     function escapeHtml(str) {
         return String(str || '')
             .replace(/&/g, '&amp;')
@@ -97,6 +89,7 @@ function bindDownloadsUi({
     // ── State ──────────────────────────────────────────────────────────────────
     function upsert(record) {
         if (!record || !record.id) return
+        trackSpeed(record)
         const idx = downloads.findIndex(d => d.id === record.id)
         if (idx === -1) downloads.unshift(record)
         else downloads[idx] = record
@@ -115,73 +108,176 @@ function bindDownloadsUi({
         }
     }
 
-    // ── Render ─────────────────────────────────────────────────────────────────
+    // ── The look of a file: a coloured tile with its extension, so the kind is clear at a glance ──
+    const KIND_BY_EXT = {
+        pdf: 'pdf', doc: 'doc', docx: 'doc', rtf: 'doc', odt: 'doc', txt: 'text', md: 'text', log: 'text',
+        xls: 'sheet', xlsx: 'sheet', csv: 'sheet', ods: 'sheet', ppt: 'slide', pptx: 'slide', odp: 'slide', key: 'slide',
+        zip: 'archive', rar: 'archive', '7z': 'archive', tar: 'archive', gz: 'archive', bz2: 'archive', xz: 'archive', iso: 'archive',
+        jpg: 'image', jpeg: 'image', png: 'image', gif: 'image', webp: 'image', bmp: 'image', svg: 'image', ico: 'image', avif: 'image', heic: 'image', tif: 'image', tiff: 'image',
+        mp3: 'audio', wav: 'audio', ogg: 'audio', flac: 'audio', m4a: 'audio', aac: 'audio', opus: 'audio',
+        mp4: 'video', mkv: 'video', mov: 'video', avi: 'video', webm: 'video', wmv: 'video', m4v: 'video',
+        exe: 'app', msi: 'app', dmg: 'app', apk: 'app', deb: 'app', appimage: 'app', bat: 'app',
+        psd: 'design', ai: 'design', cdr: 'design', eps: 'design', indd: 'design', fig: 'design', sketch: 'design',
+        json: 'code', js: 'code', ts: 'code', html: 'code', css: 'code', xml: 'code', py: 'code', php: 'code', sql: 'code',
+        epub: 'book', fb2: 'book', mobi: 'book', djvu: 'book'
+    }
+    const MAX_EXT_LABEL = 4
+
+    function extensionOf(filename) {
+        const m = /\.([a-z0-9]{1,8})$/i.exec(String(filename || ''))
+        return m ? m[1].toLowerCase() : ''
+    }
+
+    function kindOf(filename) {
+        return KIND_BY_EXT[extensionOf(filename)] || 'other'
+    }
+
+    function thumbnailHtml(d) {
+        const ext = extensionOf(d.filename)
+        const label = escapeHtml((ext || 'file').toUpperCase().slice(0, MAX_EXT_LABEL))
+        if (d.state === 'completed' && d.savePath && isImageFile(d.filename)) {
+            return `<div class="dl-tile dl-tile-photo" data-kind="image"><img class="downloads-thumb" data-image-thumb="1" src="${escapeHtml(toFileUrl(d.savePath))}" alt=""><span class="dl-ext">${label}</span></div>`
+        }
+        return `<div class="dl-tile" data-kind="${kindOf(d.filename)}"><span class="dl-ext">${label}</span></div>`
+    }
+
+    const ICON_OPEN = '<path d="M14 3h7v7M21 3l-9 9M19 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h5"/>'
+    const ICON_FOLDER = '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>'
+    const ICON_REMOVE = '<path d="M6 6l12 12M18 6L6 18"/>'
+    const iconButton = (action, path, title) => `<button type="button" class="downloads-item-action dl-act" data-action="${action}" title="${escapeHtml(title)}" aria-label="${escapeHtml(title)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${path}</svg></button>`
+
+    // the sizes in the language of the interface
+    function sizeText(n) {
+        if (!n || n <= 0) return `0 ${tGet('vdl.u0')}`
+        const units = [tGet('vdl.u0'), tGet('vdl.u1'), tGet('vdl.u2'), tGet('vdl.u3')]
+        let value = n
+        let i = 0
+        while (value >= 1024 && i < units.length - 1) { value /= 1024; i++ }
+        return `${value.toFixed(i === 0 ? 0 : 1)} ${units[i]}`
+    }
+
+    // speed of a file that is coming down, smoothed a little so it does not jump
+    const speeds = new Map() // id -> { at, bytes, bps }
+    const SPEED_SMOOTHING = 0.6
+    function trackSpeed(record) {
+        if (record.state !== 'progressing') { speeds.delete(record.id); return }
+        const now = Date.now()
+        const before = speeds.get(record.id)
+        if (!before) { speeds.set(record.id, { at: now, bytes: record.receivedBytes || 0, bps: 0 }); return }
+        const dt = (now - before.at) / 1000
+        if (dt < 0.4) return
+        const instant = Math.max(0, ((record.receivedBytes || 0) - before.bytes) / dt)
+        const bps = before.bps ? before.bps * (1 - SPEED_SMOOTHING) + instant * SPEED_SMOOTHING : instant
+        speeds.set(record.id, { at: now, bytes: record.receivedBytes || 0, bps })
+    }
+
+    const DAY_MS = 24 * 60 * 60 * 1000
+    function dayGroup(ms) {
+        const startOfToday = new Date().setHours(0, 0, 0, 0)
+        if (ms >= startOfToday) return 'today'
+        if (ms >= startOfToday - DAY_MS) return 'yesterday'
+        return 'earlier'
+    }
+
+    let filter = 'all'
+    let query = ''
+
+    function matches(d) {
+        if (filter === 'active' && d.state !== 'progressing') return false
+        if (filter === 'done' && d.state !== 'completed') return false
+        if (filter === 'failed' && !(d.state === 'interrupted' || d.state === 'cancelled')) return false
+        return !query || String(d.filename || '').toLowerCase().includes(query)
+    }
+
+    function ensureToolbar() {
+        if (panel.querySelector('.dl-tools')) return
+        const tools = document.createElement('div')
+        tools.className = 'dl-tools'
+        const search = document.createElement('input')
+        search.className = 'dl-search'
+        search.type = 'search'
+        search.placeholder = tGet('vdl.search')
+        search.setAttribute('aria-label', tGet('vdl.search'))
+        search.addEventListener('input', () => { query = search.value.trim().toLowerCase(); renderPanel() })
+        const chips = document.createElement('div')
+        chips.className = 'dl-chips'
+        for (const key of ['all', 'active', 'done', 'failed']) {
+            const chip = document.createElement('button')
+            chip.type = 'button'
+            chip.className = 'dl-chip' + (key === filter ? ' on' : '')
+            chip.dataset.filter = key
+            chip.textContent = tGet(`vdl.f_${key}`)
+            chip.addEventListener('click', () => {
+                filter = key
+                chips.querySelectorAll('.dl-chip').forEach((c) => c.classList.toggle('on', c === chip))
+                renderPanel()
+            })
+            chips.append(chip)
+        }
+        tools.append(search, chips)
+        list.parentElement.insertBefore(tools, list)
+    }
+
+    function itemHtml(d) {
+        const progressing = d.state === 'progressing'
+        const pct = d.totalBytes > 0 ? Math.min(100, Math.round((d.receivedBytes / d.totalBytes) * 100)) : 0
+        let meta
+        if (progressing) {
+            const speed = speeds.get(d.id)
+            const parts = [d.totalBytes > 0 ? tGet('vdl.of').replace('{a}', sizeText(d.receivedBytes)).replace('{b}', sizeText(d.totalBytes)) : sizeText(d.receivedBytes)]
+            if (d.totalBytes > 0) parts.push(`${pct}%`)
+            if (speed && speed.bps > 0) parts.push(`${sizeText(speed.bps)}${tGet('vdl.perSecond')}`)
+            meta = parts.join(' · ')
+        } else if (d.state === 'completed') {
+            meta = [sizeText(d.totalBytes || d.receivedBytes), formatDate(d.startTime)].filter(Boolean).join(' · ')
+        } else {
+            meta = `${d.state === 'cancelled' ? tGet('vdl.cancelled') : tGet('vdl.failed')} · ${formatDate(d.startTime)}`
+        }
+        const bar = progressing ? `<div class="downloads-progress-track"><div class="downloads-progress-fill" style="width:${pct}%"></div></div>` : ''
+        const actions = d.state === 'completed'
+            ? iconButton('open', ICON_OPEN, tGet('downloads.openFile')) + iconButton('folder', ICON_FOLDER, tGet('downloads.showInFolder')) + iconButton('remove', ICON_REMOVE, tGet('vdl.remove'))
+            : iconButton('remove', ICON_REMOVE, tGet('vdl.remove'))
+        return `
+            <div class="app-notif-item downloads-item dl-item" data-id="${escapeHtml(d.id)}" data-state="${escapeHtml(d.state)}" title="${escapeHtml(d.filename)}">
+                ${thumbnailHtml(d)}
+                <div class="dl-body">
+                    <div class="dl-name">${escapeHtml(d.filename)}</div>
+                    ${bar}
+                    <div class="dl-meta">${escapeHtml(meta)}</div>
+                </div>
+                <div class="dl-actions">${actions}</div>
+            </div>`
+    }
+
     function renderPanel() {
         if (!list) return
+        ensureToolbar()
 
         if (!downloads.length) {
-            list.innerHTML = `<div class="app-notif-empty">${tGet('downloads.empty') || 'No downloads yet'}</div>`
+            list.innerHTML = `<div class="app-notif-empty">${tGet('downloads.empty')}</div>`
             return
         }
+        const shown = downloads.filter(matches)
+        if (!shown.length) {
+            list.innerHTML = `<div class="app-notif-empty">${tGet('vdl.nothing')}</div>`
+            return
+        }
+        let html = ''
+        let group = ''
+        for (const d of shown) {
+            const g = dayGroup(d.startTime)
+            if (g !== group) { group = g; html += `<div class="dl-group">${escapeHtml(tGet(`vdl.${g}`))}</div>` }
+            html += itemHtml(d)
+        }
+        list.innerHTML = html
 
-        list.innerHTML = downloads.map(d => {
-            const pct = d.totalBytes > 0
-                ? Math.min(100, Math.round((d.receivedBytes / d.totalBytes) * 100))
-                : 0
-
-            const progressHtml = d.state === 'progressing'
-                ? `<div class="downloads-progress-track"><div class="downloads-progress-fill" style="width:${pct}%"></div></div>`
-                : ''
-
-            const bodyText = d.state === 'progressing'
-                ? `${formatBytes(d.receivedBytes)} / ${d.totalBytes > 0 ? formatBytes(d.totalBytes) : '?'}`
-                : stateLabel(d)
-
-            const actionsHtml = d.state === 'completed'
-                ? `<div class="downloads-item-actions">
-                        <button type="button" class="downloads-item-action" data-action="open">${escapeHtml(tGet('downloads.openFile') || 'Open file')}</button>
-                        <button type="button" class="downloads-item-action" data-action="folder">${escapeHtml(tGet('downloads.showInFolder') || 'Show in folder')}</button>
-                    </div>`
-                : ''
-
-            return `
-                <div class="app-notif-item downloads-item" data-id="${escapeHtml(d.id)}" title="${escapeHtml(d.filename)}">
-                    <div class="downloads-item-row">
-                        ${thumbnailHtml(d)}
-                        <div class="downloads-item-info">
-                            <div class="app-notif-item-title">${escapeHtml(d.filename)}</div>
-                            ${progressHtml}
-                            <div class="app-notif-item-body">${escapeHtml(bodyText)}</div>
-                            <div class="app-notif-item-time">${formatDate(d.startTime)}</div>
-                        </div>
-                    </div>
-                    ${actionsHtml}
-                </div>
-            `
-        }).join('')
-
-        // Если файл-картинка удалили/переместили с диска после загрузки,
-        // file:// не резолвится — откатываемся на обычную иконку документа
-        // вместо сломанной иконки браузера.
+        // A picture that was removed from the disk after the download: back to the tile of its kind
         list.querySelectorAll('img.downloads-thumb[data-image-thumb]').forEach(img => {
-            img.addEventListener('error', () => {
-                const fallback = document.createElement('div')
-                fallback.className = 'downloads-thumb downloads-thumb-generic'
-                fallback.innerHTML = GENERIC_FILE_ICON
-                img.replaceWith(fallback)
-            }, { once: true })
+            img.addEventListener('error', () => { img.remove() }, { once: true })
         })
 
-        // Перетаскивание файла из этой панели прямо в мессенджер. Раньше
-        // (v1.9.5) было убрано после двух провалившихся попыток: startDrag()
-        // из main-процесса документированно не работает для intra-app-дропа
-        // на Windows (Electron issue #7118), а 'DownloadURL' в dataTransfer
-        // либо не долетал до <webview> вовсе, либо триггерил фолбэк открытия
-        // нового окна (см. комментарий в webview-preload.js). Третий подход
-        // (см. startDownloadDrag ниже) вообще не использует настоящую
-        // OS-drag-сессию — курсор-ghost + геометрия для определения целевого
-        // <webview>, синтетический drop строится ВНУТРИ гостевой страницы.
-        // Обычный клик (без сдвига мыши) по-прежнему открывает файл.
+        // Dragging a file out of this panel into a messenger: a cursor ghost plus geometry to find the target webview,
+        // see startDownloadDrag below. A plain click (no mouse movement) still opens the file.
         list.querySelectorAll('.downloads-item-action').forEach(button => {
             // The row itself starts a drag on mousedown and opens the file on click.
             button.addEventListener('mousedown', (e) => e.stopPropagation())
@@ -190,7 +286,12 @@ function bindDownloadsUi({
                 const id = button.closest('.downloads-item')?.dataset.id
                 if (!id) return
                 if (button.dataset.action === 'folder') ipcRenderer.send('downloads:show-in-folder', id)
-                else invokeIpc('downloads:open-file', id)
+                else if (button.dataset.action === 'remove') {
+                    ipcRenderer.send('downloads:remove', id)
+                    downloads = downloads.filter(x => x.id !== id)
+                    updateBadge()
+                    renderPanel()
+                } else invokeIpc('downloads:open-file', id)
             })
         })
 

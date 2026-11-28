@@ -130,7 +130,14 @@ function perform(guest, action, payload, language) {
             if (typeof payload === 'string' && payload) replaceWord(guest, payload.slice(0, 120))
             return true
         case 'addToDictionary':
-            if (typeof payload === 'string' && payload) guest.session.addWordToSpellCheckerDictionary(payload.slice(0, 120))
+            if (typeof payload === 'string' && payload) {
+                guest.session.addWordToSpellCheckerDictionary(payload.slice(0, 120))
+                require('./spellcheck').addWord(payload)
+            }
+            return true
+        case 'insertText':
+            // the selection of the field is replaced by the text (a translation)
+            if (typeof payload === 'string' && payload) onTabFocus((g) => g.insertText(payload.slice(0, MAX_FIELD_TEXT)))(guest)
             return true
         case 'copyText':
             if (typeof payload === 'string' && payload) clipboard.writeText(payload.slice(0, MAX_URL))
@@ -153,10 +160,35 @@ function perform(guest, action, payload, language) {
     }
 }
 
+const MAX_FIELD_TEXT = 20000
+const READ_FIELD_SCRIPT = `(function () {
+    var e = document.activeElement
+    if (!e) return ''
+    var tag = (e.tagName || '').toLowerCase()
+    if (tag === 'textarea' || tag === 'input') return String(e.value || '')
+    if (e.isContentEditable) return String(e.innerText || '')
+    return ''
+})()`
+
+// What is written in the field that has the focus (a plain field or an editable block), for the translator and the spell fixer
+async function readField(guest) {
+    try {
+        const text = await guest.executeJavaScript(READ_FIELD_SCRIPT)
+        return typeof text === 'string' ? text.slice(0, MAX_FIELD_TEXT) : ''
+    } catch { return '' }
+}
+
+// The whole text of the field is replaced by `text`: the field is focused, everything in it selected, the text typed over it
+function replaceField(guest, text) {
+    if (typeof text !== 'string') return false
+    onTabFocus((g) => { g.selectAll(); setTimeout(() => { try { if (!g.isDestroyed()) g.insertText(text.slice(0, MAX_FIELD_TEXT)) } catch { /* the tab went meanwhile */ } }, FOCUS_SETTLE_MS) })(guest)
+    return true
+}
+
 function handleAction({ getMainWindow, language }, sender, wcId, action, payload) {
     const guest = guestFor(getMainWindow, sender, wcId)
     if (!guest) return false
     try { return perform(guest, String(action), payload, language()) } catch { return false }
 }
 
-module.exports = { attach, handleAction, perform, safeExternal, searchUrl, guestFor, noteMisspelling, forgetMisspelling }
+module.exports = { attach, handleAction, perform, safeExternal, searchUrl, guestFor, noteMisspelling, forgetMisspelling, readField, replaceField }

@@ -2,6 +2,19 @@ const { ipcMain, dialog, clipboard, nativeImage } = require('electron')
 const fs = require('fs')
 
 function registerScreenshotIpc({ getMainWindow }) {
+    // The eyedropper (renderer/color-picker.js) samples colours from a picture of the window, so the loupe can be drawn by Centrio itself
+    ipcMain.handle('eyedropper:capture', async () => {
+        try {
+            const win = getMainWindow()
+            if (!win || win.isDestroyed()) return null
+            const image = await win.webContents.capturePage()
+            const size = image.getSize()
+            return { dataUrl: image.toDataURL(), width: size.width, height: size.height }
+        } catch {
+            return null
+        }
+    })
+
     ipcMain.handle('screenshot:capture', async (event, messengerId) => {
         try {
             const win = getMainWindow()

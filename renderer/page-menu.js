@@ -23,6 +23,7 @@ const ICONS = {
     search: '<circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>',
     spell: '<path d="M4 17l5-12 5 12M6 13h6"/><path d="M15 17l3 3 4-5"/>',
     book: '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z"/><path d="M12 7v6M9 10h6"/>',
+    pipette: '<path d="M2 22l1-1h3l9-9"/><path d="M3 21v-3l9-9"/><path d="M15 6l3.5-3.5a2.1 2.1 0 0 1 3 3L18 9l.5.5a1.5 1.5 0 0 1 0 2.1l-1 1-6-6 1-1a1.5 1.5 0 0 1 2.1 0z"/>',
     translate: '<path d="M3 5h12M9 3v2M6 19l3.5-9 3.5 9M8 16h5M5 5c0 6 4 10 9 10M14 15l5.5-5.5"/>',
     zoom: '<circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35M8 11h6M11 8v6"/>',
     zoomOut: '<circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35M8 11h6"/>',
@@ -136,11 +137,36 @@ function createPageMenu({
         const item = (options) => buildItem(options)
 
         if (plainPage) groups.push([buildNavRow(ctx, act)])
+        if (plainPage && (window.__centrioTools || {}).color !== false) {
+            groups.push([item({ iconName: 'pipette', label: tGet('vext.menu.eyedropper'), onClick: () => document.dispatchEvent(new CustomEvent('centrio-eyedropper')) })])
+        }
 
         if (ctx.isEditable && ctx.misspelledWord) {
             const spelling = ctx.suggestions.map((word) => item({ iconName: 'spell', label: word, strong: true, onClick: () => act('replaceMisspelling', word) }))
             spelling.push(item({ iconName: 'book', label: t('addToDictionary'), onClick: () => act('addToDictionary', ctx.misspelledWord) }))
             groups.push(spelling)
+        }
+
+        // some pages (MAX) keep the input in a block Chromium does not call editable: the menu still offers the writing tools when the focused field has text
+        if (ctx.isEditable || ctx.hasFieldText) {
+            const tools = window.__centrioTools || {}
+            const writing = []
+            let wcId = null
+            try { wcId = guest.webview.getWebContentsId() } catch { wcId = null }
+            if (wcId != null && tools.translate !== false) {
+                if (ctx.selectionText) {
+                    writing.push(item({ iconName: 'translate', label: tGet('vext.menu.translateSelection'), onClick: () => document.dispatchEvent(new CustomEvent('centrio-translate', { detail: { text: ctx.selectionText, insert: (text) => act('insertText', text) } })) }))
+                } else {
+                    writing.push(item({ iconName: 'translate', label: tGet('vext.menu.translateField'), onClick: async () => {
+                        const text = await invokeIpc('pagemenu:field-text', wcId).catch(() => '')
+                        if (text && text.trim()) document.dispatchEvent(new CustomEvent('centrio-translate', { detail: { text, insert: (t) => invokeIpc('pagemenu:field-replace', wcId, t).catch(() => {}) } }))
+                    } }))
+                }
+            }
+            if (wcId != null && tools.spellcheck !== false) {
+                writing.push(item({ iconName: 'spell', label: tGet('vext.menu.fixErrors'), onClick: () => document.dispatchEvent(new CustomEvent('centrio-spellfix', { detail: { wcId } })) }))
+            }
+            groups.push(writing)
         }
 
         if (link) {
@@ -181,8 +207,8 @@ function createPageMenu({
                 item({ iconName: 'copy', label: tGet('ctx.copy'), hint: 'Ctrl+C', onClick: () => act('copy') }),
                 item({ iconName: 'search', label: t('searchWeb').replace('{text}', shortLabel(ctx.selectionText)), onClick: () => act('searchWeb', ctx.selectionText) })
             ]
-            if ((store.get('extensionsState', {}) || {}).translate === true) {
-                items.push(item({ iconName: 'translate', label: tGet('ctx.translate'), onClick: () => ipcRenderer.send('open-translate-window', ctx.selectionText) }))
+            if (!(window.__centrioTools && window.__centrioTools.translate === false)) {
+                items.push(item({ iconName: 'translate', label: tGet('ctx.translate'), onClick: () => document.dispatchEvent(new CustomEvent('centrio-translate', { detail: { text: ctx.selectionText } })) }))
             }
             groups.push(items)
         } else if (plainPage) {
@@ -298,6 +324,11 @@ function createPageMenu({
         const act = (action, payload) => invokeIpc('pagemenu:action', wcId, action, payload).catch(() => {})
         draw(guest, ctx, act)
         if ((ctx.mediaType === 'image' && ctx.srcURL) || ctx.isEditable || ctx.selectionText || ctx.linkURL) return
+        invokeIpc('pagemenu:field-text', wcId).catch(() => '').then((fieldText) => {
+            if (!fieldText || !fieldText.trim() || mine !== showToken || !menuEl.classList.contains('show')) return
+            ctx.hasFieldText = true
+            draw(guest, ctx, act)
+        })
         const point = pagePoint(guest.webview, ctx)
         invokeIpc('pagemenu:probe-image', wcId, point.x, point.y).catch(() => null).then((probe) => {
             if (!probe || !probe.found || mine !== showToken) return

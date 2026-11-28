@@ -1,0 +1,235 @@
+/* Sidebar v2 (2026-11-28): the left panel — spaces as cards, a rail of space chips when narrow, a one-row dock of
+   tools with the account card under it, a tab-shaped fold handle, Manrope labels. Loaded last, so it only has to
+   differ from styles.css; every colour comes from the theme tokens so it works the same on every theme. */
+
+@font-face { font-family: 'Manrope'; font-weight: 500; font-style: normal; font-display: swap; src: url('assets/fonts/manrope/manrope-cyrillic-500-normal.woff2') format('woff2'); unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+@font-face { font-family: 'Manrope'; font-weight: 500; font-style: normal; font-display: swap; src: url('assets/fonts/manrope/manrope-latin-500-normal.woff2') format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: 'Manrope'; font-weight: 600; font-style: normal; font-display: swap; src: url('assets/fonts/manrope/manrope-cyrillic-600-normal.woff2') format('woff2'); unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+@font-face { font-family: 'Manrope'; font-weight: 600; font-style: normal; font-display: swap; src: url('assets/fonts/manrope/manrope-latin-600-normal.woff2') format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+
+#activityBar, .workspace-switcher-menu { --sb-font: 'Manrope', 'Geist', 'Golos Text', system-ui, sans-serif; }
+
+/* ── Labels ─────────────────────────────────────────────────────────── */
+#activityBar.sidebar-expanded .messenger-name,
+#activityBar.sidebar-expanded .folder-name,
+#activityBar.sidebar-expanded .activity-btn-label,
+.workspace-switcher-item-name,
+.workspace-switcher-manage {
+    font-family: var(--sb-font);
+    font-size: 13.5px;
+    font-weight: 500;
+    letter-spacing: -0.003em;
+}
+
+/* ── One rhythm for the wide panel: rows keep the height of the density setting, 4px between all of them ── */
+#activityBar.sidebar-expanded .activity-top { gap: 4px; }
+#activityBar.sidebar-expanded .activity-top > .activity-btn,
+#activityBar.sidebar-expanded .activity-top > .workspace-switcher,
+#activityBar.sidebar-expanded .messenger-item,
+#activityBar.sidebar-expanded .folder-item { margin: 0; }
+#activityBar.sidebar-expanded .messenger-list { gap: 4px; padding: 0; }
+#activityBar.sidebar-expanded .activity-divider { margin: 4px auto; }
+#activityBar.sidebar-expanded .messenger-list .sidebar-divider { margin: 4px auto; }
+
+/* ── Spaces: the switcher button and the list ─────────────────────── */
+#activityBar.sidebar-expanded .workspace-switcher-btn {
+    height: var(--density-item-size, 40px);
+    border: 1px solid var(--border);
+    background: var(--bg-tertiary);
+    border-radius: 12px;
+}
+#activityBar.sidebar-expanded .workspace-switcher.open .workspace-switcher-btn {
+    border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
+    box-shadow: none;
+}
+
+.workspace-switcher-menu {
+    background: var(--bg-tertiary);
+    border-radius: 16px;
+    padding: 6px;
+    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.3);
+}
+.workspace-switcher-menu-inline { box-shadow: none; margin: 0; }
+
+.workspace-switcher-item {
+    gap: 10px;
+    padding: 7px 8px;
+    border-radius: 11px;
+    color: var(--text-primary);
+}
+.workspace-switcher-item.active { background: color-mix(in srgb, var(--accent) 16%, transparent); font-weight: 500; }
+.workspace-switcher-item.active::after {
+    content: '';
+    width: 14px; height: 14px; flex: none; margin-left: auto;
+    background: var(--accent);
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E") center / contain no-repeat;
+            mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+.workspace-switcher-item-icon,
+.workspace-switcher-item-dot {
+    width: 26px; height: 26px; border-radius: 8px; flex: none;
+    display: flex; align-items: center; justify-content: center;
+}
+.workspace-switcher-item-icon { background: color-mix(in srgb, currentColor 18%, transparent); }
+.workspace-switcher-item-dot { background: color-mix(in srgb, var(--accent) 18%, transparent) !important; position: relative; }
+.workspace-switcher-item-dot::after { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+.workspace-switcher-item-icon svg { width: 15px; height: 15px; }
+.workspace-switcher-item .ws-count { margin-left: auto; }
+.workspace-switcher-item.active .ws-count { margin-left: 8px; }
+.workspace-switcher-divider { margin: 6px 4px; }
+.workspace-switcher-manage { padding: 9px 8px; border-radius: 11px; }
+
+/* a count pill in the spaces list */
+.ws-count {
+    min-width: 20px; height: 19px; padding: 0 6px; border-radius: 10px;
+    background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent);
+    font: 600 11.5px/19px var(--sb-font, system-ui); text-align: center; font-variant-numeric: tabular-nums;
+}
+
+/* ── Spaces on the narrow panel: a rail of chips instead of one button ── */
+.workspace-rail { display: none; }
+#activityBar:not(.sidebar-expanded) .workspace-switcher.has-rail .workspace-switcher-btn { display: none; }
+#activityBar:not(.sidebar-expanded) .workspace-rail {
+    display: flex; flex-direction: column; gap: 4px; align-items: center;
+    width: 40px; padding: 3px; margin: 4px 0 2px; border-radius: 14px;
+    background: color-mix(in srgb, var(--text-primary) 7%, transparent);
+    border: 1px solid color-mix(in srgb, var(--text-primary) 12%, transparent);
+}
+.workspace-rail-chip {
+    position: relative; width: 32px; height: 32px; border-radius: 10px; border: none; padding: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: transparent; color: color-mix(in srgb, var(--text-primary) 62%, transparent); cursor: pointer;
+    transition: background .18s, color .18s, box-shadow .18s;
+}
+.workspace-rail-chip svg { width: 17px; height: 17px; }
+.workspace-rail-chip:hover { background: var(--bg-active); color: var(--text-bright); transform: none; }
+.workspace-rail-chip.active {
+    color: var(--ws-color, var(--accent));
+    background: color-mix(in srgb, var(--ws-color, var(--accent)) 16%, transparent);
+    box-shadow: inset 0 0 0 1.5px var(--ws-color, var(--accent));
+}
+.workspace-rail-chip .ws-count {
+    position: absolute; top: -5px; right: -6px; min-width: 15px; height: 15px; padding: 0 3px; border-radius: 8px;
+    box-sizing: border-box; border: 1.5px solid var(--sidebar-bg);
+    display: flex; align-items: center; justify-content: center;
+    font: 700 9px/1 var(--sb-font, system-ui); background: var(--accent); color: #fff;
+}
+
+/* ── Badges on the narrow icons: small, in the corner of the icon ─── */
+#activityBar:not(.sidebar-expanded) .messenger-badge {
+    top: 3px; right: 2px; left: auto; width: auto; min-width: 15px; height: 15px; padding: 0 3px; border-radius: 8px;
+    box-sizing: border-box; border: 1.5px solid var(--sidebar-bg);
+    font: 700 9px/1 var(--sb-font, system-ui); font-variant-numeric: tabular-nums;
+    display: flex; align-items: center; justify-content: center; transform: none;
+}
+
+/* ── The dock: tools in one row, the account as a card ────────────── */
+#activityBar.sidebar-expanded .activity-bottom {
+    flex-direction: row; flex-wrap: wrap; align-items: center; gap: 2px;
+    margin-top: 8px; padding: 10px 8px 8px; border-top: 1px solid var(--border);
+}
+#activityBar.sidebar-expanded .activity-bottom .activity-btn:not(#cloudBtn) {
+    flex: 1 1 0; width: auto !important; min-width: 0; height: 38px;
+    justify-content: center; padding: 0; gap: 0; border-radius: 11px;
+}
+#activityBar.sidebar-expanded .activity-bottom .activity-btn:not(#cloudBtn) .activity-btn-label { display: none; }
+#activityBar.sidebar-expanded .activity-bottom #cloudBtn {
+    order: 10; flex: 1 0 100%; width: 100% !important; height: 48px; margin-top: 8px;
+    background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: 14px;
+}
+#activityBar.sidebar-expanded .activity-bottom #cloudBtn:hover { background: var(--bg-active); }
+#activityBar.sidebar-expanded .activity-bottom .sidebar-notif-badge { top: 5px; right: 50%; margin-right: -17px; }
+
+/* ── The fold handle: a tab that grows out of the panel edge (its curves are a mask, so the fill follows the theme) ── */
+.sidebar-collapse-btn {
+    right: -20px; width: 20px; height: 72px; padding: 0 2px 0 0; border: none; outline: none; opacity: 0;
+    background: var(--sidebar-bg); color: var(--text-secondary); box-shadow: none; border-radius: 0;
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 72' preserveAspectRatio='none'%3E%3Cpath d='M0 0Q0 10 8 12Q19 15 19 26V46Q19 57 8 60Q0 62 0 72Z'/%3E%3C/svg%3E") 0 0 / 100% 100% no-repeat;
+            mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 72' preserveAspectRatio='none'%3E%3Cpath d='M0 0Q0 10 8 12Q19 15 19 26V46Q19 57 8 60Q0 62 0 72Z'/%3E%3C/svg%3E") 0 0 / 100% 100% no-repeat;
+    transition: opacity .18s ease, color .18s ease, background .18s ease;
+}
+[data-theme="glass"] .sidebar-collapse-btn { background: var(--glass-bg); }
+.main-container:hover .sidebar-collapse-btn { opacity: 0; }
+#activityBar:hover .sidebar-collapse-btn, .sidebar-collapse-btn:hover, .sidebar-collapse-btn:focus-visible { opacity: 1; }
+.sidebar-collapse-btn:hover { background: color-mix(in srgb, var(--sidebar-bg) 82%, var(--text-primary)); color: var(--text-bright); box-shadow: none; }
+.sidebar-collapse-btn svg { width: 11px; height: 11px; }
+
+/* ── Fold animation (see renderer/sidebar-flip.js) ────────────────── */
+#activityBar.sb-flip { transition: none !important; }
+#activityBar.sb-flip .activity-btn-label,
+#activityBar.sb-flip .messenger-name,
+#activityBar.sb-flip .folder-name { animation: sb-label-in .2s ease backwards; }
+@keyframes sb-label-in { from { opacity: 0; transform: translateX(-6px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+    #activityBar.sb-flip .activity-btn-label, #activityBar.sb-flip .messenger-name, #activityBar.sb-flip .folder-name { animation: none; }
+    .sidebar-collapse-btn, .workspace-rail-chip { transition: none; }
+}
+
+/* ── Hover and press on the wide panel: a soft rounded wash, no zoom, no square edge ── */
+#activityBar.sidebar-expanded .messenger-item,
+#activityBar.sidebar-expanded .folder-header,
+#activityBar.sidebar-expanded .activity-btn,
+#activityBar.sidebar-expanded .workspace-switcher-btn { border-radius: 12px; transition: background .16s ease, color .16s ease, box-shadow .16s ease; }
+#activityBar.sidebar-expanded .messenger-item:hover,
+#activityBar.sidebar-expanded .folder-header:hover { transform: none; background: color-mix(in srgb, var(--text-primary) 7%, transparent); }
+#activityBar.sidebar-expanded .messenger-item.active:hover { background: color-mix(in srgb, var(--accent) 26%, transparent); }
+#activityBar.sidebar-expanded .activity-btn:hover { background: color-mix(in srgb, var(--text-primary) 7%, transparent); }
+#activityBar.sidebar-expanded .messenger-item:active,
+#activityBar.sidebar-expanded .activity-btn:active { transform: none; background: color-mix(in srgb, var(--text-primary) 11%, transparent); }
+#activityBar.sidebar-expanded .messenger-item:hover .messenger-icon { transform: none; }
+
+/* «Все мессенджеры» switched off in Settings: the button leaves the panel (a class display would beat the hidden attribute) */
+#allInboxBtn[hidden] { display: none !important; }
+#activityBar.sidebar-expanded .messenger-item:hover::before { transform: translateY(-50%) scaleY(0); }
+
+/* ── Spaces on the wide panel: the button and its list are one window that grows downward ── */
+#activityBar.sidebar-expanded .workspace-switcher {
+    flex-direction: column; justify-content: flex-start; align-items: stretch;
+    border: 1px solid var(--border); border-radius: 14px; background: var(--bg-tertiary); overflow: hidden;
+    transition: border-color .18s ease, box-shadow .18s ease;
+}
+#activityBar.sidebar-expanded .workspace-switcher.open { border-color: color-mix(in srgb, var(--accent) 42%, var(--border)); box-shadow: none; }
+#activityBar.sidebar-expanded .workspace-switcher .workspace-switcher-btn,
+#activityBar.sidebar-expanded .workspace-switcher.open .workspace-switcher-btn {
+    border: none; background: transparent; box-shadow: none; border-radius: 0; width: 100% !important;
+}
+#activityBar.sidebar-expanded .workspace-switcher .workspace-switcher-btn:hover { background: color-mix(in srgb, var(--text-primary) 6%, transparent); }
+#activityBar.sidebar-expanded .workspace-switcher .workspace-switcher-menu-inline {
+    width: 100%; min-width: 0; max-width: none; box-sizing: border-box; background: transparent; border: none; border-top: 1px solid var(--border); border-radius: 0;
+    padding: 8px; box-shadow: none; animation: ws-drop .2s ease;
+}
+@keyframes ws-drop { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { #activityBar.sidebar-expanded .workspace-switcher .workspace-switcher-menu-inline { animation: none; } }
+#section-allInbox.ai-off #telegramApiGroup { display: none; }
+
+/* Themes with a moving backdrop (Аврора, Время суток): the handle shows a copy of the very same backdrop (renderer/sidebar-handle-fx.js),
+   so it is a part of the see-through panel, not a block of its own colour. */
+html[data-fx] .sidebar-collapse-btn { background: transparent; overflow: hidden; }
+html[data-fx] .sidebar-collapse-btn .theme-fx-clone { display: block; position: absolute; right: auto; bottom: auto; z-index: 0; pointer-events: none; }
+html[data-fx] .sidebar-collapse-btn svg { position: relative; z-index: 1; }
+html[data-fx] .sidebar-collapse-btn:hover { background: color-mix(in srgb, var(--text-primary) 10%, transparent); }
+
+.settings-subhead { margin: 26px 0 10px; font-size: 12.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-secondary); }
+.settings-subhead:first-of-type { margin-top: 4px; }
+
+/* the account card of the wide panel: the name, and under it the plan and when it runs out */
+#cloudBtnLabel { display: none; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 0; line-height: 1.15; text-align: left; }
+#activityBar.sidebar-expanded #cloudBtnLabel { display: flex; }
+#cloudBtnLabel .cb-name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13.5px; font-weight: 600; color: var(--text-bright); }
+#cloudBtnLabel .cb-sub { display: flex; align-items: center; gap: 7px; font-size: 11.5px; font-weight: 500; color: var(--text-secondary); white-space: nowrap; }
+#cloudBtnLabel .cb-chip { padding: 1px 7px; border-radius: 6px; font-size: 10px; font-weight: 800; letter-spacing: .06em; background: color-mix(in srgb, var(--text-primary) 10%, transparent); color: var(--text-secondary); }
+#cloudBtnLabel .cb-chip.is-pro { background: color-mix(in srgb, #f0b232 22%, transparent); color: #e6a417; }
+#cloudBtnLabel .cb-chip.is-team { background: color-mix(in srgb, #d99a1e 26%, transparent); color: #d99a1e; }
+
+/* ── The narrow panel keeps its icons on a fixed left edge (not centred), so the panel's width can animate without moving them ── */
+#activityBar:not(.sidebar-expanded) { --sb-pad: calc((var(--density-sidebar-width, 52px) - var(--density-item-size, 44px)) / 2); }
+#activityBar:not(.sidebar-expanded) .activity-top,
+#activityBar:not(.sidebar-expanded) .activity-bottom { align-items: flex-start; padding-left: var(--sb-pad); padding-right: 0; }
+#activityBar:not(.sidebar-expanded) .messenger-list { align-items: flex-start; }
+#activityBar:not(.sidebar-expanded) .workspace-switcher { justify-content: flex-start; }
+#activityBar:not(.sidebar-expanded) .workspace-rail { margin-left: calc((var(--density-item-size, 44px) - 40px) / 2); }
+#activityBar:not(.sidebar-expanded) .activity-divider,
+#activityBar:not(.sidebar-expanded) .messenger-list .sidebar-divider,
+#activityBar:not(.sidebar-expanded) .activity-bottom .dock-sep { margin-left: calc((var(--density-item-size, 44px) - 24px) / 2); margin-right: 0; }
+#activityBar:not(.sidebar-expanded) .activity-top, #activityBar:not(.sidebar-expanded) .activity-bottom { overflow-x: clip; }
+.sidebar-collapse-btn.edge-on { opacity: 1; }

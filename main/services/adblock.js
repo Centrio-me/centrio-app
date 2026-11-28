@@ -3,6 +3,7 @@
 const { session } = require('electron')
 const store = require('./store')
 const entitlement = require('./entitlement')
+const adblockLists = require('./adblockLists')
 
 let log
 try { log = require('electron-log') } catch { log = console }
@@ -191,11 +192,26 @@ function ownSoundIsSilenced(url) {
     try { return (store.get('settings', {}) || {}).notifSound !== false } catch { return false }
 }
 
+// A match pattern of Chrome («*://*.example.com/*») as a regular expression, for the case when every request reaches the listener
+function patternToRegex(pattern) {
+    const m = /^(\*|https?|wss?|ftp):\/\/([^/]*)(\/.*)$/.exec(pattern)
+    if (!m) return null
+    const esc = (t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const scheme = m[1] === '*' ? '(?:https?|wss?)' : esc(m[1])
+    const host = m[2] === '*' ? '[^/]*' : (m[2].startsWith('*.') ? `(?:[^/]*\\.)?${esc(m[2].slice(2))}` : esc(m[2]))
+    const rest = esc(m[3]).replace(/\\\*/g, '.*')
+    return new RegExp(`^${scheme}://${host}${rest}$`, 'i')
+}
+const AD_REGEXES = AD_PATTERNS.map(patternToRegex).filter(Boolean)
+const matchesBuiltInAdRules = (url) => AD_REGEXES.some((re) => re.test(url))
+
 function applyToSession(sess) {
     if (!sess || !sess.webRequest) return
 
     // One listener per session (Electron allows only one for this event), so ads and own sounds share it.
-    const patterns = isEnabled() ? [...AD_PATTERNS, ...OWN_SOUND_PATTERNS] : OWN_SOUND_PATTERNS
+    // With the public filter lists on, every request has to be seen (the lists name far more domains than the patterns can).
+    const lists = isEnabled() && adblockLists.status().enabled
+    const patterns = lists ? ['<all_urls>'] : (isEnabled() ? [...AD_PATTERNS, ...OWN_SOUND_PATTERNS] : OWN_SOUND_PATTERNS)
     sess.webRequest.onBeforeRequest({ urls: patterns }, (details, callback) => {
         if (ownSoundIsSilenced(details.url)) {
             log.info(`[notif-sound] page's own sound not loaded: ${details.url.split('?')[0]}`)
@@ -208,9 +224,16 @@ function applyToSession(sess) {
             return
         }
         if (isEnabled() && !OWN_SOUND_RE.test(details.url)) {
-            log.info(`[adblock] Blocking: ${details.url}`)
-            callback({ cancel: true })
-            return
+            if (matchesBuiltInAdRules(details.url)) {
+                log.info(`[adblock] Blocking: ${details.url}`)
+                callback({ cancel: true })
+                return
+            }
+            if (lists && adblockLists.shouldBlock(details)) {
+                log.info(`[adblock] Blocking (lists): ${details.url.split('?')[0]}`)
+                callback({ cancel: true })
+                return
+            }
         }
         callback({})
     })

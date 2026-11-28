@@ -1,0 +1,20 @@
+:root { --bar: #131210; --panel-2: #1f1d19; --line: #2a2823; --text: #f5f1e8; --muted: #9b958a; --accent: #5aa9ff; --accent-ink: #06121f; --bg: #0b0a08; }
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; background: var(--bar); color: var(--text); overflow: hidden; user-select: none; font: 13px/1.4 'Manrope', 'Geist', 'Golos Text', system-ui, 'Segoe UI', sans-serif; }
+.strip { height: 100%; display: flex; align-items: flex-end; gap: 4px; padding: 6px 10px 0; overflow-x: auto; scrollbar-width: none; border-bottom: 1px solid var(--line); }
+.strip::-webkit-scrollbar { display: none; }
+.tab { position: relative; flex: 0 1 220px; min-width: 96px; height: 100%; display: flex; align-items: center; gap: 8px; padding: 0 8px 0 10px; border-radius: 10px 10px 0 0; cursor: default; color: var(--muted); transition: background .15s ease, color .15s ease; }
+.tab:hover { background: color-mix(in srgb, var(--text) 6%, transparent); color: var(--text); }
+.tab.on { background: var(--bg); color: var(--text); }
+.tab.on::after { content: ''; position: absolute; left: 10px; right: 10px; top: 0; height: 2px; border-radius: 0 0 2px 2px; background: var(--accent); }
+.mark { flex: none; font-size: 9px; font-weight: 700; letter-spacing: .08em; padding: 2px 5px; border-radius: 4px; background: color-mix(in srgb, var(--accent) 22%, transparent); color: var(--accent); }
+.tab.on .mark { background: var(--accent); color: var(--accent-ink); }
+.name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+.x, .plus { flex: none; width: 24px; height: 24px; border: none; border-radius: 7px; background: transparent; color: var(--muted); cursor: pointer; display: grid; place-items: center; padding: 0; }
+.x { opacity: 0; transition: opacity .12s ease, background .12s ease, color .12s ease; }
+.tab:hover .x, .tab.on .x { opacity: 1; }
+.x:hover, .plus:hover { background: color-mix(in srgb, var(--text) 12%, transparent); color: var(--text); }
+.x svg, .plus svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+.plus { align-self: center; margin-left: 2px; width: 28px; height: 28px; }
+.plus svg { width: 15px; height: 15px; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }

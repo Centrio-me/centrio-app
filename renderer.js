@@ -54,6 +54,15 @@ const { createContextMenusApi } = require('./renderer/context-menus')
 const { bindPopupBackdrop } = require('./renderer/popup-backdrop-bind')
 const { createFoldersUiApi } = require('./renderer/folders-ui')
 const { createWorkspacesUiApi } = require('./renderer/workspaces-ui')
+const { animateSidebarLayout } = require('./renderer/sidebar-flip')
+const { createAboutCard } = require('./renderer/about-card')
+const { bindHandleFx } = require('./renderer/sidebar-handle-fx')
+const { createExtTools } = require('./renderer/ext-tools')
+const { createQuickAnswers } = require('./renderer/quick-answers')
+const { createQuickTimer } = require('./renderer/quick-timer')
+const { createSpellfixPopup } = require('./renderer/spellfix-popup')
+const { createColorPicker } = require('./renderer/color-picker')
+const { createTranslatePopup } = require('./renderer/translate-popup')
 const { createSearchUiApi } = require('./renderer/search-ui')
 const { createAddModalUiApi } = require('./renderer/add-modal-ui')
 const { createSettingsUiApi, updateAdaptiveTheme } = require('./renderer/settings-ui')
@@ -1839,7 +1848,12 @@ function switchTab(id) {
     // ==============================
     // SEARCH UI API
     // ==============================
+    createSpellfixPopup({ invokeIpc, tGet })
+    const colorPicker = createColorPicker({ tGet, invokeIpc })
+    const quickAnswers = createQuickAnswers({ invokeIpc, tGet, timer: createQuickTimer({ tGet }), getLang: () => getCurrentLanguage() || 'ru', pickColor: () => colorPicker.pick() })
+    createTranslatePopup({ invokeIpc, tGet, getLang: () => getCurrentLanguage() || 'ru' })
     const searchUiApi = createSearchUiApi({
+        quickAnswers,
         state,
         quickSearch,
         quickSearchInput,
@@ -2523,7 +2537,7 @@ function applyTabZoom(level) {
     // reapplyMessengerLocks() (startup, post-login sync, and every
     // focus/periodic refreshUser() revalidation) — NOT on addMessenger/
     // removeMessenger, since those never change entitlement.
-    const NATIVE_EXTENSION_IDS = ['adblock', 'screenshot', 'darkmode', 'split']
+    const NATIVE_EXTENSION_IDS = ['adblock', 'screenshot', 'split']
 
     function reapplyExtensionLocks() {
         if (hasEffectivePro()) return
@@ -2556,19 +2570,6 @@ function applyTabZoom(level) {
             // wakes it up immediately instead of waiting for the next
             // natural trigger.
             ipcRenderer.send('update-adblock-state')
-        }
-        if (toDisable.includes('darkmode')) {
-            // The toggle only gated *turning on* new forced dark mode
-            // (context-actions-bind.js's ctxDarkMode handler); any messenger
-            // that already had it applied would otherwise keep rendering
-            // inverted forever post-downgrade. Reload clears the injected
-            // CSS the same way the manual "turn off" path does.
-            state.activeMessengers.forEach(m => {
-                if (!m.forceDarkMode) return
-                m.forceDarkMode = false
-                document.getElementById(`webview-${m.id}`)?.reload()
-            })
-            saveData()
         }
         if (toDisable.includes('workspaces')) {
             workspacesUiApi.setEnabled(false)
@@ -3057,9 +3058,18 @@ function applyTabZoom(level) {
     }
 
     // Раскрываемый левый сайдбар (как во FRANZ) — независимо от меню сверху.
-    function applySidebarCollapsed() {
+    const handleFx = bindHandleFx(sidebarCollapseBtn)
+
+    function applySidebarCollapsed(animate = false) {
         if (!activityBar || !sidebarCollapseBtn) return
+        // an open spaces list belongs to the layout it was opened in: close it before the panel changes shape
+        workspacesUiApi.closeSwitcherMenu()
+        if (animate) {
+            animateSidebarLayout(activityBar, () => applySidebarCollapsed(false), handleFx.sync)
+            return
+        }
         activityBar.classList.toggle('sidebar-expanded', state.sidebarBarExpanded)
+        handleFx.sync()
         sidebarCollapseBtn.classList.toggle('sidebar-expanded-btn', state.sidebarBarExpanded)
         const label = state.sidebarBarExpanded ? tGet('sidebar.collapse') : tGet('sidebar.expand')
         sidebarCollapseBtn.setAttribute('aria-label', label)
@@ -3071,7 +3081,7 @@ function applyTabZoom(level) {
     sidebarCollapseBtn?.addEventListener('click', () => {
         state.sidebarBarExpanded = !state.sidebarBarExpanded
         store.set('sidebarBarExpanded', state.sidebarBarExpanded)
-        applySidebarCollapsed()
+        applySidebarCollapsed(true)
     })
 
     // ==============================
@@ -3206,12 +3216,31 @@ function applyTabZoom(level) {
         })
     }
 
+    // The tools of Settings → Расширения with a state of their own (spell checker, translator, currency) and the tools of the
+    // right panel that are switched on and off there (tasks, notes, quick replies, passwords)
+    const PANEL_ITEM_IDS = new Set(['todos', 'notes', 'quickReplies', 'passwords'])
+    const extTools = createExtTools({
+        tGet,
+        invokeIpc,
+        getLang: () => getCurrentLanguage() || 'ru',
+        isPanelItemOn: (id) => {
+            if (id === 'passwords') return (store.get('settings', {}) || {}).passwordManager !== false
+            const layout = store.get('rightbarLayout', null)
+            return !(Array.isArray(layout && layout.hidden) && layout.hidden.includes(id) && hasEffectivePro())
+        },
+        setPanelItem: (id, visible) => {
+            if (!PANEL_ITEM_IDS.has(id)) return
+            document.dispatchEvent(new CustomEvent('rightbar-item-toggle', { detail: { id, visible } }))
+        }
+    })
+
     const extensionsUiApi = createExtensionsUiApi({
         store,
         tGet,
         requirePro,
         onExtensionToggle,
-        refreshUser: refreshUserAndReapply
+        refreshUser: refreshUserAndReapply,
+        extTools
     })
 
     const { openExtensionsSection } = extensionsUiApi
@@ -3506,16 +3535,6 @@ function applyTabZoom(level) {
         // существующие #folder-* узлы.
         const workspacesExtEnabled = (store.get('extensionsState', {}) || {}).workspaces === true
         setTimeout(() => workspacesUiApi.setEnabled(workspacesExtEnabled), 100)
-
-        // Pre-load extensions into ALL sessions BEFORE webviews load URLs
-        // This ensures content scripts inject properly on first navigation
-        try {
-            await Promise.all(
-                savedMessengers.map(m =>
-                    invokeIpc('ext:apply-to-session', `persist:${m.id}`).catch(() => {})
-                )
-            )
-        } catch {}
 
         savedMessengers.forEach(messenger => {
             const normalizedMessenger = {
@@ -3912,16 +3931,6 @@ function applyTabZoom(level) {
         const mediaOwn = (store.get('mediaPermissions', {}) || {})[id] || {}
         document.getElementById('ctxMicToggle')?.classList.toggle('on', mediaOwn.mic !== false)
         document.getElementById('ctxCamToggle')?.classList.toggle('on', mediaOwn.camera !== false)
-        const dmLabel = document.getElementById('ctxDarkModeLabel')
-        const dmItem = document.getElementById('ctxDarkMode')
-        const extState = store.get('extensionsState', {})
-
-        if (dmItem) {
-            dmItem.style.display = extState.darkmode !== false ? 'flex' : 'none'
-        }
-        if (dmLabel) {
-            dmLabel.textContent = m?.forceDarkMode ? 'Отключить тёмную тему' : 'Тёмная тема'
-        }
     })
 
     // Вынесена именованной function-декларацией (а не инлайн-стрелкой прямо в
@@ -4669,6 +4678,17 @@ function applyTabZoom(level) {
     }, PRO_REVALIDATE_INTERVAL_MS)
 
     await advanceStartup('security', 94, { minStepTime: 260 })
+
+    // «Версия» card in Settings → Система (draws #appVersionText, #updateStatusBadge and #checkUpdatesBtn, so it comes first)
+    createAboutCard({
+        mount: document.getElementById('versionCard'),
+        tGet,
+        getLang: () => getCurrentLanguage() || 'ru',
+        ipcRenderer,
+        store,
+        getAppVersion: () => window.electronAPI?.getAppVersion?.(),
+        openHistory: () => { document.getElementById('settingsModal')?.classList.remove('show'); document.getElementById('statusVersion')?.click() }
+    })
 
     const appVersionText = document.getElementById('appVersionText')
     const statusVersionEl = document.getElementById('statusVersion')

@@ -1,0 +1,94 @@
+/* The settings panel of a tool card in Settings → Расширения (spell checker, translator, currency) */
+.ext-item { display: flex; flex-direction: column; }
+.ext-gear { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 11px; border-radius: 9px; border: 1px solid var(--border); background: transparent; color: var(--text-secondary); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; transition: background .15s, color .15s, border-color .15s; }
+.ext-gear:hover { color: var(--text-primary); background: color-mix(in srgb, var(--text-primary) 6%, transparent); }
+.ext-gear.on { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); background: color-mix(in srgb, var(--accent) 10%, transparent); }
+.ext-settings { margin: -4px 0 8px; padding: 14px 16px; border-radius: 0 0 14px 14px; border: 1px solid var(--border); border-top: none; background: color-mix(in srgb, var(--text-primary) 3%, transparent); display: flex; flex-direction: column; gap: 16px; }
+.ext-settings[hidden] { display: none; }
+.sp-block { display: flex; flex-direction: column; gap: 8px; }
+.sp-title { font-size: 13px; font-weight: 600; color: var(--text-bright); }
+.sp-hint { font-size: 12px; color: var(--text-secondary); line-height: 1.45; }
+.sp-example { font-size: 12.5px; font-family: 'Geist Mono', ui-monospace, Consolas, monospace; color: var(--text-primary); padding: 6px 10px; border-radius: 8px; background: var(--bg-tertiary); border: 1px solid var(--border); width: fit-content; }
+.sp-chips, .sp-words { display: flex; flex-wrap: wrap; gap: 6px; }
+.sp-chip { height: 30px; padding: 0 13px; border-radius: 999px; border: 1px solid var(--border); background: transparent; color: var(--text-secondary); font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; transition: background .15s, color .15s, border-color .15s; }
+.sp-chip:hover { color: var(--text-primary); background: color-mix(in srgb, var(--text-primary) 6%, transparent); }
+.sp-chip.on { color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); }
+.sp-word { display: inline-flex; align-items: center; gap: 4px; height: 28px; padding: 0 4px 0 11px; border-radius: 9px; background: var(--bg-tertiary); border: 1px solid var(--border); font-size: 13px; color: var(--text-primary); }
+.sp-word-x { width: 20px; height: 20px; padding: 0; border: none; border-radius: 6px; background: transparent; color: var(--text-secondary); font-size: 15px; line-height: 1; cursor: pointer; }
+.sp-word-x:hover { background: var(--danger); color: #fff; }
+.sp-empty { font-size: 12.5px; color: var(--text-secondary); }
+.sp-input { width: 100%; max-width: 280px; height: 34px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg-tertiary); color: var(--text-primary); font: inherit; font-size: 13px; }
+.sp-input:focus { outline: none; border-color: color-mix(in srgb, var(--accent) 55%, var(--border)); }
+.rb-row-note { margin-left: auto; font-size: 12px; color: var(--text-secondary); white-space: nowrap; }
+
+/* The quick switcher answers (renderer/quick-answers.js) */
+.quick-answer .quick-answer-hint { margin-left: auto; font-size: 11.5px; color: var(--text-secondary); white-space: nowrap; }
+.quick-search-item-glyph.is-answer { color: #22a06b; background: color-mix(in srgb, #22a06b 16%, transparent); }
+
+/* The card of the translator (renderer/translate-popup.js) */
+.tr-card { position: fixed; top: 56px; left: 50%; z-index: 100000; width: min(480px, calc(100vw - 32px)); padding: 14px 16px; border-radius: 16px; background: var(--bg-secondary); border: 1px solid var(--border-light); box-shadow: 0 18px 48px rgba(0, 0, 0, .5); display: flex; flex-direction: column; gap: 10px; transform: translate(-50%, -8px); opacity: 0; transition: opacity .18s ease, transform .18s ease; font-family: 'Manrope', 'Geist', 'Golos Text', system-ui, sans-serif; }
+.tr-card.show { opacity: 1; transform: translate(-50%, 0); }
+.tr-head { display: flex; align-items: center; gap: 10px; }
+.tr-title { font-size: 13px; font-weight: 700; color: var(--text-bright); }
+.tr-pair { font-size: 12px; color: var(--text-secondary); }
+.tr-x { margin-left: auto; width: 26px; height: 26px; border: none; border-radius: 8px; background: transparent; color: var(--text-secondary); font-size: 18px; line-height: 1; cursor: pointer; }
+.tr-x:hover { background: color-mix(in srgb, var(--text-primary) 10%, transparent); color: var(--text-bright); }
+.tr-original { font-size: 12.5px; line-height: 1.45; color: var(--text-secondary); max-height: 4.4em; overflow: hidden; overflow-wrap: anywhere; }
+.tr-result { font-size: 15px; line-height: 1.5; color: var(--text-bright); max-height: 40vh; overflow-y: auto; overflow-wrap: anywhere; user-select: text; white-space: pre-wrap; }
+.tr-result.is-loading { color: var(--text-secondary); }
+.tr-result.is-error { color: var(--danger); font-size: 13px; }
+.tr-actions { display: flex; gap: 8px; }
+.tr-btn { height: 32px; padding: 0 14px; border-radius: 10px; border: 1px solid var(--border-light); background: transparent; color: var(--text-primary); font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; }
+.tr-btn:hover:not(:disabled) { background: color-mix(in srgb, var(--text-primary) 8%, transparent); }
+.tr-btn:disabled { opacity: .5; cursor: default; }
+@media (prefers-reduced-motion: reduce) { .tr-card { transition: none; } }
+
+.sp-switch { display: flex; align-items: center; justify-content: space-between; gap: 16px; cursor: pointer; }
+.sp-switch-text { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.quick-answer .quick-search-item-name { white-space: nowrap; }
+.quick-search-item-glyph.is-answer.has-swatch { background: transparent; border-radius: 7px; box-shadow: inset 0 0 0 1px rgba(255,255,255,.18); }
+
+/* Spell fixer and eyedropper cards (renderer/spellfix-popup.js, renderer/color-picker.js) */
+.tr-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.tr-primary:hover:not(:disabled) { background: var(--accent-hover); }
+.sf-body { display: flex; flex-direction: column; gap: 10px; max-height: 60vh; }
+.sf-list { display: flex; flex-direction: column; gap: 8px; overflow-y: auto; padding-right: 4px; }
+.sf-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.sf-word { font-size: 14px; font-weight: 600; color: var(--danger); text-decoration: line-through; text-decoration-thickness: 1.5px; }
+.sf-arrow { color: var(--text-secondary); }
+.sf-options { display: flex; gap: 6px; flex-wrap: wrap; }
+.sf-chip { height: 28px; padding: 0 11px; border-radius: 9px; border: 1px solid var(--border); background: transparent; color: var(--text-primary); font: inherit; font-size: 13px; cursor: pointer; transition: background .12s, border-color .12s, color .12s; }
+.sf-chip:hover { background: color-mix(in srgb, var(--text-primary) 7%, transparent); }
+.sf-chip.on { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 55%, var(--border)); background: color-mix(in srgb, var(--accent) 13%, transparent); font-weight: 600; }
+.cp-swatch { height: 64px; border-radius: 12px; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .15); }
+.cp-rows { display: flex; flex-direction: column; gap: 6px; }
+.cp-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 6px 6px 12px; border-radius: 10px; background: var(--bg-tertiary); border: 1px solid var(--border); }
+.cp-value { font-family: 'Geist Mono', ui-monospace, Consolas, monospace; font-size: 13px; color: var(--text-bright); user-select: text; }
+
+/* Language of the translation, changed in the card */
+.tr-pair { display: inline-flex; align-items: center; gap: 6px; }
+.tr-arrow { opacity: .6; }
+.tr-lang { height: 26px; padding: 0 22px 0 9px; border-radius: 8px; border: 1px solid var(--border-light); background: var(--bg-tertiary); color: var(--text-bright); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+.tr-lang:hover { border-color: color-mix(in srgb, var(--accent) 50%, var(--border-light)); }
+.tr-lang:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* The eyedropper's own loupe (renderer/color-picker.js): a ring around the magnified pixels, the middle one marked, the colour below */
+.cp-overlay { position: fixed; inset: 0; z-index: 100001; cursor: none; background: transparent; }
+.cp-loupe { position: absolute; left: 0; top: 0; width: 132px; height: 132px; opacity: 0; pointer-events: none; will-change: transform; }
+.cp-loupe canvas { display: block; width: 132px; height: 132px; border-radius: 50%; image-rendering: pixelated; box-shadow: 0 0 0 3px rgba(255, 255, 255, .95), 0 0 0 4px rgba(0, 0, 0, .45), 0 10px 28px rgba(0, 0, 0, .55); background: #111; }
+.cp-centre { position: absolute; left: 50%; top: 50%; width: 12px; height: 12px; margin: -6px 0 0 -6px; box-sizing: border-box; border: 2px solid #fff; border-radius: 2px; box-shadow: 0 0 0 1px rgba(0, 0, 0, .6), inset 0 0 0 1px rgba(0, 0, 0, .35); }
+.cp-label { position: absolute; left: 50%; top: calc(100% + 14px); transform: translateX(-50%); display: flex; align-items: center; gap: 7px; padding: 5px 11px 5px 6px; border-radius: 999px; background: rgba(18, 18, 22, .92); border: 1px solid rgba(255, 255, 255, .14); box-shadow: 0 6px 18px rgba(0, 0, 0, .45); white-space: nowrap; }
+.cp-chip { width: 16px; height: 16px; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .35); }
+.cp-code { font-family: 'Geist Mono', ui-monospace, Consolas, monospace; font-size: 12px; font-weight: 600; color: #fff; letter-spacing: .02em; }
+
+/* The cards (translation, mistakes, colour) wear the same clothes as the quick switcher in every theme */
+.tr-card { border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); }
+[data-theme="dock"] .tr-card { background: rgba(10,10,20,0.96); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); border: 1px solid rgba(129,140,248,0.12); box-shadow: 0 16px 60px rgba(0,0,0,0.85); }
+[data-theme="glass"] .tr-card { backdrop-filter: blur(32px); -webkit-backdrop-filter: blur(32px); background: rgba(15,15,30,0.88); border: 1px solid var(--glass-border); }
+.tr-card .tr-btn { border-color: var(--border-light); }
+.tr-card .tr-primary { color: #fff; }
+
+/* Ctrl+K: the list of what can be written */
+.quick-hint { cursor: pointer; }
+.quick-hint-example { font-family: 'Geist Mono', ui-monospace, Consolas, monospace; font-size: 12px; font-weight: 600; color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); padding: 3px 8px; border-radius: 7px; white-space: nowrap; }
+.quick-hint-text { font-size: 12.5px; color: var(--text-secondary); }

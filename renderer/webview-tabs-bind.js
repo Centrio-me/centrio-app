@@ -1116,7 +1116,6 @@ function createWebviewTabsApi({
         // A messenger that lives in its own window keeps no page here: a placeholder holds its tab (renderer/detached-windows.js).
         if (state.detachedTabs?.has(messenger.id)) return
 
-        invokeIpc('ext:apply-to-session', `persist:${messenger.id}`).catch(() => {})
         const webview = document.createElement('webview')
         webview.id = `webview-${messenger.id}`
         webview.src = messenger.url
@@ -1146,14 +1145,6 @@ function createWebviewTabsApi({
 
         webview.addEventListener('dom-ready', () => {
             applyInitialZoom()
-
-            if (messenger.forceDarkMode) {
-                const css = `
-                    html { filter: invert(1) hue-rotate(180deg) !important; }
-                    img, video, canvas, [style*="background-image"] { filter: invert(1) hue-rotate(180deg) !important; }
-                `
-                webview.insertCSS(css)
-            }
 
         })
 

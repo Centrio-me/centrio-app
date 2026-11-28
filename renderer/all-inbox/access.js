@@ -42,6 +42,7 @@ function createAllInboxAccess({ store, tGet, hasEffectivePro, showUpgradeModal }
         const saved = store.get(STORE_KEY, null)
         store.set(STORE_KEY, { ...(saved && typeof saved === 'object' ? saved : {}), enabled: !!on })
         apply()
+        renderSettings()
     }
 
     // ── Settings → Все мессенджеры ──────────────────────────────────────────────────
@@ -64,6 +65,11 @@ function createAllInboxAccess({ store, tGet, hasEffectivePro, showUpgradeModal }
         row.append(label, toggle)
         group.append(row)
         if (!pro()) group.append(el('div', 'settings-hint ai-settings-pro', t('settingsPro', '')))
+
+        // switched off: nothing else of this mode is needed in Settings; the rows come back with the switch
+        const off = !enabled()
+        document.getElementById('section-allInbox')?.classList.toggle('ai-off', off)
+        if (off) return
 
         // filters by kind (3.8.3): some people sort chats into their own folders and do not need them
         const afRow = el('div', 'settings-row')

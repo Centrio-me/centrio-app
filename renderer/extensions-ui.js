@@ -5,7 +5,8 @@ function createExtensionsUiApi({
     tGet,
     requirePro,
     onExtensionToggle,
-    refreshUser
+    refreshUser,
+    extTools
 }) {
     const NATIVE_EXTENSIONS = [
         {
@@ -31,17 +32,6 @@ function createExtensionsUiApi({
             border: 'rgba(245,158,11,.28)',
             titleKey: 'extensions.screenshot.title',
             descKey: 'extensions.screenshot.desc'
-        },
-        {
-            id: 'darkmode',
-            icon: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-            </svg>`,
-            color: '#8b5cf6',
-            bg: 'rgba(139,92,246,.13)',
-            border: 'rgba(139,92,246,.28)',
-            titleKey: 'extensions.darkmode.title',
-            descKey: 'extensions.darkmode.desc'
         },
         {
             id: 'split',
@@ -82,49 +72,6 @@ function createExtensionsUiApi({
             descKey: 'extensions.workspaces.desc'
         }
     ]
-
-    // Реальные расширения из Chrome Web Store — жёстко заданный список
-    // (main/services/extensions.js:CATALOG). В отличие от NATIVE_EXTENSIONS это не
-    // просто built-in фича с тумблером, а внешний бинарник: install -> toggle -> uninstall.
-    //
-    // Пароль-менеджеры (LastPass, Bitwarden, RoboForm) сюда сознательно не включены —
-    // их background service worker падает на chrome.windows/chrome.webNavigation,
-    // которые Electron не реализует полностью (см. main/services/extensions.js).
-    const REAL_EXTENSIONS = [
-        {
-            key: 'translate-ext',
-            icon: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="10"/>
-                <path d="M2 12h20"/>
-                <path d="M12 2a15.3 15.3 0 0 1 0 20"/>
-                <path d="M12 2a15.3 15.3 0 0 0 0 20"/>
-            </svg>`,
-            color: '#0f9d58',
-            bg: 'rgba(15,157,88,.13)',
-            border: 'rgba(15,157,88,.28)',
-            titleKey: 'extensions.translateExt.title',
-            descKey: 'extensions.translateExt.desc'
-        },
-        {
-            key: 'languagetool-ext',
-            icon: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                <path d="M14 2v6h6"/>
-                <path d="M9 16.5l2.2-6.5 2.2 6.5"/>
-                <path d="M9.7 14.5h3"/>
-            </svg>`,
-            color: '#1a73e8',
-            bg: 'rgba(26,115,232,.13)',
-            border: 'rgba(26,115,232,.28)',
-            titleKey: 'extensions.languageToolExt.title',
-            descKey: 'extensions.languageToolExt.desc'
-        }
-    ]
-
-    // key -> true, пока install/uninstall в процессе (защита от двойного клика)
-    const realExtBusy = {}
-    // key -> текст последней ошибки install/toggle, показывается инлайн в карточке
-    const realExtErrors = {}
 
     function escapeHtml(str) {
         return String(str ?? '').replace(/[&<>"']/g, (ch) => ({
@@ -169,241 +116,170 @@ function createExtensionsUiApi({
         }
     }
 
-    function renderExtensionsCatalog() {
+    // ── One card: icon, name and description, a «Настройки» button when the tool has settings, and its switch ──
+    const LOCK_HTML = `<div class="ext-pro-lock" title="Pro">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+        </svg>
+        Pro
+    </div>`
+    const GEAR_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.400 15a1.700 1.700 0 0 0 .3 1.800l.1.100a2 2 0 1 1-2.800 2.800l-.1-.1a1.700 1.700 0 0 0-1.800-.3 1.700 1.700 0 0 0-1 1.500V21a2 2 0 0 1-4 0v-.1a1.700 1.700 0 0 0-1.100-1.500 1.700 1.700 0 0 0-1.800.3l-.1.100a2 2 0 1 1-2.800-2.800l.1-.1a1.700 1.700 0 0 0 .3-1.800 1.700 1.700 0 0 0-1.500-1H3a2 2 0 0 1 0-4h.1a1.700 1.700 0 0 0 1.500-1.100 1.700 1.700 0 0 0-.3-1.800l-.1-.1a2 2 0 1 1 2.800-2.800l.1.100a1.700 1.700 0 0 0 1.800.3H9a1.700 1.700 0 0 0 1-1.500V3a2 2 0 0 1 4 0v.1a1.700 1.700 0 0 0 1 1.500 1.700 1.700 0 0 0 1.800-.3l.1-.1a2 2 0 1 1 2.800 2.800l-.1.100a1.700 1.700 0 0 0-.3 1.800V9a1.700 1.700 0 0 0 1.500 1H21a2 2 0 0 1 0 4h-.1a1.700 1.700 0 0 0-1.500 1z"/></svg>'
+
+    function buildCard({ def, on, locked, onChange }) {
+        const item = document.createElement('div')
+        item.className = 'ext-item'
+        const card = document.createElement('div')
+        card.className = 'ext-card'
+        card.innerHTML = `
+            <div class="ext-card-icon" style="background:${def.bg};border-color:${def.border};color:${def.color}">${def.icon}</div>
+            <div class="ext-card-info">
+                <div class="ext-card-name">${escapeHtml(tGet(def.titleKey))}</div>
+                <div class="ext-card-desc">${escapeHtml(tGet(def.descKey))}</div>
+            </div>
+            <div class="ext-card-actions">
+                ${locked ? LOCK_HTML : ''}
+                <label class="toggle">
+                    <input type="checkbox" ${on ? 'checked' : ''}>
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>`
+        const input = card.querySelector('input')
+        input.addEventListener('change', () => onChange(input.checked, input))
+        item.append(card)
+        if (typeof def.renderSettings === 'function') {
+            const box = document.createElement('div')
+            box.className = 'ext-settings'
+            box.hidden = true
+            const button = document.createElement('button')
+            button.type = 'button'
+            button.className = 'ext-gear'
+            button.innerHTML = `${GEAR_SVG}<span>${escapeHtml(tGet('vext.settings'))}</span>`
+            button.setAttribute('aria-expanded', 'false')
+            button.addEventListener('click', async () => {
+                const open = box.hidden
+                if (open) await def.renderSettings(box)
+                box.hidden = !open
+                button.setAttribute('aria-expanded', String(open))
+                button.classList.toggle('on', open)
+            })
+            card.querySelector('.ext-card-actions').prepend(button)
+            item.append(box)
+        }
+        return item
+    }
+
+    let renderToken = 0
+
+    async function renderExtensionsCatalog() {
         const container = document.getElementById('extensionsCatalog')
         if (!container) return
-
-        container.innerHTML = ''
+        const token = ++renderToken
+        const panelContainer = document.getElementById('extensionsPanelCatalog')
         const state = getExtensionState()
         const userIsPro = getUserIsPro()
+        const cards = []
 
-        NATIVE_EXTENSIONS.forEach(ext => {
-            const card = document.createElement('div')
-            card.className = 'ext-card'
-
-            // OFF by default — only on if explicitly enabled
-            const isEnabled = state[ext.id] === true
-
-            const lockBadge = !userIsPro
-                ? `<div class="ext-pro-lock" title="Pro">
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-                        <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                    </svg>
-                    Pro
-                </div>`
-                : ''
-
-            card.innerHTML = `
-                <div class="ext-card-icon" style="background:${ext.bg};border-color:${ext.border};color:${ext.color}">
-                    ${ext.icon}
-                </div>
-                <div class="ext-card-info">
-                    <div class="ext-card-name">${tGet(ext.titleKey)}</div>
-                    <div class="ext-card-desc">${tGet(ext.descKey)}</div>
-                </div>
-                <div class="ext-card-actions">
-                    ${lockBadge}
-                    <label class="toggle">
-                        <input type="checkbox" id="ext-toggle-${ext.id}" ${isEnabled && userIsPro ? 'checked' : ''}>
-                        <span class="toggle-slider"></span>
-                    </label>
-                </div>
-            `
-
-            const toggle = card.querySelector('input')
-            toggle.addEventListener('change', (e) => {
-                if (!userIsPro) {
-                    e.target.checked = false
-                    if (requirePro) requirePro('extensions')
-                    return
+        NATIVE_EXTENSIONS.filter((e) => e.id !== 'workspaces').forEach((ext) => {
+            const def = ext.id === 'adblock' && extTools ? { ...ext, renderSettings: extTools.adblockSettings } : ext
+            cards.push({ target: container, node: buildCard({
+                def, on: state[ext.id] === true && userIsPro, locked: !userIsPro,
+                onChange: (checked, input) => {
+                    if (!userIsPro) { input.checked = false; if (requirePro) requirePro('extensions'); return }
+                    const next = getExtensionState()
+                    next[ext.id] = checked
+                    store.set('extensionsState', next)
+                    if (typeof onExtensionToggle === 'function') onExtensionToggle(ext.id, checked)
                 }
-
-                const newState = getExtensionState()
-                newState[ext.id] = e.target.checked
-                store.set('extensionsState', newState)
-
-                if (typeof onExtensionToggle === 'function') {
-                    onExtensionToggle(ext.id, e.target.checked)
+            }) })
+        })
+        const toolDefs = extTools ? extTools.tools : []
+        const panelDefs = extTools ? extTools.panel : []
+        for (const def of toolDefs) {
+            const on = await def.isOn()
+            cards.push({ target: container, node: buildCard({ def, on, locked: false, onChange: async (checked) => { await def.setOn(checked) } }) })
+        }
+        const panelNodes = []
+        for (const def of panelDefs) {
+            const on = await def.isOn()
+            const locked = !def.free && !userIsPro
+            panelNodes.push(buildCard({
+                def, on, locked,
+                onChange: async (checked, input) => {
+                    if (locked) { input.checked = true; if (requirePro) requirePro('extensions'); return }
+                    await def.setOn(checked)
                 }
-            })
+            }))
+        }
+        if (token !== renderToken) return // a newer drawing has started meanwhile
+        container.textContent = ''
+        cards.forEach((c) => c.target.append(c.node))
+        if (panelContainer) {
+            panelContainer.textContent = ''
+            panelNodes.forEach((n) => panelContainer.append(n))
+        }
+        renderWorkspacesRow(state, userIsPro)
+    }
 
-            container.appendChild(card)
+    // One handler for a built-in tool's switch, wherever it is drawn (the list of tools, the side panel section)
+    function bindNativeToggle(input, extId, userIsPro) {
+        input.addEventListener('change', (e) => {
+            if (!userIsPro) {
+                e.target.checked = false
+                if (requirePro) requirePro('extensions')
+                return
+            }
+
+            const newState = getExtensionState()
+            newState[extId] = e.target.checked
+            store.set('extensionsState', newState)
+
+            if (typeof onExtensionToggle === 'function') {
+                onExtensionToggle(extId, e.target.checked)
+            }
         })
     }
 
-    // Реальные Chrome-расширения (сейчас: Google Переводчик) — install/toggle/uninstall,
-    // в отличие от NATIVE_EXTENSIONS не просто built-in фича с тумблером.
-    async function renderRealExtensionsCatalog() {
-        const container = document.getElementById('extensionsRealCatalog')
-        if (!container) return
-
-        let catalog
-        try {
-            const res = await window.electronAPI?.extList?.()
-            catalog = (res && res.success && Array.isArray(res.catalog)) ? res.catalog : []
-        } catch {
-            catalog = []
-        }
-
-        const byKey = {}
-        catalog.forEach((c) => { if (c && c.key) byKey[c.key] = c })
-
-        container.innerHTML = ''
-        const state = getExtensionState()
-        const userIsPro = getUserIsPro()
-
-        REAL_EXTENSIONS.forEach(ext => {
-            const info = byKey[ext.key] || { installed: false }
-            const isInstalled = !!info.installed
-            const isEnabled = isInstalled && state[ext.key] === true
-            const isBusy = !!realExtBusy[ext.key]
-            const errorText = realExtErrors[ext.key]
-
-            const card = document.createElement('div')
-            card.className = `ext-card${isInstalled ? ' ext-installed' : ''}`
-
-            const lockBadge = !userIsPro
-                ? `<div class="ext-pro-lock" title="Pro">
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-                        <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                    </svg>
-                    Pro
-                </div>`
-                : ''
-
-            const actionsHtml = isInstalled
-                ? `
-                    ${lockBadge}
-                    <button class="ext-uninstall-btn" data-action="uninstall" title="${escapeHtml(tGet('extensions.uninstallBtn'))}" ${isBusy ? 'disabled' : ''}>✕</button>
-                    <label class="ext-toggle">
-                        <input type="checkbox" class="ext-toggle-check" data-action="toggle" ${isEnabled && userIsPro ? 'checked' : ''} ${isBusy ? 'disabled' : ''}>
-                        <span class="ext-toggle-slider"></span>
-                    </label>
-                `
-                : `
-                    ${lockBadge}
-                    <button class="ext-install-btn${isBusy ? ' loading' : ''}" data-action="install" ${isBusy ? 'disabled' : ''}>
-                        ${escapeHtml(isBusy ? tGet('extensions.installing') : tGet('extensions.install'))}
-                    </button>
-                `
-
-            card.innerHTML = `
-                <div class="ext-card-icon" style="background:${ext.bg};border-color:${ext.border};color:${ext.color}">
-                    ${ext.icon}
-                </div>
-                <div class="ext-card-info">
-                    <div class="ext-card-name">${escapeHtml(tGet(ext.titleKey))}</div>
-                    <div class="ext-card-desc">${escapeHtml(tGet(ext.descKey))}</div>
-                    <span class="ext-card-cat">${escapeHtml(tGet('extensions.realBadge'))}</span>
-                    ${errorText ? `<div class="ext-card-desc" style="color:#f44;margin-top:4px;">${escapeHtml(errorText)}</div>` : ''}
-                </div>
-                <div class="ext-card-actions">
-                    ${actionsHtml}
-                </div>
-            `
-
-            const installBtn = card.querySelector('[data-action="install"]')
-            if (installBtn) {
-                installBtn.addEventListener('click', async () => {
-                    if (!userIsPro) {
-                        if (requirePro) requirePro('extensions')
-                        return
-                    }
-                    if (realExtBusy[ext.key]) return
-                    realExtBusy[ext.key] = true
-                    delete realExtErrors[ext.key]
-                    renderRealExtensionsCatalog()
-
-                    try {
-                        const result = await window.electronAPI.extInstall(ext.key)
-                        if (!result || !result.success) {
-                            realExtErrors[ext.key] = `${tGet('extensions.installFailed')}: ${result?.error || '?'}`
-                        }
-                    } catch (err) {
-                        realExtErrors[ext.key] = `${tGet('extensions.installFailed')}: ${err?.message || err}`
-                    } finally {
-                        realExtBusy[ext.key] = false
-                        renderRealExtensionsCatalog()
-                    }
-                })
-            }
-
-            const uninstallBtn = card.querySelector('[data-action="uninstall"]')
-            if (uninstallBtn) {
-                uninstallBtn.addEventListener('click', async () => {
-                    if (realExtBusy[ext.key]) return
-                    realExtBusy[ext.key] = true
-                    delete realExtErrors[ext.key]
-                    renderRealExtensionsCatalog()
-
-                    try {
-                        // Выключаем везде ДО физического удаления файлов, чтобы ни одна
-                        // сессия не осталась ссылаться на путь, который вот-вот исчезнет.
-                        const newState = getExtensionState()
-                        if (newState[ext.key]) {
-                            newState[ext.key] = false
-                            store.set('extensionsState', newState)
-                            await window.electronAPI.extToggle(ext.key, false)
-                        }
-                        await window.electronAPI.extUninstall(ext.key)
-                    } catch (err) {
-                        realExtErrors[ext.key] = `${err?.message || err}`
-                    } finally {
-                        realExtBusy[ext.key] = false
-                        renderRealExtensionsCatalog()
-                    }
-                })
-            }
-
-            const toggleInput = card.querySelector('[data-action="toggle"]')
-            if (toggleInput) {
-                toggleInput.addEventListener('change', async (e) => {
-                    const checked = e.target.checked
-                    if (checked && !userIsPro) {
-                        e.target.checked = false
-                        if (requirePro) requirePro('extensions')
-                        return
-                    }
-                    e.target.disabled = true
-
-                    const newState = getExtensionState()
-                    newState[ext.key] = checked
-                    store.set('extensionsState', newState)
-
-                    try {
-                        const result = await window.electronAPI.extToggle(ext.key, checked)
-                        if (!result || !result.success) {
-                            // Откатываем UI, если main реально не смог включить/выключить —
-                            // иначе тумблер будет врать о фактическом состоянии сессий.
-                            e.target.checked = !checked
-                            newState[ext.key] = !checked
-                            store.set('extensionsState', newState)
-                            realExtErrors[ext.key] = result?.error || ''
-                            renderRealExtensionsCatalog()
-                            return
-                        }
-                    } catch (err) {
-                        e.target.checked = !checked
-                        newState[ext.key] = !checked
-                        store.set('extensionsState', newState)
-                        realExtErrors[ext.key] = err?.message || String(err)
-                        renderRealExtensionsCatalog()
-                        return
-                    } finally {
-                        e.target.disabled = false
-                    }
-                })
-            }
-
-            container.appendChild(card)
-        })
+    // «Рабочие пространства» are a part of the side panel, so their switch lives in Settings → Боковая панель
+    // (it is still the same extension underneath: the same state, the same handler)
+    function renderWorkspacesRow(state, userIsPro) {
+        const group = document.getElementById('workspacesSettingsGroup')
+        const ext = NATIVE_EXTENSIONS.find((e) => e.id === 'workspaces')
+        if (!group || !ext) return
+        group.textContent = ''
+        const title = document.createElement('div')
+        title.className = 'settings-group-title'
+        title.append(tGet(ext.titleKey))
+        const chip = document.createElement('span')
+        chip.className = 'ai-pro-chip'
+        chip.textContent = 'ПРО'
+        title.append(chip)
+        const row = document.createElement('div')
+        row.className = 'settings-row'
+        const label = document.createElement('div')
+        label.className = 'settings-label'
+        const name = document.createElement('span')
+        name.textContent = tGet(ext.titleKey)
+        const hint = document.createElement('span')
+        hint.className = 'settings-hint'
+        hint.textContent = tGet(ext.descKey)
+        label.append(name, hint)
+        const toggle = document.createElement('label')
+        toggle.className = 'toggle'
+        const input = document.createElement('input')
+        input.type = 'checkbox'
+        input.id = 'ext-toggle-workspaces'
+        input.checked = state.workspaces === true && userIsPro
+        const slider = document.createElement('span')
+        slider.className = 'toggle-slider'
+        toggle.append(input, slider)
+        row.append(label, toggle)
+        group.append(title, row)
+        bindNativeToggle(input, 'workspaces', userIsPro)
     }
 
     function openExtensionsSection() {
         renderExtensionsCatalog()
-        renderRealExtensionsCatalog()
 
         // BUGFIX (2026-09-09, "PRO поставил ручками, а плагины/заметки всё
         // равно не выдвигаются" — live user report): getUserIsPro() above
@@ -419,14 +295,12 @@ function createExtensionsUiApi({
         if (typeof refreshUser === 'function') {
             refreshUser().then(() => {
                 renderExtensionsCatalog()
-                renderRealExtensionsCatalog()
             }).catch(() => {})
         }
     }
 
     return {
         renderExtensionsCatalog,
-        renderRealExtensionsCatalog,
         openExtensionsSection
     }
 }

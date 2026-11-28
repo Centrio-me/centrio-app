@@ -294,9 +294,6 @@
 
         view.addEventListener('dom-ready', () => {
             try { view.setZoomFactor(zoom) } catch {}
-            if (m.forceDarkMode) {
-                view.insertCSS('html { filter: invert(1) hue-rotate(180deg) !important; } img, video, canvas, [style*="background-image"] { filter: invert(1) hue-rotate(180deg) !important; }').catch(() => {})
-            }
         })
         view.addEventListener('did-start-loading', () => el.progress.classList.add('on'))
         view.addEventListener('did-stop-loading', () => el.progress.classList.remove('on'))

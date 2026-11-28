@@ -53,7 +53,8 @@ function createCloudUiApi({
     // Подпись кнопки аккаунта в раскрытом сайдбаре: имя пользователя, если
     // оно есть, иначе — просто "Аккаунт". textContent (не innerHTML) —
     // имя приходит с сервера и не должно попадать в разметку как HTML.
-    function _updateCloudBtnLabel(name) {
+    // Under the name sits the plan (a chip) and, for a paid one, until when it runs: the wide panel shows what you have at a glance.
+    function _updateCloudBtnLabel(name, user) {
         let labelEl = document.getElementById('cloudBtnLabel')
         if (!labelEl) {
             const btn = document.getElementById('cloudBtn')
@@ -63,7 +64,28 @@ function createCloudUiApi({
             labelEl.className = 'activity-btn-label'
             btn.appendChild(labelEl)
         }
-        labelEl.textContent = name || tGet('cloud.accountBtn')
+        labelEl.textContent = ''
+        const nameEl = document.createElement('span')
+        nameEl.className = 'cb-name'
+        nameEl.textContent = name || tGet('cloud.accountBtn')
+        labelEl.append(nameEl)
+        if (!user) return
+        const sub = document.createElement('span')
+        sub.className = 'cb-sub'
+        const paid = _isPro(user)
+        const chip = document.createElement('span')
+        chip.className = 'cb-chip' + (paid ? (_isTeamPro(user) ? ' is-team' : ' is-pro') : '')
+        chip.textContent = paid ? (_isTeamPro(user) || (user.plan || '').toUpperCase() === 'TEAM' ? 'TEAM' : tGet('cloud.planPro')) : tGet('cloud.planFree')
+        sub.append(chip)
+        const expiry = paid ? (user.planExpiresAt || user.planExpiry || user.expiresAt || null) : null
+        const when = expiry ? new Date(expiry) : null
+        if (when && !Number.isNaN(when.getTime())) {
+            const until = document.createElement('span')
+            until.className = 'cb-until'
+            until.textContent = tGet('vabout.until', { d: when.toLocaleDateString(undefined, { day: 'numeric', month: 'long' }) })
+            sub.append(until)
+        }
+        labelEl.append(sub)
     }
 
     function updateCloudBtn() {
@@ -111,7 +133,7 @@ function createCloudUiApi({
             holder.appendChild(img)
         }
         btn.title = user.name
-        _updateCloudBtnLabel(user.name)
+        _updateCloudBtnLabel(user.name, user)
     }
 
     // ── Аватарка в модале ─────────────────────────────────────────

@@ -35,6 +35,8 @@ function initApp({
 
     app.whenReady().then(() => {
         try { require('../services/pdfViewer').sweepTemp() } catch {} // PDFs the reader kept aside last time
+        // the Chrome Web Store extensions are gone from the app: take their downloaded files off the disk once
+        try { require('fs').rmSync(require('path').join(app.getPath('userData'), 'centrio-extensions'), { recursive: true, force: true }) } catch {}
         createWindow()
         createTray()
 
@@ -62,6 +64,7 @@ function initApp({
         checkPendingUpdateOutcome({ appendCrashLog, reportCrashToServer })
 
         // Initial adblock application
+        try { require('../services/adblockLists').init() } catch(e) {}
         try { require('../services/adblock').updateAllSessions() } catch(e) {}
 
         // ── Первая проверка через 10–20 сек после старта ─────────

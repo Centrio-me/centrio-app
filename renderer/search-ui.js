@@ -15,7 +15,8 @@ function createSearchUiApi({
     switchTab,
     isMessengerMuted,
     updateMuteAllBtn,
-    getSwitcherItems = null
+    getSwitcherItems = null,
+    quickAnswers = null
 }) {
     // Where Ctrl+F searches: the messenger the user picked in the find bar, otherwise the one that has the focus (in a
     // split — the focused pane, not simply the left one).
@@ -194,6 +195,7 @@ function createSearchUiApi({
     function openQuickSearch() {
         quickSearch.classList.add('show')
         quickSearchInput.value = ''
+        if (quickAnswers) quickAnswers.prefetch()
         if (typeof getSwitcherItems === 'function') quickSearchInput.placeholder = tGet('v371.qs.placeholder')
         renderQuickSearchResults('')
         setTimeout(() => quickSearchInput.focus(), 50)
@@ -269,9 +271,81 @@ function createSearchUiApi({
         actions: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>'
     }
 
+    function renderAnswers(query) {
+        const answers = quickAnswers ? quickAnswers.answersFor(query) : []
+        if (!answers.length) return 0
+        const header = document.createElement('div')
+        header.className = 'quick-search-group'
+        header.textContent = tGet('vext.answers.group')
+        quickSearchResults.appendChild(header)
+        answers.forEach((answer, idx) => {
+            const item = document.createElement('div')
+            item.className = 'quick-search-item quick-answer' + (idx === 0 ? ' selected' : '')
+            const glyph = document.createElement('span')
+            glyph.className = 'quick-search-item-glyph is-answer'
+            glyph.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7h8M8 12h.01M12 12h.01M16 12h.01M8 16h.01M12 16h.01M16 16h.01"/></svg>'
+            if (answer.swatch) {
+                glyph.textContent = ''
+                glyph.classList.add('has-swatch')
+                glyph.style.background = answer.swatch
+            }
+            const text = document.createElement('span')
+            text.className = 'quick-search-item-name'
+            text.textContent = answer.label
+            item.append(glyph, text)
+            if (answer.hint) {
+                const hint = document.createElement('span')
+                hint.className = 'quick-answer-hint'
+                hint.textContent = answer.hint
+                item.append(hint)
+            }
+            item.addEventListener('click', () => {
+                if (answer.run) { try { answer.run() } catch { /* the tool reports its own problems */ } }
+                else if (answer.copy) { try { navigator.clipboard.writeText(answer.copy) } catch { /* nothing to do */ } }
+                closeQuickSearch()
+            })
+            quickSearchResults.appendChild(item)
+        })
+        return answers.length
+    }
+
+    // With nothing typed, the window says what else it can do: a click puts the example into the field
+    function renderHints() {
+        const tools = window.__centrioTools || {}
+        const rows = []
+        if (tools.currency !== false) rows.push(['2+2*3', 'vext.hints.sum'], ['100 usd', 'vext.hints.money'])
+        if (tools.units !== false) rows.push(['5 км в мили', 'vext.hints.units'])
+        if (tools.timer !== false) rows.push(['таймер 10 мин', 'vext.hints.timer'])
+        if (tools.color !== false) rows.push(['#5aa9ff', 'vext.hints.color'], ['пипетка', 'vext.hints.eyedropper'])
+        rows.push(['/', 'vext.hints.commands'])
+        const header = document.createElement('div')
+        header.className = 'quick-search-group'
+        header.textContent = tGet('vext.hints.title')
+        quickSearchResults.appendChild(header)
+        rows.forEach(([example, key]) => {
+            const row = document.createElement('div')
+            row.className = 'quick-search-item quick-hint'
+            const code = document.createElement('span')
+            code.className = 'quick-hint-example'
+            code.textContent = example
+            const text = document.createElement('span')
+            text.className = 'quick-hint-text'
+            text.textContent = tGet(key)
+            row.append(code, text)
+            row.addEventListener('click', () => {
+                quickSearchInput.value = example
+                renderQuickSearchResults(example)
+                quickSearchInput.focus()
+            })
+            quickSearchResults.appendChild(row)
+        })
+    }
+
     function renderSwitcher(query) {
         const ranked = rankItems(getSwitcherItems(), query)
         quickSearchResults.textContent = ''
+        const answered = renderAnswers(query)
+        if (!ranked.length && answered) return
         if (!ranked.length) {
             const empty = document.createElement('div')
             empty.className = 'quick-search-empty'
@@ -289,7 +363,7 @@ function createSearchUiApi({
                 quickSearchResults.appendChild(header)
             }
             const item = document.createElement('div')
-            item.className = 'quick-search-item' + (idx === 0 ? ' selected' : '')
+            item.className = 'quick-search-item' + (idx === 0 && !answered ? ' selected' : '')
             if (entry.group === 'services') {
                 const img = document.createElement('img')
                 img.width = 24
@@ -321,6 +395,7 @@ function createSearchUiApi({
             })
             quickSearchResults.appendChild(item)
         })
+        if (!query.trim()) renderHints()
     }
 
     function renderCommands(q) {

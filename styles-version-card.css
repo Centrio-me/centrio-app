@@ -1,0 +1,56 @@
+/* «Версия» card in Settings → Система (renderer/about-card.js). Theme tokens only, so it reads the same on every theme. */
+.vc { display: flex; flex-direction: column; gap: 16px; padding: 18px; border-radius: 16px; background: var(--bg-secondary); border: 1px solid var(--border); font-family: 'Manrope', 'Geist', 'Golos Text', system-ui, sans-serif; }
+
+.vc-hero { display: flex; align-items: center; gap: 16px; }
+.vc-logo { width: 56px; height: 56px; padding: 12px; box-sizing: border-box; flex: none; border-radius: 16px; object-fit: contain;
+    background: color-mix(in srgb, var(--accent) 16%, var(--bg-tertiary)); border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--border)); }
+[data-theme="light"] .vc-logo { filter: invert(1); }
+.vc-hero-text { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.vc-name-row { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.vc-name { font-size: 22px; font-weight: 600; letter-spacing: -0.01em; color: var(--text-bright); }
+.vc-version { font-size: 13px; font-weight: 600; padding: 2px 10px; border-radius: 999px; font-variant-numeric: tabular-nums;
+    color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.vc-sub { font-size: 13px; color: var(--text-secondary); }
+.vc-status { display: inline-flex; align-items: center; gap: 7px; width: fit-content; margin-top: 4px; font-size: 12.5px; font-weight: 500; color: var(--text-primary); }
+.vc-status::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--success); box-shadow: 0 0 0 3px color-mix(in srgb, var(--success) 20%, transparent); }
+.vc-status[data-state="checking"]::before { background: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); animation: vc-pulse 1s ease-in-out infinite; }
+.vc-status[data-state="found"]::before { background: var(--warning); box-shadow: 0 0 0 3px color-mix(in srgb, var(--warning) 22%, transparent); }
+.vc-status[data-state="error"]::before { background: var(--danger); box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 22%, transparent); }
+@keyframes vc-pulse { 50% { opacity: .35; } }
+
+.vc-progress { display: flex; flex-direction: column; gap: 6px; }
+.vc-progress[hidden] { display: none; }
+.vc-progress-line { height: 6px; border-radius: 3px; background: var(--bg-tertiary); overflow: hidden; }
+.vc-progress-fill { display: block; height: 100%; width: 0; border-radius: 3px; background: var(--accent); transition: width .3s ease; }
+.vc-progress-text { font-size: 12px; color: var(--text-secondary); }
+
+.vc-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin: 0; }
+.vc-fact { padding: 10px 12px; border-radius: 12px; background: var(--bg-tertiary); border: 1px solid var(--border); min-width: 0; }
+.vc-fact-label { font-size: 11.5px; color: var(--text-secondary); margin: 0 0 3px; }
+.vc-fact-value { margin: 0; font-size: 13.5px; font-weight: 600; color: var(--text-bright); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.vc-news { padding: 12px 14px; border-radius: 12px; background: var(--bg-tertiary); border: 1px solid var(--border); }
+.vc-news-title { font-size: 13px; font-weight: 600; color: var(--text-bright); cursor: pointer; list-style: none; display: flex; align-items: center; gap: 8px; }
+.vc-news-title::-webkit-details-marker { display: none; }
+.vc-news-title::after { content: ''; width: 7px; height: 7px; margin-left: auto; border-right: 2px solid var(--text-secondary); border-bottom: 2px solid var(--text-secondary); transform: rotate(45deg) translateY(-2px); transition: transform .2s ease; }
+.vc-news[open] .vc-news-title::after { transform: rotate(-135deg) translateY(-2px); }
+.vc-news[open] .vc-news-title { margin-bottom: 10px; }
+.vc-news-list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 7px; }
+.vc-news-list li { position: relative; padding-left: 18px; font-size: 12.5px; line-height: 1.45; color: var(--text-primary); }
+.vc-news-list li::before { content: ''; position: absolute; left: 2px; top: .45em; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+.vc-news-list .vc-news-empty { color: var(--text-secondary); padding-left: 0; }
+.vc-news-list .vc-news-empty::before { display: none; }
+
+.vc-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.vc-btn { display: inline-flex; align-items: center; gap: 7px; height: 36px; padding: 0 14px; border-radius: 10px; cursor: pointer;
+    font: 600 12.5px/1 'Manrope', 'Geist', 'Golos Text', system-ui, sans-serif; color: var(--text-primary);
+    background: transparent; border: 1px solid var(--border-light); transition: background .15s, border-color .15s, color .15s; }
+.vc-btn:hover { background: color-mix(in srgb, var(--text-primary) 7%, transparent); }
+.vc-btn:disabled { opacity: .55; cursor: default; }
+.vc-btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.vc-btn-primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+.vc-btn.is-done { color: var(--success); border-color: color-mix(in srgb, var(--success) 50%, var(--border)); }
+.vc-auto { font-size: 12px; color: var(--text-secondary); margin-top: -6px; }
+
+
+@media (prefers-reduced-motion: reduce) { .vc-status[data-state="checking"]::before { animation: none; } .vc-progress-fill { transition: none; } }

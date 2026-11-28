@@ -326,7 +326,7 @@ const PROTECTED_SET_KEYS = new Set(['cloud', 'cloud.user', 'localProTrialExpires
 // 'notes' removed (2026-09-30, "убираем её из расширений... пусть всегда
 // доступна будет для PRO") — no longer a toggleable native extension, see
 // renderer/notes-bind.js.
-const NATIVE_EXTENSION_IDS = ['adblock', 'screenshot', 'darkmode', 'split', 'workspaces']
+const NATIVE_EXTENSION_IDS = ['adblock', 'screenshot', 'split', 'workspaces']
 
 // SECURITY: free-plan defaults for the Pro-gated theme/accent-color settings
 // (settings-bind.js's requirePro('themes')/requirePro('accent') gates the

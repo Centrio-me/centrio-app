@@ -127,6 +127,57 @@ function createWorkspacesUiApi({
     // активно — теперь она подменяется на иконку самого пространства (тот
     // же folderIcons-набор, что в меню и в модалке создания), падая обратно
     // на сетку только для "Все" (пространство не выбрано).
+    // How many unread messages sit in a space (null = the sum over everything, for «Все»): the same grouping the
+    // visibility rule above uses — a messenger inside a folder belongs to the folder's space.
+    function unreadInWorkspace(workspaceId) {
+        let sum = 0
+        state.activeMessengers.forEach((m) => {
+            const owner = m.folderId ? (state.folders.find((f) => f.id === m.folderId) || {}).workspaceId : m.workspaceId
+            if (workspaceId && owner !== workspaceId) return
+            sum += state.unreadCounts?.[m.id] || 0
+        })
+        return sum
+    }
+
+    function countPill(count) {
+        return count > 0 ? `<span class="ws-count">${count > 99 ? '99+' : count}</span>` : ''
+    }
+
+    // The narrow panel shows spaces as a vertical rail of chips (one tap switches), with the unread count on each.
+    function renderRail() {
+        if (!switcherEl) return
+        let rail = switcherEl.querySelector('.workspace-rail')
+        const show = enabled && state.workspaces.length > 0
+        switcherEl.classList.toggle('has-rail', show)
+        if (!show) { rail?.remove(); return }
+        if (!rail) {
+            rail = document.createElement('div')
+            rail.className = 'workspace-rail'
+            rail.setAttribute('role', 'tablist')
+            switcherEl.appendChild(rail)
+        }
+        const chips = [{ id: '', name: tGet('workspaces.all') || 'Все', icon: null, color: '' }].concat(
+            state.workspaces.map((w) => ({ id: w.id, name: w.name, icon: w.icon, color: w.color || '' }))
+        )
+        rail.innerHTML = chips.map((c) => {
+            const svg = c.id ? ((folderIcons && folderIcons[c.icon]) || (folderIcons && folderIcons.folder) || DEFAULT_SWITCHER_ICON_SVG) : DEFAULT_SWITCHER_ICON_SVG
+            const active = (state.activeWorkspaceId || '') === c.id
+            return `<button type="button" role="tab" aria-selected="${active}" aria-label="${escapeHtml(c.name)}" class="workspace-rail-chip${active ? ' active' : ''}" data-id="${escapeHtml(c.id)}"${c.color ? ` style="--ws-color:${escapeHtml(c.color)}"` : ''}>${svg}${countPill(unreadInWorkspace(c.id || null))}</button>`
+        }).join('')
+        rail.querySelectorAll('.workspace-rail-chip').forEach((chip, i) => {
+            chip.addEventListener('click', (e) => { e.stopPropagation(); setActiveWorkspace(chip.dataset.id || null) })
+            if (showTooltip && hideTooltip) {
+                chip.addEventListener('mouseenter', () => showTooltip(chip, chips[i].name))
+                chip.addEventListener('mouseleave', hideTooltip)
+            }
+        })
+    }
+
+    document.addEventListener('unread-count-changed', () => {
+        renderRail()
+        if (menuOpen) renderSwitcherMenu()
+    })
+
     function updateSwitcherLabel() {
         if (!switcherEl) return
         const label = switcherEl.querySelector('.workspace-switcher-label')
@@ -138,6 +189,7 @@ function createWorkspacesUiApi({
                 ? ((folderIcons && folderIcons[ws.icon]) || (folderIcons && folderIcons.folder) || DEFAULT_SWITCHER_ICON_SVG)
                 : DEFAULT_SWITCHER_ICON_SVG
         }
+        renderRail()
     }
 
     function setActiveWorkspace(workspaceId) {
@@ -210,6 +262,7 @@ function createWorkspacesUiApi({
             <div class="workspace-switcher-item ${!state.activeWorkspaceId ? 'active' : ''}" data-id="">
                 <span class="workspace-switcher-item-dot" style="background:var(--accent)"></span>
                 <span class="workspace-switcher-item-name">${escapeHtml(tGet('workspaces.all') || 'Все')}</span>
+                ${countPill(unreadInWorkspace(null))}
             </div>
         `]
 
@@ -224,6 +277,7 @@ function createWorkspacesUiApi({
                 <div class="workspace-switcher-item ${state.activeWorkspaceId === ws.id ? 'active' : ''}" data-id="${escapeHtml(ws.id)}">
                     <span class="workspace-switcher-item-icon" style="color:${escapeHtml(ws.color || 'var(--accent)')}">${iconSvg}</span>
                     <span class="workspace-switcher-item-name">${escapeHtml(ws.name)}</span>
+                    ${countPill(unreadInWorkspace(ws.id))}
                 </div>
             `)
         })
@@ -431,7 +485,7 @@ function createWorkspacesUiApi({
                 menuEl.style.position = ''
                 menuEl.style.top = ''
                 menuEl.style.left = ''
-                switcherEl.insertAdjacentElement('afterend', menuEl)
+                switcherEl.appendChild(menuEl) // inside the switcher: the button and its list are one window that grows
             } else {
                 menuEl.classList.remove('workspace-switcher-menu-inline')
                 document.body.appendChild(menuEl)

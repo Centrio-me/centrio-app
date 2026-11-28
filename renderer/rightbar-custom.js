@@ -15,6 +15,8 @@ const ITEMS = [
     { id: 'mediaPlayer', buttonId: 'mediaPlayerBtn', labelKey: 'rightbar.mediaPlayer', labelFallback: 'Медиаплеер', panelKey: null }
 ]
 const KNOWN_IDS = new Set(ITEMS.map((item) => item.id))
+// the tools that are switched on and off in Settings → Расширения (here only their place in the bar is chosen)
+const SWITCHED_IN_EXTENSIONS = new Set(['todos', 'notes', 'quickReplies', 'passwords'])
 
 function normalizeLayout(raw) {
     const hidden = Array.isArray(raw?.hidden) ? raw.hidden.filter((id) => KNOWN_IDS.has(id)) : []
@@ -134,6 +136,14 @@ function bindRightbarCustom({ store, tGet, hasEffectivePro, requirePro, closeRig
             moves.appendChild(arrowButton('down', tGet('rightbarCustom.moveDown') || 'Ниже', index === layout.order.length - 1, () => moveItem(id, 1)))
             row.appendChild(moves)
 
+            if (SWITCHED_IN_EXTENSIONS.has(id)) {
+                const note = document.createElement('span')
+                note.className = 'rb-row-note'
+                note.textContent = tGet('vext.panelOrderHint')
+                row.appendChild(note)
+                listEl.appendChild(row)
+                return
+            }
             const toggle = document.createElement('label')
             toggle.className = 'toggle'
             const input = document.createElement('input')
@@ -155,7 +165,13 @@ function bindRightbarCustom({ store, tGet, hasEffectivePro, requirePro, closeRig
         saveLayout(normalizeLayout(null))
     })
 
-    document.querySelector('.settings-nav-item[data-section="workspace"]')?.addEventListener('click', render)
+    document.querySelector('.settings-nav-item[data-section="allInbox"]')?.addEventListener('click', render)
+
+    // Settings → Расширения switches tasks, notes, quick replies and passwords through this event
+    document.addEventListener('rightbar-item-toggle', (e) => {
+        const { id, visible } = (e && e.detail) || {}
+        if (KNOWN_IDS.has(id)) toggleItem(id, !!visible)
+    })
 
     apply()
     render()

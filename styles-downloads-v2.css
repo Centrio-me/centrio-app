@@ -1,0 +1,59 @@
+/* Downloads panel v2 (2026-11-28): coloured tiles by file kind, names that wrap, day groups, filters, speed, icon actions. */
+#downloadsPanel .dl-tools { display: flex; flex-direction: column; gap: 8px; padding: 0 14px 10px; border-bottom: 1px solid var(--border); }
+.dl-search { width: 100%; height: 34px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg-tertiary); color: var(--text-primary); font: inherit; font-size: 13px; }
+.dl-search:focus { outline: none; border-color: color-mix(in srgb, var(--accent) 55%, var(--border)); }
+.dl-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.dl-chip { height: 26px; padding: 0 11px; border-radius: 999px; border: 1px solid var(--border); background: transparent; color: var(--text-secondary); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; transition: background .15s, color .15s, border-color .15s; }
+.dl-chip:hover { color: var(--text-primary); background: color-mix(in srgb, var(--text-primary) 6%, transparent); }
+.dl-chip.on { color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); border-color: color-mix(in srgb, var(--accent) 40%, var(--border)); }
+
+.dl-group { padding: 12px 18px 6px; font-size: 11.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-secondary); }
+
+.dl-item { display: flex; align-items: center; gap: 12px; padding: 10px 14px; margin: 2px 8px; border-radius: 14px; border: none; background: transparent; position: relative; cursor: pointer; transition: background .15s ease; }
+.dl-item:hover { background: color-mix(in srgb, var(--text-primary) 6%, transparent); }
+.dl-item[data-state="interrupted"] .dl-meta, .dl-item[data-state="cancelled"] .dl-meta { color: var(--danger); }
+
+/* the tile: a rounded square in the colour of the kind, with the extension in it */
+.dl-tile { --k: #8b93a7; flex: none; position: relative; width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; overflow: hidden;
+    background: color-mix(in srgb, var(--k) 18%, transparent); border: 1px solid color-mix(in srgb, var(--k) 38%, transparent); }
+.dl-ext { font-size: 11px; font-weight: 800; letter-spacing: .04em; color: var(--k); }
+.dl-tile[data-kind="pdf"] { --k: #ef5350; }
+.dl-tile[data-kind="doc"] { --k: #4a90e2; }
+.dl-tile[data-kind="text"] { --k: #9aa3b5; }
+.dl-tile[data-kind="sheet"] { --k: #43b46b; }
+.dl-tile[data-kind="slide"] { --k: #f08c3a; }
+.dl-tile[data-kind="archive"] { --k: #c9a227; }
+.dl-tile[data-kind="image"] { --k: #b377e6; }
+.dl-tile[data-kind="audio"] { --k: #e65fa0; }
+.dl-tile[data-kind="video"] { --k: #7e6cf2; }
+.dl-tile[data-kind="app"] { --k: #3fb8c6; }
+.dl-tile[data-kind="design"] { --k: #f2692f; }
+.dl-tile[data-kind="code"] { --k: #6fbf8e; }
+.dl-tile[data-kind="book"] { --k: #b58863; }
+.dl-tile-photo .downloads-thumb { position: absolute; inset: 0; width: 100%; height: 100%; flex: none; border-radius: 0; object-fit: cover; }
+.dl-tile-photo .dl-ext { position: absolute; left: 4px; bottom: 4px; padding: 1px 4px; border-radius: 5px; font-size: 9px; background: rgba(0, 0, 0, .62); color: #fff; }
+
+.dl-body { flex: 1; min-width: 0; }
+/* long names wrap (two lines, the whole name is in the tooltip) and never push the panel wider */
+.dl-name { font-size: 13.5px; font-weight: 600; line-height: 1.3; color: var(--text-bright); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; word-break: break-word; white-space: normal; }
+.dl-meta { margin-top: 3px; font-size: 12px; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+.dl-item .downloads-progress-track { margin: 7px 0 2px; height: 5px; border-radius: 3px; }
+.dl-item .downloads-progress-fill { border-radius: 3px; }
+
+.dl-actions { flex: none; display: flex; gap: 4px; opacity: 0; transition: opacity .12s ease; }
+.dl-item:hover .dl-actions, .dl-item:focus-within .dl-actions { opacity: 1; }
+.dl-act { width: 28px; height: 28px; padding: 0; display: grid; place-items: center; border-radius: 9px; border: none; background: color-mix(in srgb, var(--text-primary) 8%, transparent); color: var(--text-primary); box-shadow: none; cursor: pointer; }
+.dl-act svg { width: 15px; height: 15px; }
+.dl-act:hover { background: var(--accent); color: #fff; }
+.dl-act[data-action="remove"]:hover { background: var(--danger); }
+
+/* each download is a card of its own, so neighbours do not run together */
+.dl-item { margin: 6px 10px; padding: 11px 12px; border: 1px solid var(--border); background: color-mix(in srgb, var(--text-primary) 3.5%, transparent); }
+.dl-item:hover { background: color-mix(in srgb, var(--text-primary) 7%, transparent); border-color: var(--border-light); }
+.dl-group { padding: 14px 18px 4px; }
+.dl-tile-photo { width: 52px; height: 52px; }
+
+/* the buttons float over the right end of the card on hover, so the name can use the whole width */
+.dl-item { padding-right: 12px; }
+.dl-actions { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); padding: 4px; border-radius: 12px; background: var(--bg-secondary); box-shadow: 0 4px 14px rgba(0, 0, 0, .35); pointer-events: none; }
+.dl-item:hover .dl-actions, .dl-item:focus-within .dl-actions { pointer-events: auto; }

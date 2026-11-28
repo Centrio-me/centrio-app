@@ -9,6 +9,16 @@ function registerPageMenuIpc({ getMainWindow }) {
     const deps = { getMainWindow, language: () => i18n.getCurrentLanguage() }
     ipcMain.handle('pagemenu:action', (event, wcId, action, payload) => pageMenu.handleAction(deps, event.sender, wcId, action, payload))
 
+    // The spell fixer and the translator work on what is written in the field of the page that has the focus
+    ipcMain.handle('pagemenu:field-text', async (event, wcId) => {
+        const guest = pageMenu.guestFor(getMainWindow, event.sender, wcId)
+        return guest ? pageMenu.readField(guest) : ''
+    })
+    ipcMain.handle('pagemenu:field-replace', (event, wcId, text) => {
+        const guest = pageMenu.guestFor(getMainWindow, event.sender, wcId)
+        return guest ? pageMenu.replaceField(guest, text) : false
+    })
+
     // What is under the pointer on the page: a picture the browser did not call one (canvas, a CSS background, one under a layer)
     ipcMain.handle('pagemenu:probe-image', async (event, wcId, x, y) => {
         const guest = pageMenu.guestFor(getMainWindow, event.sender, wcId)

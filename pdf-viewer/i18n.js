@@ -11,7 +11,8 @@ const RU = {
   printing: 'Готовим печать: страница {n} из {m}', saved: 'Сохранено: {name}', saveFailed: 'Не удалось сохранить файл', printFailed: 'Не удалось напечатать',
   placeRotated: 'Верните поворот страниц в исходное положение, чтобы добавить текст', rotateEdited: 'Сначала уберите добавленный текст: после него поворот недоступен',
   placeUnsupported: 'Текст на страницах с собственным поворотом добавить нельзя', fitWidth: 'По ширине', fitPage: 'Страница целиком', pageWord: 'Страница', unnamed: 'Документ',
-  editedSaved: 'Сохранено вместе с текстом: {name}', editedSuffix: ' (с текстом)'
+  editedSaved: 'Сохранено вместе с текстом: {name}', editedSuffix: ' (с текстом)',
+  tabClose: 'Закрыть вкладку (Ctrl+W)', tabNew: 'Открыть документ (Ctrl+T)'
 }
 const EN = {
   sidebar: 'Page panel', prev: 'Previous page', next: 'Next page', zoomOut: 'Zoom out', zoomMenu: 'Zoom', zoomIn: 'Zoom in',
@@ -25,7 +26,8 @@ const EN = {
   printing: 'Preparing to print: page {n} of {m}', saved: 'Saved: {name}', saveFailed: 'Could not save the file', printFailed: 'Could not print',
   placeRotated: 'Reset the page rotation to add text', rotateEdited: 'Remove the added text first: rotation is unavailable after it',
   placeUnsupported: 'Adding text to pages that have their own rotation is not supported', fitWidth: 'Fit width', fitPage: 'Fit page', pageWord: 'Page', unnamed: 'Document',
-  editedSaved: 'Saved with the text: {name}', editedSuffix: ' (with text)'
+  editedSaved: 'Saved with the text: {name}', editedSuffix: ' (with text)',
+  tabClose: 'Close tab (Ctrl+W)', tabNew: 'Open a document (Ctrl+T)'
 }
 const dict = String(navigator.language || '').toLowerCase().startsWith('ru') ? RU : EN
 document.documentElement.lang = dict === RU ? 'ru' : 'en'

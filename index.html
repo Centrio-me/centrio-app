@@ -51,6 +51,11 @@
     <link rel="stylesheet" href="assets/fonts/noto-emoji/emoji.css">
     <link rel="stylesheet" href="./styles-settings-v2.css">
     <link rel="stylesheet" href="assets/fonts/site/fonts.css">
+    <link rel="stylesheet" href="./styles-sidebar-v2.css">
+    <link rel="stylesheet" href="./styles-version-card.css">
+    <link rel="stylesheet" href="./styles-downloads-v2.css">
+    <link rel="stylesheet" href="./styles-vpn-v2.css">
+    <link rel="stylesheet" href="./styles-spellcheck.css">
 </head>
 <body>
 
@@ -1235,6 +1240,22 @@
         <section class="cl-main" id="clMain" tabindex="-1"></section>
     </div>
     <div class="changelog-popup-body changelog-source" hidden aria-hidden="true">
+        <div class="changelog-entry" data-date="2026-11-29">
+            <div class="changelog-version">v3.11.0</div>
+            <ul class="changelog-list">
+                <li>Новое: боковая панель стала другой: подписи, карточка аккаунта с тарифом, плавное сворачивание, «ручка» в цвет панели. Рабочие пространства теперь одно цельное окно.</li>
+                <li>Новое: раздел «Панели» в настройках: левая панель, верхняя полоса, правая панель и фокус в сплите в одном месте.</li>
+                <li>Новое: «Расширения» собраны заново. Включаются и выключаются Задачи, Заметки, Быстрые ответы, Менеджер паролей, проверка правописания, перевод, курс валют и калькулятор, таймер, конвертер единиц и пипетка.</li>
+                <li>Новое: правая кнопка в поле ввода: «Перевести» (язык можно сменить в окне, перевод вставляется вместо текста) и «Исправить ошибки» по русскому и английскому словарям Centrio. Работает и в MAX.</li>
+                <li>Новое: пипетка в меню страницы: круглая лупа, клик копирует цвет и показывает его как HEX, RGB и HSL.</li>
+                <li>Новое: Ctrl+K считает и переводит: «2+2*3», «100 usd» по курсу ЦБ, «5 км в мили», «таймер 10 мин», «#5aa9ff». Пустое окно подсказывает, что можно написать.</li>
+                <li>Новое: AdBlock использует большие списки (EasyList, EasyPrivacy, RU AdList) и сам обновляет их раз в сутки.</li>
+                <li>Новое: PDF в читалке открываются вкладками в одном окне; «+» открывает ещё один файл.</li>
+                <li>Новое: обновлены окна версии (с «Проверить обновления»), загрузок (плитки по типам, превью, поиск, скорость) и VPN (управление сверху, серверы прокручиваются).</li>
+                <li>Убрано: расширения из магазина Chrome и «Тёмная тема» для сайтов; темы оформления Centrio остались.</li>
+                <li>Исправлено: «Ручка» панели не пропадает при наведении, в развёрнутой панели виден тариф ПРО, список серверов VPN прокручивается без лишней полосы.</li>
+            </ul>
+        </div>
         <div class="changelog-entry" data-date="2026-11-26">
             <div class="changelog-version">v3.10.2</div>
             <ul class="changelog-list">
@@ -2393,10 +2414,6 @@
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-9-5M6 8c0 7-3 9-3 9h13M13.7 21a2 2 0 0 1-3.4 0M3 3l18 18"/></svg>
         <span class="ctx-label" data-i18n="notifications.mute"></span>
     </div>
-    <div class="context-item" id="ctxDarkMode">
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-        <span class="ctx-label" id="ctxDarkModeLabel" data-i18n="html.k052">Тёмная тема</span>
-    </div>
     <div class="context-divider"></div>
     <div class="context-item" id="ctxEdit">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z"/></svg>
@@ -2739,18 +2756,9 @@
                     </svg>
                     <span data-i18n="settings.sections.general"></span>
                 </div>
-                <div class="settings-nav-item settings-nav-allinbox" data-section="allInbox">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="url(#aiAuroraNav)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-                        <defs>
-                            <linearGradient id="aiAuroraNav" x1="2" y1="4" x2="22" y2="22" gradientUnits="userSpaceOnUse">
-                                <stop offset="0" stop-color="#7cc4ff"/><stop offset=".5" stop-color="#a78bfa"/><stop offset="1" stop-color="#5eead4"/>
-                            </linearGradient>
-                        </defs>
-                        <path d="M4 5h11a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H9l-4 3v-3H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z"/>
-                        <path d="M20 9a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-1v3l-4-3h-3"/>
-                    </svg>
-                    <span data-i18n="v380.allInbox.title">Все мессенджеры</span>
-                    <span class="settings-nav-pro-badge" data-i18n="cloud.planPro">ПРО</span>
+                <div class="settings-nav-item" data-section="allInbox">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/><path d="M5.500 8h.01M5.500 12h.01M5.500 16h.01" stroke-width="2.400"/></svg>
+                    <span data-i18n="vpanel.nav">Боковая панель</span>
                 </div>
                 <div class="settings-nav-item" data-section="appearance">
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
@@ -2795,15 +2803,6 @@
                         <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" stroke="currentColor" stroke-width="1.8"/>
                     </svg>
                     <span data-i18n="settings.sections.network"></span>
-                </div>
-                <div class="settings-nav-item" data-section="workspace">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
-                        <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" stroke-width="1.8"/>
-                        <path d="M15 3v18" stroke="currentColor" stroke-width="1.8"/>
-                        <path d="M18 8h.01M18 12h.01M18 16h.01" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>
-                    </svg>
-                    <span data-i18n="rightbarCustom.nav"></span>
-                    <span class="settings-nav-pro-badge" data-i18n="cloud.planPro">ПРО</span>
                 </div>
                 <div class="settings-nav-item" data-section="extensions">
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
@@ -2921,7 +2920,107 @@
                 <!-- Внешний вид -->
                 <!-- «Все мессенджеры» (3.8, ПРО, альфа): drawn by renderer/all-inbox/access.js; the mode's new settings go here -->
                 <div class="settings-section" id="section-allInbox">
+                    <div class="settings-hint" style="margin:0 0 14px" data-i18n="vpanel.hint">Всё, что включает и выключает части левой панели, собрано здесь.</div>
+                    <h3 class="settings-subhead" data-i18n="vpanel.left">Левая панель</h3>
+                    <div class="settings-group">
+                        <div class="settings-group-title" data-i18n="settings.folders"></div>
+                        <div class="settings-row">
+                            <div class="settings-label">
+                                <span data-i18n="settings.foldersEnable"></span>
+                                <span class="settings-hint" data-i18n="settings.foldersEnableHint"></span>
+                            </div>
+                            <label class="toggle">
+                                <input type="checkbox" id="settingFoldersEnabled" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="settings-row">
+                            <div class="settings-label">
+                                <span data-i18n="settings.foldersLabel"></span>
+                                <span class="settings-hint" data-i18n="settings.foldersLabelHint"></span>
+                            </div>
+                            <label class="toggle">
+                                <input type="checkbox" id="settingFolderLabel" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="settings-row">
+                            <div class="settings-label">
+                                <span data-i18n="foldersView.title"></span>
+                                <span class="settings-hint" data-i18n="foldersView.hint"></span>
+                            </div>
+                            <div class="settings-view-switch">
+                                <button type="button" class="settings-view-option" data-folders-style="modern"><span data-i18n="foldersView.modern"></span></button>
+                                <button type="button" class="settings-view-option" data-folders-style="classic"><span data-i18n="foldersView.classic"></span></button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="settings-group" id="workspacesSettingsGroup"></div>
                     <div class="settings-group" id="allInboxSettingsGroup"></div>
+                    <h3 class="settings-subhead" data-i18n="vpanel.top">Верхняя полоса</h3>
+                    <div class="settings-group">
+                        <div class="settings-row">
+                            <div class="settings-label">
+                                <span data-i18n="settings.showTabs"></span>
+                            </div>
+                            <label class="toggle">
+                                <input type="checkbox" id="settingShowTabs" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                    <h3 class="settings-subhead" data-i18n="vpanel.right">Правая панель</h3>
+                    <div class="settings-group">
+                        <div class="settings-group-title" data-i18n="rightbarCustom.title"></div>
+                        <div class="settings-hint" style="margin-bottom:16px" data-i18n="rightbarCustom.hint"></div>
+                        <div class="settings-hint rb-pro-note" id="rightbarCustomProNote" style="display:none" data-i18n="rightbarCustom.proNote"></div>
+                        <div id="rightbarCustomList" class="rb-list"></div>
+                        <button type="button" class="btn-secondary rb-reset" id="rightbarCustomReset" data-i18n="rightbarCustom.reset"></button>
+                    </div>
+                    <h3 class="settings-subhead" data-i18n="vpanel.split">Режим сплита</h3>
+                    <div class="settings-group sf-group">
+                        <div class="settings-group-title" data-i18n="settings.groupSplit"></div>
+                        <div class="settings-row">
+                            <div class="settings-label">
+                                <span data-i18n="settings.splitFocus"></span>
+                                <span class="settings-hint" data-i18n="settings.splitFocusHint"></span>
+                            </div>
+                            <label class="toggle">
+                                <input type="checkbox" id="settingSplitFocus">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="settings-hint sf-what" data-i18n="settings.splitFocusWhat"></div>
+                        <div class="settings-row sf-option">
+                            <div class="settings-label"><span data-i18n="settings.splitFocusSidebar"></span></div>
+                            <label class="toggle">
+                                <input type="checkbox" id="settingSplitFocusSidebar">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="settings-row sf-option">
+                            <div class="settings-label"><span data-i18n="settings.splitFocusRight"></span></div>
+                            <label class="toggle">
+                                <input type="checkbox" id="settingSplitFocusRight">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="settings-row sf-option">
+                            <div class="settings-label"><span data-i18n="settings.splitFocusStatusbar"></span></div>
+                            <label class="toggle">
+                                <input type="checkbox" id="settingSplitFocusStatusbar">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="settings-row sf-option">
+                            <div class="settings-label"><span data-i18n="settings.splitFocusTitlebar"></span></div>
+                            <label class="toggle">
+                                <input type="checkbox" id="settingSplitFocusTitlebar">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="settings-section" id="section-appearance">
@@ -3065,93 +3164,8 @@
                                 <option value="15" data-i18n="settings.fontLarge"></option>
                             </select>
                         </div>
-                        <div class="settings-row">
-                            <div class="settings-label">
-                                <span data-i18n="settings.showTabs"></span>
-                            </div>
-                            <label class="toggle">
-                                <input type="checkbox" id="settingShowTabs" checked>
-                                <span class="toggle-slider"></span>
-                            </label>
-                        </div>
                     </div>
 
-                    <div class="settings-group">
-                        <div class="settings-group-title" data-i18n="settings.folders"></div>
-                        <div class="settings-row">
-                            <div class="settings-label">
-                                <span data-i18n="settings.foldersEnable"></span>
-                                <span class="settings-hint" data-i18n="settings.foldersEnableHint"></span>
-                            </div>
-                            <label class="toggle">
-                                <input type="checkbox" id="settingFoldersEnabled" checked>
-                                <span class="toggle-slider"></span>
-                            </label>
-                        </div>
-                        <div class="settings-row">
-                            <div class="settings-label">
-                                <span data-i18n="settings.foldersLabel"></span>
-                                <span class="settings-hint" data-i18n="settings.foldersLabelHint"></span>
-                            </div>
-                            <label class="toggle">
-                                <input type="checkbox" id="settingFolderLabel" checked>
-                                <span class="toggle-slider"></span>
-                            </label>
-                        </div>
-                        <div class="settings-row">
-                            <div class="settings-label">
-                                <span data-i18n="foldersView.title"></span>
-                                <span class="settings-hint" data-i18n="foldersView.hint"></span>
-                            </div>
-                            <div class="settings-view-switch">
-                                <button type="button" class="settings-view-option" data-folders-style="modern"><span data-i18n="foldersView.modern"></span></button>
-                                <button type="button" class="settings-view-option" data-folders-style="classic"><span data-i18n="foldersView.classic"></span></button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="settings-group sf-group">
-                        <div class="settings-group-title" data-i18n="settings.groupSplit"></div>
-                        <div class="settings-row">
-                            <div class="settings-label">
-                                <span data-i18n="settings.splitFocus"></span>
-                                <span class="settings-hint" data-i18n="settings.splitFocusHint"></span>
-                            </div>
-                            <label class="toggle">
-                                <input type="checkbox" id="settingSplitFocus">
-                                <span class="toggle-slider"></span>
-                            </label>
-                        </div>
-                        <div class="settings-hint sf-what" data-i18n="settings.splitFocusWhat"></div>
-                        <div class="settings-row sf-option">
-                            <div class="settings-label"><span data-i18n="settings.splitFocusSidebar"></span></div>
-                            <label class="toggle">
-                                <input type="checkbox" id="settingSplitFocusSidebar">
-                                <span class="toggle-slider"></span>
-                            </label>
-                        </div>
-                        <div class="settings-row sf-option">
-                            <div class="settings-label"><span data-i18n="settings.splitFocusRight"></span></div>
-                            <label class="toggle">
-                                <input type="checkbox" id="settingSplitFocusRight">
-                                <span class="toggle-slider"></span>
-                            </label>
-                        </div>
-                        <div class="settings-row sf-option">
-                            <div class="settings-label"><span data-i18n="settings.splitFocusStatusbar"></span></div>
-                            <label class="toggle">
-                                <input type="checkbox" id="settingSplitFocusStatusbar">
-                                <span class="toggle-slider"></span>
-                            </label>
-                        </div>
-                        <div class="settings-row sf-option">
-                            <div class="settings-label"><span data-i18n="settings.splitFocusTitlebar"></span></div>
-                            <label class="toggle">
-                                <input type="checkbox" id="settingSplitFocusTitlebar">
-                                <span class="toggle-slider"></span>
-                            </label>
-                        </div>
-                    </div>
                 </div>
 
 <!-- Уведомления -->
@@ -3769,15 +3783,6 @@
                 </div>
 
                 <!-- Рабочее пространство (иконки правой панели, Pro) -->
-                <div class="settings-section" id="section-workspace">
-                    <div class="settings-group">
-                        <div class="settings-group-title" data-i18n="rightbarCustom.title"></div>
-                        <div class="settings-hint" style="margin-bottom:16px" data-i18n="rightbarCustom.hint"></div>
-                        <div class="settings-hint rb-pro-note" id="rightbarCustomProNote" style="display:none" data-i18n="rightbarCustom.proNote"></div>
-                        <div id="rightbarCustomList" class="rb-list"></div>
-                        <button type="button" class="btn-secondary rb-reset" id="rightbarCustomReset" data-i18n="rightbarCustom.reset"></button>
-                    </div>
-                </div>
 
                 <!-- Расширения -->
                 <div class="settings-section" id="section-extensions">
@@ -3787,9 +3792,9 @@
                         <div id="extensionsCatalog" class="ext-catalog"></div>
                     </div>
                     <div class="settings-group">
-                        <div class="settings-group-title" data-i18n="settings.extensionsRealTitle"></div>
-                        <div class="settings-hint" style="margin-bottom:16px" data-i18n="settings.extensionsRealHint"></div>
-                        <div id="extensionsRealCatalog" class="ext-catalog"></div>
+                        <div class="settings-group-title" data-i18n="vext.panelTitle"></div>
+                        <div class="settings-hint" style="margin-bottom:16px" data-i18n="vext.panelHint"></div>
+                        <div id="extensionsPanelCatalog" class="ext-catalog"></div>
                     </div>
                 </div>
 
@@ -3798,33 +3803,7 @@
                     <div class="settings-group">
                         <div class="settings-group-title" data-i18n="settings.version"></div>
 
-                        <div class="settings-about settings-about-centrio">
-                            <div class="settings-about-bg"></div>
-
-                            <div class="about-logo-wrap">
-                                <img src="assets/logo.png" alt="Centrio" class="about-logo-img">
-                            </div>
-
-                            <div class="about-name">Centrio<span class="brand-period"></span></div>
-
-                            <div class="about-version-row">
-                                <span class="about-version-badge" id="appVersionText">v1.3.3</span>
-                                <span class="about-build-badge" id="updateStatusBadge" data-i18n="settings.statusReady">Готово к работе</span>
-                            </div>
-
-                            <div class="about-desc" data-i18n="settings.aboutDesc"></div>
-
-                            <div class="about-actions">
-                                <div class="about-update-row">
-                                    <div class="about-update-note" data-i18n="settings.autoUpdateNote">Обновления скачиваются автоматически</div>
-                                    <button class="about-check-btn" id="checkUpdatesBtn">
-                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-                                        <span data-i18n="settings.checkUpdatesBtn">Проверить обновления</span>
-                                    </button>
-                                </div>
-                            </div>
-
-                        </div>
+                        <div id="versionCard"></div>
                     </div>
 
                     <!-- «Друг Centrio» (3.8.2): «Участвовать в тестировании», drawn by renderer/beta-program.js -->

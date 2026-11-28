@@ -11,7 +11,7 @@ const block = html.slice(start, end)
 // every id the handlers of the menu look up (renderer/context-actions-bind.js, context-menus.js, unread.js, messenger-sound-bind.js)
 const IDS = ['ctxLockedNote', 'ctxReload', 'ctxSound', 'ctxDetach', 'ctxKeepAwake', 'ctxKeepAwakeToggle', 'ctxMic', 'ctxMicToggle',
     'ctxCam', 'ctxCamToggle', 'ctxFilesWindow', 'ctxFilesToggle', 'ctxVpn', 'ctxVpnLabel', 'ctxVpnToggle', 'ctxNotifOpen', 'ctxMute',
-    'ctxDarkMode', 'ctxDarkModeLabel', 'ctxEdit', 'ctxMoveToFolder', 'ctxRemoveFromFolder', 'ctxMoveToWorkspace', 'ctxChangeIcon',
+    'ctxEdit', 'ctxMoveToFolder', 'ctxRemoveFromFolder', 'ctxMoveToWorkspace', 'ctxChangeIcon',
     'ctxRemove', 'ctxHeadName']
 
 test('the tab menu keeps every element its handlers look for, once each', () => {

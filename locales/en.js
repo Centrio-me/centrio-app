@@ -1854,3 +1854,13 @@ module.exports.v372 = require('./v372').en
 Object.assign(module.exports.pro, module.exports.v372.pro)
 module.exports.v373 = require('./v373').en
 module.exports.v380 = require('./v380').en
+
+module.exports.vabout = require('./vabout').en
+
+module.exports.vpanel = require('./vpanel').en
+
+module.exports.vdl = require('./vdl').en
+
+module.exports.vspell = require('./vspell').en
+
+module.exports.vext = require('./vext').en

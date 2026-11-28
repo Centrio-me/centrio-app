@@ -364,9 +364,8 @@ function bindVpnUi ({ invokeIpc, tGet, ipcRenderer, onVpnStatusChange, state }) 
       <div class="vpn-top-section">
         ${topHtml}
       </div>
-      ${listHtml}
-      ${subHtml}
-      ${addBtnHtml}
+      <div class="vpn-scroll">${listHtml}</div>
+      <div class="vpn-foot">${subHtml}${addBtnHtml}</div>
       <div class="vpn-status-bar" id="vpnStatusBar" style="display:none"></div>
       <div class="vpn-download-area" id="vpnDownloadArea" style="display:none">
         <div class="vpn-download-label">${esc(tGet('network.vpnDownloading'))}</div>

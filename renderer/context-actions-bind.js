@@ -439,35 +439,6 @@ function bindContextActionsUi({
         toggleMessengerVpn(m.id)
     })
 
-    document.getElementById('ctxDarkMode')?.addEventListener('click', () => {
-        // SECURITY: forced dark mode is the same Pro-gated 'darkmode' native
-        // extension the Extensions panel toggles (extensions-ui.js's
-        // getUserIsPro() check) — this context-menu shortcut had no
-        // equivalent check at all, so any free-plan user could force dark
-        // mode on any messenger regardless of plan, no exploit needed.
-        if (requirePro && !requirePro('extensions')) { hideAllMenus(); return }
-        const m = getMessengerById(state.contextTargetId)
-        hideAllMenus()
-        if (!m) return
-
-        const wv = document.getElementById(`webview-${m.id}`)
-        if (!wv) return
-
-        const current = m.forceDarkMode || false
-        m.forceDarkMode = !current
-        saveData()
-
-        const css = `
-            html { filter: invert(1) hue-rotate(180deg) !important; }
-            img, video, canvas, [style*="background-image"] { filter: invert(1) hue-rotate(180deg) !important; }
-        `
-        if (m.forceDarkMode) {
-            wv.insertCSS(css).then(id => { wv._darkModeCssId = id })
-        } else {
-            wv.reload() // Easiest way to remove injected CSS without tracking ID perfectly
-        }
-    })
-
 }
 
 module.exports = {

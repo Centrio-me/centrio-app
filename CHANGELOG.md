@@ -8,6 +8,27 @@ The format is based on Keep a Changelog. This project does not currently follow 
 
 ## [Unreleased]
 
+## [3.11.0] - 2026-11-29
+
+### Added
+- Left panel redesign: labels, account card with the plan and its end date, animated collapse (FLIP + width), a handle drawn in the panel's own background (a clone of the theme effect layer in themes with effects), workspaces as one widening window with unread counters.
+- Settings → «Панели» (left panel, top strip, right panel, split focus); «Панель ПРО» section folded into it.
+- Settings → «Расширения» rebuilt: tool list and panel list with switches and «Настройки»: spell check (ru/en, own words), translation, currency and calculator (Bank of Russia rates), timer, unit converter, colour tool; Tasks, Notes, Quick replies and Password manager are switched there (on by default).
+- Right-click in a text field: «Перевести» (language chosen in the card, «Вставить вместо») and «Исправить ошибки» (own nspell dictionaries, ru and en; also offered when the focused field is not editable for Chromium, like MAX); both appear when the field has text.
+- Eyedropper: own round loupe over a picture of the window (IPC eyedropper:capture), HEX copied, card with HEX/RGB/HSL; the system EyeDropper is the fallback.
+- Ctrl+K answers: sums, money at the CBR rate, units, colours, timers, «пипетка»; an empty window lists what can be typed.
+- AdBlock: EasyList, EasyPrivacy and RU AdList (about 100 thousand domains and per-site hiding rules), refetched when a day old (checked at start and every 3 hours).
+- PDF reader tabs in one window (up to 12; Ctrl+W, Ctrl+T, Ctrl+Tab).
+- Version card with «Проверить обновления»; downloads and VPN windows redesigned.
+
+### Removed
+- Chrome Web Store extensions and the «Тёмная тема» site extension (main/services/extensions.js, main/ipc/extensions.js); the app themes stay. The old Google translate window.
+
+### Fixed
+- Handle of the left panel disappearing on hover; plan not shown in the expanded panel; VPN server list scrolling the whole window.
+- The page menu offered no writing tools in MAX.
+- «Добавить в словарь» also feeds Centrio's own dictionary.
+
 ## [3.10.2] - 2026-11-26
 
 ### Added

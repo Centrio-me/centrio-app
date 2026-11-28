@@ -65,6 +65,8 @@ function bindSettingsUi({
             const section = document.getElementById(sectionId)
             if (section) section.classList.add('active')
 
+            // the spaces switch lives in the side panel section but is drawn by the extensions code
+            if (item.dataset.section === 'allInbox' && typeof openExtensionsSection === 'function') openExtensionsSection()
             if (item.dataset.section === 'extensions' && typeof openExtensionsSection === 'function') {
                 openExtensionsSection()
             }

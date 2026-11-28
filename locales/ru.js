@@ -1856,3 +1856,13 @@ module.exports.v372 = require('./v372').ru
 Object.assign(module.exports.pro, module.exports.v372.pro)
 module.exports.v373 = require('./v373').ru
 module.exports.v380 = require('./v380').ru
+
+module.exports.vabout = require('./vabout').ru
+
+module.exports.vpanel = require('./vpanel').ru
+
+module.exports.vdl = require('./vdl').ru
+
+module.exports.vspell = require('./vspell').ru
+
+module.exports.vext = require('./vext').ru

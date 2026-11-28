@@ -1339,7 +1339,12 @@ function registerAppEvents({
                 // navigation to a new document.
                 try {
                     const adblock = require('../services/adblock')
-                    if (adblock.isEnabled()) contents.insertCSS(adblock.COSMETIC_CSS).catch(() => {})
+                    if (adblock.isEnabled()) {
+                        contents.insertCSS(adblock.COSMETIC_CSS).catch(() => {})
+                        // what the public lists say hides the ads of this very site
+                        const siteCss = require('../services/adblockLists').cosmeticCss(contents.getURL())
+                        if (siteCss) contents.insertCSS(siteCss).catch(() => {})
+                    }
                 } catch {}
 
                 // Password manager: sign-in form detection and "save this password?" for every tab.

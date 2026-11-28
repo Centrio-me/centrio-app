@@ -1,10 +1,12 @@
 // Centrio's own PDF reader: a PDF that a messenger downloads (or a link to one) opens in a window of its own, drawn by
 // pdf.js inside our page (pdf-viewer/): pages, thumbnails, outline, zoom, search, print, "save as", signature.
+// All documents share ONE window: the first one opens it, every next one becomes a tab (a strip with a plus on top, see
+// pdf-viewer/tabs.*). Each tab is its own view with its own reader page.
 // Turned on by settings.pdfViewer (default on). This file is the main-process side: windows, reading the file,
 // the save and print dialogs. The page only gets the narrow API of pdf-viewer/preload.js.
 'use strict'
 
-const { BrowserWindow, app, ipcMain, dialog, net, shell } = require('electron')
+const { BrowserWindow, WebContentsView, app, ipcMain, dialog, net, shell } = require('electron')
 const path = require('path')
 const fs = require('fs')
 const store = require('./store')
@@ -17,13 +19,19 @@ const { printOptions, isDuplexOn } = require('../../shared/pdf-print')
 const DUPLEX_KEY = 'pdfDuplex'
 
 const TEMP_DIR_NAME = 'centrio-pdf'
-const MAX_WINDOWS = 8
+const MAX_TABS = 12
+const TAB_BAR_H = 40
 const MAX_BYTES = 300 * 1024 * 1024
 const PAGE = path.join(__dirname, '..', '..', 'pdf-viewer', 'viewer.html')
 const PRELOAD = path.join(__dirname, '..', '..', 'pdf-viewer', 'preload.js')
+const TABS_PAGE = path.join(__dirname, '..', '..', 'pdf-viewer', 'tabs.html')
+const TABS_PRELOAD = path.join(__dirname, '..', '..', 'pdf-viewer', 'tabs-preload.js')
+const VIEW_PREFERENCES = { preload: PRELOAD, contextIsolation: true, nodeIntegration: false, sandbox: true, spellcheck: false }
 
-// webContents.id → { win, source: { file } | { url }, title }
+// webContents.id of a tab's view → { win, view, source: { file } | { url }, title }
 const viewers = new Map()
+// the one reader window: { win, bar: WebContentsView (the tab strip), tabs: entry[], active: entry }
+let reader = null
 let ipcReady = false
 
 function isEnabled() {
@@ -67,7 +75,7 @@ function titleOf(source) {
 
 function ownerWindow(event) {
     const entry = viewers.get(event.sender.id)
-    return entry && !entry.win.isDestroyed() ? entry : null
+    return entry && !entry.win.isDestroyed() && !entry.view.webContents.isDestroyed() ? entry : null
 }
 
 function registerIpc() {
@@ -108,7 +116,7 @@ function registerIpc() {
     ipcMain.handle('pdfv:print', (event) => new Promise((resolve) => {
         const entry = ownerWindow(event)
         if (!entry) return resolve({ ok: false })
-        entry.win.webContents.print(printOptions(isDuplexOn(store.get(DUPLEX_KEY, false))), (success, reason) => resolve({ ok: success, reason }))
+        entry.view.webContents.print(printOptions(isDuplexOn(store.get(DUPLEX_KEY, false))), (success, reason) => resolve({ ok: success, reason }))
     }))
 
     // «Печать на обеих сторонах»: remembered between prints and between documents
@@ -125,7 +133,7 @@ function registerIpc() {
             const bytes = await readSource(source)
             entry.source = source
             entry.title = titleOf(source)
-            entry.win.setTitle(entry.title)
+            retitle(entry)
             return { ok: true, title: entry.title, bytes }
         } catch (err) {
             return { ok: false, error: String((err && err.message) || err) }
@@ -143,45 +151,160 @@ function registerIpc() {
 
     ipcMain.on('pdfv:close', (event) => {
         const entry = ownerWindow(event)
-        if (entry) entry.win.close()
+        if (entry) closeTab(entry)
     })
 
     ipcMain.on('pdfv:title', (event, title) => {
         const entry = ownerWindow(event)
-        if (entry) entry.win.setTitle(String(title || entry.title).slice(0, 200))
+        if (!entry) return
+        entry.title = String(title || entry.title).slice(0, 200)
+        retitle(entry)
     })
+
+    // the tab strip
+    const fromBar = (event) => reader && !reader.win.isDestroyed() && event.sender.id === reader.bar.webContents.id
+    ipcMain.handle('pdftabs:get', (event) => (fromBar(event) ? tabState() : { tabs: [], active: 0 }))
+    ipcMain.on('pdftabs:activate', (event, id) => {
+        if (!fromBar(event)) return
+        const entry = reader.tabs.find((e) => e.view.webContents.id === id)
+        if (entry) activate(entry)
+    })
+    ipcMain.on('pdftabs:close', (event, id) => {
+        if (!fromBar(event)) return
+        const entry = reader.tabs.find((e) => e.view.webContents.id === id)
+        if (entry) closeTab(entry)
+    })
+    ipcMain.on('pdftabs:new', (event) => { if (fromBar(event)) addFromDialog() })
 }
 
-function openWindow(source) {
-    registerIpc()
-    if (viewers.size >= MAX_WINDOWS) {
-        const oldest = viewers.values().next().value
-        try { oldest.win.close() } catch {}
+function tabState() {
+    if (!reader) return { tabs: [], active: 0 }
+    return { tabs: reader.tabs.map((e) => ({ id: e.view.webContents.id, title: e.title })), active: reader.active ? reader.active.view.webContents.id : 0 }
+}
+
+function pushTabs() {
+    if (!reader || reader.win.isDestroyed() || reader.bar.webContents.isDestroyed()) return
+    reader.bar.webContents.send('pdftabs:state', tabState())
+}
+
+// the tab and the window title follow the document
+function retitle(entry) {
+    pushTabs()
+    if (reader && reader.active === entry && !entry.win.isDestroyed()) entry.win.setTitle(entry.title)
+}
+
+function layout() {
+    if (!reader || reader.win.isDestroyed()) return
+    const [width, height] = reader.win.getContentSize()
+    reader.bar.setBounds({ x: 0, y: 0, width, height: TAB_BAR_H })
+    for (const entry of reader.tabs) entry.view.setBounds({ x: 0, y: TAB_BAR_H, width, height: Math.max(0, height - TAB_BAR_H) })
+}
+
+function activate(entry) {
+    if (!reader || !reader.tabs.includes(entry)) return
+    reader.active = entry
+    for (const e of reader.tabs) e.view.setVisible(e === entry)
+    layout()
+    if (!reader.win.isDestroyed()) reader.win.setTitle(entry.title)
+    if (!entry.view.webContents.isDestroyed()) entry.view.webContents.focus()
+    pushTabs()
+}
+
+function closeTab(entry) {
+    if (!reader || !reader.tabs.includes(entry)) return
+    const index = reader.tabs.indexOf(entry)
+    reader.tabs.splice(index, 1)
+    viewers.delete(entry.view.webContents.id)
+    try { reader.win.contentView.removeChildView(entry.view) } catch {}
+    try { if (!entry.view.webContents.isDestroyed()) entry.view.webContents.close() } catch {}
+    if (!reader.tabs.length) {
+        try { reader.win.close() } catch {}
+        return
     }
-    const title = titleOf(source)
+    if (reader.active === entry) activate(reader.tabs[Math.min(index, reader.tabs.length - 1)])
+    else pushTabs()
+}
+
+function cycle(step) {
+    if (!reader || reader.tabs.length < 2) return
+    const index = reader.tabs.indexOf(reader.active)
+    activate(reader.tabs[(index + step + reader.tabs.length) % reader.tabs.length])
+}
+
+async function addFromDialog() {
+    if (!reader || reader.win.isDestroyed()) return
+    const result = await dialog.showOpenDialog(reader.win, { properties: ['openFile', 'multiSelections'], filters: [{ name: 'PDF', extensions: ['pdf'] }] })
+    if (result.canceled) return
+    for (const file of result.filePaths) openWindow({ file })
+}
+
+function createReaderWindow() {
     const win = new BrowserWindow({
         width: 1080,
         height: 860,
         minWidth: 560,
         minHeight: 420,
         show: false,
-        title,
+        title: 'PDF',
         icon: path.join(__dirname, '..', '..', 'assets', 'logo.ico'),
         backgroundColor: '#0b0a08',
         autoHideMenuBar: true,
-        webPreferences: { preload: PRELOAD, contextIsolation: true, nodeIntegration: false, sandbox: true, spellcheck: false }
+        webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true, spellcheck: false }
     })
     win.setMenuBarVisibility(false)
-    const id = win.webContents.id
-    viewers.set(id, { win, source, title })
-    win.once('closed', () => viewers.delete(id))
-    // Our own page only: it may not open other windows or leave itself.
-    win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
-    win.webContents.on('will-navigate', (e) => e.preventDefault())
-    win.once('ready-to-show', () => { if (!win.isDestroyed()) win.show() })
+    const bar = new WebContentsView({ webPreferences: { preload: TABS_PRELOAD, contextIsolation: true, nodeIntegration: false, sandbox: true, spellcheck: false } })
+    bar.setBackgroundColor('#131210')
+    win.contentView.addChildView(bar)
+    bar.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
+    bar.webContents.on('will-navigate', (e) => e.preventDefault())
+    bar.webContents.on('did-finish-load', pushTabs)
+    bar.webContents.loadFile(TABS_PAGE).catch(() => {})
+    reader = { win, bar, tabs: [], active: null }
+    win.on('resize', layout)
     win.on('page-title-updated', (e) => e.preventDefault())
-    win.loadFile(PAGE).catch(() => {})
-    return win
+    win.once('closed', () => {
+        const gone = reader
+        reader = null
+        for (const entry of (gone ? gone.tabs : [])) {
+            viewers.delete(entry.view.webContents.id)
+            try { if (!entry.view.webContents.isDestroyed()) entry.view.webContents.close() } catch {}
+        }
+        try { if (gone && !gone.bar.webContents.isDestroyed()) gone.bar.webContents.close() } catch {}
+    })
+    return reader
+}
+
+// The first document opens the window, every next one becomes a tab of it. Returns the tab (an entry) of the document.
+function openWindow(source) {
+    registerIpc()
+    const fresh = !reader || reader.win.isDestroyed()
+    const current = fresh ? createReaderWindow() : reader
+    if (current.tabs.length >= MAX_TABS) closeTab(current.tabs[0])
+    const title = titleOf(source)
+    const view = new WebContentsView({ webPreferences: VIEW_PREFERENCES })
+    view.setBackgroundColor('#0b0a08')
+    const entry = { win: current.win, view, source, title }
+    current.tabs.push(entry)
+    viewers.set(view.webContents.id, entry)
+    current.win.contentView.addChildView(view)
+    // Our own page only: it may not open other windows or leave itself.
+    view.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
+    view.webContents.on('will-navigate', (e) => e.preventDefault())
+    view.webContents.on('before-input-event', (event, input) => {
+        if (input.type !== 'keyDown' || !(input.control || input.meta)) return
+        const key = String(input.key || '').toLowerCase()
+        if (key === 'w') { event.preventDefault(); closeTab(entry) }
+        else if (key === 't') { event.preventDefault(); addFromDialog() }
+        else if (key === 'tab') { event.preventDefault(); cycle(input.shift ? -1 : 1) }
+    })
+    view.webContents.once('did-finish-load', () => { if (!current.win.isDestroyed() && !current.win.isVisible()) current.win.show() })
+    view.webContents.loadFile(PAGE).catch(() => {})
+    activate(entry)
+    return entry
+}
+
+function isLiveTab(entry) {
+    return !!(entry && reader && !reader.win.isDestroyed() && reader.tabs.includes(entry))
 }
 
 // A downloaded file on disk (a path we wrote ourselves).
@@ -281,15 +404,16 @@ async function openBytes(bytes, name) {
     if (!kind || !bytes || !bytes.length) return null
     const hash = require('crypto').createHash('sha1').update(bytes).digest('hex')
     const known = openedByHash.get(hash)
-    if (known && !known.isDestroyed()) {
-        if (known.isMinimized()) known.restore()
-        known.focus()
+    if (isLiveTab(known)) {
+        activate(known)
+        if (known.win.isMinimized()) known.win.restore()
+        known.win.focus()
         return kind
     }
     const savePath = tempPathFor(name)
     await fs.promises.writeFile(savePath, bytes)
-    const win = kind === 'pdf' ? openWindow({ file: savePath, name }) : kind === 'image' ? await openImage(savePath, name) : await openWord(savePath, name)
-    if (win && !win.isDestroyed()) openedByHash.set(hash, win)
+    const tab = kind === 'pdf' ? openWindow({ file: savePath, name }) : kind === 'image' ? await openImage(savePath, name) : await openWord(savePath, name)
+    if (isLiveTab(tab)) openedByHash.set(hash, tab)
     return kind
 }
 
